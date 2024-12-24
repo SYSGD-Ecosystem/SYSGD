@@ -68,7 +68,7 @@ const DropdownOption: FC<DropdownOptionProps> = ({ Icon, label, onClick }) => {
       onClick={onClick}
       className="flex w-full text-slate-700 dark:text-slate-300 cursor-pointer items-center justify-center gap-2 bg-transparent hover:bg-slate-200 p-2 text-left text-sm hover:dark:bg-slate-800"
     >
-      <Icon size={20} />
+      <Icon size={16} />
 
       <div className="w-full">{label}</div>
     </button>
@@ -80,5 +80,5 @@ type DropdownIconProps = {
 };
 
 const DropdownIcon: FC<DropdownIconProps> = ({ Icon }) => {
-  return <Icon size={20} />;
+  return <Icon size={16} />;
 };

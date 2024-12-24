@@ -105,7 +105,7 @@ const WorkSpace: FC<{ page: number }> = ({ page }) => {
             )}
           </div>
         </div>
-        <SecondarySidebar />
+        <SecondarySidebar className="" />
       </div>
       <DialogComponent>
         <CreateArchiving onClose={closeDialog} />
