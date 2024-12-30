@@ -2,7 +2,7 @@ import { FC, useState } from "react";
 import Input from "../Input";
 import Button from "../Button";
 import Text from "../Text";
-import useConnection from "../../hooks/useConnection";
+import useConnection from "../../hooks/connection/useConnection";
 import { IoCloseCircle } from "react-icons/io5";
 import { useToast } from "../../hooks/useToast";
 

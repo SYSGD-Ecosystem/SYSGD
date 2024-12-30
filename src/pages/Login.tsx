@@ -3,10 +3,9 @@ import Input from "../components/Input";
 import Button from "../components/Button";
 import Text, { Variant } from "../components/Text";
 import { IoIosApps } from "react-icons/io";
-import useConnection from "../hooks/useConnection";
+import useConnection from "../hooks/connection/useConnection";
 import { IoAlertCircle } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
-import useAlertDialog from "../hooks/useAlertDialog";
 
 const Login: FC = () => {
   const [server, setServer] = useState("");
@@ -19,7 +18,6 @@ const Login: FC = () => {
   const { handleServerStatus, handleSqlLogin } = useConnection();
   const [status, setStatus] = useState("");
   const navigate = useNavigate();
-  const { AlertDialogComponent: DialogComponent, openDialog } = useAlertDialog();
 
   useEffect(() => {
     handleServerStatus(
@@ -57,7 +55,7 @@ const Login: FC = () => {
           setStatus(mns);
         },
         (err) => {
-          console.error(err)
+          console.error(err);
           localStorage.removeItem("server");
           setStatus("100");
         }
@@ -72,8 +70,6 @@ const Login: FC = () => {
 
   return (
     <div className="flex items-center justify-center bg-slate-800 h-screen">
-      {DialogComponent(() => {},
-      "El Servidor no está disponible, por favor compruebe que " + localStorage.server + " está en línea")}
       {status === "100" ? (
         <form
           onSubmit={handleServer}
@@ -107,6 +103,38 @@ const Login: FC = () => {
             </button>
           </div>
         </form>
+      ) : status === "404" ? (
+        <div className="bg-white w-96 h-48 rounded-lg p-4 flex flex-col gap-2">
+          <div className="flex gap-2 text-red-500 text-xl font-light items-center">
+            <IoAlertCircle />
+            <span>Servidor no disponible</span>
+          </div>
+          <div className="text-sm text-neutral-700 text-justify">
+            <span>
+              No hemos podido establecer conexión con el servidor en {" "}
+              <span className="text-blue-500">{localStorage.server}</span>, por
+              favor, verifique su conexión a internet e inténtelo de nuevo, si
+              el problema persiste, contacte con el administrador de su sistema.
+            </span>
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={() => {
+                handleServerStatus(
+                  (mns) => {
+                    setStatus(mns);
+                  },
+                  (err) => {
+                    setStatus(err);
+                  }
+                );
+              }}
+              className="flex gap-2 items-center justify-center bg-red-600 text-white size-max p-2 rounded-lg"
+            >
+              Reintentar
+            </button>
+          </div>
+        </div>
       ) : (
         <div className="w-80 relative bg-white overflow-hidden h-max rounded px-2 py-4 flex items-center flex-col gap-2 shadow before:absolute before:w-32 before:h-20 before:right-2 before:bg-rose-300 before:-z-10 before:rounded-full before:blur-xl before:-top-12 z-10 after:absolute after:w-24 after:h-24 after:bg-purple-300 after:-z-10 after:rounded-full after:blur after:-top-12 after:-right-6">
           <div className="flex items-center flex-col justify-center">
@@ -135,21 +163,11 @@ const Login: FC = () => {
               label="Base de datos: *"
               type="text"
             />
-            {status === "404" ? (
-              <button
-                onClick={openDialog}
-                className="flex gap-2 items-center justify-center bg-red-600 text-white size-max p-2 rounded-lg animate-pulse"
-              >
-                <IoAlertCircle />
-                Server not found
-              </button>
-            ) : (
-              <Button
-                isDisabled={host === "" || databaseName === "" || user === ""}
-              >
-                Connectar
-              </Button>
-            )}
+            <Button
+              isDisabled={host === "" || databaseName === "" || user === ""}
+            >
+              Connectar
+            </Button>
           </form>
         </div>
       )}

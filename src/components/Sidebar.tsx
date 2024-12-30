@@ -15,7 +15,7 @@ const Sidebar: FC<SidebarProps> = ({ onOptionSelected }) => {
   }, [option]);
 
   return (
-    <div className="w-full max-w-60 h-full flex flex-col bg-slate-500 dark:bg-slate-800">
+    <div className="w-full max-w-60 hidden dark:border-r dark:border-slate-700 h-full md:flex flex-col bg-slate-500 dark:bg-slate-800">
       <div className="size-full flex flex-col">
         <BarButton
           isSelected={option === 0}

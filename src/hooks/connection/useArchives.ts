@@ -1,23 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 const useArchives = () => {
   const [archives, setArchives] = useState([]);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('http://localhost/apps/sysgd/api.php?action=archives');
+        const response = await fetch(
+          localStorage.server + "/api.php?action=archives"
+        );
         if (!response.ok) {
-          throw new Error('Error al obtener los datos');
+          throw new Error("Error al obtener los datos");
         }
         const data = await response.json();
         setArchives(data);
-        setLoading(false)
+        setLoading(false);
       } catch (error) {
         setError(JSON.stringify(error));
-        setLoading(false)
+        setLoading(false);
       }
     };
 

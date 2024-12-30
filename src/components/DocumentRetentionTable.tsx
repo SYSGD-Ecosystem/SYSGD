@@ -30,7 +30,7 @@ const DocumentRetentionTable: FC<DocumentRetentionTableProps> = ({
                   <th colSpan={11} className="py-2">
                     <div className="flex">
                       <div className="w-full">ANEXO</div>
-                      <div className="w-full text-right"> OT-RG 0801. A10</div>
+                      <div className="w-full text-right">{" "}A2</div>
                     </div>
                   </th>
                 </tr>

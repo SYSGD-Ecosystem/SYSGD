@@ -3,11 +3,12 @@ import Table, { Row } from "./BasicTableComponents";
 import useEditableTable from "../hooks/useEditableTable";
 import Button from "./Button";
 import { useToast } from "../hooks/useToast";
-import useConnection from "../hooks/useConnection";
+import useConnection from "../hooks/connection/useConnection";
 import { spanish } from "../lang/spanish";
-import useGetData from "../hooks/useGetData";
-import Text from "./Text";
+import useGetData from "../hooks/connection/useGetData";
 import Loading from "./Loading";
+import { IoAlertCircle } from "react-icons/io5";
+import { FaFileAlt } from "react-icons/fa";
 
 export type ClassificationBoxTableData = {
   code: string;
@@ -15,25 +16,24 @@ export type ClassificationBoxTableData = {
 };
 
 export type ClassificationBoxTableProps = {
+  archiveId: string;
   company: string;
   archiveName: string;
   code: string;
 };
 
 const ClassificationBoxTable: FC<ClassificationBoxTableProps> = ({
+  archiveId,
   company,
   archiveName,
   code,
 }) => {
-  const [previousRows, setPreviousRows] = useState<Row[]>([
-    { field1: "", field2: "" },
-  ]);
-  const { rows, addRow, updateRow, saveAllRows } =
-    useEditableTable(previousRows);
+  const { rows, addRow, updateRow, saveAllRows, setPrevious } =
+    useEditableTable([{ field1: "", field2: "" }]);
   const { addToast: toast } = useToast();
   const { handleAddClassificationBoxData } = useConnection();
   const [isLoading, setIsLoading] = useState(false);
-  const { data, error, loading } = useGetData(code);
+  const { data, error, loading } = useGetData(archiveId);
 
   const handleSaveData = (data: string) => {
     handleAddClassificationBoxData(
@@ -51,15 +51,33 @@ const ClassificationBoxTable: FC<ClassificationBoxTableProps> = ({
   };
 
   useEffect(() => {
-    console.log("code", code);
-    console.log("data", data);
-  }, [code]);
+    data.map((props: { datos: string }) => {
+      const getROWS: Row[] = JSON.parse(props.datos);
+      console.log(getROWS);
+      if (getROWS !== null) {
+        setPrevious(getROWS);
+      } else {
+        setPrevious([{ field1: "", field2: "" }]);
+      }
+    });
+  }, [data]);
 
   if (error) {
     return (
       <div className="flex flex-col size-full bg-slate-200 dark:bg-slate-950 items-center justify-center">
-        <Text variant={0} label="Error de Conexión" />
-        <Text variant={0} label={error} />
+        {error === "500" ? (
+          <div className="flex flex-col text-xl text-red-500 items-center justify-center gap-2">
+            <IoAlertCircle />
+            <span>Internal Server Error</span>
+          </div>
+        ) : (
+          <div className="text-slate-700 text-xl font-light dark:text-slate-300 flex items-center justify-center flex-col gap-2">
+            <FaFileAlt size={48} />
+            <span className="">
+              Por favor, Seleccione un Archivo de Gestión
+            </span>
+          </div>
+        )}
       </div>
     );
   }
@@ -67,7 +85,7 @@ const ClassificationBoxTable: FC<ClassificationBoxTableProps> = ({
   if (loading) {
     return (
       <div className="flex flex-col size-full bg-slate-200 dark:bg-slate-950 items-center justify-center">
-        <Loading/>
+        <Loading />
       </div>
     );
   }
@@ -83,7 +101,7 @@ const ClassificationBoxTable: FC<ClassificationBoxTableProps> = ({
                   <th colSpan={2} className="py-2">
                     <div className="flex">
                       <div className="w-full">{spanish.annex}</div>
-                      <div className="w-full text-right"> OT-RG 0801. A9</div>
+                      <div className="w-full text-right">{" "}A1</div>
                     </div>
                   </th>
                 </tr>
@@ -100,7 +118,9 @@ const ClassificationBoxTable: FC<ClassificationBoxTableProps> = ({
                   <th colSpan={2} className="text-left py-2 text-sm uppercase">
                     <div>
                       Archivo de gestión:{" "}
-                      <span className="font-normal">{archiveName}</span>
+                      <span className="font-normal">
+                        {code} {archiveName}
+                      </span>
                     </div>
                     <div>Documentos generados</div>
                   </th>
@@ -112,7 +132,7 @@ const ClassificationBoxTable: FC<ClassificationBoxTableProps> = ({
                   return (
                     <tr key={index}>
                       <td
-                        className="border p-2 dark:border-gray-700 break-words max-w-28"
+                        className="border p-2 dark:border-gray-700 break-words max-w-5"
                         contentEditable
                         suppressContentEditableWarning
                         onBlur={(e) =>
@@ -160,7 +180,7 @@ export default ClassificationBoxTable;
 const TableHeading: FC = () => {
   return (
     <tr className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-slate-900 dark:text-gray-400">
-      <th className="p-2 border dark:border-gray-700">Código</th>
+      <th className="p-2 border dark:border-gray-700 max-w-12">Código</th>
       <th className="p-2 border dark:border-gray-700">
         Series y Subseries Documentales
       </th>

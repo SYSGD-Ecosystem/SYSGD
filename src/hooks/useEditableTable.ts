@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Row } from "../components/BasicTableComponents";
-import useConnection from "./useConnection";
 
 const useEditableTable = (initialRows: Row[]) => {
   const [rows, setRows] = useState<Row[]>(initialRows);
@@ -23,7 +22,11 @@ const useEditableTable = (initialRows: Row[]) => {
 
   const saveAllRows = (onSaveData: (data: string) => void) => {
     console.log(rows);
-    onSaveData(JSON.stringify(rows))
+    onSaveData(JSON.stringify(rows));
+  };
+
+  const setPrevious = (initialRows: Row[]) => {
+    setRows(initialRows);
   };
 
   return {
@@ -32,6 +35,7 @@ const useEditableTable = (initialRows: Row[]) => {
     updateRow,
     saveRow,
     saveAllRows,
+    setPrevious
   };
 };
 
