@@ -2,7 +2,7 @@ import { FC, useEffect, useState } from "react";
 import MainContainer from "../components/MainContainer";
 import Sidebar from "../components/Sidebar";
 import HeadBar from "../components/HeadBar";
-import NavBar from "../components/NavBar";
+import NavBar from "../components/Navbar";
 import { useNavigate } from "react-router-dom";
 import useConnection from "../hooks/useConnection";
 
