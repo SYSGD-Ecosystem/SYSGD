@@ -15,7 +15,7 @@ const useDialog = (): DialogProps => {
 
   const DialogComponent = ({ children }: { children: ReactNode }) =>
     isOpen ? (
-      <div className="size-full bg-[rgba(0,0,0,0.5)] shadow-lg flex items-center justify-center">
+      <div className="fixed left-0 top-0 size-full bg-[rgba(0,0,0,0.5)] flex items-center justify-center">
         {children}
       </div>
     ) : (

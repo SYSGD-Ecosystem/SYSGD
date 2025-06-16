@@ -1,49 +1,24 @@
 import { FC } from "react";
-import TextInput from "./TextInput";
+import { twMerge } from "tailwind-merge";
 import ToolBar from "./ToolBar";
-import Button from "./Button";
-import Select from "./Select";
+import { spanish } from "../lang/spanish";
+import HelpCard from "./HelpCard";
 
-const SecondarySidebar: FC = () => {
+const SecondarySidebar: FC<{ className?: string }> = ({ className }) => {
   return (
-    <>
-      <div className="max-w-64 w-full h-full overflow-auto border-l dark:border-slate-700 bg-white dark:bg-slate-950 flex flex-col gap-2">
-        <ToolBar />
-
-        <div className="flex size-full flex-col overflow-auto">
-          <div className="flex flex-col gap-2 px-2 pb-2">
-            <TextInput label="Código" />
-            <TextInput label="Serie o Subserie Documental " />
-            <Select
-              label="Valoración"
-              options={[
-                { select: "Temporal", onClick: () => {} },
-                { select: "Permanente", onClick: () => {} },
-              ]}
-            />
-            <Select
-              label="Soporte"
-              options={[
-                { select: "Papel", onClick: () => {} },
-                { select: "Digital", onClick: () => {} },
-              ]}
-            />
-            <Select
-              label="Acceso"
-              options={[
-                { select: "Libre", onClick: () => {} },
-                { select: "Restringido", onClick: () => {} },
-              ]}
-            />
-
-            <TextInput label="Plazo de Retención AG" />
-            <TextInput label="Plazo de Retención AC" />
-            <TextInput label="Observaciones" />
-            <Button onClick={() => {}} >Insertar</Button>
-          </div>
+    <div
+      className={twMerge(
+        "max-w-64 w-full h-full overflow-auto border-l dark:border-slate-700 bg-white dark:bg-slate-950 lg:flex flex-col gap-2 hidden",
+        className ?? ""
+      )}
+    >
+      <div className="flex size-full flex-col overflow-auto">
+        <ToolBar className="w-full border-y justify-end" />
+        <div className="flex flex-col gap-2 p-2">
+          <HelpCard title={spanish.code} content={spanish.help_document_code} />
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

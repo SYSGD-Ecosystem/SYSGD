@@ -1,40 +1,67 @@
-import { FC } from "react";
+import { FC, useEffect, useState } from "react";
 import BarButton from "./BarButton";
 import { IoArchive } from "react-icons/io5";
 import IconButton from "./IconButton";
 import { IoLogoFacebook, IoLogoGithub, IoLogoTwitter } from "react-icons/io";
 
-const Sidebar: FC = () => {
+type SidebarProps = {
+  onOptionSelected: (option: number) => void;
+};
+
+const Sidebar: FC<SidebarProps> = ({ onOptionSelected }) => {
+  const [option, setOption] = useState(0);
+  useEffect(() => {
+    onOptionSelected(option);
+  }, [option]);
+
   return (
-    <div className="w-60 min-w-60 h-full flex flex-col bg-slate-500 dark:bg-slate-800">
+    <div className="w-full max-w-60 hidden dark:border-r dark:border-slate-700 h-full md:flex flex-col bg-slate-500 dark:bg-slate-800">
       <div className="size-full flex flex-col">
         <BarButton
-          onClick={() => {}}
+          isSelected={option === 0}
+          onClick={() => {
+            setOption(0);
+          }}
           Icon={IoArchive}
           label="Cuadro de clasificacón"
         />
         <BarButton
-          onClick={() => {}}
+          isSelected={option === 1}
+          onClick={() => {
+            setOption(1);
+          }}
           Icon={IoArchive}
           label="Tabla de Retencion Documental"
         />
         <BarButton
-          onClick={() => {}}
+          isSelected={option === 2}
+          onClick={() => {
+            setOption(2);
+          }}
           Icon={IoArchive}
           label="Registro de entrada"
         />
         <BarButton
-          onClick={() => {}}
+          isSelected={option === 3}
+          onClick={() => {
+            setOption(3);
+          }}
           Icon={IoArchive}
           label="Registro de Salida"
         />
         <BarButton
-          onClick={() => {}}
+          isSelected={option === 4}
+          onClick={() => {
+            setOption(4);
+          }}
           Icon={IoArchive}
           label="Registro de prestamo"
         />
         <BarButton
-          onClick={() => {}}
+          isSelected={option === 5}
+          onClick={() => {
+            setOption(5);
+          }}
           Icon={IoArchive}
           label="Registro topografico"
         />

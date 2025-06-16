@@ -7,13 +7,13 @@ const Input: FC<{
 }> = ({ label, type, onChange }) => {
   return (
     <label className="flex flex-col gap-0.5">
-      <span>{label}</span>
+      <span className="dark:text-slate-200">{label}</span>
       <input
         onChange={(event) => {
           onChange(event.target.value);
         }}
         type={type}
-        className="border outline-none py-1 px-2 rounded"
+        className="border outline-none py-1 px-2 rounded dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700"
       />
     </label>
   );

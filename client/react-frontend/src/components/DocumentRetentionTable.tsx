@@ -19,7 +19,7 @@ const DocumentRetentionTable: FC<DocumentRetentionTableProps> = ({
   return (
     <div className="size-full flex flex-col overflow-auto">
       <div className="w-full flex justify-center p-2 items-center">
-        <div className="bg-white dark:bg-slate-900 py-5 px-10 border dark:border-slate-700 flex flex-col shadow min-w-[21.59cm] min-h-[27.54cm] rounded">
+        <div className="bg-white dark:bg-slate-900 py-5 px-10 border dark:border-slate-700 flex flex-col shadow w-full max-w-[21.59cm] min-w-[21.59cm] min-h-[27.54cm] rounded">
           <div id="content">
             <table
               id="myTable"
@@ -30,7 +30,7 @@ const DocumentRetentionTable: FC<DocumentRetentionTableProps> = ({
                   <th colSpan={11} className="py-2">
                     <div className="flex">
                       <div className="w-full">ANEXO</div>
-                      <div className="w-full text-right"> OT-RG 0801. A10</div>
+                      <div className="w-full text-right">{" "}A2</div>
                     </div>
                   </th>
                 </tr>
@@ -142,5 +142,5 @@ const Th: FC<{label:string}> = ({label}) =>{
 }
 
 const Td: FC<{label:string}> = ({label}) =>{
-  return <td contentEditable className="p-2 border dark:border-gray-700">{label}</td>
+  return <td contentEditable className="p-2 border dark:border-gray-700 break-words max-w-28">{label}</td>
 }

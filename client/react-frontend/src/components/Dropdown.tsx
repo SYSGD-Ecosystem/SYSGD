@@ -31,7 +31,7 @@ const Dropdown: FC<DropdownProps> = ({ options }) => {
 
       <div
         className={
-          "absolute w-full rounded-lg bg-slate-100 dark:bg-slate-950 shadow-2xl " +
+          "absolute w-full rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-950 shadow-2xl " +
           (isDropdownOptionVisibility ? "inline-block" : "hidden")
         }
       >
@@ -55,7 +55,7 @@ const Dropdown: FC<DropdownProps> = ({ options }) => {
 
 export default Dropdown;
 
-type DropdownOptionProps = {
+export type DropdownOptionProps = {
   Icon: IconType;
   label: string;
   onClick: () => void;
@@ -66,9 +66,9 @@ const DropdownOption: FC<DropdownOptionProps> = ({ Icon, label, onClick }) => {
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full dark:text-slate-300 cursor-pointer items-center justify-center gap-2 bg-transparent p-2 text-left text-sm hover:dark:bg-slate-800"
+      className="flex w-full text-slate-700 dark:text-slate-300 cursor-pointer items-center justify-center gap-2 bg-transparent hover:bg-slate-200 p-2 text-left text-sm hover:dark:bg-slate-800"
     >
-      <Icon size={20} />
+      <Icon size={16} />
 
       <div className="w-full">{label}</div>
     </button>
@@ -80,5 +80,5 @@ type DropdownIconProps = {
 };
 
 const DropdownIcon: FC<DropdownIconProps> = ({ Icon }) => {
-  return <Icon size={20} />;
+  return <Icon size={16} />;
 };

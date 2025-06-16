@@ -5,7 +5,7 @@ interface DialogProps {
   isOpen: boolean;
   openDialog: () => void;
   closeDialog: () => void;
-  DialogComponent: (onClick: () => void, message: string) => JSX.Element;
+  AlertDialogComponent: (onClick: () => void, message: string) => JSX.Element;
 }
 
 const useAlertDialog = (): DialogProps => {
@@ -14,9 +14,9 @@ const useAlertDialog = (): DialogProps => {
   const openDialog = () => setIsOpen(true);
   const closeDialog = () => setIsOpen(false);
 
-  const DialogComponent = (onClick: () => void, message: string) =>
+  const AlertDialogComponent = (onClick: () => void, message: string) =>
     isOpen ? (
-      <div className="fixed left-0 top-0 dark:text-slate-200 font-extralight size-full flex items-center justify-center bg-[rgba(0,0,0,0.5)] z-50">
+      <div className="fixed left-0 top-0 dark:text-slate-200 font-extralight size-full flex items-center justify-center bg-[rgba(0,0,0,0.5)] z-40 inset-0 backdrop-blur-sm">
         <AlertDialog
           message={message}
           onClick={() => {
@@ -34,7 +34,7 @@ const useAlertDialog = (): DialogProps => {
     isOpen,
     openDialog,
     closeDialog,
-    DialogComponent,
+    AlertDialogComponent,
   };
 };
 

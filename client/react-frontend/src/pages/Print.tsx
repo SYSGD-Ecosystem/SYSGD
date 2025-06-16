@@ -6,11 +6,12 @@ const Print: FC = () => {
     <div className="bg-slate-200">
       <div className="fixed bottom-10 right-10 print:hidden">
         <Button
-          label="Imprimir"
           onClick={() => {
             window.print();
           }}
-        />
+        >
+          Imprimir
+        </Button>
       </div>
     </div>
   );

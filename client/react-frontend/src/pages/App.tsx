@@ -1,41 +1,49 @@
-import { FC, useEffect, useState } from "react";
-import MainContainer from "../components/MainContainer";
+import { type FC, useEffect, useState } from "react";
+import WorkSpace from "../components/WorkSpace";
 import Sidebar from "../components/Sidebar";
 import HeadBar from "../components/HeadBar";
 import NavBar from "../components/Navbar";
 import { useNavigate } from "react-router-dom";
-import useConnection from "../hooks/useConnection";
-import useConnection2 from "../hooks/useConnection2";
+import useConnection from "../hooks/connection/useConnection";
+import { ToastProvider } from "../hooks/useToast";
 
 const App: FC = () => {
-	const navigate = useNavigate();
-	const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
-	const { checkServerStatus, status } = useConnection2(serverUrl);
+  const navigate = useNavigate();
+  const { handleServerStatus } = useConnection();
+  const [status, setStatus] = useState("");
+  const [optionMainSelected, setOptionMainSelected] = useState(0);
 
-	useEffect(() => {
-		checkServerStatus();
-	}, [checkServerStatus]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  useEffect(() => {
+    handleServerStatus(
+      (mns) => {
+        setStatus(mns);
+      },
+      (err) => {
+        setStatus(err);
+        return;
+      }
+    );
+  }, []);
 
-	if (status === "checking") {
-		return <div>Verificando servidor...</div>;
-	}
+  if (status !== "200") {
+    navigate("login");
+    return;
+  }
 
-	if (status === "offline") {
-		navigate("login");
-		return null;
-	}
+  return (
+    <ToastProvider>
+      <div className="flex h-screen w-full flex-col">
+        <HeadBar />
+        <div className="size-full flex overflow-auto">
+          <NavBar />
+          <Sidebar onOptionSelected={setOptionMainSelected} />
 
-	return (
-		<div className="flex h-screen w-full flex-col">
-			<HeadBar />
-			<div className="size-full flex overflow-auto">
-				<NavBar />
-				<Sidebar />
-
-				<MainContainer />
-			</div>
-		</div>
-	);
+          <WorkSpace page={optionMainSelected} />
+        </div>
+      </div>
+    </ToastProvider>
+  );
 };
 
 export default App;
