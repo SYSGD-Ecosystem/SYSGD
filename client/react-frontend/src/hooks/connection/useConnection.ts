@@ -1,154 +1,71 @@
+const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+
 type useConnectionReturnType = {
-  handleServerStatus: (
-    onSuccess: (message: string) => void,
-    onFail: (message: string) => void
-  ) => void;
-
-  handleSqlLogin: (
-    servername: string,
-    username: string,
-    password: string,
-    dbname: string,
-    onSuccess: (message: string) => void,
-    onFail: (message: string) => void
-  ) => void;
-
-  handleNewArchiving: (
-    code: string,
-    company: string,
-    name: string,
-    onSuccess: () => void,
-    onFail: () => void
-  ) => void;
-
-  handleAddClassificationBoxData: (
-    code: string,
-    data: string,
-    onSuccess: () => void,
-    onFail: () => void
-  ) => void;
-};
+    handleNewArchiving: (
+      code: string,
+      company: string,
+      name: string,
+      onSuccess: () => void,
+      onFail: () => void
+    ) => Promise<void>;
+    handleAddClassificationBoxData: (
+      code: string,
+      data: string,
+      onSuccess: () => void,
+      onFail: () => void
+    ) => Promise<void>;
+  };
 
 const useConnection = (): useConnectionReturnType => {
-  const server = localStorage.getItem("server");
 
-  const handleServerStatus = (
-    onSuccess: (message: string) => void,
-    onFail: (message: string) => void
-  ) => {
-    if (server === null) {
-      onFail("100");
-      return;
-    }
-
-    const req = new XMLHttpRequest();
-    req.onload = () => {
-      onSuccess(req.responseText);
-    };
-
-    req.onerror = () => {
-      onFail("404");
-    };
-
-    req.open("GET", server + "/index.php");
-    req.setRequestHeader("Content-Type", "application/json");
-    req.send();
-  };
-
-  const handleSqlLogin = (
-    servername: string,
-    username: string,
-    password: string,
-    dbname: string,
-    onSuccess: (message: string) => void,
-    onFail: (message: string) => void
-  ) => {
-    const form = new FormData();
-    form.append("host", servername);
-    form.append("db_name", dbname);
-    form.append("user", username);
-    form.append("pass", password);
-
-    const req = new XMLHttpRequest();
-    req.onload = () => {
-      onSuccess(req.responseText);
-    };
-
-    req.onerror = () => {
-      onFail("error");
-    };
-
-    req.open("POST", server + "/install.php");
-    //req.setRequestHeader("Content-Type", "application/json");
-    req.send(form);
-  };
-
-  const handleNewArchiving = (
+  const handleNewArchiving = async (
     code: string,
     company: string,
     name: string,
     onSuccess: () => void,
     onFail: () => void
   ) => {
-    const form = new FormData();
-    form.append("code", code);
-    form.append("company", company);
-    form.append("name", name);
-    form.append("action", "create_new_classification_box");
-
-    const req = new XMLHttpRequest();
-    req.onload = () => {
-      if (req.responseText === "201") {
-        onSuccess();
-      } else {
-        alert(req.responseText);
+    try {
+      const res = await fetch(`${serverUrl}/api/classification_box`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, company, name }),
+      });
+      if (res.ok) onSuccess();
+      else {
+        const text = await res.text();
+        alert(text);
         onFail();
       }
-    };
-
-    req.onerror = () => {
+    } catch {
       onFail();
-    };
-
-    req.open("POST", server + "/api.php");
-    req.send(form);
+    }
   };
 
-  const handleAddClassificationBoxData = (
+  const handleAddClassificationBoxData = async (
     code: string,
     data: string,
     onSuccess: () => void,
     onFail: () => void
   ) => {
-    const form = new FormData();
-    form.append("code", code);
-    form.append("data", data);
-    form.append("action", "add_classification_data");
-
-    const req = new XMLHttpRequest();
-    req.onload = () => {
-      if (req.responseText === "201") {
-        onSuccess();
-      } else {
-        alert(req.responseText);
+    try {
+      const res = await fetch(`${serverUrl}/api/classification_box/${code}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data }),
+      });
+      if (res.ok) onSuccess();
+      else {
+        const text = await res.text();
+        alert(text);
         onFail();
       }
-    };
-
-    req.onerror = () => {
+    } catch {
       onFail();
-    };
-
-    req.open("POST", server + "/api.php");
-    req.send(form);
+    }
   };
 
-  return {
-    handleServerStatus,
-    handleSqlLogin,
-    handleNewArchiving,
-    handleAddClassificationBoxData,
-  };
+  return { handleNewArchiving, handleAddClassificationBoxData };
 };
 
 export default useConnection;

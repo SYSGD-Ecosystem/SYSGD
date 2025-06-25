@@ -1,49 +1,53 @@
-import { type FC, useEffect, useState } from "react";
+import { useEffect, useState, type FC } from "react";
 import WorkSpace from "../components/WorkSpace";
 import Sidebar from "../components/Sidebar";
 import HeadBar from "../components/HeadBar";
 import NavBar from "../components/Navbar";
 import { useNavigate } from "react-router-dom";
-import useConnection from "../hooks/connection/useConnection";
 import { ToastProvider } from "../hooks/useToast";
+import useServerStatus from "../hooks/connection/useServerStatus";
+import { useAuthSession } from "../hooks/connection/useAuthSession";
 
 const App: FC = () => {
-  const navigate = useNavigate();
-  const { handleServerStatus } = useConnection();
-  const [status, setStatus] = useState("");
-  const [optionMainSelected, setOptionMainSelected] = useState(0);
+	const navigate = useNavigate();
+	const [optionMainSelected, setOptionMainSelected] = useState(0);
+	const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+	const { status, checkServerStatus } = useServerStatus(serverUrl);
+	const { user, loading } = useAuthSession();
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
-  useEffect(() => {
-    handleServerStatus(
-      (mns) => {
-        setStatus(mns);
-      },
-      (err) => {
-        setStatus(err);
-        return;
-      }
-    );
-  }, []);
+	useEffect(() => {
+		checkServerStatus();
+	}, [checkServerStatus]);
 
-  if (status !== "200") {
-    navigate("login");
-    return;
-  }
+	// Si el servidor no está disponible
+	if (status === "checking") return <div>Verificando servidor...</div>;
+	if (status === "offline") {
+		navigate("/error");
+		return null;
+	}
 
-  return (
-    <ToastProvider>
-      <div className="flex h-screen w-full flex-col">
-        <HeadBar />
-        <div className="size-full flex overflow-auto">
-          <NavBar />
-          <Sidebar onOptionSelected={setOptionMainSelected} />
+	// Si aún está verificando sesión
+	if (loading) return <div>Verificando sesión...</div>;
 
-          <WorkSpace page={optionMainSelected} />
-        </div>
-      </div>
-    </ToastProvider>
-  );
+	// Si no hay sesión
+	if (!user) {
+		navigate("/login");
+		return null;
+	}
+
+	// Si todo está bien, muestra la app
+	return (
+		<ToastProvider>
+			<div className="flex h-screen w-full flex-col">
+				<HeadBar />
+				<div className="size-full flex overflow-auto">
+					<NavBar />
+					<Sidebar onOptionSelected={setOptionMainSelected} />
+					<WorkSpace page={optionMainSelected} />
+				</div>
+			</div>
+		</ToastProvider>
+	);
 };
 
 export default App;

@@ -1,178 +1,181 @@
-import React, { FC, useEffect, useState } from "react";
+import { type FC, type FormEvent, useState } from "react";
 import Input from "../components/Input";
 import Button from "../components/Button";
 import Text, { Variant } from "../components/Text";
 import { IoIosApps } from "react-icons/io";
-import useConnection from "../hooks/connection/useConnection";
-import { IoAlertCircle } from "react-icons/io5";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useRegisterUser } from "../hooks/connection/useRegisterUser";
+import { useLogin } from "../hooks/connection/useLogin";
 
 const Login: FC = () => {
-  const [server, setServer] = useState("");
+	const [isLoginPage, setIsLoginPage] = useState(true);
+	const navigate = useNavigate();
+	const [password, setPassword] = useState("");
+	const [repetPassword, setRepetPassword] = useState("");
+	const [name, setName] = useState("");
+	const [user, setUser] = useState("");
 
-  const [host, setHost] = useState("");
-  const [databaseName, setDatabaseName] = useState("");
-  const [user, setUser] = useState("");
-  const [password, setPassword] = useState("");
+	const { register, loading, error, success } = useRegisterUser();
+	const {
+		login,
+		error: loginError,
+		loading: loginLoading,
+		success: loginSuccess,
+	} = useLogin();
 
-  const { handleServerStatus, handleSqlLogin } = useConnection();
-  const [status, setStatus] = useState("");
-  const navigate = useNavigate();
+	const handleRegisterSubmit = (e: FormEvent) => {
+		e.preventDefault();
+		if (password !== repetPassword) {
+			alert("Las contraseñas no coinciden");
+			return;
+		}
 
-  useEffect(() => {
-    handleServerStatus(
-      (mns) => {
-        setStatus(mns);
-      },
-      (err) => {
-        setStatus(err);
-      }
-    );
-  }, []);
+		register({ name, username: user, password });
+	};
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    handleSqlLogin(
-      host,
-      user,
-      password,
-      databaseName,
-      (mns) => {
-        setStatus(mns);
-      },
-      (err) => {
-        setStatus(err);
-      }
-    );
-  };
 
-  const handleServer = (_e: React.FormEvent) => {
-    //e.preventDefault();
-    localStorage.setItem("server", server);
-    useEffect(() => {
-      handleServerStatus(
-        (mns) => {
-          setStatus(mns);
-        },
-        (err) => {
-          console.error(err);
-          localStorage.removeItem("server");
-          setStatus("100");
-        }
-      );
-    }, []);
-  };
+	const handleLoginSubmit = (e: FormEvent) => {
+		e.preventDefault()
 
-  if (status === "200") {
-    navigate("/");
-    return;
-  }
+		login({ username: user, password });
+	};
 
-  return (
-    <div className="flex items-center justify-center bg-slate-800 h-screen">
-      {status === "100" ? (
-        <form
-          onSubmit={handleServer}
-          className="text-neutral-800 py-6 relative overflow-hidden flex flex-col justify-around w-96 h-max border border-neutral-500 rounded-lg bg-neutral-50 p-3 px-6"
-        >
-          <div className="before:absolute before:w-32 before:h-20 before:right-2 before:bg-rose-300 before:-z-10 before:rounded-full before:blur-xl before:-top-12 z-10 after:absolute after:w-24 after:h-24 after:bg-purple-300 after:-z-10 after:rounded-full after:blur after:-top-12 after:-right-6">
-            <span className="font-extrabold text-2xl text-violet-600">
-              Conectar al servidor:
-            </span>
-            <p className="text-neutral-700">
-              Este programa trabaja con un servidor PHP externo para la gestión
-              de la base de datos, por favor, indique la URL de su servidor:
-            </p>
-          </div>
-          <div className="flex gap-1">
-            <div className="relative rounded-lg w-64 overflow-hidden before:absolute before:w-12 before:h-12 before:content[''] before:right-0 before:bg-violet-500 before:rounded-full before:blur-lg after:absolute after:z-10 after:w-20 after:h-20 after:content[''] after:bg-rose-300 after:right-12 after:top-3 after:rounded-full after:blur-lg">
-              <input
-                type="text"
-                className="relative bg-transparent ring-0 outline-none border border-neutral-500 text-neutral-900 placeholder-violet-700 text-sm rounded-lg focus:ring-violet-500 placeholder-opacity-60 focus:border-violet-500 block w-full p-2.5 checked:bg-emerald-500"
-                placeholder="URL..."
-                onChange={(event) => {
-                  setServer(event.target.value);
-                }}
-              />
-            </div>
-            <button
-              disabled={server === ""}
-              className="bg-violet-500 text-neutral-50 p-2 rounded-lg hover:bg-violet-400"
-            >
-              Conectar
-            </button>
-          </div>
-        </form>
-      ) : status === "404" ? (
-        <div className="bg-white w-96 h-48 rounded-lg p-4 flex flex-col gap-2">
-          <div className="flex gap-2 text-red-500 text-xl font-light items-center">
-            <IoAlertCircle />
-            <span>Servidor no disponible</span>
-          </div>
-          <div className="text-sm text-neutral-700 text-justify">
-            <span>
-              No hemos podido establecer conexión con el servidor en {" "}
-              <span className="text-blue-500">{localStorage.server}</span>, por
-              favor, verifique su conexión a internet e inténtelo de nuevo, si
-              el problema persiste, contacte con el administrador de su sistema.
-            </span>
-          </div>
-          <div className="flex justify-end">
-            <button
-              onClick={() => {
-                handleServerStatus(
-                  (mns) => {
-                    setStatus(mns);
-                  },
-                  (err) => {
-                    setStatus(err);
-                  }
-                );
-              }}
-              className="flex gap-2 items-center justify-center bg-red-600 text-white size-max p-2 rounded-lg"
-            >
-              Reintentar
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="w-80 relative bg-white overflow-hidden h-max rounded px-2 py-4 flex items-center flex-col gap-2 shadow before:absolute before:w-32 before:h-20 before:right-2 before:bg-rose-300 before:-z-10 before:rounded-full before:blur-xl before:-top-12 z-10 after:absolute after:w-24 after:h-24 after:bg-purple-300 after:-z-10 after:rounded-full after:blur after:-top-12 after:-right-6">
-          <div className="flex items-center flex-col justify-center">
-            <div className="flex gap-1 w-max items-center justify-center">
-              <div>
-                <IoIosApps size={24} />
-              </div>
-              <Text label="SYSGD" variant={Variant.Heading} />
-            </div>
+	if (loginSuccess) {
+		navigate("/")
 
-            <Text
-              label="Conectar con la base de datos"
-              variant={Variant.Span}
-            />
-          </div>
+	}
+	return (
+		<div className="flex items-center justify-center bg-slate-800 h-screen">
+			{isLoginPage ? (
+				<div className="w-80 relative bg-white overflow-hidden h-max rounded px-2 py-4 flex items-center flex-col gap-2 shadow before:absolute before:w-32 before:h-20 before:right-2 before:bg-rose-300 before:-z-10 before:rounded-full before:blur-xl before:-top-12 z-10 after:absolute after:w-24 after:h-24 after:bg-purple-300 after:-z-10 after:rounded-full after:blur after:-top-12 after:-right-6">
+					<div className="flex items-center flex-col justify-center">
+						<div className="flex gap-1 w-max items-center justify-center">
+							<div>
+								<IoIosApps size={24} />
+							</div>
+							<Text label="SYSGD" variant={Variant.Heading} />
+						</div>
 
-          <form
-            onSubmit={handleLogin}
-            className="flex flex-col gap-2 items-center justify-center"
-          >
-            <Input onChange={setHost} label="Host: *" type="text" />
-            <Input onChange={setUser} label="Usuario: *" type="text" />
-            <Input onChange={setPassword} label="Contraseña:" type="password" />
-            <Input
-              onChange={setDatabaseName}
-              label="Base de datos: *"
-              type="text"
-            />
-            <Button
-              isDisabled={host === "" || databaseName === "" || user === ""}
-            >
-              Connectar
-            </Button>
-          </form>
-        </div>
-      )}
-    </div>
-  );
+						<Text label="Iniciar sesión" variant={Variant.Span} />
+					</div>
+
+					<form
+						onSubmit={handleLoginSubmit}
+						className="flex flex-col gap-2 items-center justify-center"
+					>
+						<Input onChange={setUser} label="Usuario: *" type="text" />
+						<Input onChange={setPassword} label="Contraseña:" type="password" />
+						<Button isDisabled={password === "" || user === ""}>
+							{loading ? "Cargando..." : "Iniciar sesión"}
+						</Button>
+						{loginError && <p className="text-red-500">{loginError}</p>}
+					</form>
+					<div className="w-full items-center justify-center flex gap-1">
+						<div className="w-full h-0.5 bg-slate-500" />
+						<div className="text-xs text-nowrap">O CONTINUA CON</div>
+						<div className="w-full h-0.5 bg-slate-500" />
+					</div>
+					<ButtonGoogle />
+					<div className="text-center text-sm text-muted-foreground">
+						¿No tienes una cuenta?{" "}
+						<Button
+							onClick={() => {
+								setIsLoginPage(false);
+							}}
+							className="underline hover:text-primary"
+						>
+							Crear cuenta
+						</Button>
+					</div>
+				</div>
+			) : (
+				<>
+					<div className="w-96 relative bg-white overflow-hidden h-max rounded px-2 py-4 flex items-center flex-col gap-2 shadow before:absolute before:w-32 before:h-20 before:right-2 before:bg-rose-300 before:-z-10 before:rounded-full before:blur-xl before:-top-12 z-10 after:absolute after:w-24 after:h-24 after:bg-purple-300 after:-z-10 after:rounded-full after:blur after:-top-12 after:-right-6">
+						<div className="flex items-center flex-col justify-center">
+							<div className="flex gap-1 w-max items-center justify-center">
+								<div>
+									<IoIosApps size={24} />
+								</div>
+								<Text label="SYSGD" variant={Variant.Heading} />
+							</div>
+
+							<Text label="Crear cuenta" variant={Variant.Span} />
+						</div>
+
+						<form
+							onSubmit={handleRegisterSubmit}
+							className="flex flex-col gap-2 items-center justify-center"
+						>
+							<Input onChange={setName} label="Nombre: *" type="text" />
+							<Input onChange={setUser} label="Correo: *" type="text" />
+							<Input
+								onChange={setPassword}
+								label="Contraseña:"
+								type="password"
+							/>
+							<Input
+								onChange={setRepetPassword}
+								label="Confirmar Contraseña:"
+								type="password"
+							/>
+							<Button isDisabled={loading || password === "" || user === ""}>
+								{loading ? "Registrando..." : "Registrar"}
+							</Button>
+							{error && <p className="text-red-500">{error}</p>}
+							{success && (
+								<p className="text-green-500">¡Usuario registrado con éxito!</p>
+							)}
+						</form>
+						<div className="w-full items-center justify-center flex gap-1">
+							<div className="w-full h-0.5 bg-slate-500" />
+							<div className="text-xs text-nowrap">O CONTINUA CON</div>
+							<div className="w-full h-0.5 bg-slate-500" />
+						</div>
+						<ButtonGoogle />
+						<div className="text-center text-sm text-muted-foreground">
+							¿Ya tienes cuenta?{" "}
+							<Button
+								onClick={() => {
+									setIsLoginPage(true);
+								}}
+								className="underline hover:text-primary"
+							>
+								Iniciar sesión
+							</Button>
+						</div>
+					</div>
+				</>
+			)}
+		</div>
+	);
 };
 
 export default Login;
+
+const ButtonGoogle: FC = () => {
+	return (
+		// biome-ignore lint/a11y/useButtonType: <explanation>
+		<button className="px-2 h-11 bg-blue-500 rounded flex items-center justify-center text-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-blue-600 dark:hover:bg-gray-700">
+			{/* biome-ignore lint/a11y/noSvgWithoutTitle: <explanation> */}
+			<svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+				<path
+					fill="currentColor"
+					d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+				/>
+				<path
+					fill="currentColor"
+					d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+				/>
+				<path
+					fill="currentColor"
+					d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+				/>
+				<path
+					fill="currentColor"
+					d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+				/>
+			</svg>
+			Continuar con Google
+		</button>
+	);
+};

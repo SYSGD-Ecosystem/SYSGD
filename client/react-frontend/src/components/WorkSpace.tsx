@@ -1,10 +1,10 @@
-import { FC, useEffect, useState } from "react";
+import { type FC, useEffect, useState } from "react";
 import DocumentRetentionTable from "./DocumentRetentionTable";
 import SecondarySidebar from "./SecondarySidebar";
 import IconButton from "./IconButton";
 import { IoFileTray, IoPrint } from "react-icons/io5";
 import { IoIosAddCircle } from "react-icons/io";
-import Dropdown, { DropdownOptionProps } from "./Dropdown";
+import Dropdown, { type DropdownOptionProps } from "./Dropdown";
 import Text from "./Text";
 import ClassificationBoxTable from "./ClassificationBoxTable";
 import useDialog from "../hooks/useDialog";

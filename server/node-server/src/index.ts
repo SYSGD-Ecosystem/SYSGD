@@ -5,6 +5,8 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { Pool } from "pg";
 import { initDatabase } from "./initDatabase";
+import classificationRoutes from './routes/api';
+import session from "express-session";
 
 
 dotenv.config();
@@ -23,8 +25,29 @@ export const pool = new Pool({
 });
 
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5173", // o el dominio de tu frontend
+    credentials: true, // 🔥 permite el uso de cookies
+  })
+);
+
+
+app.use(
+  session({
+    secret: "TESTSESSION", // Cámbialo a algo más largo y aleatorio
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: false, // true en producción con HTTPS
+      maxAge: 1000 * 60 * 60 * 24, // 1 día
+      sameSite: "lax", // o "none" si el front está en otro dominio
+    },
+  })
+);
+
 app.use(express.json());
+app.use("/api", classificationRoutes);
 
 // Ruta raíz que sirve la página de bienvenida desde un archivo externo
 app.get('/', (_req, res) => {
@@ -38,9 +61,6 @@ app.get('/', (_req, res) => {
   });
 });
 
-app.get("/api/status", (req, res) => {
-  res.json({ status: "ok", message: "Servidor activo y listo" });
-});
 
 initDatabase().then(() => {
   app.listen(PORT, () => {

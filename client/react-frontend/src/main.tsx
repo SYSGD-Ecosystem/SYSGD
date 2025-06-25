@@ -7,6 +7,7 @@ import DevPreview from "./pages/DevPreview.tsx";
 import "./styles/tailwind.css"
 import Launcher from "./pages/Launcher.tsx";
 import Print from "./pages/Print.tsx";
+import ErrorServer from "./pages/ErrorServer.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -17,6 +18,7 @@ createRoot(document.getElementById("root")!).render(
       <Route path="/print" element={<Print/>}/>
       <Route path="/launcher" element={<Launcher/>}/>
       <Route path="/dev" element={<DevPreview/>}/>
+      <Route path="/error" element={<ErrorServer/>}/>
     </Routes>
     </BrowserRouter>
   </StrictMode>
