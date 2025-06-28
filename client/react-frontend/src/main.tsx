@@ -8,7 +8,10 @@ import "./styles/tailwind.css"
 import Launcher from "./pages/Launcher.tsx";
 import Print from "./pages/Print.tsx";
 import ErrorServer from "./pages/ErrorServer.tsx";
+import UserProfile from "./pages/UserProfile.tsx";
+import OrganigramaPage from "./pages/Organigrama.tsx";
 
+// biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
@@ -19,6 +22,8 @@ createRoot(document.getElementById("root")!).render(
       <Route path="/launcher" element={<Launcher/>}/>
       <Route path="/dev" element={<DevPreview/>}/>
       <Route path="/error" element={<ErrorServer/>}/>
+      <Route path="/perfil" element={<UserProfile />} />
+      <Route path="/organigrama" element={<OrganigramaPage />} />
     </Routes>
     </BrowserRouter>
   </StrictMode>

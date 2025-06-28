@@ -1,11 +1,13 @@
-import { FC } from "react";
+import type { FC } from "react";
 import IconButton, { VariantIconButton } from "./IconButton";
 import { IoNotifications, IoPerson } from "react-icons/io5";
 import { IoIosApps } from "react-icons/io";
 import ButtonSwitchTheme from "./ButtonSwitchTheme";
 import { useToast } from "../hooks/useToast";
+import { useNavigate } from "react-router-dom";
 
 const HeadBar: FC = () => {
+  const navigate = useNavigate()
   const { addToast } = useToast();
   return (
     <div className="w-full min-h-11 bg-slate-600 dark:bg-slate-900 items-center px-2 flex">
@@ -26,7 +28,7 @@ const HeadBar: FC = () => {
         variant={VariantIconButton.dark}
         tooltip="Cuenta"
         Icon={IoPerson}
-        onClick={() => {}}
+        onClick={() => {navigate("/perfil")}}
       />
     </div>
   );

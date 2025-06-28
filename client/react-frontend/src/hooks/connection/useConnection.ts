@@ -26,9 +26,10 @@ const useConnection = (): useConnectionReturnType => {
     onFail: () => void
   ) => {
     try {
-      const res = await fetch(`${serverUrl}/api/classification_box`, {
+      const res = await fetch(`${serverUrl}/api/create_new_classification_box`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ code, company, name }),
       });
       if (res.ok) onSuccess();
@@ -43,27 +44,31 @@ const useConnection = (): useConnectionReturnType => {
   };
 
   const handleAddClassificationBoxData = async (
-    code: string,
-    data: string,
-    onSuccess: () => void,
-    onFail: () => void
-  ) => {
-    try {
-      const res = await fetch(`${serverUrl}/api/classification_box/${code}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
-      });
-      if (res.ok) onSuccess();
-      else {
-        const text = await res.text();
-        alert(text);
-        onFail();
-      }
-    } catch {
+  code: string,
+  data: string,
+  onSuccess: () => void,
+  onFail: () => void
+) => {
+  try {
+    const res = await fetch(`${serverUrl}/api/add_classification_data`, {
+      method: "POST", // 👈 Cambiar PUT por POST
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ code, data }), // 👈 Enviar ambos en el body
+    });
+
+    if (res.ok) onSuccess();
+    else {
+      const text = await res.text();
+      console.error(text)
       onFail();
     }
-  };
+  } catch (e) {
+    console.error("Error al guardar:", e);
+    onFail();
+  }
+};
+
 
   return { handleNewArchiving, handleAddClassificationBoxData };
 };

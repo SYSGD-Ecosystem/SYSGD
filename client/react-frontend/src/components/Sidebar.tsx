@@ -68,7 +68,7 @@ const Sidebar: FC<SidebarProps> = ({ onOptionSelected }) => {
       </div>
       <div className="flex items-center justify-center p-1 border-t border-slate-400 dark:border-slate-700">
         <div className="text-slate-100 font-normal text-base w-full">
-          UNISOFT - CUBA
+          LazarOS
         </div>
 
         <IconButton

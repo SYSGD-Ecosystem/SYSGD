@@ -10,7 +10,7 @@ const router = Router();
 router.get("/archives",isAuthenticated, async (_req: Request, res: Response) => {
 	try {
 		const result = await pool.query(
-			"SELECT code, company, name FROM classification_box",
+			"SELECT id, code, company, name FROM classification_box",
 		);
 		res.json(result.rows);
 	} catch (err) {

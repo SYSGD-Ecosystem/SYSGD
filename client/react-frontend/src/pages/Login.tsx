@@ -3,7 +3,7 @@ import Input from "../components/Input";
 import Button from "../components/Button";
 import Text, { Variant } from "../components/Text";
 import { IoIosApps } from "react-icons/io";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useRegisterUser } from "../hooks/connection/useRegisterUser";
 import { useLogin } from "../hooks/connection/useLogin";
 
@@ -63,7 +63,7 @@ const Login: FC = () => {
 						onSubmit={handleLoginSubmit}
 						className="flex flex-col gap-2 items-center justify-center"
 					>
-						<Input onChange={setUser} label="Usuario: *" type="text" />
+						<Input onChange={setUser} label="Usuario:" type="text" />
 						<Input onChange={setPassword} label="Contraseña:" type="password" />
 						<Button isDisabled={password === "" || user === ""}>
 							{loading ? "Cargando..." : "Iniciar sesión"}
@@ -153,9 +153,10 @@ const Login: FC = () => {
 export default Login;
 
 const ButtonGoogle: FC = () => {
+	const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 	return (
 		// biome-ignore lint/a11y/useButtonType: <explanation>
-		<button className="px-2 h-11 bg-blue-500 rounded flex items-center justify-center text-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-blue-600 dark:hover:bg-gray-700">
+		<button onClick={()=>{window.location.href = `${serverUrl}/api/auth/google`;}} className="px-2 h-11 bg-blue-500 rounded flex items-center justify-center text-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-blue-600 dark:hover:bg-gray-700">
 			{/* biome-ignore lint/a11y/noSvgWithoutTitle: <explanation> */}
 			<svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
 				<path
