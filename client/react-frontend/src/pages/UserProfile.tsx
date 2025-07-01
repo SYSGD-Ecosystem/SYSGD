@@ -16,33 +16,39 @@ const UserProfile: FC = () => {
 
 	if (loading) {
 		return (
-			<Card className="w-full max-w-md mx-auto">
-				<CardContent className="flex items-center justify-center p-8">
-					<div className="flex items-center space-x-2">
-						<Loader2 className="h-4 w-4 animate-spin" />
-						<span className="text-muted-foreground">
-							Cargando datos del usuario...
-						</span>
-					</div>
-				</CardContent>
-			</Card>
+			<div className="flex h-screen items-center justify-center">
+				<Card className="w-full max-w-md mx-auto">
+					<CardContent className="flex items-center justify-center p-8">
+						<div className="flex items-center space-x-2">
+							<Loader2 className="h-4 w-4 animate-spin" />
+							<span className="text-muted-foreground">
+								Cargando datos del usuario...
+							</span>
+						</div>
+					</CardContent>
+				</Card>
+			</div>
 		);
 	}
 
 	if (!user) {
 		return (
-			<Card className="w-full max-w-md mx-auto">
-				<CardContent className="text-center p-8">
-					<User className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-					<h3 className="text-lg font-semibold mb-2">No has iniciado sesión</h3>
-					<p className="text-muted-foreground mb-4">
-						Inicia sesión para ver tu perfil
-					</p>
-					<Button asChild>
-						<a href="/login">Iniciar sesión</a>
-					</Button>
-				</CardContent>
-			</Card>
+			<div className="flex h-screen items-center justify-center">
+				<Card className="w-full max-w-md mx-auto">
+					<CardContent className="text-center p-8">
+						<User className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+						<h3 className="text-lg font-semibold mb-2">
+							No has iniciado sesión
+						</h3>
+						<p className="text-muted-foreground mb-4">
+							Inicia sesión para ver tu perfil
+						</p>
+						<Button asChild>
+							<a href="/login">Iniciar sesión</a>
+						</Button>
+					</CardContent>
+				</Card>
+			</div>
 		);
 	}
 
@@ -73,7 +79,7 @@ const UserProfile: FC = () => {
 
 	const handleLogout = async () => {
 		try {
-			await fetch(`${import.meta.env.VITE_SERVER_URL}/logout`, {
+			await fetch(`${import.meta.env.VITE_SERVER_URL}/api/logout`, {
 				credentials: "include",
 			});
 			location.reload();

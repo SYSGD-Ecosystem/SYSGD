@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const useGetData = (code: string) => {
+const useGetData = (id: string) => {
   const [data, setData] = useState([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -11,12 +11,12 @@ const useGetData = (code: string) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        if (!code) {
+        if (!id) {
           throw new Error("El código no puede estar vacío.");
         }
 
-        const response = await fetch(`${serverUrl}/api/get_data?code=${encodeURIComponent(code)}`, {
-          credentials: "include", // 👈 importante para sesiones
+        const response = await fetch(`${serverUrl}/api/get_data?id=${encodeURIComponent(id)}`, {
+          credentials: "include",
         });
 
         if (!response.ok) {
@@ -36,7 +36,7 @@ const useGetData = (code: string) => {
     };
 
     fetchData();
-  }, [code, serverUrl]);
+  }, [id, serverUrl]);
 
   return { data, error, loading };
 };

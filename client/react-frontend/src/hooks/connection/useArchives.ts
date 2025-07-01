@@ -11,7 +11,7 @@ const useArchives = () => {
 		const fetchData = async () => {
 			try {
 				const response = await fetch(`${serverUrl}/api/archives`, {
-					credentials: "include", // 🔥 Esto es esencial
+					credentials: "include",
 				});
 				if (!response.ok) {
 					throw new Error("Error al obtener los datos");

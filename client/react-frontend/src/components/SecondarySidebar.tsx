@@ -1,4 +1,4 @@
-import { FC } from "react";
+import type { FC } from "react";
 import { twMerge } from "tailwind-merge";
 import ToolBar from "./ToolBar";
 import { spanish } from "../lang/spanish";

@@ -1,32 +1,33 @@
 import { useState } from "react";
-import { Row } from "../components/BasicTableComponents";
 
-const useEditableTable = (initialRows: Row[]) => {
-  const [rows, setRows] = useState<Row[]>(initialRows);
+function useEditableTable<T extends Record<string, string>>(initialRows: T[]) {
+  const [rows, setRows] = useState<T[]>(initialRows);
 
   const addRow = () => {
-    setRows([...rows, { field1: "", field2: "" }]);
+    const emptyRow = Object.fromEntries(
+      Object.keys(rows[0] || {}).map((key) => [key, ""])
+    ) as T;
+    setRows([...rows, emptyRow]);
   };
 
-  const updateRow = (index: number, field: keyof Row, value: string) => {
+  const updateRow = (index: number, field: keyof T, value: string) => {
     const newRows = [...rows];
-    newRows[index][field] = value;
+    newRows[index] = { ...newRows[index], [field]: value };
     setRows(newRows);
   };
 
   const saveRow = (index: number) => {
-    const row = rows[index];
-    console.log("Datos guardados:", row);
-    // TODO: manejar datos guardados, enviarlos a un servidor
+    console.log("Guardando fila:", rows[index]);
+    // Aquí iría el POST/PUT al servidor
   };
 
   const saveAllRows = (onSaveData: (data: string) => void) => {
-    console.log(rows);
+    console.log("Guardando todas las filas:", rows);
     onSaveData(JSON.stringify(rows));
   };
 
-  const setPrevious = (initialRows: Row[]) => {
-    setRows(initialRows);
+  const setPrevious = (prevRows: T[]) => {
+    setRows(prevRows);
   };
 
   return {
@@ -35,8 +36,8 @@ const useEditableTable = (initialRows: Row[]) => {
     updateRow,
     saveRow,
     saveAllRows,
-    setPrevious
+    setPrevious,
   };
-};
+}
 
 export default useEditableTable;

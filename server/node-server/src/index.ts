@@ -9,6 +9,7 @@ import classificationRoutes from "./routes/api";
 import session from "express-session";
 import passport from "passport";
 import "./passport";
+import { setupSwagger } from "./swagger";
 
 dotenv.config();
 
@@ -90,6 +91,8 @@ app.get("/api/profile", (req, res) => {
 		res.status(401).json({ error: "No autenticado" });
 	}
 });
+
+setupSwagger(app);
 
 app.use("/api", classificationRoutes);
 

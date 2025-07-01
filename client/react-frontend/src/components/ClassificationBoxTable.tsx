@@ -1,7 +1,6 @@
-import { type FC, useEffect, useState } from "react";
-import Table, { type Row } from "./BasicTableComponents";
+import { type FC, useEffect } from "react";
+import Table, { Td, type Row } from "./BasicTableComponents";
 import useEditableTable from "../hooks/useEditableTable";
-import Button from "./Button";
 import { useToast } from "../hooks/useToast";
 import useConnection from "../hooks/connection/useConnection";
 import { spanish } from "../lang/spanish";
@@ -9,6 +8,8 @@ import useGetData from "../hooks/connection/useGetData";
 import Loading from "./Loading";
 import { IoAlertCircle } from "react-icons/io5";
 import { FaFileAlt } from "react-icons/fa";
+import { Button } from "./ui/button";
+import { Plus, SaveAll } from "lucide-react";
 
 export type ClassificationBoxTableData = {
 	code: string;
@@ -32,29 +33,27 @@ const ClassificationBoxTable: FC<ClassificationBoxTableProps> = ({
 		useEditableTable([{ field1: "", field2: "" }]);
 	const { addToast: toast } = useToast();
 	const { handleAddClassificationBoxData } = useConnection();
-	const [isLoading, setIsLoading] = useState(false);
-	const { data, error, loading } = useGetData(code);
+
+	const { data, error, loading } = useGetData(archiveId);
 
 	const handleSaveData = (data: string) => {
+		alert(archiveId);
 		handleAddClassificationBoxData(
-			code,
+			archiveId,
 			data,
 			() => {
 				toast(spanish.save_done, "positive");
-				setIsLoading(false);
 			},
 			() => {
 				toast(spanish.save_error, "negative");
-				setIsLoading(false);
 			},
 		);
 	};
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	useEffect(() => {
-		data.map((props: { datos: string }) => {
-			const getROWS: Row[] = JSON.parse(props.datos);
-			console.log(getROWS);
+		data.map((props: { classification_chart: Row[] }) => {
+			const getROWS: Row[] = props.classification_chart;
 			if (getROWS !== null) {
 				setPrevious(getROWS);
 			} else {
@@ -133,40 +132,37 @@ const ClassificationBoxTable: FC<ClassificationBoxTableProps> = ({
 									return (
 										// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
 										<tr key={index}>
-											<td
-												className="border p-2 dark:border-gray-700 break-words max-w-5"
-												contentEditable
-												suppressContentEditableWarning
-												onBlur={(e) =>
-													updateRow(index, "field1", e.currentTarget.innerText)
-												}
-											>
-												{row.field1}
-											</td>
-											<td
-												className="border p-2 dark:border-gray-700 break-words max-w-28"
-												contentEditable
-												suppressContentEditableWarning
-												onBlur={(e) =>
-													updateRow(index, "field2", e.currentTarget.innerText)
-												}
-											>
-												{row.field2}
-											</td>
+											<Td
+												label={row.field1}
+												onBlur={(e) => {
+													updateRow(index, "field1", e.currentTarget.innerText);
+												}}
+											/>
+											<Td
+												label={row.field2}
+												onBlur={(e) => {
+													updateRow(index, "field2", e.currentTarget.innerText);
+												}}
+											/>
 										</tr>
 									);
 								})}
 							</tbody>
 						</Table>
 						<div className="py-2 flex gap-2">
-							<Button onClick={addRow}>{spanish.add_row}</Button>
+							<Button onClick={addRow} size="sm" variant="outline">
+								<Plus className="w-4 h-4 mr-1" />
+								{spanish.add_row}
+							</Button>
 							<Button
-								isDisabled={isLoading}
 								onClick={() => {
 									saveAllRows(handleSaveData);
 									toast(spanish.save_done, "positive");
 								}}
+								size="sm"
+								variant="outline"
 							>
+								<SaveAll className="w-4 h-4 mr-1" />
 								Guardar
 							</Button>
 						</div>

@@ -2,44 +2,62 @@ import { Router, type Request, type Response } from "express";
 import { pool } from "../index";
 import bcrypt from "bcrypt";
 import { isAuthenticated } from "../middlewares/auth";
-//import session from "express-session";
 
 const router = Router();
 
-// GET /api/archives
-router.get("/archives",isAuthenticated, async (_req: Request, res: Response) => {
-	try {
-		const result = await pool.query(
-			"SELECT id, code, company, name FROM classification_box",
-		);
-		res.json(result.rows);
-	} catch (err) {
-		res.status(500).json({ error: "Error al obtener los datos" });
-	}
-});
+
+router.get(
+	"/archives",
+	isAuthenticated,
+	async (req: Request, res: Response) => {
+		const user_id = req.session.user?.id;
+
+		try {
+			if (req.session.user?.privileges === "admin") {
+				const result = await pool.query(
+					"SELECT id, code, company, name FROM document_management_file",
+				);
+				res.json(result.rows);
+			} else {
+				const result = await pool.query(
+					"SELECT id, code, company, name FROM document_management_file WHERE user_id = $1",
+					[user_id],
+				);
+				res.json(result.rows);
+			}
+		} catch (err) {
+			res.status(500).json({ error: "Error al obtener los datos" });
+		}
+	},
+);
 
 // GET /api/get_data?code=ABC123
-router.get("/get_data",isAuthenticated, async (req: Request, res: Response) => {
-	const { code } = req.query;
-	if (typeof code !== "string") {
-		res.status(400).json({ error: "Código inválido" });
-		return;
-	}
-
-	try {
-		const result = await pool.query(
-			"SELECT datos FROM classification_box WHERE code = $1",
-			[code],
-		);
-		res.json(result.rows);
-	} catch (err) {
-		res.status(500).json({ error: "Error al obtener los datos" });
-	}
-});
+router.get(
+	"/get_data",
+	isAuthenticated,
+	async (req: Request, res: Response) => {
+		const { id } = req.query;
+		if (typeof id !== "string") {
+			res.status(400).json({ error: "Id inválido" });
+			return;
+		}
+		const user_id = req.session.user?.id;
+		try {
+			const result = await pool.query(
+				"SELECT classification_chart FROM document_management_file WHERE id = $1 AND user_id = $2",
+				[id, user_id],
+			);
+			res.json(result.rows);
+		} catch (err) {
+			res.status(500).json({ error: "Error al obtener los datos" });
+		}
+	},
+);
 
 // POST /api/create_new_classification_box
 router.post(
-	"/create_new_classification_box",isAuthenticated,
+	"/create",
+	isAuthenticated,
 	async (req: Request, res: Response) => {
 		const { company, code, name } = req.body;
 		if (!company || !code || !name) {
@@ -47,10 +65,12 @@ router.post(
 			return;
 		}
 
+		const user_id = req.session.user?.id;
+
 		try {
 			await pool.query(
-				"INSERT INTO classification_box (company, code, name) VALUES ($1, $2, $3)",
-				[company, code, name],
+				"INSERT INTO document_management_file (code, company, name, user_id) VALUES ($1, $2, $3, $4)",
+				[code, company, name, user_id],
 			);
 			res.status(201).send("201");
 		} catch (err) {
@@ -60,24 +80,69 @@ router.post(
 );
 
 // POST /api/add_classification_data
-router.post("/add_classification_data",isAuthenticated, async (req: Request, res: Response) => {
-	const { code, data } = req.body;
-	if (!code || !data) {
-		res.status(400).send("400");
-		return;
-	}
+router.post(
+	"/add_classification_data",
+	isAuthenticated,
+	async (req: Request, res: Response) => {
+		const { id, data } = req.body;
+		if (!id || !data) {
+			res.status(400).send("400");
+			return;
+		}
 
-	try {
-		await pool.query(
-			"UPDATE classification_box SET datos = $1 WHERE code = $2",
-			[data, code],
-		);
-		res.status(201).send("201");
-	} catch (err) {
-		res.status(500).send("500");
-	}
+		try {
+			await pool.query(
+				"UPDATE document_management_file SET classification_chart = $1 WHERE id = $2",
+				[data, id],
+			);
+			res.status(201).send("201");
+		} catch (err) {
+			res.status(500).send("500");
+		}
+	},
+);
+
+router.post('/document-entry', async (req, res) => {
+  const { user_id, numero_registro, fecha, tipo_documento, sujeto_productor, titulo, observaciones } = req.body;
+
+  if (!user_id || !numero_registro || !fecha || !tipo_documento || !sujeto_productor || !titulo) {
+    res.status(400).json({ error: 'Faltan campos obligatorios.' });
+	return
+  }
+
+  const data = {
+    numero_registro,
+    fecha,
+    tipo_documento,
+    sujeto_productor,
+    titulo,
+    observaciones
+  };
+
+  try {
+    const result = await pool.query(
+      "INSERT INTO document_entry_register (user_id, data) VALUES ($1, $2) RETURNING *",
+      [user_id, data]
+    );
+    res.status(201).json({ message: 'Registro creado', entry: result.rows[0] });
+  } catch (error) {
+    console.error('Error al insertar registro:', error);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
 });
 
+
+
+/**
+ * @swagger
+ * /api/status:
+ *   get:
+ *     summary: Verifica el estado del servidor
+ *     tags: [Sistema]
+ *     responses:
+ *       200:
+ *         description: Servidor activo
+ */
 router.get("/status", async (_req: Request, res: Response) => {
 	res.json({ status: "ok", message: "Servidor activo y listo" });
 });
@@ -97,7 +162,14 @@ router.post("/register", async (req: Request, res: Response) => {
 		return;
 	}
 
+	let privileges = "user";
 	try {
+		const usercount = await pool.query("SELECT id FROM users");
+
+		if (usercount.rows.length === 0) {
+			privileges = "admin";
+		}
+
 		const userExists = await pool.query(
 			"SELECT id FROM users WHERE username = $1",
 			[username],
@@ -109,8 +181,8 @@ router.post("/register", async (req: Request, res: Response) => {
 
 		const hashedPassword = await bcrypt.hash(password, 10);
 		await pool.query(
-			"INSERT INTO users (name, username, password) VALUES ($1, $2, $3)",
-			[name, username, hashedPassword],
+			"INSERT INTO users (name, username, password, privileges) VALUES ($1, $2, $3, $4)",
+			[name, username, hashedPassword, privileges],
 		);
 
 		res.status(201).send("Usuario registrado");
@@ -132,7 +204,6 @@ declare module "express-session" {
 }
 
 router.post("/login", async (req: Request, res: Response) => {
-	console.log(req.body);
 	const { username, password } = req.body;
 	if (!username || !password) {
 		res.status(400).send("400");
@@ -150,7 +221,6 @@ router.post("/login", async (req: Request, res: Response) => {
 		}
 
 		const user = result.rows[0];
-		console.log(result);
 		const math = await bcrypt.compare(password, user.password);
 		if (!math) {
 			res.status(402).send("Incorrect Password");
@@ -169,6 +239,15 @@ router.post("/login", async (req: Request, res: Response) => {
 		console.error(err);
 		res.status(500).send("Error interno del servidor");
 	}
+});
+
+router.get("/logout", (req, res) => {
+	//req.logout?.(() => {}); // Por si usas passport
+	req.session.destroy((err) => {
+		if (err) console.error(err);
+		res.clearCookie("connect.sid");
+		res.send("Sesión cerrada");
+	});
 });
 
 export default router;

@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { ToastProvider } from "../hooks/useToast";
 import useServerStatus from "../hooks/connection/useServerStatus";
 import { useAuthSession } from "../hooks/connection/useAuthSession";
+import Loading from "@/components/Loading";
 
 const App: FC = () => {
 	const navigate = useNavigate();
@@ -20,7 +21,14 @@ const App: FC = () => {
 	}, [checkServerStatus]);
 
 	// Si el servidor no está disponible
-	if (status === "checking") return <div>Verificando servidor...</div>;
+	if (status === "checking")
+		return (
+			<div className="flex flex-col h-screen bg-slate-200 dark:bg-slate-950 items-center justify-center">
+				<Loading />
+				<div>Verificando servidor...</div>
+			</div>
+		);
+
 	if (status === "offline") {
 		navigate("/error");
 		return null;
