@@ -23,9 +23,8 @@ const App: FC = () => {
 	// Si el servidor no está disponible
 	if (status === "checking")
 		return (
-			<div className="flex flex-col h-screen bg-slate-200 dark:bg-slate-950 items-center justify-center">
+			<div className="flex flex-col h-screen bg-slate-950 items-center justify-center">
 				<Loading />
-				<div>Verificando servidor...</div>
 			</div>
 		);
 

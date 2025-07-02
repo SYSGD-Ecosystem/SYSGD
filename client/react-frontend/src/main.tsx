@@ -11,6 +11,7 @@ import UserProfile from "./pages/UserProfile.tsx";
 import OrganigramaPage from "./pages/Organigrama.tsx";
 import EditableSpreadsheet from "./pages/Sheet.tsx";
 import { Toaster } from "./components/ui/toaster.tsx";
+import AdminDashboard from "./pages/admin-dashboard.tsx";
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(
@@ -25,6 +26,7 @@ createRoot(document.getElementById("root")!).render(
       <Route path="/perfil" element={<UserProfile />} />
       <Route path="/organigrama" element={<OrganigramaPage />} />
       <Route path="/table" element={<EditableSpreadsheet />} />
+      <Route path="/admin" element={<AdminDashboard />} />
     </Routes>
     </BrowserRouter>
     <Toaster/>
