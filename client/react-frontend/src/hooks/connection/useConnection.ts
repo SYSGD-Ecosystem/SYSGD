@@ -19,8 +19,8 @@ type useConnectionReturnType = {
 	) => Promise<void>;
 
 	handleNewDocumentEntry: (
-		data: RegistroDeEntradaData[],
-		user_id: number,
+		data: string,
+		id: string,
 		onSuccess: () => void,
 		onFail: () => void,
 	) => Promise<void>;
@@ -82,17 +82,17 @@ const useConnection = (): useConnectionReturnType => {
 	};
 
 	const handleNewDocumentEntry = async (
-		data: RegistroDeEntradaData[],
-		user_id: number,
+		data: string,
+		id:string,
 		onSuccess: () => void,
 		onFail: () => void,
 	) => {
 		try {
-			const res = await fetch(`${serverUrl}/api/document-entry`, {
+			const res = await fetch(`${serverUrl}/api/add-document-entry`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include",
-				body: JSON.stringify({ ...data, user_id }),
+				body: JSON.stringify({ data, id }),
 			});
 
 			if (res.ok) onSuccess();

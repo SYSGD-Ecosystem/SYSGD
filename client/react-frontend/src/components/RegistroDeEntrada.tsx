@@ -1,10 +1,11 @@
-import { useEffect, useState, type FC } from "react";
+import { useEffect, type FC } from "react";
 import { Button } from "./ui/button";
 import { Plus, SaveAll } from "lucide-react";
 import useEditableTable from "@/hooks/useEditableTable";
 import Table, { Td } from "./BasicTableComponents";
 import useConnection from "@/hooks/connection/useConnection";
-import useCurrentUser from "@/hooks/connection/useCurrentUser";
+import useGetEntryRegister from "@/hooks/connection/useGetEntryRegister";
+import { useToast } from "@/hooks/use-toast";
 
 export type RegistroDeEntradaData = {
 	numero_registro: string;
@@ -16,25 +17,63 @@ export type RegistroDeEntradaData = {
 };
 
 export type RegistroDeEntradaProps = {
-	data: RegistroDeEntradaData[];
+	archiveId: string;
 	company: string;
 	managementFile: string;
 };
 
 const RegistroDeEntrada: FC<RegistroDeEntradaProps> = ({
-	data,
+	archiveId,
 	company,
 	managementFile,
 }) => {
 	const { rows, addRow, updateRow, saveAllRows, setPrevious } =
-		useEditableTable(data);
+		useEditableTable<RegistroDeEntradaData>([
+			{
+				numero_registro: "",
+				fecha: "",
+				tipo_documento: "",
+				sujeto_productor: "",
+				titulo: "",
+				observaciones: "",
+			},
+		]);
 	const { handleNewDocumentEntry } = useConnection();
-	const {user} = useCurrentUser()
+	const { entry } = useGetEntryRegister(archiveId);
+	const { toast } = useToast();
 
 	const handleSaveData = (data: string) => {
-		console.log(data)
-		//handleNewDocumentEntry(data,user?.id);
+		if (!data) {
+			alert("No hay datos para guardar");
+			return;
+		}
+		handleNewDocumentEntry(
+			data,
+			archiveId,
+			() => {
+				toast({
+					title: "Guardado",
+					description: "Los cambios se guardaron correctamente.",
+				});
+			},
+			() => {
+				toast({
+					variant: "destructive",
+					title: "Error",
+					description: "Algo salió mal. Inténtalo de nuevo.",
+				});
+			},
+		);
 	};
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+	useEffect(() => {
+		if (entry) {
+			entry.map((props: { entry_register: RegistroDeEntradaData[] }) => {
+				setPrevious(props.entry_register);
+			});
+		}
+	}, [entry, archiveId]);
 
 	return (
 		<div className="size-full flex flex-col overflow-auto">
@@ -73,12 +112,63 @@ const RegistroDeEntrada: FC<RegistroDeEntradaProps> = ({
 								<TableHeading />
 							</thead>
 							<tbody>
-								{rows.map((props, _index) => {
+								{rows.map((props, index) => {
 									return (
-										<TableRow
-											{...props}
-											key={props.numero_registro + props.fecha}
-										/>
+										// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+										<tr key={index}>
+											<Td
+												label={props.numero_registro}
+												onBlur={(e) => {
+													updateRow(
+														index,
+														"numero_registro",
+														e.currentTarget.innerText,
+													);
+												}}
+											/>
+											<Td
+												label={props.fecha}
+												onBlur={(e) => {
+													updateRow(index, "fecha", e.currentTarget.innerText);
+												}}
+											/>
+											<Td
+												label={props.tipo_documento}
+												onBlur={(e) => {
+													updateRow(
+														index,
+														"tipo_documento",
+														e.currentTarget.innerText,
+													);
+												}}
+											/>
+											<Td
+												label={props.sujeto_productor}
+												onBlur={(e) => {
+													updateRow(
+														index,
+														"sujeto_productor",
+														e.currentTarget.innerText,
+													);
+												}}
+											/>
+											<Td
+												label={props.titulo}
+												onBlur={(e) => {
+													updateRow(index, "titulo", e.currentTarget.innerText);
+												}}
+											/>
+											<Td
+												label={props.observaciones ?? ""}
+												onBlur={(e) => {
+													updateRow(
+														index,
+														"observaciones",
+														e.currentTarget.innerText,
+													);
+												}}
+											/>
+										</tr>
 									);
 								})}
 							</tbody>
@@ -90,9 +180,13 @@ const RegistroDeEntrada: FC<RegistroDeEntradaProps> = ({
 								Fila
 							</Button>
 
-							<Button onClick={() => {
-								saveAllRows(handleSaveData)
-							}} size="sm" variant="outline">
+							<Button
+								onClick={() => {
+									saveAllRows(handleSaveData);
+								}}
+								size="sm"
+								variant="outline"
+							>
 								<SaveAll className="w-4 h-4 mr-1" />
 								Guardar
 							</Button>
@@ -128,7 +222,7 @@ const TableHeading: FC = () => {
 		</>
 	);
 };
-
+/*
 const TableRow: FC<RegistroDeEntradaData> = ({
 	numero_registro,
 	fecha,
@@ -147,4 +241,4 @@ const TableRow: FC<RegistroDeEntradaData> = ({
 			<Td label={observaciones ?? ""} />
 		</tr>
 	);
-};
+};*/

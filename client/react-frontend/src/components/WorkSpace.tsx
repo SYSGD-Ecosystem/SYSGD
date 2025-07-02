@@ -15,7 +15,9 @@ import Loading from "./Loading";
 import useExportTable from "../hooks/useExportTable";
 import usePrint from "../hooks/usePrint";
 import useAlertDialog from "../hooks/useAlertDialog";
-import RegistroDeEntrada, { type RegistroDeEntradaData } from "./RegistroDeEntrada";
+import RegistroDeEntrada, {
+	type RegistroDeEntradaData,
+} from "./RegistroDeEntrada";
 
 const WorkSpace: FC<{ page: number }> = ({ page }) => {
 	const { DialogComponent, openDialog, closeDialog } = useDialog();
@@ -136,9 +138,11 @@ const WorkSpace: FC<{ page: number }> = ({ page }) => {
 								]}
 							/>
 						) : page === 2 ? (
-							<RegistroDeEntrada company={company}
+							<RegistroDeEntrada
+								archiveId={archiveId}
+								company={company}
 								managementFile={archiveName}
-								data={registrosDummy}/>
+							/>
 						) : (
 							<div className="text-slate-700 text-xl font-light dark:text-slate-300 flex items-center justify-center flex-col gap-2 size-full">
 								<FaGhost size={48} />
@@ -167,21 +171,20 @@ const WorkSpace: FC<{ page: number }> = ({ page }) => {
 export default WorkSpace;
 
 export const registrosDummy: RegistroDeEntradaData[] = [
-  {
-   numero_registro : "002",
-   fecha :"2025-06-28",
-  tipo_documento  : "Carta",
-   sujeto_productor :"Particular",
-   titulo : "Solicitud de información",
-  observaciones:   "Firmado por el remitente, incluye anexo.",
-  },
-  {
-    numero_registro: "003",
-    fecha: "2025-06-27",
-    tipo_documento: "Memorando",
-sujeto_productor: "Dirección General",
-    titulo: "Cambio de horario laboral",
-    observaciones: "Requiere respuesta antes del 30 de junio.",
-  },
-]
-
+	{
+		numero_registro: "002",
+		fecha: "2025-06-28",
+		tipo_documento: "Carta",
+		sujeto_productor: "Particular",
+		titulo: "Solicitud de información",
+		observaciones: "Firmado por el remitente, incluye anexo.",
+	},
+	{
+		numero_registro: "003",
+		fecha: "2025-06-27",
+		tipo_documento: "Memorando",
+		sujeto_productor: "Dirección General",
+		titulo: "Cambio de horario laboral",
+		observaciones: "Requiere respuesta antes del 30 de junio.",
+	},
+];

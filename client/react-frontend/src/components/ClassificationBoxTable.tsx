@@ -1,7 +1,6 @@
 import { type FC, useEffect } from "react";
 import Table, { Td, type Row } from "./BasicTableComponents";
 import useEditableTable from "../hooks/useEditableTable";
-import { useToast } from "../hooks/useToast";
 import useConnection from "../hooks/connection/useConnection";
 import { spanish } from "../lang/spanish";
 import useGetData from "../hooks/connection/useGetData";
@@ -10,6 +9,7 @@ import { IoAlertCircle } from "react-icons/io5";
 import { FaFileAlt } from "react-icons/fa";
 import { Button } from "./ui/button";
 import { Plus, SaveAll } from "lucide-react";
+import { toast } from "sonner";
 
 export type ClassificationBoxTableData = {
 	code: string;
@@ -31,7 +31,6 @@ const ClassificationBoxTable: FC<ClassificationBoxTableProps> = ({
 }) => {
 	const { rows, addRow, updateRow, saveAllRows, setPrevious } =
 		useEditableTable([{ field1: "", field2: "" }]);
-	const { addToast: toast } = useToast();
 	const { handleAddClassificationBoxData } = useConnection();
 
 	const { data, error, loading } = useGetData(archiveId);
@@ -42,10 +41,10 @@ const ClassificationBoxTable: FC<ClassificationBoxTableProps> = ({
 			archiveId,
 			data,
 			() => {
-				toast(spanish.save_done, "positive");
+				toast.success(spanish.save_done);
 			},
 			() => {
-				toast(spanish.save_error, "negative");
+				toast.error(spanish.save_error);
 			},
 		);
 	};
@@ -157,7 +156,7 @@ const ClassificationBoxTable: FC<ClassificationBoxTableProps> = ({
 							<Button
 								onClick={() => {
 									saveAllRows(handleSaveData);
-									toast(spanish.save_done, "positive");
+									toast.success(spanish.save_done);
 								}}
 								size="sm"
 								variant="outline"

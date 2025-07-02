@@ -3,31 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SYSGD</title>
+  <title>SYSGD - Próximo Lanzamiento</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&display=swap');
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
     body {
-      margin: 0;
-      height: 100vh;
-      overflow: hidden;
+      min-height: 100vh;
       background: radial-gradient(ellipse at center, #0d0d0d 0%, #000000 100%);
       font-family: 'Orbitron', sans-serif;
       color: #00e0dd;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
       position: relative;
+      overflow-x: hidden;
     }
 
     /* Estrellas */
     .stars {
-      position: absolute;
+      position: fixed;
       width: 100%;
       height: 100%;
       background: transparent;
       z-index: 0;
+      top: 0;
+      left: 0;
     }
 
     .star {
@@ -45,12 +48,27 @@
       to { opacity: 1; transform: scale(1.5); }
     }
 
-    h1, p {
+    /* Container principal */
+    .container {
+      position: relative;
       z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+      max-width: 1200px;
+      margin: 0 auto;
     }
 
-    h1 {
-      font-size: 6rem;
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .title {
+      font-size: clamp(3rem, 8vw, 6rem);
       background: linear-gradient(
         90deg,
         #00e0dd 0%,
@@ -63,37 +81,295 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       animation: shimmer 2s linear infinite;
-      margin: 0;
+      margin-bottom: 1rem;
+      font-weight: 700;
     }
 
     @keyframes shimmer {
-      0% {
-        background-position: 200% center;
+      0% { background-position: 200% center; }
+      100% { background-position: -200% center; }
+    }
+
+    .subtitle {
+      font-size: clamp(1.2rem, 3vw, 1.8rem);
+      color: #00a3a0;
+      /*text-shadow: 0 0 4px #00a3a0, 0 0 8px #00a3a0;*/
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .description {
+      font-size: clamp(0.9rem, 2vw, 1.1rem);
+      color: #66b3b0;
+      max-width: 600px;
+      line-height: 1.6;
+    }
+
+    /* Formulario de email */
+    .email-section {
+      background: rgba(0, 224, 221, 0.1);
+      border: 1px solid rgba(0, 224, 221, 0.3);
+      border-radius: 15px;
+      padding: 2rem;
+      margin: 2rem 0;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0, 224, 221, 0.1);
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+    }
+
+    .email-title {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: #00e0dd;
+      font-weight: 600;
+    }
+
+    .email-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .email-input {
+      padding: 1rem;
+      border: 2px solid rgba(0, 224, 221, 0.3);
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.5);
+      color: #00e0dd;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .email-input:focus {
+      outline: none;
+      border-color: #00e0dd;
+      box-shadow: 0 0 15px rgba(0, 224, 221, 0.3);
+    }
+
+    .email-input::placeholder {
+      color: #66b3b0;
+    }
+
+    .submit-btn {
+      padding: 1rem 2rem;
+      background: linear-gradient(45deg, #00e0dd, #00a3a0);
+      border: none;
+      border-radius: 10px;
+      color: #000;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 224, 221, 0.4);
+    }
+
+    .submit-btn:active {
+      transform: translateY(0);
+    }
+
+    /* Tarjetas de características */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      width: 100%;
+      margin-top: 3rem;
+    }
+
+    .feature-card {
+      background: rgba(0, 224, 221, 0.05);
+      border: 1px solid rgba(0, 224, 221, 0.2);
+      border-radius: 15px;
+      padding: 2rem;
+      backdrop-filter: blur(5px);
+      transition: all 0.3s ease;
+      text-align: center;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(0, 224, 221, 0.4);
+      box-shadow: 0 10px 30px rgba(0, 224, 221, 0.1);
+    }
+
+    .feature-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      color: #00e0dd;
+    }
+
+    .feature-title {
+      font-size: 1.3rem;
+      margin-bottom: 1rem;
+      color: #00e0dd;
+      font-weight: 600;
+    }
+
+    .feature-description {
+      color: #66b3b0;
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+
+    /* Mensaje de éxito */
+    .success-message {
+      background: rgba(0, 255, 0, 0.1);
+      border: 1px solid rgba(0, 255, 0, 0.3);
+      border-radius: 10px;
+      padding: 1rem;
+      color: #00ff00;
+      text-align: center;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 4rem;
+      text-align: center;
+      color: #66b3b0;
+      font-size: 0.9rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 1rem;
       }
-      100% {
-        background-position: -200% center;
+      
+      .email-section {
+        padding: 1.5rem;
+      }
+      
+      .features {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+      }
+      
+      .feature-card {
+        padding: 1.5rem;
       }
     }
 
-    p {
-      font-size: 1.5rem;
-      color: #00a3a0;
-      text-shadow:
-        0 0 4px #00a3a0,
-        0 0 8px #00a3a0;
-      margin-top: 1rem;
-      font-weight: 600;
+    @media (max-width: 480px) {
+      .email-form {
+        gap: 0.8rem;
+      }
+      
+      .email-input, .submit-btn {
+        padding: 0.8rem;
+        font-size: 0.9rem;
+      }
     }
   </style>
 </head>
 <body>
   <div class="stars" id="stars"></div>
-  <h1>SYSGD</h1>
-  <p>Sistema de gestión documental</p>
+  
+  <div class="container">
+    <header class="header">
+      <h1 class="title">SYSGD</h1>
+      <p class="subtitle">Sistema de Gestión Documental</p>
+      <p class="description">
+        La próxima generación en gestión documental está llegando. 
+        Regístrate para ser el primero en conocer nuestro lanzamiento.
+      </p>
+    </header>
+
+    <section class="email-section">
+      <h2 class="email-title">Mantente Informado</h2>
+      <form class="email-form" id="emailForm">
+        <input 
+          type="email" 
+          class="email-input" 
+          placeholder="tu@email.com" 
+          required 
+          id="emailInput"
+        >
+        <button type="submit" class="submit-btn">
+          Notificarme del Lanzamiento
+        </button>
+      </form>
+      <div class="success-message" id="successMessage">
+        ¡Gracias! Te notificaremos cuando estemos listos.
+      </div>
+    </section>
+
+    <section class="features">
+      <div class="feature-card">
+        <div class="feature-icon">📁</div>
+        <h3 class="feature-title">Organización Inteligente</h3>
+        <p class="feature-description">
+          Clasifica y organiza tus documentos automáticamente con IA avanzada. 
+          Encuentra cualquier archivo en segundos.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <h3 class="feature-title">Seguridad Avanzada</h3>
+        <p class="feature-description">
+          Protección de nivel empresarial con encriptación end-to-end y 
+          control de acceso granular para tus documentos más importantes.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">☁️</div>
+        <h3 class="feature-title">Acceso Universal</h3>
+        <p class="feature-description">
+          Accede a tus documentos desde cualquier dispositivo, en cualquier lugar. 
+          Sincronización en tiempo real y trabajo offline.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🤝</div>
+        <h3 class="feature-title">Colaboración Fluida</h3>
+        <p class="feature-description">
+          Trabaja en equipo con herramientas de colaboración en tiempo real, 
+          comentarios, versiones y flujos de aprobación automatizados.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3 class="feature-title">Análisis Inteligente</h3>
+        <p class="feature-description">
+          Obtén insights valiosos sobre el uso de documentos, patrones de trabajo 
+          y optimización de procesos con dashboards interactivos.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3 class="feature-title">Automatización</h3>
+        <p class="feature-description">
+          Automatiza tareas repetitivas como clasificación, archivado y 
+          notificaciones. Más tiempo para lo que realmente importa.
+        </p>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>&copy; 2025 SYSGD. El futuro de la gestión documental.</p>
+    </footer>
+  </div>
 
   <script>
+    // Generar estrellas
     const starsContainer = document.getElementById('stars');
-    const starCount = 100;
+    const starCount = 150;
+    
     for (let i = 0; i < starCount; i++) {
       const star = document.createElement('div');
       star.classList.add('star');
@@ -103,6 +379,78 @@
       star.style.animationDuration = `${2 + Math.random() * 3}s`;
       starsContainer.appendChild(star);
     }
+
+    // Manejar envío del formulario
+    const emailForm = document.getElementById('emailForm');
+    const emailInput = document.getElementById('emailInput');
+    const successMessage = document.getElementById('successMessage');
+
+    emailForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const email = emailInput.value.trim();
+      
+      if (email && isValidEmail(email)) {
+        // Simular envío (aquí conectarías con tu backend)
+        console.log('Email registrado:', email);
+        
+        // Mostrar mensaje de éxito
+        successMessage.style.display = 'block';
+        emailInput.value = '';
+        
+        // Ocultar mensaje después de 5 segundos
+        setTimeout(() => {
+          successMessage.style.display = 'none';
+        }, 5000);
+        
+        // Aquí podrías enviar el email a tu servidor
+        // fetch('/api/subscribe', {
+        //   method: 'POST',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify({ email: email })
+        // });
+      }
+    });
+
+    // Validar email
+    function isValidEmail(email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(email);
+    }
+
+    // Efecto de parallax suave para las estrellas
+    window.addEventListener('scroll', () => {
+      const scrolled = window.pageYOffset;
+      const stars = document.querySelectorAll('.star');
+      
+      stars.forEach((star, index) => {
+        const speed = (index % 3 + 1) * 0.1;
+        star.style.transform = `translateY(${scrolled * speed}px)`;
+      });
+    });
+
+    // Animación de entrada para las tarjetas
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
+        }
+      });
+    }, observerOptions);
+
+    // Aplicar animación a las tarjetas
+    document.querySelectorAll('.feature-card').forEach((card, index) => {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(30px)';
+      card.style.transition = `all 0.6s ease ${index * 0.1}s`;
+      observer.observe(card);
+    });
   </script>
 </body>
 </html>

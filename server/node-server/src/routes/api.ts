@@ -5,7 +5,6 @@ import { isAuthenticated } from "../middlewares/auth";
 
 const router = Router();
 
-
 router.get(
 	"/archives",
 	isAuthenticated,
@@ -31,7 +30,7 @@ router.get(
 	},
 );
 
-// GET /api/get_data?code=ABC123
+// GET /api/get_data?id=ABC123
 router.get(
 	"/get_data",
 	isAuthenticated,
@@ -55,29 +54,25 @@ router.get(
 );
 
 // POST /api/create_new_classification_box
-router.post(
-	"/create",
-	isAuthenticated,
-	async (req: Request, res: Response) => {
-		const { company, code, name } = req.body;
-		if (!company || !code || !name) {
-			res.status(400).send("400");
-			return;
-		}
+router.post("/create", isAuthenticated, async (req: Request, res: Response) => {
+	const { company, code, name } = req.body;
+	if (!company || !code || !name) {
+		res.status(400).send("400");
+		return;
+	}
 
-		const user_id = req.session.user?.id;
+	const user_id = req.session.user?.id;
 
-		try {
-			await pool.query(
-				"INSERT INTO document_management_file (code, company, name, user_id) VALUES ($1, $2, $3, $4)",
-				[code, company, name, user_id],
-			);
-			res.status(201).send("201");
-		} catch (err) {
-			res.status(500).send("500");
-		}
-	},
-);
+	try {
+		await pool.query(
+			"INSERT INTO document_management_file (code, company, name, user_id) VALUES ($1, $2, $3, $4)",
+			[code, company, name, user_id],
+		);
+		res.status(201).send("201");
+	} catch (err) {
+		res.status(500).send("500");
+	}
+});
 
 // POST /api/add_classification_data
 router.post(
@@ -85,6 +80,8 @@ router.post(
 	isAuthenticated,
 	async (req: Request, res: Response) => {
 		const { id, data } = req.body;
+		console.log(req.body);
+		console.log(data);
 		if (!id || !data) {
 			res.status(400).send("400");
 			return;
@@ -102,36 +99,72 @@ router.post(
 	},
 );
 
-router.post('/document-entry', async (req, res) => {
-  const { user_id, numero_registro, fecha, tipo_documento, sujeto_productor, titulo, observaciones } = req.body;
+router.post("/add-document-entry", isAuthenticated, async (req, res) => {
+	const { id, data } = req.body;
+	console.log(req.body);
+	console.log(data);
 
-  if (!user_id || !numero_registro || !fecha || !tipo_documento || !sujeto_productor || !titulo) {
-    res.status(400).json({ error: 'Faltan campos obligatorios.' });
-	return
-  }
+	if (!id || !data) {
+		res.status(400).json({ error: "Faltan campos obligatorios." });
+		return;
+	}
 
-  const data = {
-    numero_registro,
-    fecha,
-    tipo_documento,
-    sujeto_productor,
-    titulo,
-    observaciones
-  };
+	const user_id = req.session.user?.id;
 
-  try {
-    const result = await pool.query(
-      "INSERT INTO document_entry_register (user_id, data) VALUES ($1, $2) RETURNING *",
-      [user_id, data]
-    );
-    res.status(201).json({ message: 'Registro creado', entry: result.rows[0] });
-  } catch (error) {
-    console.error('Error al insertar registro:', error);
-    res.status(500).json({ error: 'Error del servidor' });
-  }
+	if (!user_id) {
+		res.status(401).json({ error: "No estás autorizado." });
+		return;
+	}
+
+	const result = await pool.query(
+		"SELECT user_id FROM document_management_file WHERE id = $1",
+		[id],
+	);
+
+	if (
+		result.rows.length === 0 ||
+		(req.session.user?.privileges !== "admin" &&
+			result.rows[0].user_id !== user_id)
+	) {
+		res
+			.status(403)
+			.json({ error: "No tienes permisos para modificar este expediente." });
+		return;
+	}
+
+	try {
+		await pool.query(
+			"UPDATE document_management_file SET entry_register = $1 WHERE id = $2",
+			[data, id],
+		);
+		res.status(201).send("201");
+	} catch (err) {
+		res.status(500).send("500");
+	}
 });
 
-
+// GET /api/get-document-entry?id=123
+router.get(
+	"/get-document-entry",
+	isAuthenticated,
+	async (req: Request, res: Response) => {
+		const { id } = req.query;
+		if (typeof id !== "string") {
+			res.status(400).json({ error: "Id inválido" });
+			return;
+		}
+		const user_id = req.session.user?.id;
+		try {
+			const result = await pool.query(
+				"SELECT entry_register FROM document_management_file WHERE id = $1 AND user_id = $2",
+				[id, user_id],
+			);
+			res.json(result.rows);
+		} catch (err) {
+			res.status(500).json({ error: "Error al obtener los datos" });
+		}
+	},
+);
 
 /**
  * @swagger

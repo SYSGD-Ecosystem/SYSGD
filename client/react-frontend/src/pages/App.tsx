@@ -4,10 +4,10 @@ import Sidebar from "../components/Sidebar";
 import HeadBar from "../components/HeadBar";
 import NavBar from "../components/Navbar";
 import { useNavigate } from "react-router-dom";
-import { ToastProvider } from "../hooks/useToast";
 import useServerStatus from "../hooks/connection/useServerStatus";
 import { useAuthSession } from "../hooks/connection/useAuthSession";
 import Loading from "@/components/Loading";
+import { Toaster } from "sonner";
 
 const App: FC = () => {
 	const navigate = useNavigate();
@@ -45,16 +45,15 @@ const App: FC = () => {
 
 	// Si todo está bien, muestra la app
 	return (
-		<ToastProvider>
-			<div className="flex h-screen w-full flex-col">
-				<HeadBar />
-				<div className="size-full flex overflow-auto">
-					<NavBar />
-					<Sidebar onOptionSelected={setOptionMainSelected} />
-					<WorkSpace page={optionMainSelected} />
-				</div>
+		<div className="flex h-screen w-full flex-col">
+			<HeadBar />
+			<div className="size-full flex overflow-auto">
+				<NavBar />
+				<Sidebar onOptionSelected={setOptionMainSelected} />
+				<WorkSpace page={optionMainSelected} />
 			</div>
-		</ToastProvider>
+			<Toaster />
+		</div>
 	);
 };
 

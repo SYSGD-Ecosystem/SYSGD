@@ -10,6 +10,7 @@ import ErrorServer from "./pages/ErrorServer.tsx";
 import UserProfile from "./pages/UserProfile.tsx";
 import OrganigramaPage from "./pages/Organigrama.tsx";
 import EditableSpreadsheet from "./pages/Sheet.tsx";
+import { Toaster } from "./components/ui/toaster.tsx";
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(
@@ -26,5 +27,6 @@ createRoot(document.getElementById("root")!).render(
       <Route path="/table" element={<EditableSpreadsheet />} />
     </Routes>
     </BrowserRouter>
+    <Toaster/>
   </StrictMode>
 );
