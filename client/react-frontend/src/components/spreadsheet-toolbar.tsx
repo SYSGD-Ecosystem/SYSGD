@@ -2,11 +2,11 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Palette } from "lucide-react"
 
-interface SpreadsheetToolbarProps {
+/*interface SpreadsheetToolbarProps {
   onFormatChange?: (format: string) => void
-}
+}*/
 
-export const SpreadsheetToolbar = ({ onFormatChange }: SpreadsheetToolbarProps) => {
+export const SpreadsheetToolbar = (/*{ onFormatChange }: SpreadsheetToolbarProps*/) => {
   return (
     <div className="bg-white border-b border-gray-200 p-2 flex items-center gap-2 flex-wrap">
       {/* Formato de texto */}

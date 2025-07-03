@@ -1,5 +1,3 @@
-import type { RegistroDeEntradaData } from "@/components/RegistroDeEntrada";
-
 const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 
 type useConnectionReturnType = {
