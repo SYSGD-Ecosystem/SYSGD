@@ -1,0 +1,14 @@
+{
+  "name": "sysgd-monorepo",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev-client\" \"npm run dev-server\"",
+    "dev-client": "cd client/react-frontend && npm run dev",
+    "dev-server": "cd server/node-server && npm run dev",
+    "build-client": "cd client/react-frontend && npm run build",
+    "start-server": "cd server/node-server && npm start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.0.1"
+  }
+}

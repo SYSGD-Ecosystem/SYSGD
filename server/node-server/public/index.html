@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SYSGD - Próximo Lanzamiento</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&display=swap');
-    
+
     * {
       margin: 0;
       padding: 0;
@@ -44,8 +45,15 @@
     }
 
     @keyframes twinkle {
-      from { opacity: 0.2; transform: scale(1); }
-      to { opacity: 1; transform: scale(1.5); }
+      from {
+        opacity: 0.2;
+        transform: scale(1);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1.5);
+      }
     }
 
     /* Container principal */
@@ -69,12 +77,10 @@
 
     .title {
       font-size: clamp(3rem, 8vw, 6rem);
-      background: linear-gradient(
-        90deg,
-        #00e0dd 0%,
-        #ffffff 50%,
-        #00e0dd 100%
-      );
+      background: linear-gradient(90deg,
+          #00e0dd 0%,
+          #ffffff 50%,
+          #00e0dd 100%);
       background-size: 200% auto;
       color: #00e0dd;
       background-clip: text;
@@ -86,8 +92,13 @@
     }
 
     @keyframes shimmer {
-      0% { background-position: 200% center; }
-      100% { background-position: -200% center; }
+      0% {
+        background-position: 200% center;
+      }
+
+      100% {
+        background-position: -200% center;
+      }
     }
 
     .subtitle {
@@ -245,16 +256,16 @@
       .container {
         padding: 1rem;
       }
-      
+
       .email-section {
         padding: 1.5rem;
       }
-      
+
       .features {
         grid-template-columns: 1fr;
         gap: 1.5rem;
       }
-      
+
       .feature-card {
         padding: 1.5rem;
       }
@@ -264,23 +275,25 @@
       .email-form {
         gap: 0.8rem;
       }
-      
-      .email-input, .submit-btn {
+
+      .email-input,
+      .submit-btn {
         padding: 0.8rem;
         font-size: 0.9rem;
       }
     }
   </style>
 </head>
+
 <body>
   <div class="stars" id="stars"></div>
-  
+
   <div class="container">
     <header class="header">
       <h1 class="title">SYSGD</h1>
       <p class="subtitle">Sistema de Gestión Documental</p>
       <p class="description">
-        La próxima generación en gestión documental está llegando. 
+        La próxima generación en gestión documental está llegando.
         Regístrate para ser el primero en conocer nuestro lanzamiento.
       </p>
     </header>
@@ -288,13 +301,7 @@
     <section class="email-section">
       <h2 class="email-title">Mantente Informado</h2>
       <form class="email-form" id="emailForm">
-        <input 
-          type="email" 
-          class="email-input" 
-          placeholder="tu@email.com" 
-          required 
-          id="emailInput"
-        >
+        <input type="email" class="email-input" placeholder="tu@email.com" required id="emailInput">
         <button type="submit" class="submit-btn">
           Notificarme del Lanzamiento
         </button>
@@ -309,7 +316,7 @@
         <div class="feature-icon">📁</div>
         <h3 class="feature-title">Organización Inteligente</h3>
         <p class="feature-description">
-          Clasifica y organiza tus documentos automáticamente con IA avanzada. 
+          Clasifica y organiza tus documentos automáticamente con IA avanzada.
           Encuentra cualquier archivo en segundos.
         </p>
       </div>
@@ -318,7 +325,7 @@
         <div class="feature-icon">🔒</div>
         <h3 class="feature-title">Seguridad Avanzada</h3>
         <p class="feature-description">
-          Protección de nivel empresarial con encriptación end-to-end y 
+          Protección de nivel empresarial con encriptación end-to-end y
           control de acceso granular para tus documentos más importantes.
         </p>
       </div>
@@ -327,7 +334,7 @@
         <div class="feature-icon">☁️</div>
         <h3 class="feature-title">Acceso Universal</h3>
         <p class="feature-description">
-          Accede a tus documentos desde cualquier dispositivo, en cualquier lugar. 
+          Accede a tus documentos desde cualquier dispositivo, en cualquier lugar.
           Sincronización en tiempo real y trabajo offline.
         </p>
       </div>
@@ -336,7 +343,7 @@
         <div class="feature-icon">🤝</div>
         <h3 class="feature-title">Colaboración Fluida</h3>
         <p class="feature-description">
-          Trabaja en equipo con herramientas de colaboración en tiempo real, 
+          Trabaja en equipo con herramientas de colaboración en tiempo real,
           comentarios, versiones y flujos de aprobación automatizados.
         </p>
       </div>
@@ -345,7 +352,7 @@
         <div class="feature-icon">📊</div>
         <h3 class="feature-title">Análisis Inteligente</h3>
         <p class="feature-description">
-          Obtén insights valiosos sobre el uso de documentos, patrones de trabajo 
+          Obtén insights valiosos sobre el uso de documentos, patrones de trabajo
           y optimización de procesos con dashboards interactivos.
         </p>
       </div>
@@ -354,7 +361,7 @@
         <div class="feature-icon">⚡</div>
         <h3 class="feature-title">Automatización</h3>
         <p class="feature-description">
-          Automatiza tareas repetitivas como clasificación, archivado y 
+          Automatiza tareas repetitivas como clasificación, archivado y
           notificaciones. Más tiempo para lo que realmente importa.
         </p>
       </div>
@@ -369,7 +376,7 @@
     // Generar estrellas
     const starsContainer = document.getElementById('stars');
     const starCount = 150;
-    
+
     for (let i = 0; i < starCount; i++) {
       const star = document.createElement('div');
       star.classList.add('star');
@@ -385,32 +392,40 @@
     const emailInput = document.getElementById('emailInput');
     const successMessage = document.getElementById('successMessage');
 
-    emailForm.addEventListener('submit', function(e) {
+    emailForm.addEventListener('submit', function (e) {
       e.preventDefault();
-      
+
       const email = emailInput.value.trim();
-      
+
       if (email && isValidEmail(email)) {
-        // Simular envío (aquí conectarías con tu backend)
-        console.log('Email registrado:', email);
-        
-        // Mostrar mensaje de éxito
-        successMessage.style.display = 'block';
-        emailInput.value = '';
-        
-        // Ocultar mensaje después de 5 segundos
-        setTimeout(() => {
-          successMessage.style.display = 'none';
-        }, 5000);
-        
-        // Aquí podrías enviar el email a tu servidor
-        // fetch('/api/subscribe', {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({ email: email })
-        // });
+
+
+
+        fetch("https://sheetdb.io/api/v1/9x1lbxhz5xhbg", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            data: {
+              email: email,
+              fecha: new Date().toISOString()
+            }
+          })
+        })
+          .then(res => res.json())
+          .then(() => {
+            successMessage.style.display = 'block';
+            emailInput.value = '';
+            setTimeout(() => {
+              successMessage.style.display = 'none';
+            }, 5000);
+          })
+          .catch((err) => {
+            alert("Algo salió mal al enviar tu correo. Intenta más tarde.");
+            console.error(err);
+          });
       }
-    });
+    }
+    );
 
     // Validar email
     function isValidEmail(email) {
@@ -422,7 +437,7 @@
     window.addEventListener('scroll', () => {
       const scrolled = window.pageYOffset;
       const stars = document.querySelectorAll('.star');
-      
+
       stars.forEach((star, index) => {
         const speed = (index % 3 + 1) * 0.1;
         star.style.transform = `translateY(${scrolled * speed}px)`;
@@ -453,4 +468,5 @@
     });
   </script>
 </body>
+
 </html>
