@@ -15,6 +15,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const CLIENT_HOST = process.env.CLIENT_HOST || "http://localhost:5173";
 
 export const pool = new Pool({
 	host: process.env.DB_HOST,
@@ -26,29 +27,39 @@ export const pool = new Pool({
 
 app.use(
 	cors({
-		origin: process.env.CLIENT_HOST || "http://localhost:5173",
+		origin: CLIENT_HOST,
 		credentials: true,
 	}),
 );
 
-app.use(
-	session({
-		secret: "TESTSESSION", // Cámbialo a algo más largo y aleatorio
-		resave: false,
-		saveUninitialized: false,
-		cookie: {
-			secure: true, // 🚨 REQUIERE HTTPS, y Railway lo tiene por default
-			sameSite: "none", // Permite cookies en cross-origin
-			maxAge: 1000 * 60 * 60 * 24,
-			httpOnly: true,
-		},
-		// cookie: {
-		// 	secure: false, // true en producción con HTTPS
-		// 	maxAge: 1000 * 60 * 60 * 24,
-		// 	sameSite: "lax", // o "none" si el front está en otro dominio
-		// },
-	}),
-);
+if (CLIENT_HOST === "http://localhost:5173") {
+	app.use(
+		session({
+			secret: "TESTSESSION", // Cámbialo a algo más largo y aleatorio
+			resave: false,
+			saveUninitialized: false,
+			cookie: {
+				secure: false, // true en producción con HTTPS
+				maxAge: 1000 * 60 * 60 * 24,
+				sameSite: "lax", // o "none" si el front está en otro dominio
+			},
+		}),
+	);
+} else {
+	app.use(
+		session({
+			secret: "TESTSESSION", // Cámbialo a algo más largo y aleatorio
+			resave: false,
+			saveUninitialized: false,
+			cookie: {
+				secure: true, // 🚨 REQUIERE HTTPS, y Railway lo tiene por default
+				sameSite: "none", // Permite cookies en cross-origin
+				maxAge: 1000 * 60 * 60 * 24,
+				httpOnly: false, // Permite acceso desde el frontend
+			},
+		}),
+	);
+}
 
 app.use(express.json());
 
