@@ -37,10 +37,16 @@ app.use(
 		resave: false,
 		saveUninitialized: false,
 		cookie: {
-			secure: false, // true en producción con HTTPS
+			secure: true, // 🚨 REQUIERE HTTPS, y Railway lo tiene por default
+			sameSite: "none", // Permite cookies en cross-origin
 			maxAge: 1000 * 60 * 60 * 24,
-			sameSite: "lax", // o "none" si el front está en otro dominio
+			httpOnly: true,
 		},
+		// cookie: {
+		// 	secure: false, // true en producción con HTTPS
+		// 	maxAge: 1000 * 60 * 60 * 24,
+		// 	sameSite: "lax", // o "none" si el front está en otro dominio
+		// },
 	}),
 );
 
@@ -77,7 +83,6 @@ app.get(
 			console.log("Usuario no autenticado, asignando undefined");
 			req.session.user = undefined;
 		}
-
 
 		res.redirect(process.env.CLIENT_HOST || "http://localhost:5173");
 	},
