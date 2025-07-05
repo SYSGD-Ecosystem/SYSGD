@@ -180,7 +180,7 @@ router.get("/status", async (_req: Request, res: Response) => {
 	res.json({ status: "ok", message: "Servidor activo y listo" });
 });
 
-router.get("/me",isAuthenticated, async (req: Request, res: Response) => {
+router.get("/me", isAuthenticated, async (req: Request, res: Response) => {
 	res.json(req.session.user);
 });
 
@@ -234,6 +234,7 @@ declare module "express-session" {
 }
 
 router.post("/login", async (req: Request, res: Response) => {
+	console.log("Autenticando...",req.body);
 	const { username, password } = req.body;
 	if (!username || !password) {
 		res.status(400).send("400");
@@ -256,6 +257,7 @@ router.post("/login", async (req: Request, res: Response) => {
 			res.status(402).send("Incorrect Password");
 			return;
 		}
+		console.log("Usuario autenticado:", user);
 
 		req.session.user = {
 			id: user.id,
