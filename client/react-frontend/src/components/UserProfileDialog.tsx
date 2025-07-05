@@ -13,9 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User, Shield, LogOut, Loader2, KeyRound } from "lucide-react";
+import { User, Shield, LogOut, Loader2, KeyRound, Palette } from "lucide-react";
 import useCurrentUser from "../hooks/connection/useCurrentUser";
 import useTheme from "../hooks/useTheme";
+import ButtonSwitchTheme from "./ButtonSwitchTheme";
 
 interface UserProfileDialogProps {
 	trigger?: React.ReactNode;
@@ -155,6 +156,16 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
 						<Button variant="link" onClick={handleChangePassword}>
 							Cambiar
 						</Button>
+					</div>
+
+					<Separator />
+
+					<div className="flex items-center justify-between">
+						<div className="flex items-center space-x-2">
+							<Palette className="h-4 w-4 text-muted-foreground" />
+							<span className="text-sm font-medium">Tema</span>
+						</div>
+						<ButtonSwitchTheme />
 					</div>
 
 					<Separator />

@@ -1,17 +1,12 @@
-import { useEffect, useState, type FC } from "react";
-import WorkSpace from "../components/WorkSpace";
-import Sidebar from "../components/Sidebar";
-import HeadBar from "../components/HeadBar";
-import NavBar from "../components/Navbar";
+import { useEffect, type FC } from "react";
 import { useNavigate } from "react-router-dom";
 import useServerStatus from "../hooks/connection/useServerStatus";
 import { useAuthSession } from "../hooks/connection/useAuthSession";
 import Loading from "@/components/Loading";
-import { Toaster } from "sonner";
+import LandingPage from "./LandingPage";
 
 const App: FC = () => {
 	const navigate = useNavigate();
-	const [optionMainSelected, setOptionMainSelected] = useState(0);
 	const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 	const { status, checkServerStatus } = useServerStatus(serverUrl);
 	const { user, loading } = useAuthSession();
@@ -42,24 +37,12 @@ const App: FC = () => {
 			</div>
 		);
 
-	// Si no hay sesión
-	if (!user) {
-		navigate("/login");
+	if (user) {
+		navigate("/dashboard");
 		return null;
 	}
 
-	// Si todo está bien, muestra la app
-	return (
-		<div className="flex h-screen w-full flex-col">
-			<HeadBar />
-			<div className="size-full flex overflow-auto">
-				<NavBar />
-				<Sidebar onOptionSelected={setOptionMainSelected} />
-				<WorkSpace page={optionMainSelected} />
-			</div>
-			<Toaster />
-		</div>
-	);
+	return <LandingPage />;
 };
 
 export default App;

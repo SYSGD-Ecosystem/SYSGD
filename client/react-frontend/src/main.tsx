@@ -7,11 +7,11 @@ import DevPreview from "./pages/DevPreview.tsx";
 import "./styles/tailwind.css"
 import Print from "./pages/Print.tsx";
 import ErrorServer from "./pages/ErrorServer.tsx";
-import UserProfile from "./pages/UserProfile.tsx";
 import OrganigramaPage from "./pages/Organigrama.tsx";
 import EditableSpreadsheet from "./pages/Sheet.tsx";
 import { Toaster } from "./components/ui/toaster.tsx";
 import AdminDashboard from "./pages/admin-dashboard.tsx";
+import Dashboard from "./pages/Dashboard.tsx";
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(
@@ -23,9 +23,10 @@ createRoot(document.getElementById("root")!).render(
       <Route path="/print" element={<Print/>}/>
       <Route path="/dev" element={<DevPreview/>}/>
       <Route path="/error" element={<ErrorServer/>}/>
-      <Route path="/perfil" element={<UserProfile />} />
       <Route path="/organigrama" element={<OrganigramaPage />} />
       <Route path="/table" element={<EditableSpreadsheet />} />
+      <Route path="/demo" element={<DevPreview />} />
+      <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/admin" element={<AdminDashboard />} />
     </Routes>
     </BrowserRouter>

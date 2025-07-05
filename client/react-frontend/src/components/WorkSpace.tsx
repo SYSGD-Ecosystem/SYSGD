@@ -102,19 +102,16 @@ const WorkSpace: FC<{ page: number }> = ({ page }) => {
 							Icon={IoIosAddCircle}
 							onClick={openDialog}
 							tooltip="Nuevo Archivo de Gestión"
-							variant={2}
 						/>
 						<IconButton
 							Icon={IoPrint}
 							onClick={dialogPrint.openDialog}
 							tooltip="Imprimir"
-							variant={2}
 						/>
 						<IconButton
 							Icon={FaFileExport}
 							onClick={openDialogExport}
 							tooltip="Exportar"
-							variant={2}
 						/>
 					</div>
 

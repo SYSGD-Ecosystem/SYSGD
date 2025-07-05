@@ -1,36 +1,40 @@
-import { FC } from "react";
-import { IconType } from "react-icons";
-
-export enum VariantIconButton {
-  light,
-  dark,
-  auto,
-}
+import type { FC } from "react";
+import type { IconType } from "react-icons";
+import { Button } from "./ui/button";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "./ui/tooltip";
 
 export type IconButtonProps = {
-  tooltip: string;
-  onClick: () => void;
-  Icon: IconType;
-  variant?: VariantIconButton;
+	tooltip: string;
+	onClick: () => void;
+	Icon: IconType;
+	className?: string;
 };
 
-const IconButton: FC<IconButtonProps> = ({
-  onClick,
-  Icon,
-  tooltip,
-  variant,
-}) => {
-  const buttonStyle =
-    variant === VariantIconButton.dark
-      ? "p-2 hover:bg-slate-500 text-slate-100 size-9 rounded-full text-xl flex items-center justify-center"
-      : variant === VariantIconButton.light
-      ? "p-2 hover:bg-slate-100 text-slate-600 size-9 rounded-full text-xl flex items-center justify-center"
-      : "p-2 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 size-9 rounded-full text-xl flex items-center justify-center";
-  return (
-    <button title={tooltip} onClick={onClick} className={buttonStyle}>
-      <Icon />
-    </button>
-  );
+const IconButton: FC<IconButtonProps> = ({ onClick, Icon, tooltip }) => {
+	return (
+		<TooltipProvider>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={onClick}
+						className="text-slate-300 hover:text-white"
+					>
+						<Icon className="w-4 h-4 text-slate-500 dark:text-slate-100" />
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent>
+					<p>{tooltip}</p>
+				</TooltipContent>
+			</Tooltip>
+		</TooltipProvider>
+	);
 };
 
 export default IconButton;

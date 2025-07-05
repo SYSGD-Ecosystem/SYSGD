@@ -55,7 +55,7 @@ if (CLIENT_HOST === "http://localhost:5173") {
 				secure: true, // 🚨 REQUIERE HTTPS, y Railway lo tiene por default
 				sameSite: "none", // Permite cookies en cross-origin
 				maxAge: 1000 * 60 * 60 * 24,
-				httpOnly: false, // Permite acceso desde el frontend
+				httpOnly: true, // Permite acceso desde el frontend
 			},
 		}),
 	);

@@ -45,13 +45,13 @@ const Login: FC = () => {
   return (
     <div className="flex items-center justify-center bg-slate-800 min-h-screen p-4">
       {isLoginPage ? (
-        <div className="w-80 relative bg-white overflow-hidden rounded-lg px-6 py-8 flex items-center flex-col gap-4 shadow-2xl before:absolute before:w-32 before:h-20 before:right-2 before:bg-rose-300 before:-z-10 before:rounded-full before:blur-xl before:-top-12 z-10 after:absolute after:w-24 after:h-24 after:bg-purple-300 after:-z-10 after:rounded-full after:blur after:-top-12 after:-right-6">
+        <div className="w-80 relative bg-white dark:bg-slate-900 overflow-hidden rounded-lg px-6 py-8 flex items-center flex-col gap-4 shadow-2xl before:absolute before:w-32 before:h-20 before:right-2 before:bg-rose-300 before:-z-10 before:rounded-full before:blur-xl before:-top-12 z-10 after:absolute after:w-24 after:h-24 after:bg-purple-300 dark:before:bg-rose-700 after:-z-10 after:rounded-full after:blur dark:after:bg-rose-600/50 after:-top-12 after:-right-6">
           <div className="flex items-center flex-col justify-center gap-2">
             <div className="flex gap-2 items-center justify-center">
-              <IoIosApps size={28} className="text-slate-700" />
-              <h1 className="text-2xl font-bold text-slate-800">SYSGD</h1>
+              <IoIosApps size={28} className="text-slate-700 dark:text-slate-100" />
+              <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">SYSGD</h1>
             </div>
-            <p className="text-slate-600 text-sm">Iniciar sesión</p>
+            <p className="text-slate-600 text-sm dark:text-slate-100">Iniciar sesión</p>
           </div>
 
           <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4 w-full">
@@ -98,13 +98,13 @@ const Login: FC = () => {
           </div>
         </div>
       ) : (
-        <div className="w-96 relative bg-white overflow-hidden rounded-lg px-6 py-8 flex items-center flex-col gap-4 shadow-2xl before:absolute before:w-32 before:h-20 before:right-2 before:bg-rose-300 before:-z-10 before:rounded-full before:blur-xl before:-top-12 z-10 after:absolute after:w-24 after:h-24 after:bg-purple-300 after:-z-10 after:rounded-full after:blur after:-top-12 after:-right-6">
+        <div className="w-96 relative bg-white dark:bg-slate-900 overflow-hidden rounded-lg px-6 py-8 flex items-center flex-col gap-4 shadow-2xl before:absolute before:w-32 before:h-20 before:right-2 before:bg-rose-300 before:-z-10 before:rounded-full before:blur-xl before:-top-12 z-10 after:absolute after:w-24 after:h-24 after:bg-purple-300 dark:after:bg-rose-600/50 dark:before:bg-rose-700 after:-z-10 after:rounded-full after:blur after:-top-12 after:-right-6">
           <div className="flex items-center flex-col justify-center gap-2">
             <div className="flex gap-2 items-center justify-center">
-              <IoIosApps size={28} className="text-slate-700" />
-              <h1 className="text-2xl font-bold text-slate-800">SYSGD</h1>
+              <IoIosApps size={28} className="text-slate-700 dark:text-slate-100" />
+              <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">SYSGD</h1>
             </div>
-            <p className="text-slate-600 text-sm">Crear cuenta</p>
+            <p className="text-slate-600 text-sm dark:text-slate-100">Crear cuenta</p>
           </div>
 
           <form onSubmit={handleRegisterSubmit} className="flex flex-col gap-4 w-full">

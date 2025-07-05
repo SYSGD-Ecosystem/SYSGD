@@ -1,5 +1,5 @@
-import { FC } from "react";
-import { IconType } from "react-icons";
+import type { FC } from "react";
+import type { IconType } from "react-icons";
 import { twMerge } from "tailwind-merge";
 
 export type BarButtonProps = {
@@ -16,13 +16,14 @@ const BarButton: FC<BarButtonProps> = ({
   isSelected,
 }) => {
   return (
-    <button
+    // biome-ignore lint/a11y/useButtonType: <explanation>
+<button
       title={label}
       onClick={onClick}
       className={twMerge(
-        "p-2 uppercase text-slate-100 dark:text-slate-300 hover:bg-slate-400 dark:hover:bg-slate-700 w-full text-left text-xs font-medium flex gap-2 items-center",
+        "p-2 uppercase text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 w-full text-left text-xs font-medium flex gap-2 items-center",
         isSelected
-          ? "border-l-4 border-red-500 bg-slate-400 dark:bg-slate-700"
+          ? "border-l-4 border-red-500 bg-slate-300 dark:bg-slate-700"
           : ""
       )}
     >

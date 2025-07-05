@@ -1,4 +1,4 @@
-import { FC } from "react";
+import type { FC } from "react";
 import IconButton from "./IconButton";
 import { IoIosHelpCircle } from "react-icons/io";
 import { twMerge } from "tailwind-merge";
@@ -17,7 +17,6 @@ const ToolBar: FC<{ className?: string }> = ({ className }) => {
         Icon={IoIosHelpCircle}
         onClick={() => {}}
         tooltip="Detalles"
-        variant={2}
       />
     </div>
   );
