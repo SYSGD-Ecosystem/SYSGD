@@ -180,10 +180,7 @@ router.get("/status", async (_req: Request, res: Response) => {
 	res.json({ status: "ok", message: "Servidor activo y listo" });
 });
 
-router.get("/me", async (req: Request, res: Response) => {
-	if (!req.session.user) {
-		res.status(401).send("No estás logeado");
-	}
+router.get("/me",isAuthenticated, async (req: Request, res: Response) => {
 	res.json(req.session.user);
 });
 
