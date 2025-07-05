@@ -234,7 +234,7 @@ declare module "express-session" {
 }
 
 router.post("/login", async (req: Request, res: Response) => {
-	console.log("Autenticando...",req.body);
+	console.log("Autenticando...", req.body);
 	const { username, password } = req.body;
 	if (!username || !password) {
 		res.status(400).send("400");
@@ -265,7 +265,7 @@ router.post("/login", async (req: Request, res: Response) => {
 			username: user.username,
 			privileges: user.privileges,
 		};
-
+		console.log(req.session.user);
 		res.status(201).send("Login correcto");
 	} catch (err) {
 		console.error(err);
