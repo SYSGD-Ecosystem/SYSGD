@@ -39,7 +39,7 @@ const Login: FC = () => {
   }
 
   if (loginSuccess) {
-    router("/")
+    router("/dashboard")
   }
 
   return (

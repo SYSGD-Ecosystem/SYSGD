@@ -15,7 +15,8 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const CLIENT_HOST = process.env.CLIENT_HOST || "http://localhost:5173";
+const CLIENT_HOST = process.env.CLIENT_HOST;
+const SECRET_SESSION = process.env.SECRET_SESSION || "SECRETDEFAULT";
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [];
 
 console.log("Allowed origins:", allowedOrigins);
@@ -28,7 +29,7 @@ export const pool = new Pool({
 	port: Number(process.env.DB_PORT),
 });
 
-if (CLIENT_HOST === "http://localhost:5173" || allowedOrigins.length === 0) {
+if (allowedOrigins.length === 0) {
 	app.use(
 		cors({
 			origin: CLIENT_HOST,
@@ -36,7 +37,7 @@ if (CLIENT_HOST === "http://localhost:5173" || allowedOrigins.length === 0) {
 		}),
 	);
 } else {
-	console.log("Usando CORS con orígenes permitidos:", allowedOrigins)
+	console.log("Usando CORS con orígenes permitidos:", allowedOrigins);
 	app.use(
 		cors({
 			origin: allowedOrigins,
@@ -45,37 +46,28 @@ if (CLIENT_HOST === "http://localhost:5173" || allowedOrigins.length === 0) {
 	);
 }
 
-if (CLIENT_HOST === "http://localhost:5173") {
+if (
+	CLIENT_HOST === "http://127.0.0.1:5173" ||
+	CLIENT_HOST === "http://localhost:5173"
+) {
+	console.log("Recibiendo...");
 	app.use(
 		session({
-			secret: "TESTSESSION", // Cámbialo a algo más largo y aleatorio
+			secret: SECRET_SESSION,
 			resave: false,
 			saveUninitialized: false,
 			cookie: {
 				secure: false, // true en producción con HTTPS
 				maxAge: 1000 * 60 * 60 * 24,
 				sameSite: "lax", // o "none" si el front está en otro dominio
-			},
-		}),
-	);
-} else if (allowedOrigins.length > 0) {
-	app.use(
-		session({
-			secret: "TESTSESSION", // Cámbialo a algo más largo y aleatorio
-			resave: false,
-			saveUninitialized: false,
-			cookie: {
-				secure: true, // 🚨 REQUIERE HTTPS, y Railway lo tiene por default
-				sameSite: "none", // Permite cookies en cross-origin
-				maxAge: 1000 * 60 * 60 * 24,
-				httpOnly: true, // Permite acceso desde el frontend
+				httpOnly: true,
 			},
 		}),
 	);
 } else {
 	app.use(
 		session({
-			secret: "TESTSESSION", // Cámbialo a algo más largo y aleatorio
+			secret: SECRET_SESSION,
 			resave: false,
 			saveUninitialized: false,
 			cookie: {
