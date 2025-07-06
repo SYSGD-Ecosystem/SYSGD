@@ -36,6 +36,13 @@ type useConnectionReturnType = {
 		onSuccess: () => void,
 		onFail: () => void,
 	) => Promise<void>;
+
+	handleNewTopographicRegister: (
+		data: string,
+		id: string,
+		onSuccess: () => void,
+		onFail: () => void,
+	) => Promise<void>;
 };
 
 const useConnection = (): useConnectionReturnType => {
@@ -168,12 +175,39 @@ const useConnection = (): useConnectionReturnType => {
 		}
 	};
 
+	const handleNewTopographicRegister = async (
+		data: string,
+		id: string,
+		onSuccess: () => void,
+		onFail: () => void,
+	) => {
+		try {
+			const res = await fetch(`${serverUrl}/api/add-document-topographic`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include",
+				body: JSON.stringify({ data, id }),
+			});
+
+			if (res.ok) onSuccess();
+			else {
+				const text = await res.text();
+				console.error(text);
+				onFail();
+			}
+		} catch (e) {
+			console.error("Error al guardar topográfico:", e);
+			onFail();
+		}
+	};
+
 	return {
 		handleNewArchiving,
 		handleAddClassificationBoxData,
 		handleNewDocumentEntry,
 		handleNewDocumentExit,
 		handleNewDocumentLoan,
+		handleNewTopographicRegister,
 	};
 };
 

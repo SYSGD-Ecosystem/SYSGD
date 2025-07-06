@@ -18,6 +18,7 @@ import useAlertDialog from "../hooks/useAlertDialog";
 import RegistroDeEntrada from "./RegistroDeEntrada";
 import ExitRegister from "./ExitRegister";
 import LoanRegister from "./LoanRegister";
+import TopographicRegister from "./TopographicRegister";
 
 const WorkSpace: FC<{ page: number }> = ({ page }) => {
 	const { DialogComponent, openDialog, closeDialog } = useDialog();
@@ -148,6 +149,12 @@ const WorkSpace: FC<{ page: number }> = ({ page }) => {
 							/>
 						) : page === 4 ? (
 							<LoanRegister
+								archiveId={archiveId}
+								company={company}
+								managementFile={archiveName}
+							/>
+						) : page === 5 ? (
+							<TopographicRegister
 								archiveId={archiveId}
 								company={company}
 								managementFile={archiveName}
