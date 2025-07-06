@@ -1,9 +1,14 @@
 import { type FC, useEffect, useState } from "react";
 import SecondarySidebar from "./SecondarySidebar";
 import IconButton from "./IconButton";
-import { IoFileTray, IoPrint } from "react-icons/io5";
+import { IoPrint } from "react-icons/io5";
 import { IoIosAddCircle } from "react-icons/io";
-import Dropdown, { type DropdownOptionProps } from "./Dropdown";
+import {
+	DropdownMenu,
+	DropdownMenuTrigger,
+	DropdownMenuContent,
+	DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import Text from "./Text";
 import ClassificationBoxTable from "./ClassificationBoxTable";
 import useDialog from "../hooks/useDialog";
@@ -19,20 +24,15 @@ import ExitRegister from "./ExitRegister";
 import LoanRegister from "./LoanRegister";
 import TopographicRegister from "./TopographicRegister";
 import RetentionScheduleTable from "./RetentionScheduleTable";
+import type { DropdownOptionProps } from "./Dropdown";
+import { Edit3 } from "lucide-react";
 
 const WorkSpace: FC<{ page: number }> = ({ page }) => {
 	const { DialogComponent, openDialog, closeDialog } = useDialog();
-	const { archives, error, loading } = useArchives();
-
+	const { archives, error, loading, reloadArchives } = useArchives();
 	const [archivesDropdown, setArchivesDropdown] = useState<
-		DropdownOptionProps[]
-	>([
-		{
-			Icon: IoFileTray,
-			label: "--- Seleccionar Archivo de Gestón",
-			onClick: () => {},
-		},
-	]);
+		{ Icon: FC; label: string; onClick: () => void }[]
+	>([]);
 
 	const [archiveId, setArchiveId] = useState("");
 	const [selectCode, setSelectCode] = useState("");
@@ -98,7 +98,43 @@ const WorkSpace: FC<{ page: number }> = ({ page }) => {
 							label="Archivo de Gestión:"
 							variant={1}
 						/>
-						<Dropdown options={archivesDropdown} />
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								{/* biome-ignore lint/a11y/useButtonType: <explanation> */}
+								<button className="flex w-full h-7 cursor-pointer items-center justify-center gap-2 rounded-full bg-slate-100 dark:bg-slate-700 p-2 text-sm dark:text-slate-300 ">
+									<span className="truncate max-w-[150px] sm:max-w-xs">{archiveName || "Seleccionar Archivo de Gestión"}</span>
+								</button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent>
+								{archivesDropdown.map((option, idx) => (
+									<DropdownMenuItem
+										// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+										key={idx}
+										onClick={option.onClick}
+										className="flex items-center gap-2"
+									>
+										<option.Icon />
+										<span className="truncate w-full">{option.label}</span>
+										<IconButton
+											Icon={Edit3}
+											onClick={() => {
+												// Lógica para editar el archivo de gestión
+												// Por ejemplo: openEditDialog(archive.id)
+											}}
+											tooltip="Editar"
+										/>
+										<IconButton
+											Icon={() => <span className="text-red-500">✕</span>}
+											onClick={() => {
+												// Lógica para eliminar el archivo de gestión
+												// Por ejemplo: openDeleteDialog(archive.id)
+											}}
+											tooltip="Eliminar"
+										/>
+									</DropdownMenuItem>
+								))}
+							</DropdownMenuContent>
+						</DropdownMenu>
 						<IconButton
 							Icon={IoIosAddCircle}
 							onClick={openDialog}
@@ -165,7 +201,7 @@ const WorkSpace: FC<{ page: number }> = ({ page }) => {
 				<SecondarySidebar className="" />
 			</div>
 			<DialogComponent>
-				<CreateArchiving onClose={closeDialog} />
+				<CreateArchiving onClose={closeDialog} onCreate={reloadArchives} />
 			</DialogComponent>
 			{DialogComponentExport(
 				exportToXlsx,

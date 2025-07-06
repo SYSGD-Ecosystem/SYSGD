@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useUsers } from "@/hooks/connection/useUsers"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,42 +24,10 @@ import { CreateUserDialog } from "../components/create-user-dialog"
 import { Users, UserPlus, Search, Edit, Trash2, Shield, User, Crown } from "lucide-react"
 import type { User as UserType } from "../types/user"
 
-// Datos de ejemplo
-const initialUsers: UserType[] = [
-  {
-    id: 1,
-    name: "Ana María Rodríguez",
-    username: "ana.rodriguez",
-    privileges: "admin",
-  },
-  {
-    id: 2,
-    name: "Carlos Mendoza",
-    username: "carlos.mendoza",
-    privileges: "user",
-  },
-  {
-    id: 3,
-    name: "María Elena Vásquez",
-    username: "maria.vasquez",
-    privileges: "admin",
-  },
-  {
-    id: 4,
-    name: "Fernando López",
-    username: "fernando.lopez",
-    privileges: "user",
-  },
-  {
-    id: 5,
-    name: "Laura García",
-    username: "laura.garcia",
-    privileges: "user",
-  },
-]
 
 export default function AdminDashboard() {
-  const [users, setUsers] = useState<UserType[]>(initialUsers)
+  const { users: fetchedUsers, loading, error, createUser, updateUser, deleteUser } = useUsers()
+  const users = fetchedUsers
   const [searchTerm, setSearchTerm] = useState("")
   const [editingUser, setEditingUser] = useState<UserType | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -91,22 +60,19 @@ export default function AdminDashboard() {
       .slice(0, 2)
   }
 
-  const handleUserUpdated = (updatedUser: UserType) => {
-    setUsers((prev) => prev.map((user) => (user.id === updatedUser.id ? updatedUser : user)))
+  const handleUserUpdated = (_updatedUser: UserType) => {
+    // listado se refrescará vía hook
   }
 
-  const handleUserCreated = (newUser: UserType) => {
-    setUsers((prev) => [...prev, newUser])
+  const handleUserCreated = (_newUser: UserType) => {
+    // listado se refrescará vía hook
   }
 
   const handleDeleteUser = async () => {
     if (!userToDelete) return
 
     try {
-      // Simular API call
-      await new Promise((resolve) => setTimeout(resolve, 500))
-
-      setUsers((prev) => prev.filter((user) => user.id !== userToDelete.id))
+      await deleteUser(userToDelete.id)
       setDeleteDialogOpen(false)
       setUserToDelete(null)
 

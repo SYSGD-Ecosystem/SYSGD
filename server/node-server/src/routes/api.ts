@@ -101,8 +101,6 @@ router.post(
 
 router.post("/add-document-entry", isAuthenticated, async (req, res) => {
 	const { id, data } = req.body;
-	console.log(req.body);
-	console.log(data);
 
 	if (!id || !data) {
 		res.status(400).json({ error: "Faltan campos obligatorios." });
@@ -168,8 +166,6 @@ router.get(
 
 router.post("/add-document-exit", isAuthenticated, async (req, res) => {
 	const { id, data } = req.body;
-	console.log(req.body);
-	console.log(data);
 
 	if (!id || !data) {
 		res.status(400).json({ error: "Faltan campos obligatorios." });
@@ -210,6 +206,184 @@ router.post("/add-document-exit", isAuthenticated, async (req, res) => {
 	}
 });
 
+// GET /api/users - lista usuarios (solo admin)
+router.get("/users", isAuthenticated, async (req, res) => {
+	if (req.session.user?.privileges !== "admin") {
+		res.status(403).json({ error: "No autorizado" });
+		return;
+	}
+	try {
+		const result = await pool.query(
+			"SELECT id, name, username, privileges FROM users ORDER BY id",
+		);
+		res.json(result.rows);
+	} catch {
+		res.status(500).json({ error: "Error al obtener usuarios" });
+	}
+});
+
+// POST /api/users - crear usuario (solo admin)
+router.post("/users", isAuthenticated, async (req, res) => {
+	if (req.session.user?.privileges !== "admin") {
+		res.status(403).json({ error: "No autorizado" });
+		return;
+	}
+	const { name, username, password, privileges } = req.body;
+	if (!name || !username || !password || !privileges) {
+		res.status(400).json({ error: "Faltan datos" });
+		return;
+	}
+	try {
+		await pool.query(
+			"INSERT INTO users (name, username, password, privileges) VALUES ($1,$2,crypt($3, gen_salt('bf')),$4)",
+			[name, username, password, privileges],
+		);
+		res.status(201).send("201");
+		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+	} catch (e: any) {
+		if (e.code === "23505")
+			res.status(409).json({ error: "Usuario ya existe" });
+		else res.status(500).json({ error: "Error servidor" });
+	}
+});
+router.get("/admin/users", isAuthenticated, async (req, res) => {
+	if (req.session.user?.privileges !== "admin") {
+		res.status(403).json({ error: "Acceso denegado" });
+		return;
+	}
+	try {
+		const result = await pool.query(
+			"SELECT id, name, username, privileges FROM users ORDER BY id",
+		);
+		res.json(result.rows);
+	} catch {
+		res.status(500).json({ error: "Error al obtener usuarios" });
+	}
+});
+
+// POST /api/admin/users
+router.post("/admin/users", isAuthenticated, async (req, res) => {
+	if (req.session.user?.privileges !== "admin") {
+		res.status(403).json({ error: "Acceso denegado" });
+		return;
+	}
+	const { name, username, password, privileges } = req.body;
+	if (!name || !username || !password || !privileges) {
+		res.status(400).json({ error: "Faltan datos obligatorios." });
+		return;
+	}
+	try {
+		await pool.query(
+			"INSERT INTO users (name, username, password, privileges) VALUES ($1,$2,crypt($3, gen_salt('bf')),$4)",
+			[name, username, password, privileges],
+		);
+		res.status(201).send("201");
+		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+	} catch (e: any) {
+		if (e.code === "23505") res.status(409).json({ error: "Usuario existe" });
+		else res.status(500).json({ error: "Error al crear usuario" });
+	}
+});
+
+// PUT /api/admin/users/:id
+router.put("/admin/users/:id", isAuthenticated, async (req, res) => {
+	if (req.session.user?.privileges !== "admin") {
+		res.status(403).json({ error: "Acceso denegado" });
+		return;
+	}
+	const { id } = req.params;
+	const { name, username, password, privileges } = req.body;
+	if (!id) {
+		res.status(400).json({ error: "Id requerido" });
+		return;
+	}
+	try {
+		await pool.query(
+			"UPDATE users SET name = COALESCE($1,name), username = COALESCE($2,username), password = COALESCE(crypt($3, gen_salt('bf')),password), privileges = COALESCE($4,privileges) WHERE id = $5",
+			[name, username, password || null, privileges, id],
+		);
+		res.sendStatus(204);
+	} catch {
+		res.status(500).json({ error: "Error al actualizar" });
+	}
+});
+
+// DELETE /api/admin/users/:id
+router.delete("/admin/users/:id", isAuthenticated, async (req, res) => {
+	if (req.session.user?.privileges !== "admin") {
+		res.status(403).json({ error: "Acceso denegado" });
+		return;
+	}
+	const { id } = req.params;
+	try {
+		await pool.query("DELETE FROM users WHERE id = $1", [id]);
+		res.sendStatus(204);
+	} catch {
+		res.status(500).json({ error: "Error al eliminar" });
+	}
+});
+
+// GET /api/get-organization-chart?id=FILEID
+router.get("/get-organization-chart", isAuthenticated, async (req, res) => {
+	const { id } = req.query;
+	if (!id) {
+		res.status(400).json({ error: "Falta id" });
+		return;
+	}
+	try {
+		const result = await pool.query(
+			"SELECT data FROM organization_chart WHERE file_id = $1",
+			[id],
+		);
+		if (result.rows.length === 0) {
+			res.json(null);
+			return;
+		}
+		res.json(result.rows[0].data);
+	} catch (error) {
+		res.status(500).json({ error: "Error al obtener organigrama" });
+	}
+});
+
+// POST /api/save-organization-chart {id, data}
+router.post("/save-organization-chart", isAuthenticated, async (req, res) => {
+	const { id, data } = req.body;
+	if (!id || !data) {
+		res.status(400).json({ error: "Faltan datos" });
+		return;
+	}
+	const userId = req.session.user?.id;
+	if (!userId) {
+		res.status(401).json({ error: "No autorizado" });
+		return;
+	}
+	try {
+		// check ownership or admin
+		const ownerCheck = await pool.query(
+			"SELECT user_id FROM document_management_file WHERE id = $1",
+			[id],
+		);
+		if (ownerCheck.rows.length === 0) {
+			res.status(404).json({ error: "Archivo no encontrado" });
+			return;
+		}
+		if (
+			ownerCheck.rows[0].user_id !== userId &&
+			req.session.user?.privileges !== "admin"
+		) {
+			res.status(403).json({ error: "Sin permisos" });
+			return;
+		}
+		await pool.query(
+			"INSERT INTO organization_chart(file_id,data) VALUES ($1,$2) ON CONFLICT (file_id) DO UPDATE SET data = EXCLUDED.data",
+			[id, data],
+		);
+		res.status(201).send("201");
+	} catch (error) {
+		res.status(500).json({ error: "Error al guardar organigrama" });
+	}
+});
+
 // POST /api/add-retention-schedule
 router.post("/add-retention-schedule", isAuthenticated, async (req, res) => {
 	const { id, data } = req.body;
@@ -228,9 +402,12 @@ router.post("/add-retention-schedule", isAuthenticated, async (req, res) => {
 	);
 	if (
 		result.rows.length === 0 ||
-		(req.session.user?.privileges !== "admin" && result.rows[0].user_id !== user_id)
+		(req.session.user?.privileges !== "admin" &&
+			result.rows[0].user_id !== user_id)
 	) {
-		res.status(403).json({ error: "No tienes permisos para modificar este expediente." });
+		res
+			.status(403)
+			.json({ error: "No tienes permisos para modificar este expediente." });
 		return;
 	}
 	try {
@@ -266,9 +443,12 @@ router.post("/add-document-topographic", isAuthenticated, async (req, res) => {
 
 	if (
 		result.rows.length === 0 ||
-		(req.session.user?.privileges !== "admin" && result.rows[0].user_id !== user_id)
+		(req.session.user?.privileges !== "admin" &&
+			result.rows[0].user_id !== user_id)
 	) {
-		res.status(403).json({ error: "No tienes permisos para modificar este expediente." });
+		res
+			.status(403)
+			.json({ error: "No tienes permisos para modificar este expediente." });
 		return;
 	}
 
@@ -305,9 +485,12 @@ router.post("/add-document-loan", isAuthenticated, async (req, res) => {
 
 	if (
 		result.rows.length === 0 ||
-		(req.session.user?.privileges !== "admin" && result.rows[0].user_id !== user_id)
+		(req.session.user?.privileges !== "admin" &&
+			result.rows[0].user_id !== user_id)
 	) {
-		res.status(403).json({ error: "No tienes permisos para modificar este expediente." });
+		res
+			.status(403)
+			.json({ error: "No tienes permisos para modificar este expediente." });
 		return;
 	}
 
@@ -433,7 +616,7 @@ router.get("/me", isAuthenticated, async (req: Request, res: Response) => {
 });
 
 router.post("/register", async (req: Request, res: Response) => {
-	console.log(req.body);
+	//TODO: Implementar verificación de email
 	const { name, username, password } = req.body;
 	if (!name || !username || !password) {
 		res.status(400).send("400");
@@ -482,7 +665,6 @@ declare module "express-session" {
 }
 
 router.post("/login", async (req: Request, res: Response) => {
-	console.log("Autenticando...", req.body);
 	const { username, password } = req.body;
 	if (!username || !password) {
 		res.status(400).send("400");
@@ -529,5 +711,140 @@ router.get("/logout", (req, res) => {
 		res.send("Sesión cerrada");
 	});
 });
+
+// GET /api/users - Devuelve todos los usuarios (solo admin)
+router.get("/users", isAuthenticated, async (req: Request, res: Response) => {
+	if (req.session.user?.privileges !== "admin") {
+		res.status(403).json({ error: "No autorizado" });
+		return;
+	}
+	try {
+		const result = await pool.query(
+			"SELECT id, name, username, privileges FROM users",
+		);
+		res.json(result.rows);
+	} catch (err) {
+		res.status(500).json({ error: "Error al obtener los usuarios" });
+	}
+});
+
+// DELETE /api/users/:id - Elimina usuario y sus documentos (solo admin)
+router.delete(
+	"/users/:id",
+	isAuthenticated,
+	async (req: Request, res: Response) => {
+		if (req.session.user?.privileges !== "admin") {
+			res.status(403).json({ error: "No autorizado" });
+			return;
+		}
+		const userId = Number.parseInt(req.params.id, 10);
+		if (Number.isNaN(userId)) {
+			res.status(400).json({ error: "ID inválido" });
+			return;
+		}
+		try {
+			await pool.query(
+				"DELETE FROM document_management_file WHERE user_id = $1",
+				[userId],
+			);
+			const result = await pool.query(
+				"DELETE FROM users WHERE id = $1 RETURNING id",
+				[userId],
+			);
+			if (result.rowCount === 0) {
+				res.status(404).json({ error: "Usuario no encontrado" });
+				return;
+			}
+			res.json({ message: "Usuario y documentos eliminados" });
+		} catch (err) {
+			res.status(500).json({ error: "Error al eliminar el usuario" });
+		}
+	},
+);
+
+// PUT /api/users/:id/password - Actualiza la contraseña (solo admin)
+router.put(
+	"/users/:id/password",
+	isAuthenticated,
+	async (req: Request, res: Response) => {
+		if (req.session.user?.privileges !== "admin") {
+			res.status(403).json({ error: "No autorizado" });
+			return;
+		}
+		const userId = Number.parseInt(req.params.id, 10);
+		const { password } = req.body;
+		if (Number.isNaN(userId) || !password) {
+			res.status(400).json({ error: "Datos inválidos" });
+			return;
+		}
+		try {
+			const hashedPassword = await bcrypt.hash(password, 10);
+			const result = await pool.query(
+				"UPDATE users SET password = $1 WHERE id = $2 RETURNING id",
+				[hashedPassword, userId],
+			);
+			if (result.rowCount === 0) {
+				res.status(404).json({ error: "Usuario no encontrado" });
+				return;
+			}
+			res.json({ message: "Contraseña actualizada" });
+		} catch (err) {
+			res.status(500).json({ error: "Error al actualizar la contraseña" });
+		}
+	},
+);
+
+// PUT /api/users/:id - Actualiza nombre y nombre de usuario (solo admin)
+router.put(
+	"/users/:id",
+	isAuthenticated,
+	async (req: Request, res: Response) => {
+		if (req.session.user?.privileges !== "admin") {
+			res.status(403).json({ error: "No autorizado" });
+			return;
+		}
+		const userId = Number.parseInt(req.params.id, 10);
+		const { name, username } = req.body;
+		if (Number.isNaN(userId) || (!name && !username)) {
+			res.status(400).json({ error: "Datos inválidos" });
+			return;
+		}
+		try {
+			if (username) {
+				const exists = await pool.query(
+					"SELECT id FROM users WHERE username = $1 AND id <> $2",
+					[username, userId],
+				);
+				if (exists.rows.length > 0) {
+					res.status(409).json({ error: "El nombre de usuario ya existe" });
+					return;
+				}
+			}
+			const fields = [];
+			const values = [];
+			let idx = 1;
+			if (name) {
+				fields.push(`name = $${idx++}`);
+				values.push(name);
+			}
+			if (username) {
+				fields.push(`username = $${idx++}`);
+				values.push(username);
+			}
+			values.push(userId);
+			const result = await pool.query(
+				`UPDATE users SET ${fields.join(", ")} WHERE id = $${idx} RETURNING id`,
+				values,
+			);
+			if (result.rowCount === 0) {
+				res.status(404).json({ error: "Usuario no encontrado" });
+				return;
+			}
+			res.json({ message: "Usuario actualizado" });
+		} catch (err) {
+			res.status(500).json({ error: "Error al actualizar el usuario" });
+		}
+	},
+);
 
 export default router;

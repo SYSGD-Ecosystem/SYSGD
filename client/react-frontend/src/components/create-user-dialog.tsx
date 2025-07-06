@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
+import { useUsers } from "@/hooks/connection/useUsers"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -25,6 +26,7 @@ interface CreateUserDialogProps {
 }
 
 export function CreateUserDialog({ open, onOpenChange, onUserCreated }: CreateUserDialogProps) {
+  const { createUser } = useUsers()
   const [formData, setFormData] = useState<CreateUserData>({
     name: "",
     username: "",
@@ -48,13 +50,7 @@ export function CreateUserDialog({ open, onOpenChange, onUserCreated }: CreateUs
 
     setLoading(true)
     try {
-      // Simular API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      const newUser: User = {
-        id: Date.now(), // En producción sería generado por la BD
-        ...formData,
-      }
+      const newUser = await createUser(formData as CreateUserData)
 
       onUserCreated(newUser)
       onOpenChange(false)

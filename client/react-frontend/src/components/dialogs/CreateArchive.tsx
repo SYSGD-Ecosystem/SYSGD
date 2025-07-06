@@ -6,7 +6,7 @@ import useConnection from "../../hooks/connection/useConnection";
 import { IoCloseCircle } from "react-icons/io5";
 import { toast } from "sonner";
 
-const CreateArchiving: FC<{ onClose: () => void }> = ({ onClose }) => {
+const CreateArchiving: FC<{ onClose: () => void,onCreate: () => void }> = ({ onClose,onCreate }) => {
 	const [company, setCompany] = useState("");
 	const [name, setName] = useState("");
 	const [code, setCode] = useState("");
@@ -20,6 +20,7 @@ const CreateArchiving: FC<{ onClose: () => void }> = ({ onClose }) => {
 			name,
 			() => {
 				toast.success("Archivo de Gestión creado correctamente");
+				onCreate();
 				onClose();
 			},
 			() => {

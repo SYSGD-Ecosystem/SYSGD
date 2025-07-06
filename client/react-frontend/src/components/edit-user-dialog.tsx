@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
+import { useUsers } from "@/hooks/connection/useUsers"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -26,6 +27,7 @@ interface EditUserDialogProps {
 }
 
 export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: EditUserDialogProps) {
+  const { updateUser } = useUsers()
   const [formData, setFormData] = useState<UpdateUserData>({})
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
@@ -36,8 +38,7 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
 
     setLoading(true)
     try {
-      // Simular API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await updateUser(user.id, formData)
 
       const updatedUser: User = {
         ...user,

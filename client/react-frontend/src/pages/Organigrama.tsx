@@ -1,13 +1,19 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Building2, Users, Download, Maximize2 } from "lucide-react"
+import { Building2, Users, Download, Maximize2, Pencil } from "lucide-react"
 import { useState } from "react"
+import { OrganizationEditorDialog } from "../components/organization-editor-dialog"
+import { useOrganizationChart } from "../hooks/connection/useOrganizationChart"
 import { OrganigramaTree } from "../components/organigrama-tree"
-import { organizationData } from "../data/organigrama-eolico"
+// Remove static data, will fetch from backend
+
 
 export default function OrganigramaPage() {
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const fileId = "1" // TODO: obtener id real vía prop o ruta
+  const { data: organizationData, loading, refetch, save } = useOrganizationChart(fileId)
+  const [editorOpen, setEditorOpen] = useState(false)
 
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   const countEmployees = (employee: any): number => {
@@ -22,7 +28,7 @@ export default function OrganigramaPage() {
     return count
   }
 
-  const totalEmployees = countEmployees(organizationData)
+  const totalEmployees = organizationData ? countEmployees(organizationData) : 0
 
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen)
@@ -55,6 +61,10 @@ export default function OrganigramaPage() {
                   <Maximize2 className="h-4 w-4 mr-2" />
                   {isFullscreen ? "Vista normal" : "Pantalla completa"}
                 </Button>
+                <Button variant="outline" size="sm" onClick={() => setEditorOpen(true)}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Editar
+                </Button>
                 <Button variant="outline" size="sm">
                   <Download className="h-4 w-4 mr-2" />
                   Exportar
@@ -70,7 +80,9 @@ export default function OrganigramaPage() {
             <div className="flex justify-center">
               <div className="overflow-x-auto w-full">
                 <div className="min-w-max px-4 py-8">
-                  <OrganigramaTree employee={organizationData} />
+                  {organizationData && <OrganigramaTree employee={organizationData} />}
+                  {!loading && !organizationData && <p className="text-muted-foreground">No hay datos de organigrama.</p>}
+                  {loading && <p className="text-muted-foreground">Cargando...</p>}
                 </div>
               </div>
             </div>
@@ -107,6 +119,15 @@ export default function OrganigramaPage() {
           </CardContent>
         </Card>
       </div>
+    <OrganizationEditorDialog
+        open={editorOpen}
+        onOpenChange={(o) => setEditorOpen(o)}
+        initialData={organizationData}
+        onSave={async (tree) => {
+          await save(tree)
+          refetch()
+        }}
+      />
     </div>
   )
 }

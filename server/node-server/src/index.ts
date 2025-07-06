@@ -5,7 +5,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { Pool } from "pg";
 import { initDatabase } from "./initDatabase";
-import classificationRoutes from "./routes/api";
+import routes from "./routes";
 import session from "express-session";
 import passport from "passport";
 import "./passport";
@@ -57,7 +57,6 @@ if (
 	CLIENT_HOST === "http://127.0.0.1:5173" ||
 	CLIENT_HOST === "http://localhost:5173"
 ) {
-	console.log("Recibiendo...");
 	app.use(
 		session({
 			secret: SECRET_SESSION,
@@ -136,10 +135,10 @@ app.get("/api/profile", (req, res) => {
 	}
 });
 
+
+app.use("/api", routes);
+
 setupSwagger(app);
-
-app.use("/api", classificationRoutes);
-
 // Ruta raíz que sirve la página de bienvenida desde un archivo externo
 app.get("/", (_req, res) => {
 	const filePath = path.join(__dirname, "../public/index.html");

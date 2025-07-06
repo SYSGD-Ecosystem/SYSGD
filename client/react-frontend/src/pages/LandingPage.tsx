@@ -43,7 +43,7 @@ export default function LandingPage() {
 			icon: FileText,
 			title: "Gestión Documental",
 			description:
-				"Organiza y clasifica todos tus documentos de manera eficiente con nuestro sistema de cuadros de clasificación.",
+				"Organiza y clasifica todos tus documentos de manera eficiente con nuestro Sistema de Gestión Documental.",
 		},
 		{
 			icon: Database,
@@ -142,7 +142,7 @@ export default function LandingPage() {
 							</a>
 							<a
 								href="#testimonials"
-								className="text-muted-foreground hover:text-foreground transition-colors"
+								className="text-muted-foreground hover:text-foreground transition-colors hidden"
 							>
 								Testimonios
 							</a>
@@ -202,7 +202,7 @@ export default function LandingPage() {
 								</a>
 								<a
 									href="#testimonials"
-									className="text-muted-foreground hover:text-foreground transition-colors"
+									className="text-muted-foreground hover:text-foreground transition-colors hidden"
 								>
 									Testimonios
 								</a>
@@ -232,12 +232,12 @@ export default function LandingPage() {
 			<section className="py-20 px-4 sm:px-6 h-screen flex flex-col items-center justify-center lg:px-8">
 				<div className="max-w-7xl mx-auto text-center">
 					<Badge variant="secondary" className="mb-4">
-						🚀 Nueva versión disponible
+						🚀 Versión beta disponible
 					</Badge>
 					<h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
 						Sistema de Gestión
 						<br />
-						<span className="text-primary">Documental Inteligente</span>
+						<span className="text-primary">Documental</span>
 					</h1>
 					<p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
 						Transforma la manera en que tu organización maneja documentos. SYSGD
@@ -251,11 +251,11 @@ export default function LandingPage() {
 								<ArrowRight className="w-4 h-4 ml-2" />
 							</Link>
 						</Button>
-						<Button size="lg" variant="outline" asChild>
+						<Button className="hidden" size="lg" variant="outline" asChild>
 							<Link to="/demo">Ver Demo</Link>
 						</Button>
 					</div>
-					<p className="text-sm text-muted-foreground mt-4">
+					<p className="text-sm text-muted-foreground mt-4 hidden">
 						✨ Prueba gratuita de 30 días • Sin tarjeta de crédito •
 						Configuración en 5 minutos
 					</p>
@@ -350,7 +350,7 @@ export default function LandingPage() {
 			{/* Testimonials Section */}
 			<section
 				id="testimonials"
-				className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/30"
+				className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/30 hidden"
 			>
 				<div className="max-w-7xl mx-auto">
 					<div className="text-center mb-16">
@@ -451,16 +451,16 @@ export default function LandingPage() {
 								</Button>
 							</div>
 						</div>
-						<div>
+						<div className="">
 							<h3 className="font-semibold mb-4">Producto</h3>
 							<div className="space-y-2 text-sm text-muted-foreground">
 								<div>Características</div>
-								<div>Precios</div>
+								<div>Beneficios</div>
 								<div>Integraciones</div>
 								<div>API</div>
 							</div>
 						</div>
-						<div>
+						<div className="">
 							<h3 className="font-semibold mb-4">Soporte</h3>
 							<div className="space-y-2 text-sm text-muted-foreground">
 								<div>Documentación</div>
