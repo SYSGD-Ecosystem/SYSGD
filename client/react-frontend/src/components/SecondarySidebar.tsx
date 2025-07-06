@@ -1,8 +1,6 @@
 import type { FC } from "react";
 import { twMerge } from "tailwind-merge";
 import ToolBar from "./ToolBar";
-import { spanish } from "../lang/spanish";
-import HelpCard from "./HelpCard";
 
 const SecondarySidebar: FC<{ className?: string }> = ({ className }) => {
   return (
@@ -15,7 +13,7 @@ const SecondarySidebar: FC<{ className?: string }> = ({ className }) => {
       <div className="flex size-full flex-col overflow-auto">
         <ToolBar className="w-full border-y justify-end" />
         <div className="flex flex-col gap-2 p-2">
-          <HelpCard title={spanish.code} content={spanish.help_document_code} />
+          {/* <HelpCard title={spanish.code} content={spanish.help_document_code} /> */}
         </div>
       </div>
     </div>

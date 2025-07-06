@@ -1,11 +1,12 @@
 import { useEffect, type FC } from "react";
 import { Button } from "./ui/button";
-import { Plus, SaveAll } from "lucide-react";
+import { AlertCircle, FileIcon, Plus, SaveAll } from "lucide-react";
 import useEditableTable from "@/hooks/useEditableTable";
 import Table, { Td } from "./BasicTableComponents";
 import useConnection from "@/hooks/connection/useConnection";
 import useGetEntryRegister from "@/hooks/connection/useGetEntryRegister";
 import { useToast } from "@/hooks/use-toast";
+import Loading from "./Loading";
 
 export type RegistroDeEntradaData = {
 	numero_registro: string;
@@ -39,7 +40,7 @@ const RegistroDeEntrada: FC<RegistroDeEntradaProps> = ({
 			},
 		]);
 	const { handleNewDocumentEntry } = useConnection();
-	const { entry } = useGetEntryRegister(archiveId);
+	const { entry, error, loading } = useGetEntryRegister(archiveId);
 	const { toast } = useToast();
 
 	const handleSaveData = (data: string) => {
@@ -74,6 +75,34 @@ const RegistroDeEntrada: FC<RegistroDeEntradaProps> = ({
 			});
 		}
 	}, [entry, archiveId]);
+
+	if (error) {
+		return (
+			<div className="flex flex-col size-full bg-slate-200 dark:bg-slate-950 items-center justify-center">
+				{error === "500" ? (
+					<div className="flex flex-col text-xl text-red-500 items-center justify-center gap-2">
+						<AlertCircle />
+						<span>Internal Server Error</span>
+					</div>
+				) : (
+					<div className="text-slate-700 text-xl font-light dark:text-slate-300 flex items-center justify-center flex-col gap-2">
+						<FileIcon size={48} />
+						<span className="">
+							Por favor, Seleccione un Archivo de Gestión
+						</span>
+					</div>
+				)}
+			</div>
+		);
+	}
+
+	if (loading) {
+		return (
+			<div className="flex flex-col size-full bg-slate-200 dark:bg-slate-950 items-center justify-center">
+				<Loading />
+			</div>
+		);
+	}
 
 	return (
 		<div className="size-full flex flex-col overflow-auto">
