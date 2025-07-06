@@ -40,7 +40,14 @@ if (allowedOrigins.length === 0) {
 	console.log("Usando CORS con orígenes permitidos:", allowedOrigins);
 	app.use(
 		cors({
-			origin: allowedOrigins,
+			origin: (origin, callback) => {
+				if (!origin) return callback(null, true); // allow non-browser requests
+				if (allowedOrigins.includes(origin)) {
+					callback(null, true);
+				} else {
+					callback(new Error("CORS no permitido"));
+				}
+			},
 			credentials: true,
 		}),
 	);
@@ -65,6 +72,8 @@ if (
 		}),
 	);
 } else {
+	console.log("Recibiendo en producción...");
+	app.set("trust proxy", 1);
 	app.use(
 		session({
 			secret: SECRET_SESSION,
