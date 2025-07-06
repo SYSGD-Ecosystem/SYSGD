@@ -68,23 +68,26 @@ const ExitRegister: FC<ExitRegisterProps> = ({
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	useEffect(() => {
-		if (exit) {
-			exit.map((props: { exit_register: ExitRegisterData[] }) => {
-				if (props.exit_register) {
-					setPrevious(props.exit_register);
-				} else {
-					setPrevious([
-						{
-							no_exit_register: "",
-							fecha: "",
-							no_registro_entrada: "",
-							serie_documental: "",
-							sujeto_productor: "",
-							causa_de_salida: "",
-						},
-					]);
-				}
-			});
+		if (exit && Array.isArray(exit)) {
+			// Combina todos los exit_register de cada objeto en un solo array
+			const allRegisters = exit
+				.filter((item) => Array.isArray(item.exit_register))
+				.flatMap((item) => item.exit_register);
+
+			if (allRegisters.length > 0) {
+				setPrevious(allRegisters);
+			} else {
+				setPrevious([
+					{
+						no_exit_register: "",
+						fecha: "",
+						no_registro_entrada: "",
+						serie_documental: "",
+						sujeto_productor: "",
+						causa_de_salida: "",
+					},
+				]);
+			}
 		}
 	}, [exit, archiveId]);
 

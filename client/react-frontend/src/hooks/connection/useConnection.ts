@@ -29,6 +29,13 @@ type useConnectionReturnType = {
 		onSuccess: () => void,
 		onFail: () => void,
 	) => Promise<void>;
+
+	handleNewDocumentLoan: (
+		data: string,
+		id: string,
+		onSuccess: () => void,
+		onFail: () => void,
+	) => Promise<void>;
 };
 
 const useConnection = (): useConnectionReturnType => {
@@ -135,11 +142,38 @@ const useConnection = (): useConnectionReturnType => {
 		}
 	};
 
+	const handleNewDocumentLoan = async (
+		data: string,
+		id: string,
+		onSuccess: () => void,
+		onFail: () => void,
+	) => {
+		try {
+			const res = await fetch(`${serverUrl}/api/add-document-loan`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include",
+				body: JSON.stringify({ data, id }),
+			});
+
+			if (res.ok) onSuccess();
+			else {
+				const text = await res.text();
+				console.error(text);
+				onFail();
+			}
+		} catch (e) {
+			console.error("Error al guardar el préstamo:", e);
+			onFail();
+		}
+	};
+
 	return {
 		handleNewArchiving,
 		handleAddClassificationBoxData,
 		handleNewDocumentEntry,
 		handleNewDocumentExit,
+		handleNewDocumentLoan,
 	};
 };
 
