@@ -18,6 +18,7 @@ import useAlertDialog from "../hooks/useAlertDialog";
 import RegistroDeEntrada, {
 	type RegistroDeEntradaData,
 } from "./RegistroDeEntrada";
+import ExitRegister from "./ExitRegister";
 
 const WorkSpace: FC<{ page: number }> = ({ page }) => {
 	const { DialogComponent, openDialog, closeDialog } = useDialog();
@@ -136,6 +137,12 @@ const WorkSpace: FC<{ page: number }> = ({ page }) => {
 							/>
 						) : page === 2 ? (
 							<RegistroDeEntrada
+								archiveId={archiveId}
+								company={company}
+								managementFile={archiveName}
+							/>
+						) : page === 3 ? (
+							<ExitRegister
 								archiveId={archiveId}
 								company={company}
 								managementFile={archiveName}

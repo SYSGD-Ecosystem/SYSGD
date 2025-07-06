@@ -166,6 +166,73 @@ router.get(
 	},
 );
 
+router.post("/add-document-exit", isAuthenticated, async (req, res) => {
+	const { id, data } = req.body;
+	console.log(req.body);
+	console.log(data);
+
+	if (!id || !data) {
+		res.status(400).json({ error: "Faltan campos obligatorios." });
+		return;
+	}
+
+	const user_id = req.session.user?.id;
+
+	if (!user_id) {
+		res.status(401).json({ error: "No estás autorizado." });
+		return;
+	}
+
+	const result = await pool.query(
+		"SELECT user_id FROM document_management_file WHERE id = $1",
+		[id],
+	);
+
+	if (
+		result.rows.length === 0 ||
+		(req.session.user?.privileges !== "admin" &&
+			result.rows[0].user_id !== user_id)
+	) {
+		res
+			.status(403)
+			.json({ error: "No tienes permisos para modificar este expediente." });
+		return;
+	}
+
+	try {
+		await pool.query(
+			"UPDATE document_management_file SET exit_register = $1 WHERE id = $2",
+			[data, id],
+		);
+		res.status(201).send("201");
+	} catch (err) {
+		res.status(500).send("500");
+	}
+});
+
+// GET /api/get-document-exit?id=123
+router.get(
+	"/get-document-exit",
+	isAuthenticated,
+	async (req: Request, res: Response) => {
+		const { id } = req.query;
+		if (typeof id !== "string") {
+			res.status(400).json({ error: "Id inválido" });
+			return;
+		}
+		const user_id = req.session.user?.id;
+		try {
+			const result = await pool.query(
+				"SELECT exit_register FROM document_management_file WHERE id = $1 AND user_id = $2",
+				[id, user_id],
+			);
+			res.json(result.rows);
+		} catch (err) {
+			res.status(500).json({ error: "Error al obtener los datos" });
+		}
+	},
+);
+
 /**
  * @swagger
  * /api/status:

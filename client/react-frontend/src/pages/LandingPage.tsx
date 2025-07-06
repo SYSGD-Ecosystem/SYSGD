@@ -22,7 +22,7 @@ import {
 	MapPin,
 	Star,
 	Zap,
-  Twitter,
+	Twitter,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -276,6 +276,7 @@ export default function LandingPage() {
 					</div>
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
 						{features.map((feature, index) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
 							<Card key={index} className="hover:shadow-lg transition-shadow">
 								<CardHeader>
 									<div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
@@ -306,6 +307,7 @@ export default function LandingPage() {
 							</p>
 							<div className="space-y-4">
 								{benefits.map((benefit, index) => (
+									// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
 									<div key={index} className="flex items-start gap-3">
 										<CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
 										<span>{benefit}</span>
@@ -362,11 +364,13 @@ export default function LandingPage() {
 					</div>
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
 						{testimonials.map((testimonial, index) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
 							<Card key={index} className="hover:shadow-lg transition-shadow">
 								<CardHeader>
 									<div className="flex items-center gap-1 mb-2">
 										{[...Array(testimonial.rating)].map((_, i) => (
 											<Star
+												// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
 												key={i}
 												className="w-4 h-4 fill-yellow-400 text-yellow-400"
 											/>
@@ -433,12 +437,17 @@ export default function LandingPage() {
 							</p>
 							<div className="flex gap-2">
 								<Button variant="ghost" size="sm">
-									<Github className="w-4 h-4" />
+									<Link
+										target="_blank"
+										to="https://github.com/lazaroysr96/sysgd/"
+									>
+										<Github className="w-4 h-4" />
+									</Link>
 								</Button>
 								<Button variant="ghost" size="sm">
-                  <Link to="https://x.com/SYSGD_">
-									<Twitter className="w-4 h-4" />
-                  </Link>
+									<Link target="_blank" to="https://x.com/SYSGD_">
+										<Twitter className="w-4 h-4" />
+									</Link>
 								</Button>
 							</div>
 						</div>

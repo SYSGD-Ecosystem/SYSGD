@@ -64,9 +64,9 @@ if (
 			resave: false,
 			saveUninitialized: false,
 			cookie: {
-				secure: false, // true en producción con HTTPS
+				secure: false,
 				maxAge: 1000 * 60 * 60 * 24,
-				sameSite: "lax", // o "none" si el front está en otro dominio
+				sameSite: "lax",
 				httpOnly: true,
 			},
 		}),
@@ -80,10 +80,10 @@ if (
 			resave: false,
 			saveUninitialized: false,
 			cookie: {
-				secure: true, // 🚨 REQUIERE HTTPS, y Railway lo tiene por default
-				sameSite: "none", // Permite cookies en cross-origin
+				secure: true,
+				sameSite: "none",
 				maxAge: 1000 * 60 * 60 * 24,
-				httpOnly: true, // Permite acceso desde el frontend
+				httpOnly: true,
 			},
 		}),
 	);

@@ -12,6 +12,7 @@ import EditableSpreadsheet from "./pages/Sheet.tsx";
 import { Toaster } from "./components/ui/toaster.tsx";
 import AdminDashboard from "./pages/admin-dashboard.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
+import SYSGDDashboard from "./pages/Demo.tsx";
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(
@@ -25,7 +26,7 @@ createRoot(document.getElementById("root")!).render(
       <Route path="/error" element={<ErrorServer/>}/>
       <Route path="/organigrama" element={<OrganigramaPage />} />
       <Route path="/table" element={<EditableSpreadsheet />} />
-      <Route path="/demo" element={<DevPreview />} />
+      <Route path="/demo" element={<SYSGDDashboard />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/admin" element={<AdminDashboard />} />
     </Routes>

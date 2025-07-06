@@ -22,6 +22,13 @@ type useConnectionReturnType = {
 		onSuccess: () => void,
 		onFail: () => void,
 	) => Promise<void>;
+
+	handleNewDocumentExit: (
+		data: string,
+		id: string,
+		onSuccess: () => void,
+		onFail: () => void,
+	) => Promise<void>;
 };
 
 const useConnection = (): useConnectionReturnType => {
@@ -33,15 +40,12 @@ const useConnection = (): useConnectionReturnType => {
 		onFail: () => void,
 	) => {
 		try {
-			const res = await fetch(
-				`${serverUrl}/api/create`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					credentials: "include",
-					body: JSON.stringify({ code, company, name }),
-				},
-			);
+			const res = await fetch(`${serverUrl}/api/create`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include",
+				body: JSON.stringify({ code, company, name }),
+			});
 			if (res.ok) onSuccess();
 			else {
 				const text = await res.text();
@@ -81,7 +85,7 @@ const useConnection = (): useConnectionReturnType => {
 
 	const handleNewDocumentEntry = async (
 		data: string,
-		id:string,
+		id: string,
 		onSuccess: () => void,
 		onFail: () => void,
 	) => {
@@ -105,7 +109,38 @@ const useConnection = (): useConnectionReturnType => {
 		}
 	};
 
-	return { handleNewArchiving, handleAddClassificationBoxData, handleNewDocumentEntry };
+	const handleNewDocumentExit = async (
+		data: string,
+		id: string,
+		onSuccess: () => void,
+		onFail: () => void,
+	) => {
+		try {
+			const res = await fetch(`${serverUrl}/api/add-document-exit`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include",
+				body: JSON.stringify({ data, id }),
+			});
+
+			if (res.ok) onSuccess();
+			else {
+				const text = await res.text();
+				console.error(text);
+				onFail();
+			}
+		} catch (e) {
+			console.error("Error al guardar el registro:", e);
+			onFail();
+		}
+	};
+
+	return {
+		handleNewArchiving,
+		handleAddClassificationBoxData,
+		handleNewDocumentEntry,
+		handleNewDocumentExit,
+	};
 };
 
 export default useConnection;

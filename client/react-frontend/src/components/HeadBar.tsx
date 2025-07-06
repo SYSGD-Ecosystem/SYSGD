@@ -2,6 +2,7 @@ import type { FC } from "react";
 import { IoIosApps } from "react-icons/io";
 import UserProfileTrigger from "./UserProfileTrigger";
 import ButtonSwitchTheme from "./ButtonSwitchTheme";
+import { Link } from "react-router-dom";
 
 const HeadBar: FC = () => {
   return (
@@ -10,7 +11,7 @@ const HeadBar: FC = () => {
         <div>
           <IoIosApps size={24} className="text-slate-900 dark:text-slate-100" />
         </div>
-        <div className="text-slate-800 dark:text-white w-full text-lg font-medium">SYSGD</div>
+        <Link to="/" className="text-slate-800 dark:text-white w-full text-lg font-medium">SYSGD</Link>
       </div>
       <UserProfileTrigger/>
       <ButtonSwitchTheme/>
