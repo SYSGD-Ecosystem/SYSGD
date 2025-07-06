@@ -1,6 +1,6 @@
 import { useEffect, type FC } from "react";
 import { Button } from "./ui/button";
-import { AlertCircle, FileBoxIcon, Plus, SaveAll } from "lucide-react";
+import { AlertCircle, FileIcon, Plus, SaveAll } from "lucide-react";
 import useEditableTable from "@/hooks/useEditableTable";
 import Table, { Td } from "./BasicTableComponents";
 import useConnection from "@/hooks/connection/useConnection";
@@ -102,7 +102,7 @@ const ExitRegister: FC<ExitRegisterProps> = ({
 					</div>
 				) : (
 					<div className="text-slate-700 text-xl font-light dark:text-slate-300 flex items-center justify-center flex-col gap-2">
-						<FileBoxIcon size={48} />
+						<FileIcon size={48} />
 						<span className="">
 							Por favor, Seleccione un Archivo de Gestión
 						</span>

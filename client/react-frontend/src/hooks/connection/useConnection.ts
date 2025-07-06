@@ -43,6 +43,13 @@ type useConnectionReturnType = {
 		onSuccess: () => void,
 		onFail: () => void,
 	) => Promise<void>;
+
+	handleNewRetentionSchedule: (
+		data: string,
+		id: string,
+		onSuccess: () => void,
+		onFail: () => void,
+	) => Promise<void>;
 };
 
 const useConnection = (): useConnectionReturnType => {
@@ -201,6 +208,26 @@ const useConnection = (): useConnectionReturnType => {
 		}
 	};
 
+	const handleNewRetentionSchedule = async (
+		data: string,
+		id: string,
+		onSuccess: () => void,
+		onFail: () => void,
+	) => {
+		try {
+			const res = await fetch(`${serverUrl}/api/add-retention-schedule`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include",
+				body: JSON.stringify({ data, id }),
+			});
+			if (res.ok) onSuccess();
+			else onFail();
+		} catch (e) {
+			onFail();
+		}
+	};
+
 	return {
 		handleNewArchiving,
 		handleAddClassificationBoxData,
@@ -208,6 +235,7 @@ const useConnection = (): useConnectionReturnType => {
 		handleNewDocumentExit,
 		handleNewDocumentLoan,
 		handleNewTopographicRegister,
+		handleNewRetentionSchedule,
 	};
 };
 

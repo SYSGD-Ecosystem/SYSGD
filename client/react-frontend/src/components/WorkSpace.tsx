@@ -1,5 +1,4 @@
 import { type FC, useEffect, useState } from "react";
-import DocumentRetentionTable from "./DocumentRetentionTable";
 import SecondarySidebar from "./SecondarySidebar";
 import IconButton from "./IconButton";
 import { IoFileTray, IoPrint } from "react-icons/io5";
@@ -19,6 +18,7 @@ import RegistroDeEntrada from "./RegistroDeEntrada";
 import ExitRegister from "./ExitRegister";
 import LoanRegister from "./LoanRegister";
 import TopographicRegister from "./TopographicRegister";
+import RetentionScheduleTable from "./RetentionScheduleTable";
 
 const WorkSpace: FC<{ page: number }> = ({ page }) => {
 	const { DialogComponent, openDialog, closeDialog } = useDialog();
@@ -125,15 +125,10 @@ const WorkSpace: FC<{ page: number }> = ({ page }) => {
 								archiveName={archiveName}
 							/>
 						) : page === 1 ? (
-							<DocumentRetentionTable
+							<RetentionScheduleTable
+								archiveId={archiveId}
 								company={company}
 								managementFile={archiveName}
-								data={[
-									{
-										code: "",
-										document: "",
-									},
-								]}
 							/>
 						) : page === 2 ? (
 							<RegistroDeEntrada

@@ -251,23 +251,3 @@ const TableHeading: FC = () => {
 		</>
 	);
 };
-/*
-const TableRow: FC<RegistroDeEntradaData> = ({
-	numero_registro,
-	fecha,
-	tipo_documento,
-	titulo,
-	sujeto_productor,
-	observaciones,
-}) => {
-	return (
-		<tr className="">
-			<Td label={numero_registro} />
-			<Td label={fecha} />
-			<Td label={tipo_documento} />
-			<Td label={sujeto_productor} />
-			<Td label={titulo} />
-			<Td label={observaciones ?? ""} />
-		</tr>
-	);
-};*/

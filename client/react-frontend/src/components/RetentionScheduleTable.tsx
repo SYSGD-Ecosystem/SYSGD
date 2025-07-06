@@ -3,44 +3,46 @@ import Table, { Td } from "./BasicTableComponents";
 import useEditableTable from "../hooks/useEditableTable";
 import useConnection from "../hooks/connection/useConnection";
 import { useToast } from "../hooks/use-toast";
-import useGetTopographicRegister from "../hooks/connection/useGetTopographicRegister";
-import type { TopographicRegisterData } from "../types/TopographicRegister";
+import useGetRetentionSchedule from "../hooks/connection/useGetRetentionSchedule";
+import type { RetentionScheduleData } from "../types/RetentionSchedule";
 import { Button } from "./ui/button";
 import { AlertCircle, FileIcon, Plus, SaveAll } from "lucide-react";
 import Loading from "./Loading";
 
-export type TopographicRegisterProps = {
+export interface RetentionScheduleProps {
 	archiveId: string;
 	company: string;
 	managementFile: string;
+}
+
+const emptyRow: RetentionScheduleData = {
+	codigo: "",
+	serie_documental: "",
+	valoracion_t: "",
+	valoracion_p: "",
+	soporte_p: "",
+	soporte_d: "",
+	acceso_l: "",
+	acceso_r: "",
+	plazo_ag: "",
+	plazo_ac: "",
+	observaciones: "",
 };
 
-const TopographicRegister: FC<TopographicRegisterProps> = ({
+const RetentionScheduleTable: FC<RetentionScheduleProps> = ({
 	archiveId,
 	company,
 	managementFile,
 }) => {
 	const { rows, addRow, updateRow, saveAllRows, setPrevious } =
-		useEditableTable<TopographicRegisterData>([
-			{
-				codigo_oficina: "",
-				serie_documental: "",
-				fecha_mas_antigua: "",
-				fecha_mas_reciente: "",
-				deposito: "",
-				gaveta: "",
-				soporte_digital_pc_carpeta: "",
-				tipo_ordenamiento: "",
-			},
-		]);
-
-	const { handleNewTopographicRegister } = useConnection();
-	const { topographic, error, loading } = useGetTopographicRegister(archiveId);
+		useEditableTable<RetentionScheduleData>([emptyRow]);
+	const { handleNewRetentionSchedule } = useConnection();
+	const { schedule, error, loading } = useGetRetentionSchedule(archiveId);
 	const { toast } = useToast();
 
 	const handleSaveData = (data: string) => {
 		if (!data) return;
-		handleNewTopographicRegister(
+		handleNewRetentionSchedule(
 			data,
 			archiveId,
 			() => toast({ title: "Guardado" }),
@@ -48,18 +50,15 @@ const TopographicRegister: FC<TopographicRegisterProps> = ({
 				toast({
 					variant: "destructive",
 					title: "Error",
-					description: "No se pudo guardar",
+					description: "No se pudo guardar la TRD",
 				}),
 		);
 	};
 
-	// cargamos datos previos
 	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	useEffect(() => {
-		if (topographic && topographic.length > 0) {
-			setPrevious(topographic);
-		}
-	}, [topographic, archiveId]);
+		if (schedule && schedule.length > 0) setPrevious(schedule);
+	}, [schedule, archiveId]);
 
 	if (error) {
 		return (
@@ -100,7 +99,7 @@ const TopographicRegister: FC<TopographicRegisterProps> = ({
 									<th colSpan={11} className="py-2">
 										<div className="flex">
 											<div className="w-full">ANEXO</div>
-											<div className="w-full text-right"> A6</div>
+											<div className="w-full text-right"> A2</div>
 										</div>
 									</th>
 								</tr>
@@ -109,7 +108,7 @@ const TopographicRegister: FC<TopographicRegisterProps> = ({
 										colSpan={11}
 										className="text-center py-2 text-base uppercase"
 									>
-										REGISTRO TOPOGRÁFICO DE ARCHIVOS DE OFICINA
+										TABLA DE RETENCIÓN DOCUMENTAL
 									</th>
 								</tr>
 								<tr>
@@ -123,130 +122,134 @@ const TopographicRegister: FC<TopographicRegisterProps> = ({
 										</div>
 									</th>
 								</tr>
+								{/* Encabezado de dos filas */}
 								<tr className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-slate-900 dark:text-gray-400">
 									<th
 										rowSpan={2}
-										className="p-2 border dark:border-gray-700 min-w-20 text-center"
+										className="p-2 border dark:border-gray-700 min-w-24"
 									>
-										Código Oficina
+										Código
 									</th>
 									<th
 										rowSpan={2}
-										className="p-2 border dark:border-gray-700 min-w-36"
+										className="p-2 border dark:border-gray-700 min-w-44 text-left"
 									>
-										Serie Documental
+										Series y Subseries Documentales
 									</th>
 									<th
 										colSpan={2}
-										className="p-2 border dark:border-gray-700 min-w-32 text-center"
-									>
-										Fechas Extremas
-									</th>
-									<th
-										colSpan={3}
 										className="p-2 border dark:border-gray-700 text-center"
 									>
-										Datos de Localización Física
+										Valoración
+									</th>
+									<th
+										colSpan={2}
+										className="p-2 border dark:border-gray-700 text-center"
+									>
+										Soporte
+									</th>
+									<th
+										colSpan={2}
+										className="p-2 border dark:border-gray-700 text-center"
+									>
+										Acceso
+									</th>
+									<th
+										colSpan={2}
+										className="p-2 border dark:border-gray-700 text-center"
+									>
+										Plazo de Retención
 									</th>
 									<th
 										rowSpan={2}
-										className="p-2 border dark:border-gray-700 text-center"
+										className="p-2 border dark:border-gray-700 min-w-32"
 									>
-										Tipo de Ordenamiento
+										Observaciones
 									</th>
 								</tr>
 								<tr className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-slate-900 dark:text-gray-400">
-									<th className="p-2 border dark:border-gray-700 text-center">
-										Más antigua
-									</th>
-									<th className="p-2 border dark:border-gray-700 text-center">
-										Más reciente
-									</th>
-									<th className="p-2 border dark:border-gray-700 text-center">
-										Depósito
-									</th>
-									<th className="p-2 border dark:border-gray-700 text-center">
-										Gaveta
-									</th>
-									<th className="p-2 border dark:border-gray-700 text-center">
-										Soporte digital PC/Carpeta
-									</th>
+									<th className="p-2 border dark:border-gray-700">T</th>
+									<th className="p-2 border dark:border-gray-700">P</th>
+									<th className="p-2 border dark:border-gray-700">P</th>
+									<th className="p-2 border dark:border-gray-700">D</th>
+									<th className="p-2 border dark:border-gray-700">L</th>
+									<th className="p-2 border dark:border-gray-700">R</th>
+									<th className="p-2 border dark:border-gray-700">AG</th>
+									<th className="p-2 border dark:border-gray-700">AC</th>
 								</tr>
 							</thead>
 							<tbody>
-								{rows.map((row, index) => (
+								{rows.map((row, i) => (
 									// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-									<tr key={index}>
+									<tr key={i}>
 										<Td
-											label={row.codigo_oficina}
+											label={row.codigo}
 											onBlur={(e) =>
-												updateRow(
-													index,
-													"codigo_oficina",
-													e.currentTarget.innerText,
-												)
+												updateRow(i, "codigo", e.currentTarget.innerText)
 											}
 										/>
 										<Td
 											label={row.serie_documental}
 											onBlur={(e) =>
 												updateRow(
-													index,
+													i,
 													"serie_documental",
 													e.currentTarget.innerText,
 												)
 											}
 										/>
 										<Td
-											label={row.fecha_mas_antigua}
+											label={row.valoracion_t}
 											onBlur={(e) =>
-												updateRow(
-													index,
-													"fecha_mas_antigua",
-													e.currentTarget.innerText,
-												)
+												updateRow(i, "valoracion_t", e.currentTarget.innerText)
 											}
 										/>
 										<Td
-											label={row.fecha_mas_reciente}
+											label={row.valoracion_p}
 											onBlur={(e) =>
-												updateRow(
-													index,
-													"fecha_mas_reciente",
-													e.currentTarget.innerText,
-												)
+												updateRow(i, "valoracion_p", e.currentTarget.innerText)
 											}
 										/>
 										<Td
-											label={row.deposito}
+											label={row.soporte_p}
 											onBlur={(e) =>
-												updateRow(index, "deposito", e.currentTarget.innerText)
+												updateRow(i, "soporte_p", e.currentTarget.innerText)
 											}
 										/>
 										<Td
-											label={row.gaveta}
+											label={row.soporte_d}
 											onBlur={(e) =>
-												updateRow(index, "gaveta", e.currentTarget.innerText)
+												updateRow(i, "soporte_d", e.currentTarget.innerText)
 											}
 										/>
 										<Td
-											label={row.soporte_digital_pc_carpeta}
+											label={row.acceso_l}
 											onBlur={(e) =>
-												updateRow(
-													index,
-													"soporte_digital_pc_carpeta",
-													e.currentTarget.innerText,
-												)
+												updateRow(i, "acceso_l", e.currentTarget.innerText)
 											}
 										/>
 										<Td
-											label={row.tipo_ordenamiento}
+											label={row.acceso_r}
 											onBlur={(e) =>
-												updateRow(
-													index,
-													"tipo_ordenamiento",
-													e.currentTarget.innerText,
-												)
+												updateRow(i, "acceso_r", e.currentTarget.innerText)
+											}
+										/>
+										<Td
+											label={row.plazo_ag}
+											onBlur={(e) =>
+												updateRow(i, "plazo_ag", e.currentTarget.innerText)
+											}
+										/>
+										<Td
+											label={row.plazo_ac}
+											onBlur={(e) =>
+												updateRow(i, "plazo_ac", e.currentTarget.innerText)
+											}
+										/>
+										<Td
+											label={row.observaciones}
+											onBlur={(e) =>
+												updateRow(i, "observaciones", e.currentTarget.innerText)
 											}
 										/>
 									</tr>
@@ -272,4 +275,4 @@ const TopographicRegister: FC<TopographicRegisterProps> = ({
 	);
 };
 
-export default TopographicRegister;
+export default RetentionScheduleTable;

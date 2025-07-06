@@ -23,7 +23,7 @@ const BarButton: FC<BarButtonProps> = ({
       className={twMerge(
         "p-2 uppercase text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 w-full text-left text-xs font-medium flex gap-2 items-center",
         isSelected
-          ? "border-l-4 border-red-500 bg-slate-300 dark:bg-slate-700"
+          ? "border-l-4 border-green-500 bg-slate-300 dark:bg-slate-700"
           : ""
       )}
     >
