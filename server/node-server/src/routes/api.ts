@@ -953,4 +953,15 @@ router.put(
 	},
 );
 
+router.get("/user-count", async (_req: Request, res: Response) => {
+	try {
+		const result = await pool.query(
+			"SELECT COUNT(*) FROM users WHERE privileges <> 'admin'"
+		);
+		res.json({ count: Number(result.rows[0].count) });
+	} catch {
+		res.status(500).json({ error: "Error al obtener la cantidad de usuarios" });
+	}
+});
+
 export default router;

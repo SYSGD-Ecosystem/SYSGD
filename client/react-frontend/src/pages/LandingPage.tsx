@@ -25,10 +25,12 @@ import {
 	Twitter,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import useUserCount from "@/hooks/connection/useUserCount";
 
 export default function LandingPage() {
 	const [darkMode, setDarkMode] = useState(true);
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+	const { count, loading } = useUserCount();
 
 	useEffect(() => {
 		if (darkMode) {
@@ -325,9 +327,9 @@ export default function LandingPage() {
 								</div>
 							</Card>
 							<Card className="p-6 text-center">
-								<div className="text-3xl font-bold text-primary mb-2">500+</div>
+								<div className="text-3xl font-bold text-primary mb-2">{loading ? "Cargando..." : count}</div>
 								<div className="text-sm text-muted-foreground">
-									Empresas confían en nosotros
+									Usuarios registrados
 								</div>
 							</Card>
 							<Card className="p-6 text-center">
