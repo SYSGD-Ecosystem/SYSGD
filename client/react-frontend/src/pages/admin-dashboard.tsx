@@ -26,7 +26,7 @@ import type { User as UserType } from "../types/user"
 
 
 export default function AdminDashboard() {
-  const { users: fetchedUsers, loading, error, createUser, updateUser, deleteUser } = useUsers()
+  const { users: fetchedUsers, deleteUser } = useUsers()
   const users = fetchedUsers
   const [searchTerm, setSearchTerm] = useState("")
   const [editingUser, setEditingUser] = useState<UserType | null>(null)
