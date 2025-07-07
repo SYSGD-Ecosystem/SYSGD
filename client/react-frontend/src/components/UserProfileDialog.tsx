@@ -17,6 +17,7 @@ import { User, Shield, LogOut, Loader2, KeyRound, Palette } from "lucide-react";
 import useCurrentUser from "../hooks/connection/useCurrentUser";
 import useTheme from "../hooks/useTheme";
 import ButtonSwitchTheme from "./ButtonSwitchTheme";
+import { Link } from "react-router-dom";
 
 interface UserProfileDialogProps {
 	trigger?: React.ReactNode;
@@ -169,7 +170,22 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
 					</div>
 
 					<Separator />
-
+					{user.privileges.toLowerCase() === "admin" && (
+						<Button
+							variant="outline"
+							className="w-full mb-2"
+							asChild
+							onClick={() => setOpen(false)}
+						>
+							<Link
+								to="/admin"
+								className="flex items-center justify-center gap-2"
+							>
+								<Shield className="h-4 w-4" />
+								Administración
+							</Link>
+						</Button>
+					)}
 					<Button
 						variant="destructive"
 						className="w-full"
