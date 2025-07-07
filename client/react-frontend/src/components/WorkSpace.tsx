@@ -219,6 +219,7 @@ const WorkSpace: FC<{ page: number }> = ({ page }) => {
 			)}
 			{dialogDelete.AlertDialogComponent(() => {
 				deleteArchive(archiveId);
+				//TODO: Actualizar tras la eliminacion
 			}, `Desea eliminar el archivo de gestion ${archiveName}`)}
 		</div>
 	);

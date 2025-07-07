@@ -57,7 +57,7 @@ const Login: FC = () => {
           <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4 w-full">
             <div className="space-y-2">
               <Label htmlFor="user">Usuario:</Label>
-              <Input id="user" type="text" value={user} onChange={(e) => setUser(e.target.value)} className="w-full" />
+              <Input placeholder="user@email.com" id="user" type="text" value={user} onChange={(e) => setUser(e.target.value)} className="w-full" />
             </div>
 
             <div className="space-y-2">
@@ -65,6 +65,7 @@ const Login: FC = () => {
               <Input
                 id="password"
                 type="password"
+                placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full"

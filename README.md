@@ -33,11 +33,3 @@ git clone https://github.com/lazaroysr96/sysgd.git
 cd sysgd
 npm install
 ```
-
-## Uso
-
-Consulta la [documentación](docs/) para más detalles sobre la configuración y uso del sistema.
-
-## Licencia
-
-Este proyecto está bajo la licencia MIT.

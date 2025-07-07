@@ -26,7 +26,6 @@ const useGetEntryRegister = (entryId: string) => {
                 }
 
                 const data = await response.json();
-                console.log(data)
                 setEntry(data);
                 setError(null);
             // biome-ignore lint/suspicious/noExplicitAny: <explanation>

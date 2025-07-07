@@ -69,10 +69,25 @@ const RegistroDeEntrada: FC<RegistroDeEntradaProps> = ({
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	useEffect(() => {
-		if (entry) {
-			entry.map((props: { entry_register: RegistroDeEntradaData[] }) => {
-				setPrevious(props.entry_register);
-			});
+		if (entry && Array.isArray(entry)) {
+			const allRegisters = entry
+				.filter((item) => Array.isArray(item.entry_register))
+				.flatMap((item) => item.entry_register);
+
+			if (allRegisters.length > 0) {
+				setPrevious(allRegisters);
+			} else {
+				setPrevious([
+					{
+						numero_registro: "",
+						fecha: "",
+						tipo_documento: "",
+						sujeto_productor: "",
+						titulo: "",
+						observaciones: "",
+					},
+				]);
+			}
 		}
 	}, [entry, archiveId]);
 
