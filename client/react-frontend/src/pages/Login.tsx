@@ -157,7 +157,28 @@ const Login: FC = () => {
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             {success && <p className="text-green-500 text-sm text-center">¡Usuario registrado con éxito!</p>}
           </form>
-
+          <p className="text-xs text-slate-500 text-center mt-2">
+              Al registrarte, aceptas nuestros{" "}
+              <a
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline"
+              >
+                Términos y Condiciones
+              </a>{" "}
+              {" "}
+              y nuestra{" "}
+              <a
+                href="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline"
+              >
+                Política de Privacidad
+              </a>
+              .
+            </p>
           <div className="w-full flex items-center justify-center gap-2">
             <div className="flex-1 h-0.5 bg-slate-300" />
             <span className="text-xs text-slate-500 whitespace-nowrap">O CONTINUA CON</span>

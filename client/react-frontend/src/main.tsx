@@ -13,6 +13,8 @@ import { Toaster } from "./components/ui/toaster.tsx";
 import AdminDashboard from "./pages/admin-dashboard.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import SYSGDDashboard from "./pages/Demo.tsx";
+import TermsAndConditions from "./pages/Terms.tsx";
+import PrivacyPolicy from "./pages/Privacy.tsx";
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(
@@ -29,6 +31,8 @@ createRoot(document.getElementById("root")!).render(
       <Route path="/demo" element={<SYSGDDashboard />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/admin" element={<AdminDashboard />} />
+      <Route path="/terms" element={<TermsAndConditions />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
     </Routes>
     </BrowserRouter>
     <Toaster/>

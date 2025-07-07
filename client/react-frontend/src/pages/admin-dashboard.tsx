@@ -182,7 +182,7 @@ export default function AdminDashboard() {
                         <span>{user.name}</span>
                       </div>
                     </TableCell>
-                    <TableCell>@{user.username}</TableCell>
+                    <TableCell>{user.username}</TableCell>
                     <TableCell>
                       <Badge variant={user.privileges === "admin" ? "default" : "secondary"} className="gap-1">
                         {user.privileges === "admin" ? <Shield className="h-3 w-3" /> : <User className="h-3 w-3" />}
