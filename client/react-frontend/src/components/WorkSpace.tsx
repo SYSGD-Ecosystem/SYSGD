@@ -26,10 +26,12 @@ import TopographicRegister from "./TopographicRegister";
 import RetentionScheduleTable from "./RetentionScheduleTable";
 import type { DropdownOptionProps } from "./Dropdown";
 import { Edit3 } from "lucide-react";
+import { useArchivesApi } from "@/hooks/connection/useArchivesApi";
 
 const WorkSpace: FC<{ page: number }> = ({ page }) => {
 	const { DialogComponent, openDialog, closeDialog } = useDialog();
 	const { archives, error, loading, reloadArchives } = useArchives();
+	const { deleteArchive } = useArchivesApi();
 	const [archivesDropdown, setArchivesDropdown] = useState<
 		{ Icon: FC; label: string; onClick: () => void }[]
 	>([]);
@@ -46,6 +48,8 @@ const WorkSpace: FC<{ page: number }> = ({ page }) => {
 		openDialog: openDialogExport,
 	} = useAlertDialog();
 	const dialogPrint = useAlertDialog();
+
+	const dialogDelete = useAlertDialog();
 
 	useEffect(() => {
 		const dropdownArchives: DropdownOptionProps[] = archives.map(
@@ -102,7 +106,9 @@ const WorkSpace: FC<{ page: number }> = ({ page }) => {
 							<DropdownMenuTrigger asChild>
 								{/* biome-ignore lint/a11y/useButtonType: <explanation> */}
 								<button className="flex w-full h-7 cursor-pointer items-center justify-center gap-2 rounded-full bg-slate-100 dark:bg-slate-700 p-2 text-sm dark:text-slate-300 ">
-									<span className="truncate max-w-[150px] sm:max-w-xs">{archiveName || "Seleccionar Archivo de Gestión"}</span>
+									<span className="truncate max-w-[150px] sm:max-w-xs">
+										{archiveName || "Seleccionar Archivo de Gestión"}
+									</span>
 								</button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent>
@@ -126,8 +132,8 @@ const WorkSpace: FC<{ page: number }> = ({ page }) => {
 										<IconButton
 											Icon={() => <span className="text-red-500">✕</span>}
 											onClick={() => {
-												// Lógica para eliminar el archivo de gestión
-												// Por ejemplo: openDeleteDialog(archive.id)
+												dialogDelete.openDialog();
+												reloadArchives()
 											}}
 											tooltip="Eliminar"
 										/>
@@ -211,6 +217,9 @@ const WorkSpace: FC<{ page: number }> = ({ page }) => {
 				print,
 				"¿Desea imprimir este documento?",
 			)}
+			{dialogDelete.AlertDialogComponent(() => {
+				deleteArchive(archiveId);
+			}, `Desea eliminar el archivo de gestion ${archiveName}`)}
 		</div>
 	);
 };

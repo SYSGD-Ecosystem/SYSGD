@@ -30,6 +30,112 @@ router.get(
 	},
 );
 
+/**
+ * DELETE /api/archives/:id
+ * Elimina un expediente (archivo de gestión) por id.
+ * Solo el propietario o admin puede eliminarlo.
+ */
+router.delete(
+	"/archives/:id",
+	isAuthenticated,
+	async (req: Request, res: Response) => {
+		const { id } = req.params;
+		const user_id = req.session.user?.id;
+		const privileges = req.session.user?.privileges;
+
+		try {
+			const result = await pool.query(
+				"SELECT user_id FROM document_management_file WHERE id = $1",
+				[id],
+			);
+
+			if (
+				result.rows.length === 0 ||
+				(privileges !== "admin" && result.rows[0].user_id !== user_id)
+			) {
+				res
+					.status(403)
+					.json({ error: "No tienes permisos para eliminar este expediente." });
+				return;
+			}
+
+			await pool.query(
+				"DELETE FROM document_management_file WHERE id = $1",
+				[id],
+			);
+			res.json({ message: "Expediente eliminado correctamente" });
+		} catch (err) {
+			res.status(500).json({ error: "Error al eliminar el expediente" });
+		}
+	},
+);
+
+/**
+ * PUT /api/archives/:id
+ * Modifica los datos principales de un expediente (code, company, name).
+ * Solo el propietario o admin puede modificarlo.
+ */
+router.put(
+	"/archives/:id",
+	isAuthenticated,
+	async (req: Request, res: Response) => {
+		const { id } = req.params;
+		const { code, company, name } = req.body;
+		const user_id = req.session.user?.id;
+		const privileges = req.session.user?.privileges;
+
+		if (!code && !company && !name) {
+			res.status(400).json({ error: "No hay datos para actualizar" });
+			return;
+		}
+
+		try {
+			const result = await pool.query(
+				"SELECT user_id FROM document_management_file WHERE id = $1",
+				[id],
+			);
+
+			if (
+				result.rows.length === 0 ||
+				(privileges !== "admin" && result.rows[0].user_id !== user_id)
+			) {
+				res
+					.status(403)
+					.json({ error: "No tienes permisos para modificar este expediente." });
+				return;
+			}
+
+			const fields = [];
+			const values = [];
+			let idx = 1;
+			if (code) {
+				fields.push(`code = $${idx++}`);
+				values.push(code);
+			}
+			if (company) {
+				fields.push(`company = $${idx++}`);
+				values.push(company);
+			}
+			if (name) {
+				fields.push(`name = $${idx++}`);
+				values.push(name);
+			}
+			values.push(id);
+
+			await pool.query(
+				`UPDATE document_management_file SET ${fields.join(
+					", ",
+				)} WHERE id = $${idx}`,
+				values,
+			);
+
+			res.json({ message: "Expediente actualizado correctamente" });
+		} catch (err) {
+			res.status(500).json({ error: "Error al actualizar el expediente" });
+		}
+	},
+);
+
 // GET /api/get_data?id=ABC123
 router.get(
 	"/get_data",
