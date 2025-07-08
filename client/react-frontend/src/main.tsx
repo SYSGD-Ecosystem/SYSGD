@@ -15,6 +15,7 @@ import Dashboard from "./pages/Dashboard.tsx";
 import SYSGDDashboard from "./pages/Demo.tsx";
 import TermsAndConditions from "./pages/Terms.tsx";
 import PrivacyPolicy from "./pages/Privacy.tsx";
+import ProjectsPage from "./components/projects/Page.tsx";
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(
@@ -33,6 +34,7 @@ createRoot(document.getElementById("root")!).render(
       <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/terms" element={<TermsAndConditions />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/projects" element={<ProjectsPage />} />
     </Routes>
     </BrowserRouter>
     <Toaster/>
