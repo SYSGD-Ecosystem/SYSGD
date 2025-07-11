@@ -7,7 +7,13 @@ const NavBar: FC = () => {
 	const navigate = useNavigate();
 	return (
 		<div className="w-12 max-w-12 min-w-12 items-center size-full border-r flex gap-1 flex-col bg-slate-50 dark:bg-slate-800 dark:border-slate-700">
-			<IconButton Icon={FaHome} tooltip="Inicio" onClick={() => {}} />
+			<IconButton
+				Icon={FaHome}
+				tooltip="Inicio"
+				onClick={() => {
+					navigate("/dashboard");
+				}}
+			/>
 			<IconButton
 				Icon={FaSitemap}
 				tooltip="Organigrama"
@@ -15,11 +21,6 @@ const NavBar: FC = () => {
 					navigate("/organigrama");
 				}}
 			/>
-			{/* <IconButton
-        Icon={FaRProject}
-        tooltip="Proyectos"
-        onClick={() => {  }}
-      /> */}
 		</div>
 	);
 };

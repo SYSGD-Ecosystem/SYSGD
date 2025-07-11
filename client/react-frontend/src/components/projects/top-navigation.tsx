@@ -1,6 +1,7 @@
 "use client"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import useProjects from "@/hooks/connection/useProjects"
 import useTheme from "@/hooks/useTheme"
 import { Home, Moon, Sun, User, Settings, Bell, ChevronRight } from "lucide-react"
 
@@ -20,13 +21,9 @@ export function TopNavigation({
   isHomePage = false,
 }: TopNavigationProps) {
   const { theme, toggleTheme } = useTheme()
+  const { projects } = useProjects()
 
-  const projects = [
-    { id: "sysgd", name: "Sistema de Gestión Documental" },
-    { id: "ecommerce", name: "Plataforma E-commerce" },
-    { id: "mobile-app", name: "Aplicación Móvil" },
-    { id: "dashboard", name: "Dashboard Analytics" },
-  ]
+
 
   const currentProject = projects.find((p) => p.id === selectedProject)
 

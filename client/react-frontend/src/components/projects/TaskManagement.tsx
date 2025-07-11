@@ -1,6 +1,4 @@
-"use client"
-
-import { useState } from "react"
+import { type FC, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -10,54 +8,26 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Plus, Save, CheckCircle, Clock, AlertCircle, Edit, Trash2 } from "lucide-react"
+import { useTasks } from "@/hooks/connection/useTask"
+import type { Task } from "@/types/Task"
+import { formatSimpleDate } from "@/utils/util"
 
-interface Task {
-  id: number
-  fecha: string
-  tipo: string
-  prioridad: string
-  titulo: string
-  descripcion?: string
-  estado: string
-  asignado: string
-}
-
-export function TaskManagement() {
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: 1,
-      fecha: "05/07/2025",
-      tipo: "Tarea",
-      prioridad: "Alta",
-      titulo: "Implementar sistema de autenticación",
-      descripcion: "Desarrollar el módulo completo de login y registro",
-      estado: "En Progreso",
-      asignado: "Lazaro",
-    },
-    {
-      id: 2,
-      fecha: "06/07/2025",
-      tipo: "Idea",
-      prioridad: "Media",
-      titulo: "Mejorar interfaz de usuario",
-      descripcion: "Revisar y actualizar el diseño de la aplicación",
-      estado: "Pendiente",
-      asignado: "Yamila",
-    },
-    {
-      id: 3,
-      fecha: "07/07/2025",
-      tipo: "Nota",
-      prioridad: "Baja",
-      titulo: "Reunión con cliente programada",
-      descripcion: "Preparar agenda y documentos para la reunión",
-      estado: "Completado",
-      asignado: "Equipo",
-    },
-  ])
-
+const TaskManagement: FC<{project_id:string}> = ({project_id}) => {
+  const { tasks, loading, createTask } = useTasks(project_id);
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+
+if (loading) return <div>Cargando tareas...</div>
+
+
+const handleSaveTask = async () => {
+  if (editingTask) {
+    await createTask(editingTask);
+    setEditingTask(null);
+    setIsDialogOpen(false);
+  }
+};
+
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -90,52 +60,37 @@ export function TaskManagement() {
     setIsDialogOpen(true)
   }
 
-  const handleSaveTask = () => {
-    if (editingTask) {
-      setTasks(tasks.map((task) => (task.id === editingTask.id ? editingTask : task)))
-      setEditingTask(null)
-      setIsDialogOpen(false)
-    }
-  }
-
-  const handleDeleteTask = (taskId: number) => {
-    setTasks(tasks.filter((task) => task.id !== taskId))
+  const handleDeleteTask = (_taskId: string) => {
   }
 
   const handleAddNewTask = () => {
+
     const newTask: Task = {
-      id: Math.max(...tasks.map((t) => t.id)) + 1,
-      fecha: new Date().toLocaleDateString("es-ES"),
-      tipo: "Tarea",
-      prioridad: "Media",
-      titulo: "",
-      descripcion: "",
-      estado: "Pendiente",
-      asignado: "Sin asignar",
+      id: "1",
+      type: "Tarea",
+      priority: "Media",
+      title: "",
+      description: "",
+      status: "Pendiente",
+      assignees: "Sin asignar",
+      created_at: "",
+      project_id
     }
     setEditingTask(newTask)
+
     setIsDialogOpen(true)
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm">
-      <div className="p-6 border-b border-gray-200">
+    <div className="bg-white rounded-lg dark:border shadow-sm dark:bg-gray-800 dark:border-gray-700">
+      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h1 className="text-xl font-bold text-gray-900 mb-2">GESTIÓN DE TAREAS</h1>
-            <h2 className="text-lg font-semibold text-gray-700 mb-4">REGISTRO DE TAREAS Y ACTIVIDADES</h2>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">GESTIÓN DE TAREAS</h1>
+            <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-400 mb-4">REGISTRO DE TAREAS Y ACTIVIDADES</h2>
           </div>
           <div className="text-right">
             <div className="text-sm font-medium">GT1</div>
-          </div>
-        </div>
-
-        <div className="space-y-2 text-sm text-gray-600 mb-6">
-          <div>
-            <span className="font-medium">PROYECTO:</span> Sistema de Gestión Documental
-          </div>
-          <div>
-            <span className="font-medium">RESPONSABLE:</span> FUNCIONARIO - LAZARO
           </div>
         </div>
       </div>
@@ -148,29 +103,29 @@ export function TaskManagement() {
               <TableHead className="text-center">FECHA</TableHead>
               <TableHead className="text-center">TIPO</TableHead>
               <TableHead className="text-center">PRIORIDAD</TableHead>
-              <TableHead className="text-center">TÍTULO</TableHead>
-              <TableHead className="text-center">ESTADO</TableHead>
-              <TableHead className="text-center">ASIGNADO</TableHead>
+              <TableHead className="text-left">TÍTULO</TableHead>
+              <TableHead className="text-left">ESTADO</TableHead>
+              <TableHead className="text-left">ASIGNADO</TableHead>
               <TableHead className="text-center">ACCIONES</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {tasks.map((task) => (
               <TableRow key={task.id}>
-                <TableCell className="text-center">{task.id}</TableCell>
-                <TableCell className="text-center">{task.fecha}</TableCell>
-                <TableCell className="text-center">{task.tipo}</TableCell>
+                <TableCell className="text-center">{task.project_task_number}</TableCell>
+                <TableCell className="text-center">{formatSimpleDate(task.created_at)}</TableCell>
+                <TableCell className="text-center">{task.type}</TableCell>
                 <TableCell className="text-center">
-                  <Badge variant={getPriorityColor(task.prioridad)}>{task.prioridad}</Badge>
+                  <Badge variant={getPriorityColor(task.priority)}>{task.priority}</Badge>
                 </TableCell>
-                <TableCell className="text-center">{task.titulo}</TableCell>
-                <TableCell className="text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    {getStatusIcon(task.estado)}
-                    {task.estado}
+                <TableCell className="text-left">{task.title}</TableCell>
+                <TableCell className="text-left">
+                  <div className="flex items-start justify-start gap-2">
+                    {getStatusIcon(task.status)}
+                    {task.status}
                   </div>
                 </TableCell>
-                <TableCell className="text-center">{task.asignado}</TableCell>
+                <TableCell className="text-center">{task.assignees}</TableCell>
                 <TableCell className="text-center">
                   <div className="flex items-center justify-center gap-2">
                     <Button variant="ghost" size="sm" onClick={() => handleEditTask(task)}>
@@ -211,24 +166,24 @@ export function TaskManagement() {
                 <Label htmlFor="titulo">Título</Label>
                 <Input
                   id="titulo"
-                  value={editingTask.titulo}
-                  onChange={(e) => setEditingTask({ ...editingTask, titulo: e.target.value })}
+                  value={editingTask.title}
+                  onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
                 />
               </div>
               <div>
                 <Label htmlFor="descripcion">Descripción</Label>
                 <Textarea
                   id="descripcion"
-                  value={editingTask.descripcion || ""}
-                  onChange={(e) => setEditingTask({ ...editingTask, descripcion: e.target.value })}
+                  value={editingTask.description || ""}
+                  onChange={(e) => setEditingTask({ ...editingTask, description: e.target.value })}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="tipo">Tipo</Label>
                   <Select
-                    value={editingTask.tipo}
-                    onValueChange={(value) => setEditingTask({ ...editingTask, tipo: value })}
+                    value={editingTask.type}
+                    onValueChange={(value) => setEditingTask({ ...editingTask, type: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -243,8 +198,8 @@ export function TaskManagement() {
                 <div>
                   <Label htmlFor="prioridad">Prioridad</Label>
                   <Select
-                    value={editingTask.prioridad}
-                    onValueChange={(value) => setEditingTask({ ...editingTask, prioridad: value })}
+                    value={editingTask.priority}
+                    onValueChange={(value) => setEditingTask({ ...editingTask, priority: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -261,8 +216,8 @@ export function TaskManagement() {
                 <div>
                   <Label htmlFor="estado">Estado</Label>
                   <Select
-                    value={editingTask.estado}
-                    onValueChange={(value) => setEditingTask({ ...editingTask, estado: value })}
+                    value={editingTask.status}
+                    onValueChange={(value) => setEditingTask({ ...editingTask, status: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -278,8 +233,8 @@ export function TaskManagement() {
                   <Label htmlFor="asignado">Asignado</Label>
                   <Input
                     id="asignado"
-                    value={editingTask.asignado}
-                    onChange={(e) => setEditingTask({ ...editingTask, asignado: e.target.value })}
+                    value={editingTask.assignees}
+                    onChange={(e) => setEditingTask({ ...editingTask, assignees: e.target.value })}
                   />
                 </div>
               </div>
@@ -296,3 +251,5 @@ export function TaskManagement() {
     </div>
   )
 }
+
+export default TaskManagement

@@ -6,28 +6,34 @@ import { isAuthenticated } from "../middlewares/auth";
 const router = Router();
 
 router.get(
-	"/archives",
-	isAuthenticated,
-	async (req: Request, res: Response) => {
-		const user_id = req.session.user?.id;
+  "/archives",
+  isAuthenticated,
+  async (req: Request, res: Response) => {
+    const user_id = req.session.user?.id;
 
-		try {
-			if (req.session.user?.privileges === "admin") {
-				const result = await pool.query(
-					"SELECT id, code, company, name FROM document_management_file",
-				);
-				res.json(result.rows);
-			} else {
-				const result = await pool.query(
-					"SELECT id, code, company, name FROM document_management_file WHERE user_id = $1",
-					[user_id],
-				);
-				res.json(result.rows);
-			}
-		} catch (err) {
-			res.status(500).json({ error: "Error al obtener los datos" });
-		}
-	},
+    try {
+      const baseQuery = `
+        SELECT
+          d.id,
+          d.code,
+          d.company,
+          d.name,
+          d.created_at,
+          u.name AS creator_name
+        FROM document_management_file d
+        JOIN users u ON d.user_id = u.id
+      `;
+
+      const result = req.session.user?.privileges === "admin"
+        ? await pool.query(baseQuery)
+        : await pool.query(`${baseQuery} WHERE d.user_id = $1`, [user_id]);
+
+      res.json(result.rows);
+    } catch (err) {
+      console.error("Error al obtener archivos:", err);
+      res.status(500).json({ error: "Error al obtener los datos" });
+    }
+  }
 );
 
 /**
