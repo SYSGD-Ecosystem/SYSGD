@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS invitations (
   resource_id UUID NOT NULL,
   role TEXT DEFAULT 'viewer',
   status TEXT DEFAULT 'pending',
+  receiver_email TEXT,
   created_at TIMESTAMP DEFAULT NOW()
 );
 `);

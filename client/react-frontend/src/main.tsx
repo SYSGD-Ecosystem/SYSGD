@@ -12,11 +12,11 @@ import EditableSpreadsheet from "./pages/Sheet.tsx";
 import { Toaster } from "./components/ui/toaster.tsx";
 import AdminDashboard from "./pages/admin-dashboard.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
-import SYSGDDashboard from "./pages/Demo.tsx";
 import TermsAndConditions from "./pages/Terms.tsx";
 import PrivacyPolicy from "./pages/Privacy.tsx";
-import ProjectsPage from "./components/projects/Page.tsx";
-import ProjectWorkSpace from "./components/projects/ProjectsWorkSpace.tsx";
+import ProjectsPage from "./components/DashboardPage.tsx";
+import ProjectWorkSpace from "./components/ProjectsWorkSpace.tsx";
+import ProjectPageDemo from "./components/projects/page.tsx";
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(
@@ -30,7 +30,7 @@ createRoot(document.getElementById("root")!).render(
       <Route path="/error" element={<ErrorServer/>}/>
       <Route path="/organigrama" element={<OrganigramaPage />} />
       <Route path="/table" element={<EditableSpreadsheet />} />
-      <Route path="/demo" element={<SYSGDDashboard />} />
+      <Route path="/demo" element={<ProjectPageDemo />} />
       <Route path="/archives" element={<Dashboard />} />
       <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/terms" element={<TermsAndConditions />} />

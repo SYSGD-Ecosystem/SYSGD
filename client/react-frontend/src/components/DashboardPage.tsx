@@ -2,7 +2,7 @@ import { TopNavigation } from "./TopNavigationDashboard";
 import { ThemeProvider } from "@/context/theme-context";
 import { HomeDashboard } from "./home-dashboard";
 import { useAuthSession } from "@/hooks/connection/useAuthSession";
-import Loading from "../Loading";
+import Loading from "./Loading";
 import { useNavigate } from "react-router-dom";
 
 function MainPage() {

@@ -1,14 +1,4 @@
-"use client";
-
-import {
-	FolderKanban,
-	CheckSquare,
-	Lightbulb,
-	StickyNote,
-	Calendar,
-	Users,
-	Clock,
-} from "lucide-react";
+import { CheckSquare, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SidebarProps {
@@ -18,7 +8,7 @@ interface SidebarProps {
 	onMobileClose: () => void;
 }
 
-export function Sidebar({
+export function ProjectSidebar({
 	activeSection,
 	onSectionChange,
 	isMobileOpen,
@@ -26,11 +16,6 @@ export function Sidebar({
 }: SidebarProps) {
 	const projectItems = [
 		{ id: "tasks", label: "GESTIÓN DE TAREAS", icon: CheckSquare },
-		{ id: "kanban", label: "TABLERO KANBAN", icon: FolderKanban },
-		{ id: "calendar", label: "CALENDARIO", icon: Calendar },
-		{ id: "time-tracking", label: "MEDICIÓN DE TIEMPO", icon: Clock },
-		{ id: "ideas", label: "BANCO DE IDEAS", icon: Lightbulb },
-		{ id: "notes", label: "NOTAS Y APUNTES", icon: StickyNote },
 		{ id: "team", label: "EQUIPO DE TRABAJO", icon: Users },
 	];
 
@@ -39,7 +24,7 @@ export function Sidebar({
 			{/* Overlay para móvil */}
 			{isMobileOpen && (
 				// biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
-<div
+				<div
 					className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
 					onClick={onMobileClose}
 				/>

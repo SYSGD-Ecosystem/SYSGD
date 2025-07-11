@@ -1,16 +1,12 @@
 import { useState, type FC } from "react";
 import { TopNavigation } from "./top-navigation";
-import { KanbanBoard } from "./kanban-board";
-import { CalendarSection } from "./calendar-section";
-import { TeamManagement } from "./team-management";
-import { NotesSection } from "./notes-section";
-import { IdeasBank } from "./ideas-bank";
-import { Sidebar } from "./sidebar";
 import { useNavigate } from "react-router-dom";
 import { useSelectionStore } from "@/store/selection";
 import TaskManagement from "./TaskManagement";
 import useCurrentUser from "@/hooks/connection/useCurrentUser";
-import Loading from "../Loading";
+import Loading from "./Loading";
+import { ProjectSidebar } from "./ProjectSidebar";
+import { TeamManagement } from "./TeamManagement";
 
 const ProjectWorkSpace: FC = () => {
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -64,7 +60,7 @@ const ProjectWorkSpace: FC = () => {
 				isHomePage={false}
 			/>
 			<div className="flex flex-1 relative">
-				<Sidebar
+				<ProjectSidebar
 					activeSection={activeSection}
 					onSectionChange={handleSectionChange}
 					isMobileOpen={isMobileSidebarOpen}
@@ -74,11 +70,8 @@ const ProjectWorkSpace: FC = () => {
 					{activeSection === "tasks" && (
 						<TaskManagement project_id={selectedProject} />
 					)}
-					{activeSection === "kanban" && <KanbanBoard />}
-					{activeSection === "calendar" && <CalendarSection />}
+
 					{activeSection === "team" && <TeamManagement />}
-					{activeSection === "notes" && <NotesSection />}
-					{activeSection === "ideas" && <IdeasBank />}
 				</main>
 			</div>
 		</div>
