@@ -6,7 +6,7 @@ import TaskManagement from "./TaskManagement";
 import useCurrentUser from "@/hooks/connection/useCurrentUser";
 import Loading from "./Loading";
 import { ProjectSidebar } from "./ProjectSidebar";
-import { TeamManagement } from "./TeamManagement";
+import TeamManagement from "./TeamManagement";
 
 const ProjectWorkSpace: FC = () => {
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -49,7 +49,7 @@ const ProjectWorkSpace: FC = () => {
 	};
 
 	return (
-		<div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
+		<div className="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
 			<TopNavigation
 				selectedProject={selectedProject}
 				onProjectChange={setSelectedProject}
@@ -59,7 +59,7 @@ const ProjectWorkSpace: FC = () => {
 				}
 				isHomePage={false}
 			/>
-			<div className="flex flex-1 relative">
+			<div className="flex flex-1 relative overflow-hidden">
 				<ProjectSidebar
 					activeSection={activeSection}
 					onSectionChange={handleSectionChange}
@@ -71,7 +71,9 @@ const ProjectWorkSpace: FC = () => {
 						<TaskManagement project_id={selectedProject} />
 					)}
 
-					{activeSection === "team" && <TeamManagement />}
+					{activeSection === "team" && (
+						<TeamManagement projectId={selectedProject} />
+					)}
 				</main>
 			</div>
 		</div>

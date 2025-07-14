@@ -10,6 +10,10 @@ export type Project = {
 	status?: string;
 	visibility?: string;
     tipo: "project"
+
+    members_count: number;
+	total_tasks: number;
+	completed_tasks: number;
 };
 
 

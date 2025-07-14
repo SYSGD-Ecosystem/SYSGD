@@ -8,6 +8,7 @@ import {
 	Calendar,
 	Users,
 	Clock,
+	FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -27,6 +28,7 @@ export function Sidebar({
 	const projectItems = [
 		{ id: "tasks", label: "GESTIÓN DE TAREAS", icon: CheckSquare },
 		{ id: "kanban", label: "TABLERO KANBAN", icon: FolderKanban },
+		{ id: "document-form", label: "EDITOR DE DOCUMENTOS", icon: FileText },
 		{ id: "calendar", label: "CALENDARIO", icon: Calendar },
 		{ id: "time-tracking", label: "MEDICIÓN DE TIEMPO", icon: Clock },
 		{ id: "ideas", label: "BANCO DE IDEAS", icon: Lightbulb },
@@ -39,7 +41,7 @@ export function Sidebar({
 			{/* Overlay para móvil */}
 			{isMobileOpen && (
 				// biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
-<div
+				<div
 					className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
 					onClick={onMobileClose}
 				/>

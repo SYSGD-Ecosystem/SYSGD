@@ -151,32 +151,32 @@ export default function LandingPage() {
 		"Seguimiento completo de proyectos y tareas",
 	];
 
-	const testimonials = [
-		{
-			name: "María González",
-			role: "Directora de Operaciones",
-			company: "TechCorp",
-			content:
-				"SYSGD transformó completamente nuestra gestión documental y de proyectos. Ahora tenemos control total sobre nuestros procesos.",
-			rating: 5,
-		},
-		{
-			name: "Carlos Rodríguez",
-			role: "Gerente de TI",
-			company: "InnovateSA",
-			content:
-				"La implementación fue sencilla y el módulo de proyectos nos ayudó a mejorar la colaboración del equipo significativamente.",
-			rating: 5,
-		},
-		{
-			name: "Ana Martínez",
-			role: "Coordinadora Administrativa",
-			company: "GlobalServices",
-			content:
-				"Por fin tenemos una solución integral. El seguimiento de tiempo y la gestión documental en una sola plataforma.",
-			rating: 5,
-		},
-	];
+	// const testimonials = [
+	// 	{
+	// 		name: "María González",
+	// 		role: "Directora de Operaciones",
+	// 		company: "TechCorp",
+	// 		content:
+	// 			"SYSGD transformó completamente nuestra gestión documental y de proyectos. Ahora tenemos control total sobre nuestros procesos.",
+	// 		rating: 5,
+	// 	},
+	// 	{
+	// 		name: "Carlos Rodríguez",
+	// 		role: "Gerente de TI",
+	// 		company: "InnovateSA",
+	// 		content:
+	// 			"La implementación fue sencilla y el módulo de proyectos nos ayudó a mejorar la colaboración del equipo significativamente.",
+	// 		rating: 5,
+	// 	},
+	// 	{
+	// 		name: "Ana Martínez",
+	// 		role: "Coordinadora Administrativa",
+	// 		company: "GlobalServices",
+	// 		content:
+	// 			"Por fin tenemos una solución integral. El seguimiento de tiempo y la gestión documental en una sola plataforma.",
+	// 		rating: 5,
+	// 	},
+	// ];
 
 	return (
 		<div className="min-h-screen bg-background text-foreground">

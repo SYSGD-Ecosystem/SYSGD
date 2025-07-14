@@ -1,4 +1,4 @@
-import LandingPage from "@/components/projects/landing-page";
+import TextImproverForm from "@/components/TextImproverForm";
 import type { FC } from "react";
 
 const DevPreview: FC = () => {
@@ -6,7 +6,7 @@ const DevPreview: FC = () => {
 
 	return (
 		<>
-			<LandingPage />
+			<TextImproverForm/>
 		</>
 	);
 };

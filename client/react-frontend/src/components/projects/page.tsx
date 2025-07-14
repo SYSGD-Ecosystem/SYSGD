@@ -12,6 +12,7 @@ import { CalendarSection } from "@/components/projects/calendar-section"
 import { HomeDashboard } from "@/components/projects/home-dashboard"
 import { ThemeProvider } from "@/context/theme-context";
 import { TimeTracking } from "@/components/projects/time-tracking"
+import { DocumentFormExample } from "./document-form-example"
 
 function MainAppProjectDemo() {
   const [activeSection, setActiveSection] = useState("tasks")
@@ -50,7 +51,7 @@ function MainAppProjectDemo() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
+    <div className="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
       <TopNavigation
         selectedProject={selectedProject}
         onProjectChange={setSelectedProject}
@@ -58,7 +59,7 @@ function MainAppProjectDemo() {
         onMobileSidebarToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         isHomePage={false}
       />
-      <div className="flex flex-1 relative">
+      <div className="flex flex-1 relative overflow-hidden">
         <Sidebar
           activeSection={activeSection}
           onSectionChange={handleSectionChange}
@@ -73,6 +74,7 @@ function MainAppProjectDemo() {
           {activeSection === "notes" && <NotesSection />}
           {activeSection === "ideas" && <IdeasBank />}
           {activeSection === "time-tracking" && <TimeTracking />}
+          {activeSection === "document-form" && <DocumentFormExample />}
         </main>
       </div>
     </div>

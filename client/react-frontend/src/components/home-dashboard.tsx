@@ -38,6 +38,7 @@ import { formatDate } from "@/utils/util";
 import { useNavigate } from "react-router-dom";
 import { useSelectionStore } from "@/store/selection";
 import { useArchiveStore } from "@/store/useArchiveStore";
+import useCurrentUser from "@/hooks/connection/useCurrentUser";
 
 interface DocumentFile {
 	id: string;
@@ -58,6 +59,10 @@ interface Project {
 	status?: string;
 	visibility?: string;
 	tipo: "project";
+
+	members_count: number;
+	total_tasks: number;
+	completed_tasks: number;
 }
 
 type DashboardItem = Project | DocumentFile;
@@ -67,6 +72,7 @@ export function HomeDashboard() {
 	const { projects: mProjects } = useProjects();
 	const { handleCreateProject } = useProjectConnection();
 	const navigate = useNavigate();
+	const { user, loading: loadingUser } = useCurrentUser();
 
 	const setProjectId = useSelectionStore((state) => state.setProjectId);
 	const setArchive = useArchiveStore((state) => state.selectArchive);
@@ -82,6 +88,10 @@ export function HomeDashboard() {
 				status?: string;
 				visibility?: string;
 				tipo: "project";
+
+				members_count: number;
+				total_tasks: number;
+				completed_tasks: number;
 			}) => ({
 				id: item.id,
 				name: item.name,
@@ -91,6 +101,9 @@ export function HomeDashboard() {
 				status: item.status,
 				visibility: "private",
 				tipo: "project",
+				members_count: item.members_count,
+				total_tasks: item.total_tasks,
+				completed_tasks: item.completed_tasks,
 			}),
 		);
 
@@ -197,13 +210,24 @@ export function HomeDashboard() {
 		setIsDocumentDialogOpen(false);
 	};
 
+	const getProgress = (completed: number, total: number) => {
+		if (total <= 0) {
+			return 0; // Evita la división por cero
+		}
+
+		if (completed <= 0) {
+			return 0;
+		}
+
+		return Math.round((completed / total) * 100);
+	};
 	return (
 		<div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 md:p-6">
 			<div className="max-w-7xl mx-auto">
 				{/* Header */}
 				<div className="mb-8">
 					<h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
-						Bienvenido de vuelta, Lazaro
+						Bienvenido de vuelta, {loadingUser ? "" : user?.name}
 					</h1>
 					<p className="text-lg text-gray-600 dark:text-gray-400">
 						Gestiona tus proyectos y archivos desde un solo lugar
@@ -350,10 +374,10 @@ export function HomeDashboard() {
 									{item.tipo === "project" ? item.status : "EGDyA"}
 								</Badge>
 							</CardHeader>
-							<CardContent className="space-y-3">
+							<CardContent className="space-y-3 flex flex-col">
 								{item.tipo === "project" ? (
 									<>
-										<p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+										<p className="text-sm h-full text-gray-600 dark:text-gray-400 line-clamp-2">
 											{item.description}
 										</p>
 										<div className="space-y-2">
@@ -362,25 +386,27 @@ export function HomeDashboard() {
 													Progreso
 												</span>
 												<span className="font-medium text-gray-900 dark:text-white">
-													{0}%
+													{getProgress(item.completed_tasks, item.total_tasks)}%
 												</span>
 											</div>
 											<div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
 												<div
 													className="bg-blue-600 h-2 rounded-full transition-all"
-													style={{ width: `${0}%` }}
+													style={{
+														width: `${getProgress(item.completed_tasks, item.total_tasks)}%`,
+													}}
 												/>
 											</div>
 										</div>
 										<div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
 											<div className="flex items-center gap-1">
 												<Users className="w-3 h-3" />
-												{/* {item.miembros} miembros */}
+												{item.members_count} miembros
 											</div>
-											<div className="flex items-center gap-1">
+											{/* <div className="flex items-center gap-1">
 												<Activity className="w-3 h-3" />
-												{/* {item.ultimaActividad} */}
-											</div>
+												 {item.ultimaActividad}
+											</div> */}
 										</div>
 									</>
 								) : (

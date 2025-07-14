@@ -1,3 +1,5 @@
+
+
 export const formatDate = (isoDate: string): string => {
   const date = new Date(isoDate);
   return date.toLocaleString('es-ES', {
@@ -20,3 +22,20 @@ export const formatSimpleDate = (isoDate: string): string => {
     timeZone: 'America/Havana', // o la zona horaria que necesites
   });
 };
+
+export const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+
+export const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "Alta":
+        return "destructive";
+      case "Media":
+        return "default";
+      case "Baja":
+        return "secondary";
+      default:
+        return "default";
+    }
+  };
+
+  

@@ -4,64 +4,60 @@ import { pool } from "../index";
 import { isAuthenticated } from "../middlewares/auth";
 const router = express.Router();
 
+router.get("/status", (_req, res) => {
+	res.json({ status: "ok", message: "status members ok" });
+});
+
 // GET /api/projects/:projectId/members
-router.get(
-	"/projects/:projectId/members",
-	isAuthenticated,
-	async (req, res) => {
-		const { projectId } = req.params;
-		try {
-			const result = await pool.query(
-				`SELECT u.id, u.name, u.username, ra.role
+router.get("/:projectId", isAuthenticated, async (req, res) => {
+	const { projectId } = req.params;
+	try {
+		const result = await pool.query(
+			`SELECT u.id, u.name, u.username, ra.role
        FROM resource_access ra
        JOIN users u ON ra.user_id = u.id
        WHERE ra.resource_type = 'project' AND ra.resource_id = $1`,
-				[projectId],
-			);
-			res.json(result.rows);
-		} catch (error) {
-			console.error("Error fetching project members:", error);
-			res.status(500).json({ error: "Error interno del servidor" });
-		}
-	},
-);
+			[projectId],
+		);
+		res.json(result.rows);
+	} catch (error) {
+		console.error("Error fetching project members:", error);
+		res.status(500).json({ error: "Error interno del servidor" });
+	}
+});
 
 // POST /api/projects/:projectId/invite
-router.post(
-	"/projects/:projectId/invite",
-	isAuthenticated,
-	async (req, res) => {
-		const { projectId } = req.params;
-		const { email, role } = req.body;
+router.post("/invite/:projectId", isAuthenticated, async (req, res) => {
+	const { projectId } = req.params;
+	const { email, role } = req.body;
 
-		const senderId = req.session.user?.id;
+	const senderId = req.session.user?.id;
 
-		try {
-			const userResult = await pool.query(
-				"SELECT id FROM users WHERE username = $1",
-				[email],
-			);
-			const receiverId = userResult.rows[0]?.id || null;
+	try {
+		const userResult = await pool.query(
+			"SELECT id FROM users WHERE username = $1",
+			[email],
+		);
+		const receiverId = userResult.rows[0]?.id || null;
 
-			await pool.query(
-				`INSERT INTO invitations (id, sender_id, receiver_id, receiver_email, resource_type, resource_id, role)
+		await pool.query(
+			`INSERT INTO invitations (id, sender_id, receiver_id, receiver_email, resource_type, resource_id, role)
        VALUES (gen_random_uuid(), $1, $2, $3, 'project', $4, $5)`,
-				[senderId, receiverId, email, projectId, role || "member"],
-			);
+			[senderId, receiverId, email, projectId, role || "member"],
+		);
 
-			// Aquí puedes llamar a una función para enviar el correo si receiverId es null
+		// Aquí puedes llamar a una función para enviar el correo si receiverId es null
 
-			res.json({ message: "Invitación enviada" });
-		} catch (error) {
-			console.error("Error creando la invitación:", error);
-			res.status(500).json({ error: "Error al invitar al usuario" });
-		}
-	},
-);
+		res.json({ message: "Invitación enviada" });
+	} catch (error) {
+		console.error("Error creando la invitación:", error);
+		res.status(500).json({ error: "Error al invitar al usuario" });
+	}
+});
 
 // POST /api/invitations/:invitationId/accept
 router.post(
-	"/invitations/:invitationId/accept",
+	"/accept-invite/:invitationId",
 	isAuthenticated,
 	async (req: Request, res: Response) => {
 		const { invitationId } = req.params;

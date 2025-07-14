@@ -4,7 +4,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import App from "./pages/App.tsx";
 import Login from "./pages/Login.tsx";
 import DevPreview from "./pages/DevPreview.tsx";
-import "./styles/tailwind.css"
+import "./styles/global.css"
 import Print from "./pages/Print.tsx";
 import ErrorServer from "./pages/ErrorServer.tsx";
 import OrganigramaPage from "./pages/Organigrama.tsx";

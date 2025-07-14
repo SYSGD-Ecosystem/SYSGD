@@ -1,3 +1,9 @@
+export type Assignee = {
+    id: number;
+    name: string;
+    username: string;
+}
+
 export type Task = {
   id: string
   created_at: string
@@ -6,7 +12,7 @@ export type Task = {
   title: string
   description?: string
   status: string
-  assignees: string
+  assignees: Assignee[]
   project_id: string
   project_task_number?: number
 }

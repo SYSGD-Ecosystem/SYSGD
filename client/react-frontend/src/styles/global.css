@@ -1,0 +1,289 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 94.1%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-variation-settings: normal;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    letter-spacing: -0.01em;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-display;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+  }
+
+  h1 {
+    @apply text-3xl md:text-4xl lg:text-5xl;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+
+  h2 {
+    @apply text-2xl md:text-3xl lg:text-4xl;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+  }
+
+  h3 {
+    @apply text-xl md:text-2xl lg:text-3xl;
+    font-weight: 600;
+  }
+
+  h4 {
+    @apply text-lg md:text-xl lg:text-2xl;
+    font-weight: 600;
+  }
+
+  h5 {
+    @apply text-base md:text-lg lg:text-xl;
+    font-weight: 600;
+  }
+
+  h6 {
+    @apply text-sm md:text-base lg:text-lg;
+    font-weight: 600;
+  }
+
+  p {
+    line-height: 1.7;
+    letter-spacing: -0.005em;
+  }
+
+  code {
+    @apply font-mono;
+    font-size: 0.875em;
+    font-weight: 500;
+  }
+
+  pre {
+    @apply font-mono;
+    font-size: 0.875em;
+    line-height: 1.7;
+  }
+
+  /* Mejoras para la legibilidad */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+}
+
+/* Estilos adicionales para responsividad */
+@layer utilities {
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-4 {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Clases de tipografía mejoradas */
+  .font-feature-default {
+    font-feature-settings: "kern" 1, "liga" 1, "clig" 1, "calt" 1;
+  }
+
+  .font-feature-tabular {
+    font-feature-settings: "kern" 1, "liga" 1, "clig" 1, "calt" 1, "tnum" 1;
+  }
+
+  .tracking-tight {
+    letter-spacing: -0.025em;
+  }
+
+  .tracking-snug {
+    letter-spacing: -0.015em;
+  }
+}
+
+/* Mejoras para móvil */
+@media (max-width: 768px) {
+  .grid-cols-7 > div {
+    min-height: 60px;
+  }
+}
+
+/* Asegurar que el sidebar llegue hasta el fondo */
+html,
+body,
+#__next {
+  height: 100%;
+}
+
+/* Scrollbar personalizado para modo oscuro */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #374151;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #6b7280;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Estilos para el editor de texto */
+.rich-text-editor {
+  font-family: "Inter", sans-serif;
+}
+
+.rich-text-editor blockquote {
+  border-left: 4px solid #e5e7eb;
+  padding-left: 16px;
+  margin: 16px 0;
+  font-style: italic;
+  color: #6b7280;
+  font-family: "Inter", sans-serif;
+}
+
+.rich-text-editor pre {
+  background-color: #f3f4f6;
+  padding: 12px;
+  border-radius: 6px;
+  font-family: "JetBrains Mono", monospace;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.rich-text-editor table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 10px 0;
+  font-family: "Inter", sans-serif;
+}
+
+.rich-text-editor table td {
+  border: 1px solid #d1d5db;
+  padding: 8px;
+  font-size: 0.875rem;
+}
+
+.rich-text-editor ul,
+.rich-text-editor ol {
+  padding-left: 20px;
+  margin: 10px 0;
+}
+
+.rich-text-editor li {
+  margin: 5px 0;
+  line-height: 1.6;
+}
+
+/* Animaciones suaves */
+@layer utilities {
+  .animate-in {
+    animation: animate-in 0.2s ease-out;
+  }
+
+  .animate-out {
+    animation: animate-out 0.2s ease-in;
+  }
+}
+
+@keyframes animate-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes animate-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
