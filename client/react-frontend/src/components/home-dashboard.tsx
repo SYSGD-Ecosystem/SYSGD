@@ -39,6 +39,8 @@ import { useNavigate } from "react-router-dom";
 import { useSelectionStore } from "@/store/selection";
 import { useArchiveStore } from "@/store/useArchiveStore";
 import useCurrentUser from "@/hooks/connection/useCurrentUser";
+import { useToast } from "@/hooks/use-toast";
+import useConnection from "@/hooks/connection/useConnection";
 
 interface DocumentFile {
 	id: string;
@@ -115,6 +117,7 @@ export function HomeDashboard() {
 
 	const { archives } = useArchives();
 	const [documents, setDocument] = useState<DocumentFile[]>([]);
+	const { toast } = useToast();
 
 	useEffect(() => {
 		const docs: DocumentFile[] = archives.map(
@@ -199,14 +202,46 @@ export function HomeDashboard() {
 		handleCreateProject(
 			newProject.name,
 			newProject.desciption,
-			() => {},
-			() => {},
+			() => {
+				toast({
+					title: "Exito",
+					description: "Proyecto creado, por favor refresque la página",
+				});
+			},
+			() => {
+				toast({
+					title: "Error",
+					description:
+						"No se creó el proyecto, por favor, verifique su conexión o conecte con soporte",
+					variant: "destructive",
+				});
+			},
 		);
 	};
 
+	const { handleNewArchiving } = useConnection();
 	const handleCreateDocument = () => {
 		// Aquí se crearía el documento
 		console.log("Crear documento:", newDocument);
+		handleNewArchiving(
+			newDocument.code,
+			newDocument.company,
+			newDocument.name,
+			() => {
+				toast({
+					title: "Exito",
+					description: "Archivo creado, por favor refresque la página",
+				});
+			},
+			() => {
+				toast({
+					title: "Error",
+					description:
+						"No se creó el archivo de gestion, por favor, verifique su conexión o conecte con soporte",
+					variant: "destructive",
+				});
+			},
+		);
 		setIsDocumentDialogOpen(false);
 	};
 
@@ -575,7 +610,7 @@ export function HomeDashboard() {
 								Empresa:
 							</Label>
 							<Input
-								value={newDocument.name}
+								value={newDocument.company}
 								onChange={(e) =>
 									setNewDocument({ ...newDocument, company: e.target.value })
 								}
@@ -588,7 +623,7 @@ export function HomeDashboard() {
 								código:
 							</Label>
 							<Input
-								value={newDocument.name}
+								value={newDocument.code}
 								onChange={(e) =>
 									setNewDocument({ ...newDocument, code: e.target.value })
 								}

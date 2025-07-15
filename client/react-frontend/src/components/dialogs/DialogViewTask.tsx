@@ -6,6 +6,7 @@ import type { Task } from "@/types/Task";
 import { Badge } from "../ui/badge";
 import { formatDate, getPriorityColor } from "@/utils/util";
 import { getStatusIcon } from "@/utils/util-components";
+import ReactMarkdown from "react-markdown";
 
 const DialogViewTask: FC<{
 	selectedTask: Task;
@@ -52,19 +53,9 @@ const DialogViewTask: FC<{
 								</div>
 							</div>
 
-							<div>
-								<p className="text-lg text-gray-900 dark:text-white font-semibold">
-									{selectedTask.title}
-								</p>
+							<div className="text-gray-900 border-neutral-100 dark:bg-slate-900 rounded dark:text-white custom-html-style p-1 max-h-80 overflow-auto">
+								<ReactMarkdown>{`### ${selectedTask.title}\n${selectedTask.description}`}</ReactMarkdown>
 							</div>
-
-							{selectedTask.description && (
-								<div>
-									<p className="text-sm text-gray-900 dark:text-white">
-										{selectedTask.description}
-									</p>
-								</div>
-							)}
 
 							<div className="grid grid-cols-3 gap-4">
 								<div>
@@ -104,8 +95,9 @@ const DialogViewTask: FC<{
 								</Label>
 								<p className="text-sm text-gray-900 dark:text-white">
 									<div className="flex -space-x-2">
+										{/* biome-ignore lint/complexity/useOptionalChain: <explanation> */}
 										{selectedTask.assignees &&
-											(selectedTask.assignees.map((assignee) => (
+											selectedTask.assignees.map((assignee) => (
 												<div
 													key={assignee.id}
 													className="text-xs bg-slate-200 p-1 font-medium rounded dark:bg-gray-800 text-gray-700 dark:text-gray-300"
@@ -113,7 +105,7 @@ const DialogViewTask: FC<{
 												>
 													{assignee.name}
 												</div>
-											)))}
+											))}
 									</div>
 								</p>
 							</div>

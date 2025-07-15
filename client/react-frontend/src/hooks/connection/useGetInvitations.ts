@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 
-type Invitation = {
+export type Invitation = {
   id: string;
   resource_type: "project" | "archive";
   resource_id: string;
@@ -9,6 +9,8 @@ type Invitation = {
   status: "pending" | "accepted" | "rejected";
   permissions: "read" | "write" | "admin";
   created_at: string;
+  sender_name: string;
+  role: string
 };
 
 export function useGetInvitations() {

@@ -1,23 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-	Bell,
-	X,
-	UserPlus,
-	MessageSquare,
-	FileText,
-	Calendar,
-	Target,
-} from "lucide-react";
+import { Bell, X, UserPlus } from "lucide-react";
 import type { IconType } from "react-icons";
+import {
+	type Invitation,
+	useGetInvitations,
+} from "@/hooks/connection/useGetInvitations";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { useInvitations } from "@/hooks/connection/useProjectMembers";
+import { useToast } from "@/hooks/use-toast";
 
 interface Notification {
-	id: number;
+	id: string;
 	tipo:
 		| "asignacion"
 		| "mencion"
@@ -43,6 +42,51 @@ export function NotificationsPopup({
 	isOpen,
 	onClose,
 }: NotificationsPopupProps) {
+	const { fetchInvitations, invitations } = useGetInvitations();
+	const { acceptInvitation } = useInvitations();
+	const [notifications, setNotifications] = useState<Notification[]>([]);
+	const { toast } = useToast();
+	const [activeInvitationId, setActiveInvitationId] = useState<string | null>(
+		null,
+	);
+
+	useEffect(() => {
+		fetchInvitations();
+	}, [fetchInvitations]);
+
+	useEffect(() => {
+		if (!invitations) return;
+
+		const mappedNotifications = invitations.map(mapInvitationToNotification);
+		setNotifications(mappedNotifications);
+	}, [invitations]);
+
+	const handleResponse = async (
+		id: string,
+		_action: "accepted" | "rejected",
+	) => {
+		acceptInvitation(
+			id,
+			() => {
+				toast({
+					title: "Exito",
+					description:
+						"Invitacion Aceptda, por favor, refresque la página para acceder al proyecto",
+				});
+				deleteNotification(activeInvitationId ?? "");
+				setActiveInvitationId(null);
+			},
+			() => {
+				toast({
+					title: "Error",
+					description:
+						"Algo salió mal, verifica tu conexión o contacta con soporte",
+					variant: "destructive",
+				});
+			},
+		);
+	};
+	/*
 	const [notifications, setNotifications] = useState<Notification[]>([
 		{
 			id: 1,
@@ -116,8 +160,9 @@ export function NotificationsPopup({
 			color: "text-indigo-600",
 		},
 	]);
-
-	const markAsRead = (id: number) => {
+*/
+	const markAsRead = (id: string) => {
+		setActiveInvitationId(id);
 		setNotifications(
 			notifications.map((notif) =>
 				notif.id === id ? { ...notif, leida: true } : notif,
@@ -129,7 +174,7 @@ export function NotificationsPopup({
 		setNotifications(notifications.map((notif) => ({ ...notif, leida: true })));
 	};
 
-	const deleteNotification = (id: number) => {
+	const deleteNotification = (id: string) => {
 		setNotifications(notifications.filter((notif) => notif.id !== id));
 	};
 
@@ -252,6 +297,66 @@ export function NotificationsPopup({
 					</Button>
 				</div>
 			</Card>
+			{activeInvitationId && (
+				<Dialog open={true} onOpenChange={() => setActiveInvitationId(null)}>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Responder invitación</DialogTitle>
+						</DialogHeader>
+						<div className="space-y-2">
+							<p>¿Quieres aceptar la invitación al proyecto?</p>
+							<div className="flex gap-4">
+								<Button
+									onClick={() => handleResponse(activeInvitationId, "accepted")}
+								>
+									Aceptar
+								</Button>
+								<Button
+									variant="destructive"
+									onClick={() => handleResponse(activeInvitationId, "rejected")}
+								>
+									Rechazar
+								</Button>
+							</div>
+						</div>
+					</DialogContent>
+				</Dialog>
+			)}
 		</div>
 	);
+}
+
+function mapInvitationToNotification(invite: Invitation): Notification {
+	return {
+		id: invite.id,
+		tipo: "invitacion",
+		titulo: "Invitación recibida",
+		mensaje: `Has sido invitado por ${invite.sender_name} a un ${invite.resource_type === "project" ? "proyecto" : "archivo"} para el rol de ${invite.role}`,
+		usuario: "Sistema", // o si tienes `sender_name`, úsalo aquí
+		tiempo: timeAgo(invite.created_at), // utilidad que convierte fecha a texto
+		leida: false,
+		icono: UserPlus,
+		color: "text-purple-600",
+	};
+}
+
+function timeAgo(dateString: string): string {
+	const date = new Date(dateString);
+	const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+	const intervals = [
+		{ label: "año", seconds: 31536000 },
+		{ label: "mes", seconds: 2592000 },
+		{ label: "día", seconds: 86400 },
+		{ label: "hora", seconds: 3600 },
+		{ label: "minuto", seconds: 60 },
+		{ label: "segundo", seconds: 1 },
+	];
+
+	for (const i of intervals) {
+		const count = Math.floor(seconds / i.seconds);
+		if (count > 0) {
+			return `Hace ${count} ${i.label}${count !== 1 ? "s" : ""}`;
+		}
+	}
+	return "Justo ahora";
 }

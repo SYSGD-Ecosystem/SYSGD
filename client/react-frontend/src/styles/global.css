@@ -287,3 +287,7 @@ body,
     transform: translateY(-4px);
   }
 }
+
+.custom-html-style ul {
+  list-style-type: disc;
+}

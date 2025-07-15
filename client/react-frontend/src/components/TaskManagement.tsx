@@ -41,12 +41,14 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useGemini } from "@/hooks/connection/useGemini";
 
 const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 	const { tasks, loading, createTask, updateTask, deleteTask } =
 		useTasks(project_id);
 	// 1. Obtenemos los miembros del proyecto para el dropdown
 	const { members } = useProjectMembers(project_id);
+	const { handleImprove, improvedText, loading: geminiIsLoading } = useGemini();
 
 	const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
 	const [selectedTask, setselectedTask] = useState<Task | null>(null);
@@ -366,22 +368,24 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 
 									<TableCell className="text-left">{task.title}</TableCell>
 									<TableCell className="text-center flex items-center justify-center">
-										<Badge className="w-16 text-center flex items-center justify-center" variant={getPriorityColor(task.priority)}>
+										<Badge
+											className="w-16 text-center flex items-center justify-center"
+											variant={getPriorityColor(task.priority)}
+										>
 											{task.priority}
 										</Badge>
 									</TableCell>
 									<TableCell className="text-center">
 										<div className="text-center flex items-center justify-center">
-											{task.assignees && (
-												task.assignees.map((assignee) => (
-													<div
-														key={assignee.id}
-														className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center text-xs font-bold text-gray-600 border-2 border-white"
-														title={assignee.name}
-													>
-														{assignee.name.charAt(0)}
-													</div>
-												)))}
+											{task.assignees?.map((assignee) => (
+												<div
+													key={assignee.id}
+													className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center text-xs font-bold text-gray-600 border-2 border-white"
+													title={assignee.name}
+												>
+													{assignee.name.charAt(0)}
+												</div>
+											))}
 										</div>
 									</TableCell>
 								</TableRow>
@@ -415,6 +419,7 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 							<div>
 								<Label htmlFor="descripcion">Descripción</Label>
 								<Textarea
+									className="min-h-32"
 									id="descripcion"
 									value={editingTask.description || ""}
 									onChange={(e) =>
@@ -425,6 +430,39 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 									}
 								/>
 							</div>
+							<div className="border hidden p-4 rounded-lg bg-muted space-y-4">
+								<div className="text-sm text-muted-foreground">
+									Mejora automática de descripción con IA
+								</div>
+
+								<div className="max-h-40 overflow-auto bg-background p-2 rounded">
+									{geminiIsLoading ? (
+										<Skeleton />
+									) : (
+										<Textarea
+											readOnly
+											className="min-h-24 text-sm"
+											value={improvedText}
+										/>
+									)}
+								</div>
+
+								<Button
+									size="sm"
+									variant="secondary"
+									disabled={geminiIsLoading}
+									onClick={() =>
+										handleImprove(
+											editingTask?.title ?? "",
+											editingTask?.description ?? "",
+										)
+									}
+									className="w-full"
+								>
+									✨ Mejorar con IA
+								</Button>
+							</div>
+
 							<div className="grid grid-cols-2 gap-4">
 								<div>
 									<Label htmlFor="tipo">Tipo</Label>
