@@ -1,19 +1,20 @@
 "use client"
 
 import { useState } from "react"
-import { TopNavigation } from "./top-navigation"
-import { Sidebar } from "./sidebar"
-import { TaskManagement } from "./task-management"
-import { KanbanBoard } from "./kanban-board"
-import { CalendarSection } from "./calendar-section"
-import { TeamManagement } from "./team-management"
-import { NotesSection } from "./notes-section"
-import { IdeasBank } from "./ideas-bank"
-import { ThemeProvider } from "@/context/theme-context"
-import { HomeDashboard } from "./home-dashboard"
+import { Sidebar } from "@/components/projects/sidebar"
+import { TopNavigation } from "@/components/projects/top-navigation"
+import { KanbanBoard } from "@/components/projects/kanban-board"
+import { TeamManagement } from "@/components/projects/team-management"
+import { NotesSection } from "@/components/projects/notes-section"
+import { IdeasBank } from "@/components/projects/ideas-bank"
+import { TaskManagement } from "@/components/projects/task-management"
+import { CalendarSection } from "@/components/projects/calendar-section"
+import { HomeDashboard } from "@/components/projects/home-dashboard"
+import { ThemeProvider } from "@/context/theme-context";
+import { TimeTracking } from "@/components/projects/time-tracking"
+import { DocumentFormExample } from "./document-form-example"
 
-
-function MainPage() {
+function MainAppProjectDemo() {
   const [activeSection, setActiveSection] = useState("tasks")
   const [selectedProject, setSelectedProject] = useState("sysgd")
   const [showHome, setShowHome] = useState(true) // Cambiar a true por defecto
@@ -50,7 +51,7 @@ function MainPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
+    <div className="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
       <TopNavigation
         selectedProject={selectedProject}
         onProjectChange={setSelectedProject}
@@ -58,7 +59,7 @@ function MainPage() {
         onMobileSidebarToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         isHomePage={false}
       />
-      <div className="flex flex-1 relative">
+      <div className="flex flex-1 relative overflow-hidden">
         <Sidebar
           activeSection={activeSection}
           onSectionChange={handleSectionChange}
@@ -72,16 +73,18 @@ function MainPage() {
           {activeSection === "team" && <TeamManagement />}
           {activeSection === "notes" && <NotesSection />}
           {activeSection === "ideas" && <IdeasBank />}
+          {activeSection === "time-tracking" && <TimeTracking />}
+          {activeSection === "document-form" && <DocumentFormExample />}
         </main>
       </div>
     </div>
   )
 }
 
-export default function Page() {
+export default function ProjectPageDemo() {
   return (
     <ThemeProvider>
-      <MainPage />
+      <MainAppProjectDemo />
     </ThemeProvider>
   )
 }

@@ -17,6 +17,7 @@ const useArchives = () => {
                 throw new Error("Error al obtener los datos");
             }
             const data = await response.json();
+            console.log(data)
             setArchives(data);
             setError(null);
         } catch (error) {

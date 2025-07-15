@@ -7,6 +7,7 @@ const useGetRetentionSchedule = (archiveId: string) => {
   const [loading, setLoading] = useState(true);
   const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -23,6 +24,7 @@ const useGetRetentionSchedule = (archiveId: string) => {
               .flatMap((i) => i.retention_schedule)
           : [];
         setSchedule(flat);
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
       } catch (e: any) {
         setError(e.message);
       } finally {

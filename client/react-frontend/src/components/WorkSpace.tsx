@@ -27,6 +27,7 @@ import RetentionScheduleTable from "./RetentionScheduleTable";
 import type { DropdownOptionProps } from "./Dropdown";
 import { Edit3 } from "lucide-react";
 import { useArchivesApi } from "@/hooks/connection/useArchivesApi";
+import { useArchiveStore } from "@/store/useArchiveStore";
 
 const WorkSpace: FC<{ page: number }> = ({ page }) => {
 	const { DialogComponent, openDialog, closeDialog } = useDialog();
@@ -36,10 +37,15 @@ const WorkSpace: FC<{ page: number }> = ({ page }) => {
 		{ Icon: FC; label: string; onClick: () => void }[]
 	>([]);
 
-	const [archiveId, setArchiveId] = useState("");
-	const [selectCode, setSelectCode] = useState("");
-	const [archiveName, setArchiveName] = useState("");
-	const [company, setCompany] = useState("");
+	const {
+		selectedArchiveId,
+		selectedArchiveInfo,
+	} = useArchiveStore();
+
+	const [archiveId, setArchiveId] = useState(selectedArchiveId ?? "");
+	const [selectCode, setSelectCode] = useState(selectedArchiveInfo.code ?? "");
+	const [archiveName, setArchiveName] = useState(selectedArchiveInfo.name ?? "");
+	const [company, setCompany] = useState(selectedArchiveInfo.company ?? "");
 	const { exportToXlsx } = useExportTable();
 	const { print } = usePrint();
 
@@ -133,7 +139,7 @@ const WorkSpace: FC<{ page: number }> = ({ page }) => {
 											Icon={() => <span className="text-red-500">✕</span>}
 											onClick={() => {
 												dialogDelete.openDialog();
-												reloadArchives()
+												reloadArchives();
 											}}
 											tooltip="Eliminar"
 										/>

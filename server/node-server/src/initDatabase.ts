@@ -1,7 +1,7 @@
 import { pool } from "./index";
 
 export async function initDatabase() {
-  await pool.query(`
+	await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       name TEXT,
@@ -11,8 +11,7 @@ export async function initDatabase() {
     );
   `);
 
-
-await pool.query(`
+	await pool.query(`
   CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
   CREATE TABLE IF NOT EXISTS document_management_file (
@@ -34,7 +33,67 @@ await pool.query(`
   );
 `);
 
+	await pool.query(`
+    CREATE TABLE IF NOT EXISTS projects (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name TEXT NOT NULL,
+      description TEXT,
+      created_by INTEGER REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT NOW(),
+      status TEXT DEFAULT 'activo',
+      visibility TEXT DEFAULT 'privado'
+    );
+  `);
 
-  console.log("✅ Tablas verificadas o creadas correctamente.");
+  await pool.query(`
+  CREATE TABLE IF NOT EXISTS tasks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMP DEFAULT NOW(),
+    type TEXT,
+    priority TEXT,
+    title TEXT,
+    description TEXT,
+    created_by INTEGER REFERENCES users(id),
+    status TEXT DEFAULT 'active',
+    project_id UUID REFERENCES projects(id),
+    project_task_number INTEGER NOT NULL,
+    UNIQUE (project_id, project_task_number)
+  );
+`);
+
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS task_assignees (
+    task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id),
+    PRIMARY KEY (task_id, user_id)
+  );
+`);
+
+
+await pool.query(`
+CREATE TABLE IF NOT EXISTS invitations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  receiver_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  resource_type TEXT CHECK (resource_type IN ('project', 'archive')),
+  resource_id UUID NOT NULL,
+  role TEXT DEFAULT 'viewer',
+  status TEXT DEFAULT 'pending',
+  receiver_email TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+`);
+
+await pool.query(`
+CREATE TABLE IF NOT EXISTS resource_access (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  resource_type TEXT CHECK (resource_type IN ('project', 'archive')),
+  resource_id UUID NOT NULL,
+  role TEXT DEFAULT 'viewer',
+  UNIQUE(user_id, resource_type, resource_id)
+);
+`);
+
+	console.log("✅ Tablas verificadas o creadas correctamente.");
 }
-
