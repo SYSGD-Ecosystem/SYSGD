@@ -207,12 +207,15 @@ router.put("/:taskId", isAuthenticated, async (req: Request, res: Response) => {
 	}
 });
 
-// --- NUEVO: ELIMINAR UNA TAREA ---
+// --- ELIMINAR UNA TAREA ---
 router.delete(
 	"/:taskId",
 	isAuthenticated,
 	async (req: Request, res: Response) => {
 		const { taskId } = req.params;
+		// TODO: Aqui no hay nada que verifique si el usuario tiene permiso de eliminar el recurso seleccionado
+		// Alto riego de hack por acceso lateral
+		// Implementar una tabla de asignacion de recuros para los usuarios, solo usuarios con acceso a este recurso pueden eliminarlo o modificarlo.
 
 		try {
 			// Gracias a "ON DELETE CASCADE" en la tabla task_assignees,

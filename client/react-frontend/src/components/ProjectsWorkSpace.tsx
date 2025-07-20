@@ -7,6 +7,7 @@ import useCurrentUser from "@/hooks/connection/useCurrentUser";
 import Loading from "./Loading";
 import { ProjectSidebar } from "./ProjectSidebar";
 import TeamManagement from "./TeamManagement";
+import IdeasBank from "./IdeasBank";
 
 const ProjectWorkSpace: FC = () => {
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -47,6 +48,8 @@ const ProjectWorkSpace: FC = () => {
 		setActiveSection(section);
 		setIsMobileSidebarOpen(false);
 	};
+// TODO: Realizar comprobacion de proyecto seleccionado por aqui antes de mostrar cualquier cosa
+
 
 	return (
 		<div className="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
@@ -73,6 +76,10 @@ const ProjectWorkSpace: FC = () => {
 
 					{activeSection === "team" && (
 						<TeamManagement projectId={selectedProject} />
+					)}
+
+					{activeSection === "ideas" && (
+						<IdeasBank projectId={selectedProject} />
 					)}
 				</main>
 			</div>

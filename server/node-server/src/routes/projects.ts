@@ -66,7 +66,7 @@ router.get("/", isAuthenticated, async (req: Request, res: Response) => {
                     p.*,
                     (SELECT COUNT(*) FROM resource_access WHERE resource_id = p.id AND resource_type = 'project') as members_count,
                     (SELECT COUNT(*) FROM tasks WHERE project_id = p.id) as total_tasks,
-                    (SELECT COUNT(*) FROM tasks WHERE project_id = p.id AND status = 'completed') as completed_tasks
+                    (SELECT COUNT(*) FROM tasks WHERE project_id = p.id AND status = 'Completado') as completed_tasks
                 FROM projects p
                 ORDER BY p.created_at DESC
             `

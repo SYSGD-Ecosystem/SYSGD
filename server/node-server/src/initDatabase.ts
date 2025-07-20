@@ -7,7 +7,18 @@ export async function initDatabase() {
       name TEXT,
       username TEXT,
       password TEXT,
-      privileges TEXT DEFAULT 'user' -- o 'admin'
+      privileges TEXT DEFAULT 'user' -- o 'admin',
+      -- created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users_logins (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      login_time TIMESTAMP DEFAULT NOW(),
+      ip_address TEXT,
+      user_agent TEXT
     );
   `);
 
@@ -93,6 +104,36 @@ CREATE TABLE IF NOT EXISTS resource_access (
   role TEXT DEFAULT 'viewer',
   UNIQUE(user_id, resource_type, resource_id)
 );
+`);
+
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS ideas (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title TEXT NOT NULL,
+    description TEXT,
+    category TEXT,
+    status TEXT DEFAULT 'pending',
+    priority TEXT DEFAULT 'medium',
+    implementability TEXT DEFAULT 'medium',
+    impact TEXT DEFAULT 'medium',
+    votes INTEGER DEFAULT 0,
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    idea_number INTEGER NOT NULL,
+    UNIQUE(project_id, idea_number)
+  );
+`);
+
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS idea_votes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    idea_id UUID REFERENCES ideas(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    value INTEGER CHECK (value IN (1, -1)),
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(idea_id, user_id)
+  );
 `);
 
 	console.log("✅ Tablas verificadas o creadas correctamente.");

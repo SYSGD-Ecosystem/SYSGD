@@ -5,6 +5,7 @@ import projects from "./projects";
 import task from "./tasks";
 import invitations from "./invitations";
 import members from "./members";
+import ideas from "./ideas";
 import generate from "./generate"; // new route for Gemini API
 import docApi from "./api"; // existing large router with document-management endpoints
 
@@ -17,6 +18,8 @@ router.use("/tasks", task);
 router.use("/invitations", invitations);
 router.use("/members", members);
 router.use("/generate", generate); // route for Gemini API
+router.use("/ideas", ideas);
+
 
 // others (document registers, classification, etc.) remain in docApi
 router.use(docApi);

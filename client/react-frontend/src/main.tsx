@@ -17,6 +17,7 @@ import PrivacyPolicy from "./pages/Privacy.tsx";
 import ProjectsPage from "./components/DashboardPage.tsx";
 import ProjectWorkSpace from "./components/ProjectsWorkSpace.tsx";
 import ProjectPageDemo from "./components/projects/page.tsx";
+import LandingPage from "./components/projects/landing-page.tsx";
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(
@@ -37,6 +38,7 @@ createRoot(document.getElementById("root")!).render(
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/dashboard" element={<ProjectsPage />} />
       <Route path="/projects" element={<ProjectWorkSpace />} />
+      <Route path="/landpage" element={<LandingPage />} />
     </Routes>
     </BrowserRouter>
     <Toaster/>
