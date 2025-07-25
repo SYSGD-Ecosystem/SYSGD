@@ -1,5 +1,5 @@
 import { TopNavigation } from "./TopNavigationDashboard";
-import { ThemeProvider } from "@/context/theme-context";
+import { ThemeProvider } from "@/contexts/theme-context";
 import { HomeDashboard } from "./home-dashboard";
 import { useAuthSession } from "@/hooks/connection/useAuthSession";
 import Loading from "./Loading";
@@ -14,7 +14,6 @@ function MainPage() {
 		return (
 			<div className="flex flex-col h-screen bg-slate-950 items-center justify-center">
 				<Loading />
-				<div>Verificando sesión...</div>
 			</div>
 		);
 	}

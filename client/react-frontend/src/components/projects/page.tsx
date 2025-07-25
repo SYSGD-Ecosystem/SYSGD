@@ -10,14 +10,14 @@ import { IdeasBank } from "@/components/projects/ideas-bank"
 import { TaskManagement } from "@/components/projects/task-management"
 import { CalendarSection } from "@/components/projects/calendar-section"
 import { HomeDashboard } from "@/components/projects/home-dashboard"
-import { ThemeProvider } from "@/context/theme-context";
+import { ThemeProvider } from "@/contexts/theme-context";
 import { TimeTracking } from "@/components/projects/time-tracking"
 import { DocumentFormExample } from "./document-form-example"
 
 function MainAppProjectDemo() {
   const [activeSection, setActiveSection] = useState("tasks")
   const [selectedProject, setSelectedProject] = useState("sysgd")
-  const [showHome, setShowHome] = useState(true) // Cambiar a true por defecto
+  const [showHome, setShowHome] = useState(true)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
 
   const handleHomeClick = () => {
@@ -27,12 +27,12 @@ function MainAppProjectDemo() {
   const handleProjectSelect = (projectId: string) => {
     setSelectedProject(projectId)
     setShowHome(false)
-    setActiveSection("tasks") // Ir a tareas por defecto al abrir un proyecto
+    setActiveSection("tasks")
   }
 
   const handleSectionChange = (section: string) => {
     setActiveSection(section)
-    setIsMobileSidebarOpen(false) // Cerrar sidebar en móvil al cambiar sección
+    setIsMobileSidebarOpen(false)
   }
 
   if (showHome) {
@@ -51,7 +51,7 @@ function MainAppProjectDemo() {
   }
 
   return (
-    <div className="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
       <TopNavigation
         selectedProject={selectedProject}
         onProjectChange={setSelectedProject}
@@ -59,7 +59,7 @@ function MainAppProjectDemo() {
         onMobileSidebarToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         isHomePage={false}
       />
-      <div className="flex flex-1 relative overflow-hidden">
+      <div className="flex flex-1 relative">
         <Sidebar
           activeSection={activeSection}
           onSectionChange={handleSectionChange}
@@ -81,7 +81,7 @@ function MainAppProjectDemo() {
   )
 }
 
-export default function ProjectPageDemo() {
+export default function Page() {
   return (
     <ThemeProvider>
       <MainAppProjectDemo />

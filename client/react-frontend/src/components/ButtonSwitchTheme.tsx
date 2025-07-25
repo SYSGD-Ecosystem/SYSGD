@@ -1,5 +1,4 @@
-import type { FC } from "react";
-import useTheme from "../hooks/useTheme";
+import { useEffect, useState, type FC } from "react";
 import {
 	TooltipProvider,
 	TooltipTrigger,
@@ -10,8 +9,14 @@ import { Button } from "./ui/button";
 import { Moon, Sun } from "lucide-react";
 
 const ButtonSwitchTheme: FC = () => {
-	const { toggleTheme, theme } = useTheme();
-
+	const [darkMode, setDarkMode] = useState(true);
+	useEffect(() => {
+		if (darkMode) {
+			document.documentElement.classList.add("dark");
+		} else {
+			document.documentElement.classList.remove("dark");
+		}
+	}, [darkMode]);
 	return (
 		<TooltipProvider>
 			<Tooltip>
@@ -19,13 +24,12 @@ const ButtonSwitchTheme: FC = () => {
 					<Button
 						variant="ghost"
 						size="sm"
-						onClick={toggleTheme}
-						className="text-slate-300 hover:text-white"
+						onClick={() => setDarkMode(!darkMode)}
 					>
-						{theme === "dark" ? (
+						{darkMode ? (
 							<Sun className="w-4 h-4" />
 						) : (
-							<Moon className="w-4 h-4 text-slate-500" />
+							<Moon className="w-4 h-4" />
 						)}
 					</Button>
 				</TooltipTrigger>

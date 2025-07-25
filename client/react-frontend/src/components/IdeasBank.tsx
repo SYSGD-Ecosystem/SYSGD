@@ -24,6 +24,14 @@ import {
 import type { Idea } from "@/types/ProjectTypes";
 import { useIdeas } from "@/hooks/connection/useIdeas";
 import { timeAgo } from "@/utils/util";
+import { Label } from "./ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "./ui/select";
 
 const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 	const { ideas, createIdea, deleteIdea, updateIdea } = useIdeas(projectId);
@@ -147,14 +155,14 @@ const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 	};
 
 	return (
-		<div className="bg-white rounded-lg shadow-sm">
+		<div className="bg-white rounded-lg shadow-sm dark:border dark:bg-gray-800 dark:border-gray-700">
 			<div className="p-6 border-b border-gray-200">
 				<div className="flex justify-between items-start mb-4">
 					<div>
-						<h1 className="text-xl font-bold text-gray-900 mb-2">
+						<h1 className="text-xl font-bold text-gray-900 mb-2 dark:text-gray-100">
 							BANCO DE IDEAS
 						</h1>
-						<h2 className="text-lg font-semibold text-gray-700 mb-4">
+						<h2 className="text-lg font-semibold text-gray-700 dark:text-gray-400 mb-4">
 							GESTIÓN DE IDEAS E INNOVACIÓN
 						</h2>
 					</div>
@@ -165,24 +173,32 @@ const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 
 				<div className="flex justify-between items-center">
 					<div className="flex gap-4 items-center">
-						<select
+						<Select
 							value={filterStatus}
-							onChange={(e) => setFilterStatus(e.target.value)}
-							className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+							onValueChange={(v) => setFilterStatus(v)}
 						>
-							{statuses.map((status) => (
-								<option key={status} value={status}>
-									{status}
-								</option>
-							))}
-						</select>
-						<div className="text-sm text-gray-600">
+							<SelectTrigger>
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="todos">Todos los tipos</SelectItem>
+								{statuses.map((status) => (
+									<SelectItem key={status} value={status}>
+										{status}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<div className="text-sm shrink-0 text-gray-600 dark:text-gray-400">
 							Total: {filteredIdeas.length} ideas
 						</div>
 					</div>
-					<Button onClick={handleAddNewIdea}>
-						<Plus className="w-4 h-4 mr-2" />
-						Nueva Idea
+					<Button
+						className="rounded-full sm:rounded w-12 h-12 sm:w-auto sm:h-auto fixed sm:relative sm:right-auto sm:bottom-auto right-10 bottom-20"
+						onClick={handleAddNewIdea}
+					>
+						<Plus className="w-4 h-4 sm:mr-2 mr-0" />
+						<span className="hidden sm:inline-block">Nueva Idea</span>
 					</Button>
 				</div>
 			</div>
@@ -292,7 +308,7 @@ const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 			</div>
 
 			<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-				<DialogContent className="max-w-2xl">
+				<DialogContent className="sm:max-w-2xl w-full rounded-lg">
 					<DialogHeader>
 						<DialogTitle>
 							{editingIdea?.id && ideas.find((i) => i.id === editingIdea.id)
@@ -303,8 +319,7 @@ const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 					{editingIdea && (
 						<div className="space-y-4">
 							<div>
-								{/* biome-ignore lint/a11y/noLabelWithoutControl: <explanation> */}
-								<label className="text-sm font-medium">Título</label>
+								<Label className="text-sm font-medium">Título</Label>
 								<Input
 									value={editingIdea.title}
 									onChange={(e) =>
@@ -314,8 +329,7 @@ const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 								/>
 							</div>
 							<div>
-								{/* biome-ignore lint/a11y/noLabelWithoutControl: <explanation> */}
-								<label className="text-sm font-medium">Descripción</label>
+								<Label className="text-sm font-medium">Descripción</Label>
 								<Textarea
 									value={editingIdea.description}
 									onChange={(e) =>
@@ -330,8 +344,7 @@ const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 							</div>
 							<div className="grid grid-cols-2 gap-4">
 								<div>
-									{/* biome-ignore lint/a11y/noLabelWithoutControl: <explanation> */}
-									<label className="text-sm font-medium">Categoría</label>
+									<Label className="text-sm font-medium">Categoría</Label>
 									<select
 										value={editingIdea.category}
 										onChange={(e) =>
@@ -350,8 +363,7 @@ const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 									</select>
 								</div>
 								<div>
-									{/* biome-ignore lint/a11y/noLabelWithoutControl: <explanation> */}
-									<label className="text-sm font-medium">Prioridad</label>
+									<Label className="text-sm font-medium">Prioridad</Label>
 									<select
 										value={editingIdea.priority}
 										onChange={(e) =>
@@ -370,10 +382,9 @@ const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 							</div>
 							<div className="grid grid-cols-2 gap-4">
 								<div>
-									{/* biome-ignore lint/a11y/noLabelWithoutControl: <explanation> */}
-									<label className="text-sm font-medium">
+									<Label className="text-sm font-medium">
 										Implementabilidad
-									</label>
+									</Label>
 									<select
 										value={editingIdea.implementability}
 										onChange={(e) =>
@@ -390,8 +401,7 @@ const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 									</select>
 								</div>
 								<div>
-									{/* biome-ignore lint/a11y/noLabelWithoutControl: <explanation> */}
-									<label className="text-sm font-medium">Impacto</label>
+									<Label className="text-sm font-medium">Impacto</Label>
 									<select
 										value={editingIdea.impact}
 										onChange={(e) =>

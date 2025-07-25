@@ -8,16 +8,10 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import useProjects from "@/hooks/connection/useProjects";
-import useTheme from "@/hooks/useTheme";
-import {
-	Home,
-	Moon,
-	Sun,
-	Settings,
-	Bell,
-	ChevronRight,
-} from "lucide-react";
+//import useTheme from "@/hooks/useTheme";
+import { Home, ChevronRight } from "lucide-react";
 import UserProfileTrigger from "./UserProfileTrigger";
+import ButtonSwitchTheme from "./ButtonSwitchTheme";
 
 interface TopNavigationProps {
 	selectedProject: string;
@@ -33,7 +27,6 @@ export function TopNavigation({
 	onHomeClick,
 	onMobileSidebarToggle,
 }: TopNavigationProps) {
-	const { theme, toggleTheme } = useTheme();
 	const { projects } = useProjects();
 
 	const currentProject = projects.find((p) => p.id === selectedProject);
@@ -112,22 +105,14 @@ export function TopNavigation({
 				</div>
 
 				<div className="flex items-center gap-1 md:gap-2">
-					<Button variant="ghost" size="sm" className="hidden sm:flex">
+					{/* <Button variant="ghost" size="sm" className="hidden sm:flex">
 						<Bell className="w-4 h-4" />
-					</Button>
-
-					<Button variant="ghost" size="sm" onClick={toggleTheme}>
-						{theme === "light" ? (
-							<Moon className="w-4 h-4" />
-						) : (
-							<Sun className="w-4 h-4" />
-						)}
 					</Button>
 
 					<Button variant="ghost" size="sm" className="hidden sm:flex">
 						<Settings className="w-4 h-4" />
-					</Button>
-
+					</Button> */}
+					<ButtonSwitchTheme />
 					<div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-300 dark:border-gray-600">
 						<UserProfileTrigger />
 					</div>

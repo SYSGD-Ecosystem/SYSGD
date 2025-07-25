@@ -1,47 +1,24 @@
 /** @type {import('tailwindcss').Config} */
-
 export default {
-  darkMode: "class",
+  darkMode: ["class"],
   content: [
-	"./index.html",
-    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./index.html",
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
     "*.{js,ts,jsx,tsx,mdx}",
   ],
+  prefix: "",
   theme: {
-    extend: {
-      fontFamily: {
-        sans: [
-          "Inter",
-          "SF Pro Display",
-          "-apple-system",
-          "BlinkMacSystemFont",
-          "Segoe UI",
-          "Roboto",
-          "Oxygen",
-          "Ubuntu",
-          "Cantarell",
-          "Fira Sans",
-          "Droid Sans",
-          "Helvetica Neue",
-          "sans-serif",
-        ],
-        display: ["Cal Sans", "Inter", "SF Pro Display", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
-        mono: [
-          "JetBrains Mono",
-          "Fira Code",
-          "SF Mono",
-          "Monaco",
-          "Inconsolata",
-          "Roboto Mono",
-          "Source Code Pro",
-          "Menlo",
-          "Consolas",
-          "DejaVu Sans Mono",
-          "monospace",
-        ],
+    container: {
+      center: true,
+      padding: "2rem",
+      screens: {
+        "2xl": "1400px",
       },
+    },
+    extend: {
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -82,17 +59,23 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
-      typography: {
-        DEFAULT: {
-          css: {
-            fontFamily: "Inter, sans-serif",
-            lineHeight: "1.6",
-            letterSpacing: "-0.01em",
-          },
+      keyframes: {
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+      },
+      animation: {
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
       },
     },
   },
   plugins: [require("tailwindcss-animate")],
 }
 
+// FIXME ELIMINAR YA NO HACE NADA TW4 NO LO REQUIERE

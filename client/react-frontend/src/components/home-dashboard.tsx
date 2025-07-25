@@ -41,6 +41,7 @@ import { useArchiveStore } from "@/store/useArchiveStore";
 import useCurrentUser from "@/hooks/connection/useCurrentUser";
 import { useToast } from "@/hooks/use-toast";
 import useConnection from "@/hooks/connection/useConnection";
+import { Progress } from "./ui/progress";
 
 interface DocumentFile {
 	id: string;
@@ -385,7 +386,7 @@ export function HomeDashboard() {
 					{filteredItems.map((item) => (
 						<Card
 							key={item.id}
-							className="hover:shadow-lg transition-shadow cursor-pointer dark:bg-gray-800 dark:border-gray-700"
+							className="hover:shadow-lg transition-shadow dark:bg-gray-800 dark:border-gray-700"
 						>
 							<CardHeader className="pb-3">
 								<div className="flex items-start justify-between">
@@ -399,7 +400,7 @@ export function HomeDashboard() {
 											{item.name}
 										</CardTitle>
 									</div>
-									<Button variant="ghost" size="sm">
+									<Button variant="ghost" disabled size="sm">
 										<MoreVertical className="w-4 h-4" />
 									</Button>
 								</div>
@@ -409,12 +410,16 @@ export function HomeDashboard() {
 									{item.tipo === "project" ? item.status : "EGDyA"}
 								</Badge>
 							</CardHeader>
+
 							<CardContent className="space-y-3 flex flex-col">
 								{item.tipo === "project" ? (
 									<>
-										<p className="text-sm h-full text-gray-600 dark:text-gray-400 line-clamp-2">
-											{item.description}
-										</p>
+										<div className="h-full">
+											<p className="text-sm h-full text-gray-600 dark:text-gray-400 line-clamp-2 ">
+												{item.description}
+											</p>
+										</div>
+
 										<div className="space-y-2">
 											<div className="flex justify-between text-sm">
 												<span className="text-gray-600 dark:text-gray-400">
@@ -424,14 +429,21 @@ export function HomeDashboard() {
 													{getProgress(item.completed_tasks, item.total_tasks)}%
 												</span>
 											</div>
-											<div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+											<Progress
+												value={getProgress(
+													item.completed_tasks,
+													item.total_tasks,
+												)}
+												max={item.total_tasks}
+											/>
+											{/* <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
 												<div
 													className="bg-blue-600 h-2 rounded-full transition-all"
 													style={{
 														width: `${getProgress(item.completed_tasks, item.total_tasks)}%`,
 													}}
 												/>
-											</div>
+											</div> */}
 										</div>
 										<div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
 											<div className="flex items-center gap-1">
@@ -501,12 +513,12 @@ export function HomeDashboard() {
 										}}
 										variant="ghost"
 										size="sm"
-										className="flex-1"
+										className="flex-1 cursor-pointer"
 									>
 										<Eye className="w-3 h-3 mr-1" />
 										Ver
 									</Button>
-									<Button variant="ghost" size="sm" className="flex-1">
+									<Button disabled variant="ghost" size="sm" className="flex-1 cursor-pointer">
 										<Edit className="w-3 h-3 mr-1" />
 										Editar
 									</Button>
