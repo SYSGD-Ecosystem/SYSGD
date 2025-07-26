@@ -1,5 +1,5 @@
+import LandingPage from "@/components/LandingPage";
 import type { FC } from "react";
-import LandingPage from "./LandingPage";
 
 const App: FC = () => {
 	return <LandingPage />;

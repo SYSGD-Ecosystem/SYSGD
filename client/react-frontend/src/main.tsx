@@ -16,7 +16,8 @@ import PrivacyPolicy from "./pages/Privacy.tsx";
 import ProjectsPage from "./components/DashboardPage.tsx";
 import ProjectWorkSpace from "./components/ProjectsWorkSpace.tsx";
 import ProjectPageDemo from "./components/projects/page.tsx";
-import LandingPage from "./components/projects/landing-page.tsx";
+import LandingPage from "./pages/LandingPage.tsx";
+
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(
