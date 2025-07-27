@@ -2,6 +2,8 @@
  Sistema de Gestión Documental
 ## Descripción
 
+[![Netlify Status](https://api.netlify.com/api/v1/badges/b5c4e985-e773-482a-978b-279aae78fd0e/deploy-status)](https://app.netlify.com/projects/sysgd/deploys)
+
 SYSGD es una aplicación para la gestión eficiente de documentos, permitiendo almacenar, organizar y acceder a información de manera centralizada y segura.
 
 ## Características principales

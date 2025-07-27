@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import useServerStatus from "@/hooks/connection/useServerStatus";
 import { useAuthSession } from "@/hooks/connection/useAuthSession";
 import Loading from "@/components/Loading";
+import LoadingLogo from "@/components/LoadingLogo";
 
 const Login: FC = () => {
 	const [isLoginPage, setIsLoginPage] = useState(true);
@@ -37,7 +38,7 @@ const Login: FC = () => {
 	if (status === "checking")
 		return (
 			<div className="flex flex-col h-screen bg-slate-950 items-center justify-center">
-				<Loading />
+				<LoadingLogo />
 			</div>
 		);
 
@@ -80,15 +81,14 @@ const Login: FC = () => {
 	}
 
 	return (
-		<div className="flex items-center justify-center bg-slate-800 min-h-screen p-4">
+		<div className="flex items-center justify-center dark:bg-slate-800 min-h-screen p-4">
+			<div className="fixed inset-0 z-0">
+				<div className="nebula" />
+			</div>
 			{isLoginPage ? (
 				<div className="w-80 relative bg-white dark:bg-slate-900 overflow-hidden rounded-lg px-6 py-8 flex items-center flex-col gap-4 shadow-2xl before:absolute before:w-32 before:h-20 before:right-2 before:bg-rose-300 before:-z-10 before:rounded-full before:blur-xl before:-top-12 z-10 after:absolute after:w-24 after:h-24 after:bg-purple-300 dark:before:bg-rose-700 after:-z-10 after:rounded-full after:blur dark:after:bg-rose-600/50 after:-top-12 after:-right-6">
 					<div className="flex items-center flex-col justify-center gap-2">
 						<div className="flex gap-2 items-center justify-center">
-							<IoIosApps
-								size={28}
-								className="text-slate-700 dark:text-slate-100"
-							/>
 							<h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
 								SYSGD
 							</h1>
@@ -129,7 +129,7 @@ const Login: FC = () => {
 						<Button
 							type="submit"
 							disabled={password === "" || user === "" || loginLoading}
-							className="w-full"
+							className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-base px-8 py-4 w-full cursor-pointer"
 						>
 							{loginLoading ? "Cargando..." : "Iniciar sesión"}
 						</Button>
@@ -164,10 +164,6 @@ const Login: FC = () => {
 				<div className="w-96 relative bg-white dark:bg-slate-900 overflow-hidden rounded-lg px-6 py-8 flex items-center flex-col gap-4 shadow-2xl before:absolute before:w-32 before:h-20 before:right-2 before:bg-rose-300 before:-z-10 before:rounded-full before:blur-xl before:-top-12 z-10 after:absolute after:w-24 after:h-24 after:bg-purple-300 dark:after:bg-rose-600/50 dark:before:bg-rose-700 after:-z-10 after:rounded-full after:blur after:-top-12 after:-right-6">
 					<div className="flex items-center flex-col justify-center gap-2">
 						<div className="flex gap-2 items-center justify-center">
-							<IoIosApps
-								size={28}
-								className="text-slate-700 dark:text-slate-100"
-							/>
 							<h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
 								SYSGD
 							</h1>
@@ -300,7 +296,7 @@ const ButtonGoogle: FC = () => {
 			onClick={() => {
 				window.location.href = `${serverUrl}/api/auth/google`;
 			}}
-			className="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 rounded-md flex items-center justify-center text-white font-medium transition-colors"
+			className="w-full px-3 py-3 bg-blue-500 hover:bg-blue-600 rounded-md flex items-center justify-center text-white font-medium cursor-pointer transition-colors"
 		>
 			{/* biome-ignore lint/a11y/noSvgWithoutTitle: <explanation> */}
 			<svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">

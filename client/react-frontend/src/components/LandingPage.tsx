@@ -12,7 +12,6 @@ import {
 	X,
 	Github,
 	Mail,
-	Phone,
 	MapPin,
 	Zap,
 	Twitter,
@@ -27,6 +26,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import useUserCount from "@/hooks/connection/useUserCount";
+import { IoLogoWhatsapp } from "react-icons/io5";
 
 export default function LandingPage() {
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -692,21 +692,31 @@ export default function LandingPage() {
 								<div>Centro de ayuda</div>
 								<div>API Reference</div>
 								<div>Estado del servicio</div> */}
-								<div>Términos y Condiciones</div>
-								<div>Plítica de Privacidad</div>
+								<div>
+									<Link to="/terms">Términos y Condiciones</Link>
+								</div>
+								<div>
+									<Link to="/privacy">Plítica de Privacidad</Link>
+								</div>
 							</div>
 						</div>
 						<div>
 							<h3 className="font-semibold mb-4 text-cyan-400">Contacto</h3>
 							<div className="space-y-2 text-sm text-gray-400">
-								<div className="flex items-center gap-2">
+								<Link
+									className="flex items-center gap-2"
+									to="mailto:lazaroyunier96@gmail.com"
+								>
 									<Mail className="w-4 h-4" />
 									lazaroyunier96@gmail.com
-								</div>
-								<div className="flex items-center gap-2">
-									<Phone className="w-4 h-4" />
-									+53 53935725
-								</div>
+								</Link>
+								<Link target="_blank"
+									className="flex items-center gap-2"
+									to="https://wa.me/+5353935724"
+								>
+									<IoLogoWhatsapp className="w-4 h-4" />
+									+53 53935724
+								</Link>
 								<div className="flex items-center gap-2">
 									<MapPin className="w-4 h-4" />
 									Las Tunas, Cuba
