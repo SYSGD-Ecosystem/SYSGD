@@ -2,7 +2,6 @@ import { type FC, type FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { IoIosApps } from "react-icons/io";
 import { useRegisterUser } from "@/hooks/connection/useRegisterUser";
 import { useLogin } from "@/hooks/connection/useLogin";
 import { useNavigate } from "react-router-dom";
