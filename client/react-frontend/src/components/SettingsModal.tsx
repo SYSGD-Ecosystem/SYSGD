@@ -39,6 +39,8 @@ interface SettingsModalProps {
 	onClose: () => void;
 }
 
+type Theme = "classic" | "red" | "green" | "fire" | "purple" | "pink";
+
 const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 	const [activeCategory, setActiveCategory] = useState("appearance");
 	const { theme, setTheme, isDark, setIsDark } = useTheme();
@@ -68,7 +70,7 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 						<button
 							type="button"
 							key={themeOption.id}
-							onClick={() => setTheme(themeOption.id)}
+							onClick={() => setTheme(themeOption.id as Theme)}
 							className={`
                 relative p-4 rounded-lg border-2 transition-all hover:scale-105
                 ${
@@ -234,7 +236,7 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 						},
 					].map((item, index) => (
 						<div
-              // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+							// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
 							key={index}
 							className="flex items-center justify-between p-3 border rounded-lg"
 						>

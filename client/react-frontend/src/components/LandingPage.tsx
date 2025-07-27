@@ -287,7 +287,7 @@ export default function LandingPage() {
 			</nav>
 
 			{/* Hero Section */}
-			<section className="relative z-10 py-20 px-4 sm:px-6 h-screen flex flex-col items-center justify-center lg:px-8">
+			<section className="relative z-10 py-20 px-4 sm:px-6 flex flex-col items-center justify-center lg:px-8 min-h-screen">
 				<div className="max-w-7xl mx-auto text-center">
 					<div className="mb-8">
 						<img
