@@ -23,12 +23,13 @@ function MainPage() {
 		return null;
 	}
 
-	const handleHomeClick = () => {};
+	const handleHomeClick = () => {
+		navigate("/");
+	};
+
 	return (
 		<div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-			<TopNavigation
-				onHomeClick={handleHomeClick}
-			/>
+			<TopNavigation onHomeClick={handleHomeClick} />
 			<HomeDashboard />
 		</div>
 	);

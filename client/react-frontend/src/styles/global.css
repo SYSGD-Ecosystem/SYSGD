@@ -492,30 +492,6 @@ body,
 	}
 }
 
-/* .shine-block {
-	position: absolute;
-	inset: 0;
-	background: linear-gradient(
-		120deg,
-		transparent 0%,
-		rgba(255, 255, 255, 0.6) 50%,
-		transparent 100%
-	);
-	transform: translateX(-100%);
-	animation: shimmer 2s linear infinite;
-	pointer-events: none;
-	mix-blend-mode: screen;
-}
-
-@keyframes shimmer {
-	0% {
-		transform: translateX(-100%);
-	}
-	100% {
-		transform: translateX(100%);
-	}
-} */
-
 .loading-logo-text {
 	font-size: 2rem;
 	font-weight: bold;

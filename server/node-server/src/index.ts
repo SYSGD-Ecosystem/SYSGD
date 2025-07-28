@@ -13,6 +13,7 @@ import { setupSwagger } from "./swagger";
 
 dotenv.config();
 
+const shouldInitDB = process.env.INIT_DB_ON_START === "true";
 const app = express();
 const PORT = process.env.PORT || 3000;
 const CLIENT_HOST = process.env.CLIENT_HOST;
@@ -151,8 +152,27 @@ app.get("/", (_req, res) => {
 	});
 });
 
-initDatabase().then(() => {
+// Hold metosd to initialize the database
+if (shouldInitDB) {
+	initDatabase()
+		.then(() => {
+			app.listen(PORT, () => {
+				console.log(`🚀 SYSGD corriendo en http://localhost:${PORT}`);
+			});
+		})
+		.catch((error) => {
+			console.error("Error al inicializar la base de datos:", error);
+			process.exit(1);
+		});
+} else {
 	app.listen(PORT, () => {
 		console.log(`🚀 SYSGD corriendo en http://localhost:${PORT}`);
 	});
-});
+}
+
+// Uncomment the following lines if you want to initialize the database on server start
+// initDatabase().then(() => {
+// 	app.listen(PORT, () => {
+// 		console.log(`🚀 SYSGD corriendo en http://localhost:${PORT}`);
+// 	});
+// });
