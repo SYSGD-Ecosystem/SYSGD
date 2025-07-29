@@ -1,17 +1,18 @@
 import { Button } from "@/components/ui/button";
-import useTheme from "@/hooks/useTheme";
-import { Home, Moon, Sun, Settings, Bell } from "lucide-react";
+import { Home, Settings, Bell } from "lucide-react";
 import { NotificationsPopup } from "./NotificationsPopup";
 import { useState } from "react";
 import UserProfileTrigger from "./UserProfileTrigger";
+import SettingsModal from "./SettingsModal";
+import ButtonSwitchTheme from "./ButtonSwitchTheme";
 
 interface TopNavigationProps {
 	onHomeClick: () => void;
 }
 
 export function TopNavigation({ onHomeClick }: TopNavigationProps) {
-	const { theme, toggleTheme } = useTheme();
 	const [showNotifications, setShowNotifications] = useState(false);
+	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
 	return (
 		<header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 sticky top-0 z-50">
@@ -55,18 +56,15 @@ export function TopNavigation({ onHomeClick }: TopNavigationProps) {
 						<div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
 					</Button>
 
-					<Button variant="ghost" size="sm" onClick={toggleTheme}>
-						{theme === "light" ? (
-							<Moon className="w-4 h-4" />
-						) : (
-							<Sun className="w-4 h-4" />
-						)}
-					</Button>
-
-					<Button variant="ghost" size="sm" className="hidden sm:flex">
+					<Button
+						onClick={() => setIsSettingsOpen(true)}
+						variant="ghost"
+						size="sm"
+						className="flex"
+					>
 						<Settings className="w-4 h-4" />
 					</Button>
-
+					<ButtonSwitchTheme />
 					<div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-300 dark:border-gray-600">
 						<UserProfileTrigger />
 					</div>
@@ -75,6 +73,10 @@ export function TopNavigation({ onHomeClick }: TopNavigationProps) {
 			<NotificationsPopup
 				isOpen={showNotifications}
 				onClose={() => setShowNotifications(false)}
+			/>
+			<SettingsModal
+				isOpen={isSettingsOpen}
+				onClose={() => setIsSettingsOpen(false)}
 			/>
 		</header>
 	);

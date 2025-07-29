@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -186,7 +184,7 @@ export function NotificationsPopup({
 		<div className="fixed inset-0 z-50 flex items-start justify-end p-4">
 			{/* Overlay */}
 			{/* biome-ignore lint/a11y/useKeyWithClickEvents: <explanation> */}
-			<div className="fixed inset-0 bg-black bg-opacity-20" onClick={onClose} />
+			<div className="fixed inset-0 bg-black/40" onClick={onClose} />
 
 			{/* Popup */}
 			<Card className="relative w-full max-w-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl">

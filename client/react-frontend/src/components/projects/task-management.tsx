@@ -1,621 +1,478 @@
 "use client"
 
 import { useState } from "react"
+import {
+  Plus,
+  Search,
+  Filter,
+  MoreHorizontal,
+  Users,
+  Calendar,
+  CheckCircle2,
+  XCircle,
+  Pause,
+  Play,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Plus, CheckCircle, Clock, AlertCircle, Search, Filter, X } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
-interface Task {
+interface SubTask {
   id: number
-  fecha: string
-  tipo: string
-  prioridad: string
   titulo: string
-  descripcion?: string
-  estado: string
+  estado: "Pendiente" | "En Progreso" | "Completado" | "Cancelado" | "Suspendido"
   asignado: string
 }
 
+interface Task {
+  id: number
+  titulo: string
+  descripcion: string
+  tipo: string
+  prioridad: "Alta" | "Media" | "Baja"
+  estado: "Pendiente" | "En Progreso" | "Completado" | "Cancelado" | "Suspendido"
+  fechaVencimiento: string
+  asignados: string[]
+  subtareas: SubTask[]
+  progreso: number
+}
+
 export function TaskManagement() {
+  const [searchTerm, setSearchTerm] = useState("")
+  const [filterUser, setFilterUser] = useState("all")
+  const [filterType, setFilterType] = useState("all")
+  const [filterStatus, setFilterStatus] = useState("all")
+  const [expandedTasks, setExpandedTasks] = useState<number[]>([])
+
   const [tasks, setTasks] = useState<Task[]>([
     {
       id: 1,
-      fecha: "05/07/2025",
-      tipo: "Tarea",
+      titulo: "Implementar Sistema de Autenticación",
+      descripcion: "Desarrollar sistema completo de login, registro y recuperación de contraseña con JWT",
+      tipo: "Desarrollo",
       prioridad: "Alta",
-      titulo: "Implementar sistema de autenticación",
-      descripcion: "Desarrollar el módulo completo de login y registro",
       estado: "En Progreso",
-      asignado: "Lazaro",
+      fechaVencimiento: "2025-01-30",
+      asignados: ["Lazaro Yunier", "Ana García"],
+      progreso: 65,
+      subtareas: [
+        { id: 1, titulo: "Diseñar base de datos de usuarios", estado: "Completado", asignado: "Lazaro Yunier" },
+        { id: 2, titulo: "Implementar endpoints de API", estado: "En Progreso", asignado: "Lazaro Yunier" },
+        { id: 3, titulo: "Crear interfaz de login", estado: "En Progreso", asignado: "Ana García" },
+        { id: 4, titulo: "Implementar recuperación de contraseña", estado: "Pendiente", asignado: "Ana García" },
+        { id: 5, titulo: "Testing y validación", estado: "Pendiente", asignado: "Lazaro Yunier" },
+      ],
     },
     {
       id: 2,
-      fecha: "06/07/2025",
-      tipo: "Idea",
+      titulo: "Diseño de Landing Page",
+      descripcion: "Crear diseño moderno y responsive para la página principal del producto",
+      tipo: "Diseño",
       prioridad: "Media",
-      titulo: "Mejorar interfaz de usuario",
-      descripcion: "Revisar y actualizar el diseño de la aplicación",
-      estado: "Pendiente",
-      asignado: "Yamila",
+      estado: "Completado",
+      fechaVencimiento: "2025-01-25",
+      asignados: ["María López"],
+      progreso: 100,
+      subtareas: [
+        { id: 6, titulo: "Wireframes iniciales", estado: "Completado", asignado: "María López" },
+        { id: 7, titulo: "Diseño visual", estado: "Completado", asignado: "María López" },
+        { id: 8, titulo: "Prototipo interactivo", estado: "Completado", asignado: "María López" },
+        { id: 9, titulo: "Revisión y ajustes", estado: "Completado", asignado: "María López" },
+      ],
     },
     {
       id: 3,
-      fecha: "07/07/2025",
-      tipo: "Nota",
-      prioridad: "Baja",
-      titulo: "Reunión con cliente programada",
-      descripcion: "Preparar agenda y documentos para la reunión",
-      estado: "Completado",
-      asignado: "Equipo",
-    },
-    // Agregar más tareas para demostrar el scroll
-    {
-      id: 4,
-      fecha: "08/07/2025",
-      tipo: "Tarea",
+      titulo: "Optimización de Base de Datos",
+      descripcion: "Mejorar rendimiento de consultas y optimizar índices",
+      tipo: "Backend",
       prioridad: "Alta",
-      titulo: "Optimizar base de datos",
-      descripcion: "Mejorar el rendimiento de las consultas principales",
-      estado: "Pendiente",
-      asignado: "Carlos",
-    },
-    {
-      id: 5,
-      fecha: "09/07/2025",
-      tipo: "Tarea",
-      prioridad: "Media",
-      titulo: "Crear documentación técnica",
-      descripcion: "Documentar APIs y componentes principales",
-      estado: "En Progreso",
-      asignado: "María",
-    },
-    {
-      id: 6,
-      fecha: "10/07/2025",
-      tipo: "Idea",
-      prioridad: "Baja",
-      titulo: "Implementar modo oscuro",
-      descripcion: "Agregar soporte para tema oscuro en toda la aplicación",
-      estado: "Pendiente",
-      asignado: "Yamila",
-    },
-    {
-      id: 7,
-      fecha: "11/07/2025",
-      tipo: "Tarea",
-      prioridad: "Alta",
-      titulo: "Configurar CI/CD",
-      descripcion: "Establecer pipeline de integración y despliegue continuo",
-      estado: "Pendiente",
-      asignado: "DevOps",
-    },
-    {
-      id: 8,
-      fecha: "12/07/2025",
-      tipo: "Nota",
-      prioridad: "Media",
-      titulo: "Revisión de código semanal",
-      descripcion: "Sesión de code review con todo el equipo",
-      estado: "Completado",
-      asignado: "Equipo",
+      estado: "Suspendido",
+      fechaVencimiento: "2025-02-15",
+      asignados: ["Carlos Ruiz"],
+      progreso: 25,
+      subtareas: [
+        { id: 10, titulo: "Análisis de consultas lentas", estado: "Completado", asignado: "Carlos Ruiz" },
+        { id: 11, titulo: "Crear índices optimizados", estado: "Suspendido", asignado: "Carlos Ruiz" },
+        { id: 12, titulo: "Refactorizar consultas", estado: "Pendiente", asignado: "Carlos Ruiz" },
+        { id: 13, titulo: "Testing de rendimiento", estado: "Pendiente", asignado: "Carlos Ruiz" },
+      ],
     },
   ])
 
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
-  const [editingTask, setEditingTask] = useState<Task | null>(null)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const users = ["Lazaro Yunier", "Ana García", "María López", "Carlos Ruiz"]
+  const types = ["Desarrollo", "Diseño", "Backend", "Testing", "Documentación"]
 
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filterAssignee, setFilterAssignee] = useState("todos")
-  const [filterType, setFilterType] = useState("todos")
-  const [filterStatus, setFilterStatus] = useState("todos")
-  const [showFilters, setShowFilters] = useState(false)
-
-  const getStatusIcon = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case "Completado":
-        return <CheckCircle className="w-4 h-4 text-green-500" />
+        return "bg-green-500"
       case "En Progreso":
-        return <Clock className="w-4 h-4 text-blue-500" />
+        return "bg-blue-500"
       case "Pendiente":
-        return <AlertCircle className="w-4 h-4 text-yellow-500" />
+        return "bg-yellow-500"
+      case "Cancelado":
+        return "bg-red-500"
+      case "Suspendido":
+        return "bg-gray-500"
       default:
-        return null
+        return "bg-gray-400"
+    }
+  }
+
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case "Completado":
+        return "default"
+      case "En Progreso":
+        return "secondary"
+      case "Pendiente":
+        return "outline"
+      case "Cancelado":
+        return "destructive"
+      case "Suspendido":
+        return "secondary"
+      default:
+        return "outline"
     }
   }
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "Alta":
-        return "destructive"
+        return "text-red-600 bg-red-50"
       case "Media":
-        return "default"
+        return "text-yellow-600 bg-yellow-50"
       case "Baja":
-        return "secondary"
+        return "text-green-600 bg-green-50"
       default:
-        return "default"
+        return "text-gray-600 bg-gray-50"
     }
   }
 
-  const handleTaskClick = (task: Task) => {
-    setSelectedTask(task)
-    setIsDialogOpen(true)
+  const calculateProgress = (subtareas: SubTask[]) => {
+    if (subtareas.length === 0) return 0
+    const completed = subtareas.filter((st) => st.estado === "Completado").length
+    return Math.round((completed / subtareas.length) * 100)
   }
 
-  const handleEditTask = () => {
-    if (selectedTask) {
-      setEditingTask({ ...selectedTask })
-      setIsDialogOpen(false)
-      setIsAddDialogOpen(true)
-    }
+  const updateSubtaskStatus = (taskId: number, subtaskId: number, newStatus: string) => {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) => {
+        if (task.id === taskId) {
+          const updatedSubtasks = task.subtareas.map((subtask) =>
+            subtask.id === subtaskId ? { ...subtask, estado: newStatus as SubTask["estado"] } : subtask,
+          )
+          const newProgress = calculateProgress(updatedSubtasks)
+          return { ...task, subtareas: updatedSubtasks, progreso: newProgress }
+        }
+        return task
+      }),
+    )
   }
 
-  const handleSaveTask = () => {
-    if (editingTask) {
-      if (tasks.find((t) => t.id === editingTask.id)) {
-        setTasks(tasks.map((task) => (task.id === editingTask.id ? editingTask : task)))
-      } else {
-        setTasks([...tasks, editingTask])
-      }
-      setEditingTask(null)
-      setIsAddDialogOpen(false)
-    }
+  const updateTaskStatus = (taskId: number, newStatus: string) => {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) => (task.id === taskId ? { ...task, estado: newStatus as Task["estado"] } : task)),
+    )
   }
 
-  const handleAddNewTask = () => {
-    const newTask: Task = {
-      id: Math.max(...tasks.map((t) => t.id)) + 1,
-      fecha: new Date().toLocaleDateString("es-ES"),
-      tipo: "Tarea",
-      prioridad: "Media",
-      titulo: "",
-      descripcion: "",
-      estado: "Pendiente",
-      asignado: "Sin asignar",
-    }
-    setEditingTask(newTask)
-    setIsAddDialogOpen(true)
+  const toggleTaskExpansion = (taskId: number) => {
+    setExpandedTasks((prev) => (prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]))
   }
 
-  // Obtener valores únicos para los filtros
-  const getUniqueAssignees = () => {
-    const assignees = [...new Set(tasks.map((task) => task.asignado))]
-    return assignees.filter((assignee) => assignee && assignee !== "Sin asignar")
-  }
+  const filteredTasks = tasks.filter((task) => {
+    const matchesSearch = task.titulo.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesUser = filterUser === "all" || task.asignados.includes(filterUser)
+    const matchesType = filterType === "all" || task.tipo === filterType
+    const matchesStatus = filterStatus === "all" || task.estado === filterStatus
 
-  const getUniqueTypes = () => {
-    return [...new Set(tasks.map((task) => task.tipo))]
-  }
+    return matchesSearch && matchesUser && matchesType && matchesStatus
+  })
 
-  const getUniqueStatuses = () => {
-    return [...new Set(tasks.map((task) => task.estado))]
-  }
-
-  // Función para filtrar tareas
-  const getFilteredTasks = () => {
-    return tasks.filter((task) => {
-      const matchesSearch = task.titulo.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchesAssignee = filterAssignee === "todos" || task.asignado === filterAssignee
-      const matchesType = filterType === "todos" || task.tipo === filterType
-      const matchesStatus = filterStatus === "todos" || task.estado === filterStatus
-
-      return matchesSearch && matchesAssignee && matchesType && matchesStatus
-    })
-  }
-
-  // Función para limpiar filtros
-  const clearFilters = () => {
-    setSearchTerm("")
-    setFilterAssignee("todos")
-    setFilterType("todos")
-    setFilterStatus("todos")
-  }
-
-  // Verificar si hay filtros activos
-  const hasActiveFilters = () => {
-    return searchTerm !== "" || filterAssignee !== "todos" || filterType !== "todos" || filterStatus !== "todos"
-  }
+  const activeFiltersCount = [filterUser, filterType, filterStatus].filter((f) => f !== "all").length
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm h-full flex flex-col">
-      {/* Header fijo */}
-      <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">GESTIÓN DE TAREAS</h1>
-            <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">
-              REGISTRO DE TAREAS Y ACTIVIDADES
-            </h2>
-          </div>
-          <div className="text-right">
-            <div className="text-sm font-medium">GT1</div>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Gestión de Tareas</h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Sistema avanzado con subtareas anidadas y seguimiento de progreso
+          </p>
+        </div>
+        <Button className="flex items-center space-x-2">
+          <Plus className="w-4 h-4" />
+          <span>Nueva Tarea</span>
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col lg:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Buscar tareas..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
         </div>
 
-        <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400 mb-6">
-          <div>
-            <span className="font-medium">PROYECTO:</span> Sistema de Gestión Documental
-          </div>
-          <div>
-            <span className="font-medium">RESPONSABLE:</span> FUNCIONARIO - LAZARO
-          </div>
-        </div>
+        <div className="flex flex-wrap gap-2">
+          <Select value={filterUser} onValueChange={setFilterUser}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Usuario" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los usuarios</SelectItem>
+              {users.map((user) => (
+                <SelectItem key={user} value={user}>
+                  {user}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        {/* Barra de búsqueda y filtros */}
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            {/* Búsqueda */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <Input
-                placeholder="Buscar por título..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+          <Select value={filterType} onValueChange={setFilterType}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los tipos</SelectItem>
+              {types.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {type}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            {/* Botones de acción */}
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-                className={`${hasActiveFilters() ? "border-blue-500 text-blue-600 dark:text-blue-400" : ""}`}
-              >
-                <Filter className="w-4 h-4 mr-2" />
-                Filtros
-                {hasActiveFilters() && <span className="ml-1 bg-blue-500 text-white rounded-full w-2 h-2" />}
-              </Button>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Estado" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los estados</SelectItem>
+              <SelectItem value="Pendiente">Pendiente</SelectItem>
+              <SelectItem value="En Progreso">En Progreso</SelectItem>
+              <SelectItem value="Completado">Completado</SelectItem>
+              <SelectItem value="Cancelado">Cancelado</SelectItem>
+              <SelectItem value="Suspendido">Suspendido</SelectItem>
+            </SelectContent>
+          </Select>
 
-              {hasActiveFilters() && (
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
-                  <X className="w-4 h-4 mr-2" />
-                  Limpiar
-                </Button>
-              )}
-
-              <Button onClick={handleAddNewTask}>
-                <Plus className="w-4 h-4 mr-2" />
-                Nueva Tarea
-              </Button>
-            </div>
-          </div>
-
-          {/* Panel de filtros expandible */}
-          {showFilters && (
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Filtro por usuario asignado */}
-                <div>
-                  <Label className="text-sm font-medium mb-2 block">Usuario Asignado</Label>
-                  <Select value={filterAssignee} onValueChange={setFilterAssignee}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos los usuarios</SelectItem>
-                      {getUniqueAssignees().map((assignee) => (
-                        <SelectItem key={assignee} value={assignee}>
-                          {assignee}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Filtro por tipo */}
-                <div>
-                  <Label className="text-sm font-medium mb-2 block">Tipo</Label>
-                  <Select value={filterType} onValueChange={setFilterType}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos los tipos</SelectItem>
-                      {getUniqueTypes().map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Filtro por estado */}
-                <div>
-                  <Label className="text-sm font-medium mb-2 block">Estado</Label>
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos los estados</SelectItem>
-                      {getUniqueStatuses().map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {status}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Resumen de filtros activos */}
-              {hasActiveFilters() && (
-                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                    <span>
-                      Mostrando {getFilteredTasks().length} de {tasks.length} tareas
-                    </span>
-                    {searchTerm && (
-                      <Badge variant="secondary" className="text-xs">
-                        Título: "{searchTerm}"
-                      </Badge>
-                    )}
-                    {filterAssignee !== "todos" && (
-                      <Badge variant="secondary" className="text-xs">
-                        Usuario: {filterAssignee}
-                      </Badge>
-                    )}
-                    {filterType !== "todos" && (
-                      <Badge variant="secondary" className="text-xs">
-                        Tipo: {filterType}
-                      </Badge>
-                    )}
-                    {filterStatus !== "todos" && (
-                      <Badge variant="secondary" className="text-xs">
-                        Estado: {filterStatus}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+          {activeFiltersCount > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setFilterUser("all")
+                setFilterType("all")
+                setFilterStatus("all")
+              }}
+              className="flex items-center space-x-1"
+            >
+              <Filter className="w-4 h-4" />
+              <span>Limpiar ({activeFiltersCount})</span>
+            </Button>
           )}
         </div>
       </div>
 
-      {/* Contenedor de tabla con scroll */}
-      <div className="flex-1 overflow-hidden">
-        <div className="h-full flex flex-col">
-          {/* Header de tabla fijo */}
-          <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-center w-16 py-4">ID</TableHead>
-                  <TableHead className="text-center w-24">FECHA</TableHead>
-                  <TableHead className="text-center w-20">TIPO</TableHead>
-                  <TableHead className="text-center w-24">PRIORIDAD</TableHead>
-                  <TableHead className="text-left min-w-[200px]">TÍTULO</TableHead>
-                  <TableHead className="text-center w-32">ESTADO</TableHead>
-                  <TableHead className="text-center w-24">ASIGNADO</TableHead>
-                </TableRow>
-              </TableHeader>
-            </Table>
-          </div>
+      {/* Tasks Accordion */}
+      <div className="space-y-4">
+        {filteredTasks.map((task) => {
+          const isExpanded = expandedTasks.includes(task.id)
 
-          {/* Body de tabla con scroll */}
-          <ScrollArea className="flex-1">
-            <Table>
-              <TableBody>
-                {getFilteredTasks().map((task) => (
-                  <TableRow
-                    key={task.id}
-                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                    onClick={() => handleTaskClick(task)}
-                  >
-                    <TableCell className="text-center w-16 py-4 font-medium">{task.id}</TableCell>
-                    <TableCell className="text-center w-24">{task.fecha}</TableCell>
-                    <TableCell className="text-center w-20">{task.tipo}</TableCell>
-                    <TableCell className="text-center w-24">
-                      <Badge variant={getPriorityColor(task.prioridad)}>{task.prioridad}</Badge>
-                    </TableCell>
-                    <TableCell className="text-left min-w-[200px] font-medium">{task.titulo}</TableCell>
-                    <TableCell className="text-center w-32">
-                      <div className="flex items-center justify-center gap-2">
-                        {getStatusIcon(task.estado)}
-                        <span className="text-sm">{task.estado}</span>
+          return (
+            <Collapsible key={task.id} open={isExpanded} onOpenChange={() => toggleTaskExpansion(task.id)}>
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm">
+                {/* Task Header */}
+                <CollapsibleTrigger className="w-full p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4 flex-1">
+                      {/* Expand Icon */}
+                      {isExpanded ? (
+                        <ChevronDown className="w-5 h-5 text-gray-400" />
+                      ) : (
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                      )}
+
+                      {/* Task Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="font-semibold text-gray-900 dark:text-white truncate">{task.titulo}</h3>
+                          <Badge variant={getStatusBadgeVariant(task.estado)} className="shrink-0">
+                            {task.estado}
+                          </Badge>
+                          <Badge className={`shrink-0 ${getPriorityColor(task.prioridad)}`}>{task.prioridad}</Badge>
+                        </div>
+
+                        <div className="flex items-center space-x-6 text-sm text-gray-500">
+                          {/* Users */}
+                          <div className="flex items-center space-x-1">
+                            <Users className="w-4 h-4" />
+                            <span>
+                              {task.asignados.length} usuario{task.asignados.length !== 1 ? "s" : ""}
+                            </span>
+                          </div>
+
+                          {/* Subtasks */}
+                          <div className="flex items-center space-x-1">
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>
+                              {task.subtareas.length} subtarea{task.subtareas.length !== 1 ? "s" : ""}
+                            </span>
+                          </div>
+
+                          {/* Due Date */}
+                          <div className="flex items-center space-x-1">
+                            <Calendar className="w-4 h-4" />
+                            <span>{new Date(task.fechaVencimiento).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="mt-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm text-gray-600 dark:text-gray-400">Progreso: {task.progreso}%</span>
+                          </div>
+                          <Progress value={task.progreso} className="h-2" />
+                        </div>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-center w-24">{task.asignado}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            {getFilteredTasks().length === 0 && (
-              <div className="text-center py-8">
-                <div className="text-gray-400 dark:text-gray-500 mb-2">
-                  <Search className="w-12 h-12 mx-auto mb-4" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No se encontraron tareas</h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  {hasActiveFilters()
-                    ? "Intenta ajustar los filtros para encontrar lo que buscas"
-                    : "No hay tareas disponibles en este momento"}
-                </p>
-                {hasActiveFilters() && (
-                  <Button variant="outline" onClick={clearFilters}>
-                    <X className="w-4 h-4 mr-2" />
-                    Limpiar filtros
-                  </Button>
-                )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center space-x-2 ml-4">
+                      {/* User Avatars */}
+                      <div className="flex -space-x-2">
+                        {task.asignados.slice(0, 3).map((user, index) => (
+                          <div
+                            // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                            key={index}
+                            className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-medium border-2 border-white dark:border-gray-800"
+                            title={user}
+                          >
+                            {user
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
+                          </div>
+                        ))}
+                        {task.asignados.length > 3 && (
+                          <div className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs font-medium border-2 border-white dark:border-gray-800">
+                            +{task.asignados.length - 3}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Task Actions */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "En Progreso")}>
+                            <Play className="w-4 h-4 mr-2" />
+                            Iniciar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "Suspendido")}>
+                            <Pause className="w-4 h-4 mr-2" />
+                            Pausar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "Completado")}>
+                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                            Completar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => updateTaskStatus(task.id, "Cancelado")}>
+                            <XCircle className="w-4 h-4 mr-2" />
+                            Cancelar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                </CollapsibleTrigger>
+
+                {/* Task Details */}
+                <CollapsibleContent>
+                  <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700">
+                    <div className="pt-4 space-y-4">
+                      {/* Description */}
+                      <div>
+                        <h4 className="font-medium text-gray-900 dark:text-white mb-2">Descripción</h4>
+                        <p className="text-gray-600 dark:text-gray-400">{task.descripcion}</p>
+                      </div>
+
+                      {/* Subtasks */}
+                      <div>
+                        <h4 className="font-medium text-gray-900 dark:text-white mb-3">
+                          Subtareas ({task.subtareas.length})
+                        </h4>
+                        <div className="space-y-2">
+                          {task.subtareas.map((subtask) => (
+                            <div
+                              key={subtask.id}
+                              className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                            >
+                              <div className="flex items-center space-x-3 flex-1">
+                                <div className={`w-3 h-3 rounded-full ${getStatusColor(subtask.estado)}`} />
+                                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {subtask.titulo}
+                                </span>
+                                <span className="text-xs text-gray-500">• {subtask.asignado}</span>
+                              </div>
+
+                              <Select
+                                value={subtask.estado}
+                                onValueChange={(value) => updateSubtaskStatus(task.id, subtask.id, value)}
+                              >
+                                <SelectTrigger className="w-32 h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Pendiente">Pendiente</SelectItem>
+                                  <SelectItem value="En Progreso">En Progreso</SelectItem>
+                                  <SelectItem value="Completado">Completado</SelectItem>
+                                  <SelectItem value="Cancelado">Cancelado</SelectItem>
+                                  <SelectItem value="Suspendido">Suspendido</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CollapsibleContent>
               </div>
-            )}
-          </ScrollArea>
-        </div>
+            </Collapsible>
+          )
+        })}
       </div>
 
-      {/* Diálogo para ver detalles de tarea */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Detalles de la Tarea</DialogTitle>
-          </DialogHeader>
-          {selectedTask && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">ID</Label>
-                  <p className="text-sm text-gray-900 dark:text-white">{selectedTask.id}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Fecha</Label>
-                  <p className="text-sm text-gray-900 dark:text-white">{selectedTask.fecha}</p>
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Título</Label>
-                <p className="text-sm text-gray-900 dark:text-white font-medium">{selectedTask.titulo}</p>
-              </div>
-
-              {selectedTask.descripcion && (
-                <div>
-                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Descripción</Label>
-                  <p className="text-sm text-gray-900 dark:text-white">{selectedTask.descripcion}</p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Tipo</Label>
-                  <p className="text-sm text-gray-900 dark:text-white">{selectedTask.tipo}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Prioridad</Label>
-                  <Badge variant={getPriorityColor(selectedTask.prioridad)}>{selectedTask.prioridad}</Badge>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Estado</Label>
-                  <div className="flex items-center gap-2">
-                    {getStatusIcon(selectedTask.estado)}
-                    <span className="text-sm text-gray-900 dark:text-white">{selectedTask.estado}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Asignado a</Label>
-                <p className="text-sm text-gray-900 dark:text-white">{selectedTask.asignado}</p>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cerrar
-                </Button>
-                <Button onClick={handleEditTask}>Editar Tarea</Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Diálogo para agregar/editar tarea */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {editingTask?.id && tasks.find((t) => t.id === editingTask.id) ? "Editar Tarea" : "Nueva Tarea"}
-            </DialogTitle>
-          </DialogHeader>
-          {editingTask && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="titulo">Título</Label>
-                <Input
-                  id="titulo"
-                  value={editingTask.titulo}
-                  onChange={(e) => setEditingTask({ ...editingTask, titulo: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="descripcion">Descripción</Label>
-                <Textarea
-                  id="descripcion"
-                  value={editingTask.descripcion || ""}
-                  onChange={(e) => setEditingTask({ ...editingTask, descripcion: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="tipo">Tipo</Label>
-                  <Select
-                    value={editingTask.tipo}
-                    onValueChange={(value) => setEditingTask({ ...editingTask, tipo: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Tarea">Tarea</SelectItem>
-                      <SelectItem value="Idea">Idea</SelectItem>
-                      <SelectItem value="Nota">Nota</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="prioridad">Prioridad</Label>
-                  <Select
-                    value={editingTask.prioridad}
-                    onValueChange={(value) => setEditingTask({ ...editingTask, prioridad: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Alta">Alta</SelectItem>
-                      <SelectItem value="Media">Media</SelectItem>
-                      <SelectItem value="Baja">Baja</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="estado">Estado</Label>
-                  <Select
-                    value={editingTask.estado}
-                    onValueChange={(value) => setEditingTask({ ...editingTask, estado: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Pendiente">Pendiente</SelectItem>
-                      <SelectItem value="En Progreso">En Progreso</SelectItem>
-                      <SelectItem value="Completado">Completado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="asignado">Asignado</Label>
-                  <Input
-                    id="asignado"
-                    value={editingTask.asignado}
-                    onChange={(e) => setEditingTask({ ...editingTask, asignado: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleSaveTask}>Guardar</Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {filteredTasks.length === 0 && (
+        <div className="text-center py-12">
+          <div className="text-gray-400 mb-4">
+            <CheckCircle2 className="w-12 h-12 mx-auto" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No se encontraron tareas</h3>
+          <p className="text-gray-500">
+            {searchTerm || activeFiltersCount > 0
+              ? "Intenta ajustar los filtros de búsqueda"
+              : "Crea tu primera tarea para comenzar"}
+          </p>
+        </div>
+      )}
     </div>
   )
 }

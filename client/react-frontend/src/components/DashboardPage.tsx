@@ -1,5 +1,5 @@
 import { TopNavigation } from "./TopNavigationDashboard";
-import { ThemeProvider } from "@/context/theme-context";
+import { ThemeProvider } from "@/contexts/theme-context";
 import { HomeDashboard } from "./home-dashboard";
 import { useAuthSession } from "@/hooks/connection/useAuthSession";
 import Loading from "./Loading";
@@ -14,7 +14,6 @@ function MainPage() {
 		return (
 			<div className="flex flex-col h-screen bg-slate-950 items-center justify-center">
 				<Loading />
-				<div>Verificando sesión...</div>
 			</div>
 		);
 	}
@@ -24,12 +23,13 @@ function MainPage() {
 		return null;
 	}
 
-	const handleHomeClick = () => {};
+	const handleHomeClick = () => {
+		navigate("/");
+	};
+
 	return (
 		<div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-			<TopNavigation
-				onHomeClick={handleHomeClick}
-			/>
+			<TopNavigation onHomeClick={handleHomeClick} />
 			<HomeDashboard />
 		</div>
 	);
