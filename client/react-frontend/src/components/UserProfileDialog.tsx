@@ -13,10 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User, Shield, LogOut, Loader2, KeyRound, Palette } from "lucide-react";
+import { User, Shield, LogOut, Loader2, KeyRound } from "lucide-react";
 import useCurrentUser from "../hooks/connection/useCurrentUser";
-import useTheme from "../hooks/useTheme";
-import ButtonSwitchTheme from "./ButtonSwitchTheme";
 import { Link } from "react-router-dom";
 
 interface UserProfileDialogProps {
@@ -24,7 +22,6 @@ interface UserProfileDialogProps {
 }
 
 const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
-	useTheme();
 	const { user, loading } = useCurrentUser();
 	const [open, setOpen] = useState(false);
 
@@ -132,48 +129,13 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
 									user.privileges.slice(1)}
 							</Badge>
 						</div>
-
-						<Separator />
-
-						<div className="grid grid-cols-2 gap-4 text-sm">
-							<div>
-								<p className="text-muted-foreground">Nombre completo</p>
-								<p className="font-medium">{user.name}</p>
-							</div>
-							<div>
-								<p className="text-muted-foreground">Usuario</p>
-								<p className="font-medium">{user.username}</p>
-							</div>
-						</div>
-					</div>
-
-					<Separator />
-
-					<div className="flex items-center justify-between">
-						<div className="flex items-center space-x-2">
-							<KeyRound className="h-4 w-4 text-muted-foreground" />
-							<span className="text-sm font-medium">Contraseña</span>
-						</div>
-						<Button variant="link" onClick={handleChangePassword}>
-							Cambiar
-						</Button>
-					</div>
-
-					<Separator />
-
-					<div className="flex items-center justify-between">
-						<div className="flex items-center space-x-2">
-							<Palette className="h-4 w-4 text-muted-foreground" />
-							<span className="text-sm font-medium">Tema</span>
-						</div>
-						<ButtonSwitchTheme />
 					</div>
 
 					<Separator />
 					{user.privileges.toLowerCase() === "admin" && (
 						<Button
 							variant="outline"
-							className="w-full mb-2"
+							className="w-full"
 							asChild
 							onClick={() => setOpen(false)}
 						>
@@ -186,6 +148,14 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
 							</Link>
 						</Button>
 					)}
+					<Button
+						className="w-full"
+						variant="secondary"
+						onClick={handleChangePassword}
+					>
+						<KeyRound className="h-4 w-4" />
+						Cambiar Contraseña
+					</Button>
 					<Button
 						variant="destructive"
 						className="w-full"

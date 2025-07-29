@@ -38,12 +38,7 @@ const ProjectWorkSpace: FC = () => {
 	const handleHomeClick = () => {
 		navigate("/dashboard");
 	};
-	/*
-  const handleProjectSelect = (projectId: string) => {
-    setSelectedProject(projectId)
-    setActiveSection("tasks") // Ir a tareas por defecto al abrir un proyecto
-  }
-*/
+
 	const handleSectionChange = (section: string) => {
 		setActiveSection(section);
 		setIsMobileSidebarOpen(false);

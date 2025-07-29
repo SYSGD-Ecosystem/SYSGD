@@ -4,7 +4,6 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import App from "./pages/App.tsx";
 import Login from "./pages/Login.tsx";
 import DevPreview from "./pages/DevPreview.tsx";
-import "./styles/global.css"
 import Print from "./pages/Print.tsx";
 import ErrorServer from "./pages/ErrorServer.tsx";
 import OrganigramaPage from "./pages/Organigrama.tsx";
@@ -17,7 +16,8 @@ import PrivacyPolicy from "./pages/Privacy.tsx";
 import ProjectsPage from "./components/DashboardPage.tsx";
 import ProjectWorkSpace from "./components/ProjectsWorkSpace.tsx";
 import ProjectPageDemo from "./components/projects/page.tsx";
-import LandingPage from "./components/projects/landing-page.tsx";
+import LandingPage from "./pages/LandingPage.tsx";
+
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(
