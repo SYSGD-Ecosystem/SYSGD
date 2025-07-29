@@ -1,5 +1,5 @@
 import { useEffect, useState, type FC } from "react";
-import WorkSpace from "../components/WorkSpace";
+import WorkSpace from "../components/docs/WorkSpace";
 import Sidebar from "../components/Sidebar";
 import HeadBar from "../components/HeadBar";
 import NavBar from "../components/Navbar";

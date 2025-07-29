@@ -1,13 +1,13 @@
 import { type FC, useEffect } from "react";
-import Table, { Td } from "./BasicTableComponents";
-import useEditableTable from "../hooks/useEditableTable";
-import useConnection from "../hooks/connection/useConnection";
-import { useToast } from "../hooks/use-toast";
-import useGetRetentionSchedule from "../hooks/connection/useGetRetentionSchedule";
-import type { RetentionScheduleData } from "../types/RetentionSchedule";
-import { Button } from "./ui/button";
+import Table, { Td } from "../BasicTableComponents";
+import useEditableTable from "../../hooks/useEditableTable";
+import useConnection from "../../hooks/connection/useConnection";
+import { useToast } from "../../hooks/use-toast";
+import useGetRetentionSchedule from "../../hooks/connection/useGetRetentionSchedule";
+import type { RetentionScheduleData } from "../../types/RetentionSchedule";
+import { Button } from "../ui/button";
 import { AlertCircle, FileIcon, Plus, SaveAll } from "lucide-react";
-import Loading from "./Loading";
+import Loading from "../Loading";
 
 export interface RetentionScheduleProps {
 	archiveId: string;

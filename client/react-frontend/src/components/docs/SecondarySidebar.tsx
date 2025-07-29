@@ -1,6 +1,6 @@
 import type { FC } from "react";
 import { twMerge } from "tailwind-merge";
-import ToolBar from "./ToolBar";
+import ToolBar from "../ToolBar";
 
 const SecondarySidebar: FC<{ className?: string }> = ({ className }) => {
   return (

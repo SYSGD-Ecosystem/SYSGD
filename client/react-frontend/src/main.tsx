@@ -14,8 +14,8 @@ import Dashboard from "./pages/Dashboard.tsx";
 import TermsAndConditions from "./pages/Terms.tsx";
 import PrivacyPolicy from "./pages/Privacy.tsx";
 import ProjectsPage from "./components/DashboardPage.tsx";
-import ProjectWorkSpace from "./components/ProjectsWorkSpace.tsx";
-import ProjectPageDemo from "./components/projects/page.tsx";
+import ProjectWorkSpace from "./components/projects/ProjectsWorkSpace.tsx";
+import ProjectPageDemo from "./components/demo/page.tsx";
 import LandingPage from "./pages/LandingPage.tsx";
 
 
