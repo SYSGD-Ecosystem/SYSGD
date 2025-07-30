@@ -13,22 +13,40 @@ import { setupSwagger } from "./swagger";
 
 dotenv.config();
 
-const shouldInitDB = process.env.INIT_DB_ON_START === "true";
+
 const app = express();
+
+
+
+
 const PORT = process.env.PORT || 3000;
 const CLIENT_HOST = process.env.CLIENT_HOST;
 const SECRET_SESSION = process.env.SECRET_SESSION || "SECRETDEFAULT";
+
+
+
+
+const shouldInitDB = process.env.INIT_DB_ON_START === "true";
+
+// Conectamos con la base de datos, en caso de existir una URL utilizamos el metodo moderno, de lo contrario el tradicional.
+const DATABASE_URL = process.env.DATABASE_URL;
+export const pool = DATABASE_URL
+	? new Pool({
+			connectionString: process.env.DATABASE_URL,
+			ssl:
+				process.env.NODE_ENV === "production"
+					? { rejectUnauthorized: false }
+					: undefined, // No fuerza SSL en local
+		})
+	: new Pool({
+			host: process.env.DB_HOST,
+			user: process.env.DB_USER,
+			password: process.env.DB_PASSWORD,
+			database: process.env.DB_NAME,
+			port: Number(process.env.DB_PORT),
+		});
+
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [];
-
-console.log("Allowed origins:", allowedOrigins);
-
-export const pool = new Pool({
-	host: process.env.DB_HOST,
-	user: process.env.DB_USER,
-	password: process.env.DB_PASSWORD,
-	database: process.env.DB_NAME,
-	port: Number(process.env.DB_PORT),
-});
 
 if (allowedOrigins.length === 0) {
 	app.use(
@@ -38,7 +56,7 @@ if (allowedOrigins.length === 0) {
 		}),
 	);
 } else {
-	console.log("Usando CORS con orígenes permitidos:", allowedOrigins);
+	// Usando CORS con orígenes multiples
 	app.use(
 		cors({
 			origin: (origin, callback) => {
@@ -132,14 +150,14 @@ app.get("/api/profile", (req, res) => {
 	if (req.isAuthenticated()) {
 		res.json(req.user);
 	} else {
-		res.status(401).json({ error: "No autenticado" });
+		res.status(401).json({ error: "No autenticado con google" });
 	}
 });
-
 
 app.use("/api", routes);
 
 setupSwagger(app);
+
 // Ruta raíz que sirve la página de bienvenida desde un archivo externo
 app.get("/", (_req, res) => {
 	const filePath = path.join(__dirname, "../public/index.html");
@@ -152,7 +170,6 @@ app.get("/", (_req, res) => {
 	});
 });
 
-// Hold metosd to initialize the database
 if (shouldInitDB) {
 	initDatabase()
 		.then(() => {
@@ -169,10 +186,3 @@ if (shouldInitDB) {
 		console.log(`🚀 SYSGD corriendo en http://localhost:${PORT}`);
 	});
 }
-
-// Uncomment the following lines if you want to initialize the database on server start
-// initDatabase().then(() => {
-// 	app.listen(PORT, () => {
-// 		console.log(`🚀 SYSGD corriendo en http://localhost:${PORT}`);
-// 	});
-// });
