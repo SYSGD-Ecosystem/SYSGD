@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import bcrypt from "bcrypt";
-import { pool } from "../index";
+import { pool } from "../db";
 import { isAuthenticated } from "../middlewares/auth";
 
 const router = Router();

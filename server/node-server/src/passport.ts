@@ -1,7 +1,7 @@
 import passport from "passport";
 import dotenv from "dotenv";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import { pool } from "./index";
+import { pool } from "./db";
 import type { VerifyCallback } from "passport-google-oauth20";
 
 dotenv.config();

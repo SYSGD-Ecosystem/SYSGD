@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { pool } from "../index";
+import { pool } from "../db";
 import bcrypt from "bcrypt";
 import { isAuthenticated } from "../middlewares/auth";
 
