@@ -3,17 +3,21 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "node:path";
 import fs from "node:fs";
-import { Pool } from "pg";
 import { initDatabase } from "./initDatabase";
 import routes from "./routes";
 import session from "express-session";
 import passport from "passport";
 import "./passport";
 import { setupSwagger } from "./swagger";
+import cookieParser from "cookie-parser";
+
 
 dotenv.config();
 
 const app = express();
+
+app.use(cookieParser());
+
 
 const PORT = process.env.PORT || 3000;
 const CLIENT_HOST = process.env.CLIENT_HOST;

@@ -52,10 +52,36 @@ export const login = async (req: Request, res: Response) => {
 			req.headers["user-agent"] || "",
 		);
 
-		res.json({ token });
+		//res.json({ token });
+
+		res.cookie("token", token, {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production", // importante en producción
+			sameSite: "lax", // puedes usar "strict" o "none" según tu front
+			maxAge: 1000 * 60 * 60 * 2, // 2 horas
+		});
+
+		res.json({ message: "Login exitoso" });
 	} catch (err) {
 		console.error(err);
 		res.status(500).json({ message: "Error interno del servidor" });
 	}
 };
 
+export function generateJWT(user: {
+	id: number;
+	username: string;
+	name: string;
+	privileges: string;
+}) {
+	return jwt.sign(
+		{
+			sub: user.id,
+			username: user.username,
+			name: user.name,
+			privileges: user.privileges,
+		},
+		JWT_SECRET,
+		{ expiresIn: "7d" },
+	);
+}
