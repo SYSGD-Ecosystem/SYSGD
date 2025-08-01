@@ -1,4 +1,3 @@
-// src/lib/gemini.ts
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import dotenv from "dotenv";
 

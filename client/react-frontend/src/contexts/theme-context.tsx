@@ -336,7 +336,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 		// console.log(savedTheme);
 
 		if (savedTheme) setTheme(savedTheme);
-		if (savedMode) setIsDark(savedMode === "true");
+		if (savedMode) setIsDark(savedMode === "false");
 	}, []);
 
 	useEffect(() => {

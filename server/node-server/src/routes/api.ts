@@ -1,40 +1,22 @@
+/**
+ * @deprecated
+ * Estas viendo la primera version de la api, este archivo debe ser refactorizado
+ */
+
 import { Router, type Request, type Response } from "express";
 import { pool } from "../db";
 import bcrypt from "bcrypt";
-import { isAuthenticated } from "../middlewares/auth";
+import { isAuthenticated } from "../middlewares/auth-jwt";
+import { login } from "../controllers/auth";
+import { getCurrentUser } from "../controllers/auth";
+import type { User } from "./users";
+import { getCurrentUserData } from "../controllers/users";
+import { getArchives } from "../controllers/archives.controller";
+import { isAdmin } from "../middlewares/auth";
 
 const router = Router();
 
-router.get(
-  "/archives",
-  isAuthenticated,
-  async (req: Request, res: Response) => {
-    const user_id = req.session.user?.id;
-
-    try {
-      const baseQuery = `
-        SELECT
-          d.id,
-          d.code,
-          d.company,
-          d.name,
-          d.created_at,
-          u.name AS creator_name
-        FROM document_management_file d
-        JOIN users u ON d.user_id = u.id
-      `;
-
-      const result = req.session.user?.privileges === "admin"
-        ? await pool.query(baseQuery)
-        : await pool.query(`${baseQuery} WHERE d.user_id = $1`, [user_id]);
-
-      res.json(result.rows);
-    } catch (err) {
-      console.error("Error al obtener archivos:", err);
-      res.status(500).json({ error: "Error al obtener los datos" });
-    }
-  }
-);
+router.get("/archives", isAuthenticated, getArchives);
 
 /**
  * DELETE /api/archives/:id
@@ -46,8 +28,9 @@ router.delete(
 	isAuthenticated,
 	async (req: Request, res: Response) => {
 		const { id } = req.params;
-		const user_id = req.session.user?.id;
-		const privileges = req.session.user?.privileges;
+		const user = req.user as unknown as User;
+		const user_id = user.id;
+		const privileges = user.privileges;
 
 		try {
 			const result = await pool.query(
@@ -65,10 +48,9 @@ router.delete(
 				return;
 			}
 
-			await pool.query(
-				"DELETE FROM document_management_file WHERE id = $1",
-				[id],
-			);
+			await pool.query("DELETE FROM document_management_file WHERE id = $1", [
+				id,
+			]);
 			res.json({ message: "Expediente eliminado correctamente" });
 		} catch (err) {
 			res.status(500).json({ error: "Error al eliminar el expediente" });
@@ -87,8 +69,9 @@ router.put(
 	async (req: Request, res: Response) => {
 		const { id } = req.params;
 		const { code, company, name } = req.body;
-		const user_id = req.session.user?.id;
-		const privileges = req.session.user?.privileges;
+		const user = req.user as unknown as User;
+		const user_id = user.id;
+		const privileges = user.privileges;
 
 		if (!code && !company && !name) {
 			res.status(400).json({ error: "No hay datos para actualizar" });
@@ -105,9 +88,9 @@ router.put(
 				result.rows.length === 0 ||
 				(privileges !== "admin" && result.rows[0].user_id !== user_id)
 			) {
-				res
-					.status(403)
-					.json({ error: "No tienes permisos para modificar este expediente." });
+				res.status(403).json({
+					error: "No tienes permisos para modificar este expediente.",
+				});
 				return;
 			}
 
@@ -152,7 +135,9 @@ router.get(
 			res.status(400).json({ error: "Id inválido" });
 			return;
 		}
-		const user_id = req.session.user?.id;
+		const user = req.user as unknown as User;
+		const user_id = user.id;
+
 		try {
 			const result = await pool.query(
 				"SELECT classification_chart FROM document_management_file WHERE id = $1 AND user_id = $2",
@@ -173,7 +158,8 @@ router.post("/create", isAuthenticated, async (req: Request, res: Response) => {
 		return;
 	}
 
-	const user_id = req.session.user?.id;
+	const user = req.user as unknown as User;
+	const user_id = user.id;
 
 	try {
 		await pool.query(
@@ -192,8 +178,6 @@ router.post(
 	isAuthenticated,
 	async (req: Request, res: Response) => {
 		const { id, data } = req.body;
-		console.log(req.body);
-		console.log(data);
 		if (!id || !data) {
 			res.status(400).send("400");
 			return;
@@ -219,7 +203,8 @@ router.post("/add-document-entry", isAuthenticated, async (req, res) => {
 		return;
 	}
 
-	const user_id = req.session.user?.id;
+	const user = req.user as unknown as User;
+	const user_id = user.id;
 
 	if (!user_id) {
 		res.status(401).json({ error: "No estás autorizado." });
@@ -233,8 +218,7 @@ router.post("/add-document-entry", isAuthenticated, async (req, res) => {
 
 	if (
 		result.rows.length === 0 ||
-		(req.session.user?.privileges !== "admin" &&
-			result.rows[0].user_id !== user_id)
+		(user.privileges !== "admin" && result.rows[0].user_id !== user_id)
 	) {
 		res
 			.status(403)
@@ -263,7 +247,9 @@ router.get(
 			res.status(400).json({ error: "Id inválido" });
 			return;
 		}
-		const user_id = req.session.user?.id;
+		const user = req.user as unknown as User;
+		const user_id = user.id;
+
 		try {
 			const result = await pool.query(
 				"SELECT entry_register FROM document_management_file WHERE id = $1 AND user_id = $2",
@@ -284,7 +270,9 @@ router.post("/add-document-exit", isAuthenticated, async (req, res) => {
 		return;
 	}
 
-	const user_id = req.session.user?.id;
+	const user = req.user as unknown as User;
+	const user_id = user.id;
+	const privileges = user.privileges;
 
 	if (!user_id) {
 		res.status(401).json({ error: "No estás autorizado." });
@@ -298,8 +286,7 @@ router.post("/add-document-exit", isAuthenticated, async (req, res) => {
 
 	if (
 		result.rows.length === 0 ||
-		(req.session.user?.privileges !== "admin" &&
-			result.rows[0].user_id !== user_id)
+		(privileges !== "admin" && result.rows[0].user_id !== user_id)
 	) {
 		res
 			.status(403)
@@ -320,7 +307,10 @@ router.post("/add-document-exit", isAuthenticated, async (req, res) => {
 
 // GET /api/users - lista usuarios (solo admin)
 router.get("/users", isAuthenticated, async (req, res) => {
-	if (req.session.user?.privileges !== "admin") {
+	const user = req.user as unknown as User;
+	const privileges = user.privileges;
+
+	if (privileges !== "admin") {
 		res.status(403).json({ error: "No autorizado" });
 		return;
 	}
@@ -336,7 +326,9 @@ router.get("/users", isAuthenticated, async (req, res) => {
 
 // POST /api/users - crear usuario (solo admin)
 router.post("/users", isAuthenticated, async (req, res) => {
-	if (req.session.user?.privileges !== "admin") {
+	const user = req.user as unknown as User;
+
+	if (user.privileges !== "admin") {
 		res.status(403).json({ error: "No autorizado" });
 		return;
 	}
@@ -359,7 +351,10 @@ router.post("/users", isAuthenticated, async (req, res) => {
 	}
 });
 router.get("/admin/users", isAuthenticated, async (req, res) => {
-	if (req.session.user?.privileges !== "admin") {
+	const user = req.user as unknown as User;
+	const privileges = user.privileges;
+
+	if (privileges !== "admin") {
 		res.status(403).json({ error: "Acceso denegado" });
 		return;
 	}
@@ -375,7 +370,10 @@ router.get("/admin/users", isAuthenticated, async (req, res) => {
 
 // POST /api/admin/users
 router.post("/admin/users", isAuthenticated, async (req, res) => {
-	if (req.session.user?.privileges !== "admin") {
+	const user = getCurrentUserData(req);
+	if (!user) return;
+
+	if (user.privileges !== "admin") {
 		res.status(403).json({ error: "Acceso denegado" });
 		return;
 	}
@@ -398,11 +396,7 @@ router.post("/admin/users", isAuthenticated, async (req, res) => {
 });
 
 // PUT /api/admin/users/:id
-router.put("/admin/users/:id", isAuthenticated, async (req, res) => {
-	if (req.session.user?.privileges !== "admin") {
-		res.status(403).json({ error: "Acceso denegado" });
-		return;
-	}
+router.put("/admin/users/:id", isAuthenticated, isAdmin, async (req, res) => {
 	const { id } = req.params;
 	const { name, username, password, privileges } = req.body;
 	if (!id) {
@@ -421,19 +415,20 @@ router.put("/admin/users/:id", isAuthenticated, async (req, res) => {
 });
 
 // DELETE /api/admin/users/:id
-router.delete("/admin/users/:id", isAuthenticated, async (req, res) => {
-	if (req.session.user?.privileges !== "admin") {
-		res.status(403).json({ error: "Acceso denegado" });
-		return;
-	}
-	const { id } = req.params;
-	try {
-		await pool.query("DELETE FROM users WHERE id = $1", [id]);
-		res.sendStatus(204);
-	} catch {
-		res.status(500).json({ error: "Error al eliminar" });
-	}
-});
+router.delete(
+	"/admin/users/:id",
+	isAuthenticated,
+	isAdmin,
+	async (req, res) => {
+		const { id } = req.params;
+		try {
+			await pool.query("DELETE FROM users WHERE id = $1", [id]);
+			res.sendStatus(204);
+		} catch {
+			res.status(500).json({ error: "Error al eliminar" });
+		}
+	},
+);
 
 // GET /api/get-organization-chart?id=FILEID
 router.get("/get-organization-chart", isAuthenticated, async (req, res) => {
@@ -464,7 +459,10 @@ router.post("/save-organization-chart", isAuthenticated, async (req, res) => {
 		res.status(400).json({ error: "Faltan datos" });
 		return;
 	}
-	const userId = req.session.user?.id;
+
+	const user = getCurrentUserData(req);
+	const userId = user?.id;
+
 	if (!userId) {
 		res.status(401).json({ error: "No autorizado" });
 		return;
@@ -479,10 +477,7 @@ router.post("/save-organization-chart", isAuthenticated, async (req, res) => {
 			res.status(404).json({ error: "Archivo no encontrado" });
 			return;
 		}
-		if (
-			ownerCheck.rows[0].user_id !== userId &&
-			req.session.user?.privileges !== "admin"
-		) {
+		if (ownerCheck.rows[0].user_id !== userId && user?.privileges !== "admin") {
 			res.status(403).json({ error: "Sin permisos" });
 			return;
 		}
@@ -503,7 +498,8 @@ router.post("/add-retention-schedule", isAuthenticated, async (req, res) => {
 		res.status(400).json({ error: "Faltan campos obligatorios." });
 		return;
 	}
-	const user_id = req.session.user?.id;
+	const user = getCurrentUserData(req);
+	const user_id = user?.id;
 	if (!user_id) {
 		res.status(401).json({ error: "No estás autorizado." });
 		return;
@@ -514,8 +510,7 @@ router.post("/add-retention-schedule", isAuthenticated, async (req, res) => {
 	);
 	if (
 		result.rows.length === 0 ||
-		(req.session.user?.privileges !== "admin" &&
-			result.rows[0].user_id !== user_id)
+		(user?.privileges !== "admin" && result.rows[0].user_id !== user_id)
 	) {
 		res
 			.status(403)
@@ -541,8 +536,8 @@ router.post("/add-document-topographic", isAuthenticated, async (req, res) => {
 		res.status(400).json({ error: "Faltan campos obligatorios." });
 		return;
 	}
-
-	const user_id = req.session.user?.id;
+	const user = getCurrentUserData(req);
+	const user_id = user?.id;
 	if (!user_id) {
 		res.status(401).json({ error: "No estás autorizado." });
 		return;
@@ -555,8 +550,7 @@ router.post("/add-document-topographic", isAuthenticated, async (req, res) => {
 
 	if (
 		result.rows.length === 0 ||
-		(req.session.user?.privileges !== "admin" &&
-			result.rows[0].user_id !== user_id)
+		(user?.privileges !== "admin" && result.rows[0].user_id !== user_id)
 	) {
 		res
 			.status(403)
@@ -583,8 +577,8 @@ router.post("/add-document-loan", isAuthenticated, async (req, res) => {
 		res.status(400).json({ error: "Faltan campos obligatorios." });
 		return;
 	}
-
-	const user_id = req.session.user?.id;
+	const user = getCurrentUserData(req);
+	const user_id = user?.id;
 	if (!user_id) {
 		res.status(401).json({ error: "No estás autorizado." });
 		return;
@@ -597,8 +591,7 @@ router.post("/add-document-loan", isAuthenticated, async (req, res) => {
 
 	if (
 		result.rows.length === 0 ||
-		(req.session.user?.privileges !== "admin" &&
-			result.rows[0].user_id !== user_id)
+		(user?.privileges !== "admin" && result.rows[0].user_id !== user_id)
 	) {
 		res
 			.status(403)
@@ -627,7 +620,8 @@ router.get(
 			res.status(400).json({ error: "Id inválido" });
 			return;
 		}
-		const user_id = req.session.user?.id;
+		const user = getCurrentUserData(req);
+		const user_id = user?.id;
 		try {
 			const result = await pool.query(
 				"SELECT exit_register FROM document_management_file WHERE id = $1 AND user_id = $2",
@@ -650,7 +644,8 @@ router.get(
 			res.status(400).json({ error: "Id inválido" });
 			return;
 		}
-		const user_id = req.session.user?.id;
+		const user = getCurrentUserData(req);
+		const user_id = user?.id;
 		try {
 			const result = await pool.query(
 				"SELECT retention_schedule FROM document_management_file WHERE id = $1 AND user_id = $2",
@@ -673,7 +668,8 @@ router.get(
 			res.status(400).json({ error: "Id inválido" });
 			return;
 		}
-		const user_id = req.session.user?.id;
+		const user = getCurrentUserData(req);
+		const user_id = user?.id;
 		try {
 			const result = await pool.query(
 				"SELECT topographic_register FROM document_management_file WHERE id = $1 AND user_id = $2",
@@ -696,7 +692,8 @@ router.get(
 			res.status(400).json({ error: "Id inválido" });
 			return;
 		}
-		const user_id = req.session.user?.id;
+		const user = getCurrentUserData(req);
+		const user_id = user?.id;
 		try {
 			const result = await pool.query(
 				"SELECT loan_register FROM document_management_file WHERE id = $1 AND user_id = $2",
@@ -723,9 +720,7 @@ router.get("/status", async (_req: Request, res: Response) => {
 	res.json({ status: "ok", message: "Servidor activo y listo" });
 });
 
-router.get("/me", isAuthenticated, async (req: Request, res: Response) => {
-	res.json(req.session.user);
-});
+router.get("/me", getCurrentUser);
 
 router.post("/register", async (req: Request, res: Response) => {
 	//TODO: Implementar verificación de email
@@ -765,55 +760,7 @@ router.post("/register", async (req: Request, res: Response) => {
 	}
 });
 
-declare module "express-session" {
-	interface SessionData {
-		user?: {
-			id: number;
-			username: string;
-			name: string;
-			privileges: string;
-		};
-	}
-}
-
-router.post("/login", async (req: Request, res: Response) => {
-	const { username, password } = req.body;
-	if (!username || !password) {
-		res.status(400).send("400");
-		return;
-	}
-
-	try {
-		const result = await pool.query("SELECT * FROM users WHERE username = $1", [
-			username,
-		]);
-
-		if (result.rows.length === 0) {
-			res.status(401).send("Usuario no encontrado");
-			return;
-		}
-
-		const user = result.rows[0];
-		const math = await bcrypt.compare(password, user.password);
-		if (!math) {
-			res.status(402).send("Incorrect Password");
-			return;
-		}
-		console.log("Usuario autenticado:", user);
-
-		req.session.user = {
-			id: user.id,
-			name: user.name,
-			username: user.username,
-			privileges: user.privileges,
-		};
-		console.log(req.session.user);
-		res.status(201).send("Login correcto");
-	} catch (err) {
-		console.error(err);
-		res.status(500).send("Error interno del servidor");
-	}
-});
+router.post("/login", login);
 
 router.get("/logout", (req, res) => {
 	//req.logout?.(() => {}); // Por si usas passport
@@ -825,30 +772,28 @@ router.get("/logout", (req, res) => {
 });
 
 // GET /api/users - Devuelve todos los usuarios (solo admin)
-router.get("/users", isAuthenticated, async (req: Request, res: Response) => {
-	if (req.session.user?.privileges !== "admin") {
-		res.status(403).json({ error: "No autorizado" });
-		return;
-	}
-	try {
-		const result = await pool.query(
-			"SELECT id, name, username, privileges FROM users",
-		);
-		res.json(result.rows);
-	} catch (err) {
-		res.status(500).json({ error: "Error al obtener los usuarios" });
-	}
-});
+router.get(
+	"/users",
+	isAuthenticated,
+	isAdmin,
+	async (req: Request, res: Response) => {
+		try {
+			const result = await pool.query(
+				"SELECT id, name, username, privileges FROM users",
+			);
+			res.json(result.rows);
+		} catch (err) {
+			res.status(500).json({ error: "Error al obtener los usuarios" });
+		}
+	},
+);
 
 // DELETE /api/users/:id - Elimina usuario y sus documentos (solo admin)
 router.delete(
 	"/users/:id",
 	isAuthenticated,
+	isAdmin,
 	async (req: Request, res: Response) => {
-		if (req.session.user?.privileges !== "admin") {
-			res.status(403).json({ error: "No autorizado" });
-			return;
-		}
 		const userId = Number.parseInt(req.params.id, 10);
 		if (Number.isNaN(userId)) {
 			res.status(400).json({ error: "ID inválido" });
@@ -878,11 +823,8 @@ router.delete(
 router.put(
 	"/users/:id/password",
 	isAuthenticated,
+	isAdmin,
 	async (req: Request, res: Response) => {
-		if (req.session.user?.privileges !== "admin") {
-			res.status(403).json({ error: "No autorizado" });
-			return;
-		}
 		const userId = Number.parseInt(req.params.id, 10);
 		const { password } = req.body;
 		if (Number.isNaN(userId) || !password) {
@@ -910,11 +852,8 @@ router.put(
 router.put(
 	"/users/:id",
 	isAuthenticated,
+	isAdmin,
 	async (req: Request, res: Response) => {
-		if (req.session.user?.privileges !== "admin") {
-			res.status(403).json({ error: "No autorizado" });
-			return;
-		}
 		const userId = Number.parseInt(req.params.id, 10);
 		const { name, username } = req.body;
 		if (Number.isNaN(userId) || (!name && !username)) {
@@ -962,7 +901,7 @@ router.put(
 router.get("/user-count", async (_req: Request, res: Response) => {
 	try {
 		const result = await pool.query(
-			"SELECT COUNT(*) FROM users WHERE privileges <> 'admin'"
+			"SELECT COUNT(*) FROM users WHERE privileges <> 'admin'",
 		);
 		res.json({ count: Number(result.rows[0].count) });
 	} catch {

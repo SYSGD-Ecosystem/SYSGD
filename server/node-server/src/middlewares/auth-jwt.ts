@@ -18,7 +18,8 @@ export const isAuthenticated = (
 	const token = req.cookies?.token;
 
 	if (!token) {
-		return res.status(401).json({ message: "Token no proporcionado" });
+		res.status(401).json({ message: "Token no proporcionado" });
+		return;
 	}
 
 	try {

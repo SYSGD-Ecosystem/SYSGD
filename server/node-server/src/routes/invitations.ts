@@ -1,14 +1,16 @@
 // routes/invitations.ts
 import { Router, type Request, type Response } from "express";
 import { pool } from "../db";
-import { isAuthenticated } from "../middlewares/auth";
+import { isAuthenticated } from "../middlewares/auth-jwt";
+import { getCurrentUserData } from "../controllers/users";
 
 const router = Router();
 
 
 // Ver invitaciones recibidas
 router.get("/", isAuthenticated, async (req: Request, res: Response) => {
-	const user_id = req.session.user?.id;
+	const user = getCurrentUserData(req)
+	const user_id = user?.id;
 	try {
 		const result = await pool.query(
 			`SELECT i.id, i.resource_id, i.resource_type, i.role, i.receiver_email,

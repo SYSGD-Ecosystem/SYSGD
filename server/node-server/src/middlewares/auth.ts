@@ -1,20 +1,20 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import { getCurrentUserData } from "../controllers/users";
 
 dotenv.config();
 
-export function isAuthenticated(req: Request, res: Response, next: NextFunction) {
-	if (req.session.user) {
-		next();
-	} else {
-		res.status(401).json({ error: "No estás logeado" });
-	}
-}
-
 export function isAdmin(req: Request, res: Response, next: NextFunction) {
-	if (req.session.user?.privileges !== "admin") {
-		return res.status(403).json({ error: "Solo para admins" });
+	const user = getCurrentUserData(req);
+	if (!user) {
+		res.status(400).json({ error: "user not found" });
+		return;
+	}
+
+	if (user.privileges !== "admin") {
+		res.status(403).json({ error: "Solo para admins" });
+		return;
 	}
 	next();
 }
@@ -25,9 +25,8 @@ if (!process.env.JWT_SECRET) {
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-
 // Middleware para verificar el JWT
-export const isAuthenticateJWT = (
+export const isAuthenticate = (
 	req: Request,
 	res: Response,
 	next: NextFunction,
@@ -44,11 +43,10 @@ export const isAuthenticateJWT = (
 		}
 
 		req.user = decoded as {
-			userId: number;
+			id: number;
 			username: string;
 			privileges: string;
 		};
 		next();
 	});
 };
-

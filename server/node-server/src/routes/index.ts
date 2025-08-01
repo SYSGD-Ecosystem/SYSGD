@@ -1,7 +1,7 @@
 import { Router } from "express";
 import users from "./users";
 import organization from "./organizationChart";
-import projects from "./projects";
+import projects from "./projects.routes";
 import task from "./tasks";
 import invitations from "./invitations";
 import members from "./members";

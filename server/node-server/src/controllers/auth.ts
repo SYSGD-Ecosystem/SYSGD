@@ -37,12 +37,13 @@ export const login = async (req: Request, res: Response) => {
 		// Genera el token JWT
 		const token = jwt.sign(
 			{
-				userId: user.id,
+				id: user.id,
 				username: user.username,
+				name: user.name,
 				privileges: user.privileges,
 			},
 			JWT_SECRET,
-			{ expiresIn: "2h" },
+			{ expiresIn: "24h" },
 		);
 
 		// Opcional: registrar el login
@@ -58,15 +59,36 @@ export const login = async (req: Request, res: Response) => {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === "production", // importante en producción
 			sameSite: "lax", // puedes usar "strict" o "none" según tu front
-			maxAge: 1000 * 60 * 60 * 2, // 2 horas
+			maxAge: 1000 * 60 * 60 * 24, // 24 horas
 		});
 
-		res.json({ message: "Login exitoso" });
+		res.status(201).send("Login correcto");
 	} catch (err) {
 		console.error(err);
 		res.status(500).json({ message: "Error interno del servidor" });
 	}
 };
+
+
+export const getCurrentUser = async (req: Request, res: Response) => {
+	const token = req.cookies.token;
+
+	if (!token) {
+		res.status(401).json({ message: "No autorizado" })
+		return;
+	}
+
+	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+	jwt.verify(token, JWT_SECRET, (err: any, decoded: any) => {
+		if (err) {
+			res.status(401).json({ message: "No autorizado" });
+			return;
+		}
+
+		const user = decoded
+		res.json(user);
+	});
+}
 
 export function generateJWT(user: {
 	id: number;
@@ -76,7 +98,7 @@ export function generateJWT(user: {
 }) {
 	return jwt.sign(
 		{
-			sub: user.id,
+			id: user.id,
 			username: user.username,
 			name: user.name,
 			privileges: user.privileges,
