@@ -69,12 +69,11 @@ export const login = async (req: Request, res: Response) => {
 	}
 };
 
-
 export const getCurrentUser = async (req: Request, res: Response) => {
 	const token = req.cookies.token;
 
 	if (!token) {
-		res.status(401).json({ message: "No autorizado" })
+		res.status(401).json({ message: "No autorizado" });
 		return;
 	}
 
@@ -85,10 +84,10 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 			return;
 		}
 
-		const user = decoded
+		const user = decoded;
 		res.json(user);
 	});
-}
+};
 
 export function generateJWT(user: {
 	id: number;
@@ -107,3 +106,12 @@ export function generateJWT(user: {
 		{ expiresIn: "7d" },
 	);
 }
+
+export const logout = async (req: Request, res: Response) => {
+	res.clearCookie("token", {
+		httpOnly: true,
+		secure: process.env.NODE_ENV === "production",
+		sameSite: "strict",
+	});
+	res.status(200).json({ message: "Sesión cerrada" });
+};

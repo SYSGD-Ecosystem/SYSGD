@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getCurrentUser, login } from "../controllers/auth";
+import { getCurrentUser, login, logout } from "../controllers/auth";
 
 
 const router = Router();
@@ -10,8 +10,6 @@ router.post("/login", login);
 
 router.get("/me", getCurrentUser);
 
-router.post("/logout", (req, res) => {
-	req.session.destroy(() => res.json({ message: "Sesión cerrada" }));
-});
+router.post("/logout", logout);
 
 export default router;

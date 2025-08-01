@@ -7,9 +7,8 @@ import { Router, type Request, type Response } from "express";
 import { pool } from "../db";
 import bcrypt from "bcrypt";
 import { isAuthenticated } from "../middlewares/auth-jwt";
-import { login } from "../controllers/auth";
+import { login, logout } from "../controllers/auth";
 import { getCurrentUser } from "../controllers/auth";
-import type { User } from "./users";
 import { getCurrentUserData } from "../controllers/users";
 import { getArchives } from "../controllers/archives.controller";
 import { isAdmin } from "../middlewares/auth";
@@ -28,9 +27,9 @@ router.delete(
 	isAuthenticated,
 	async (req: Request, res: Response) => {
 		const { id } = req.params;
-		const user = req.user as unknown as User;
-		const user_id = user.id;
-		const privileges = user.privileges;
+		const user = getCurrentUserData(req);
+		const user_id = user?.id;
+		const privileges = user?.privileges;
 
 		try {
 			const result = await pool.query(
@@ -69,9 +68,9 @@ router.put(
 	async (req: Request, res: Response) => {
 		const { id } = req.params;
 		const { code, company, name } = req.body;
-		const user = req.user as unknown as User;
-		const user_id = user.id;
-		const privileges = user.privileges;
+		const user = getCurrentUserData(req);
+		const user_id = user?.id;
+		const privileges = user?.privileges;
 
 		if (!code && !company && !name) {
 			res.status(400).json({ error: "No hay datos para actualizar" });
@@ -135,8 +134,8 @@ router.get(
 			res.status(400).json({ error: "Id inválido" });
 			return;
 		}
-		const user = req.user as unknown as User;
-		const user_id = user.id;
+		const user = getCurrentUserData(req);
+		const user_id = user?.id;
 
 		try {
 			const result = await pool.query(
@@ -158,8 +157,8 @@ router.post("/create", isAuthenticated, async (req: Request, res: Response) => {
 		return;
 	}
 
-	const user = req.user as unknown as User;
-	const user_id = user.id;
+	const user = getCurrentUserData(req);
+	const user_id = user?.id;
 
 	try {
 		await pool.query(
@@ -203,8 +202,8 @@ router.post("/add-document-entry", isAuthenticated, async (req, res) => {
 		return;
 	}
 
-	const user = req.user as unknown as User;
-	const user_id = user.id;
+	const user = getCurrentUserData(req);
+	const user_id = user?.id;
 
 	if (!user_id) {
 		res.status(401).json({ error: "No estás autorizado." });
@@ -247,8 +246,8 @@ router.get(
 			res.status(400).json({ error: "Id inválido" });
 			return;
 		}
-		const user = req.user as unknown as User;
-		const user_id = user.id;
+		const user = getCurrentUserData(req);
+		const user_id = user?.id;
 
 		try {
 			const result = await pool.query(
@@ -270,9 +269,9 @@ router.post("/add-document-exit", isAuthenticated, async (req, res) => {
 		return;
 	}
 
-	const user = req.user as unknown as User;
-	const user_id = user.id;
-	const privileges = user.privileges;
+	const user = getCurrentUserData(req);
+	const user_id = user?.id;
+	const privileges = user?.privileges;
 
 	if (!user_id) {
 		res.status(401).json({ error: "No estás autorizado." });
@@ -307,8 +306,8 @@ router.post("/add-document-exit", isAuthenticated, async (req, res) => {
 
 // GET /api/users - lista usuarios (solo admin)
 router.get("/users", isAuthenticated, async (req, res) => {
-	const user = req.user as unknown as User;
-	const privileges = user.privileges;
+	const user = getCurrentUserData(req);
+	const privileges = user?.privileges;
 
 	if (privileges !== "admin") {
 		res.status(403).json({ error: "No autorizado" });
@@ -326,9 +325,9 @@ router.get("/users", isAuthenticated, async (req, res) => {
 
 // POST /api/users - crear usuario (solo admin)
 router.post("/users", isAuthenticated, async (req, res) => {
-	const user = req.user as unknown as User;
+	const user = getCurrentUserData(req);
 
-	if (user.privileges !== "admin") {
+	if (user?.privileges !== "admin") {
 		res.status(403).json({ error: "No autorizado" });
 		return;
 	}
@@ -351,8 +350,8 @@ router.post("/users", isAuthenticated, async (req, res) => {
 	}
 });
 router.get("/admin/users", isAuthenticated, async (req, res) => {
-	const user = req.user as unknown as User;
-	const privileges = user.privileges;
+	const user = getCurrentUserData(req);
+	const privileges = user?.privileges;
 
 	if (privileges !== "admin") {
 		res.status(403).json({ error: "Acceso denegado" });
@@ -762,14 +761,7 @@ router.post("/register", async (req: Request, res: Response) => {
 
 router.post("/login", login);
 
-router.get("/logout", (req, res) => {
-	//req.logout?.(() => {}); // Por si usas passport
-	req.session.destroy((err) => {
-		if (err) console.error(err);
-		res.clearCookie("connect.sid");
-		res.send("Sesión cerrada");
-	});
-});
+router.get("/logout", logout);
 
 // GET /api/users - Devuelve todos los usuarios (solo admin)
 router.get(

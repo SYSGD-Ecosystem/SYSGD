@@ -2,17 +2,10 @@ import { Router } from "express";
 import bcrypt from "bcrypt";
 import { pool } from "../db";
 import { isAuthenticated } from "../middlewares/auth-jwt";
-import { getUsers, register } from "../controllers/users";
+import { getCurrentUserData, getUsers, register } from "../controllers/users";
 import { getCurrentUser } from "../controllers/auth";
 
 const router = Router();
-
-export interface User {
-	id: number;
-	username: string;
-	privileges: string;
-	// otras propiedades
-}
 
 // Current user data
 router.get("/me", getCurrentUser);
@@ -23,8 +16,8 @@ router.post("/register", register);
 // ---- Admin only CRUD ----
 router.use(isAuthenticated);
 router.use((req, res, next) => {
-	const user = getCurrentUser(req, res) as unknown as User;
-	if (user.privileges !== "admin") {
+	const user = getCurrentUserData(req)
+	if (user?.privileges !== "admin") {
 		res.status(403).json({ error: "No autorizado" });
 		return;
 	}
