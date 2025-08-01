@@ -10,13 +10,11 @@ import "./passport";
 import { setupSwagger } from "./swagger";
 import cookieParser from "cookie-parser";
 
-
 dotenv.config();
 
 const app = express();
 
 app.use(cookieParser());
-
 
 const PORT = process.env.PORT || 3000;
 const CLIENT_HOST = process.env.CLIENT_HOST;
@@ -52,12 +50,15 @@ app.use(passport.initialize());
 
 app.get(
 	"/api/auth/google",
-	passport.authenticate("google", { scope: ["profile", "email"] }),
+	passport.authenticate("google", {
+		scope: ["profile", "email"],
+		session: false,
+	}),
 );
 
 app.get(
 	"/api/auth/google/callback",
-	passport.authenticate("google", { failureRedirect: "/login" }),
+	passport.authenticate("google", { failureRedirect: "/login", session: false }),
 	(req, res) => {
 		const { token } = req.user as { token: string };
 
@@ -68,10 +69,9 @@ app.get(
 			maxAge: 1000 * 60 * 60 * 24,
 		});
 
-		res.redirect(process.env.CLIENT_HOST || "http://localhost:5173");
+		res.redirect(`${process.env.CLIENT_HOST}/login` || "http://localhost:5173/login");
 	},
 );
-
 
 app.use("/api", routes);
 
