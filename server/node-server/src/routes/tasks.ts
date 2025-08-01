@@ -1,6 +1,8 @@
 import { Router, type Request, type Response } from "express";
-import { pool } from "../index";
-import { isAuthenticated } from "../middlewares/auth";
+import { pool } from "../db";
+import { isAuthenticated } from "../middlewares/auth-jwt";
+import { getCurrentUserData } from "../controllers/users";
+//import { isAuthenticated } from "../middlewares/authjwt";
 
 const router = Router();
 
@@ -53,8 +55,8 @@ router.post("/", isAuthenticated, async (req: Request, res: Response) => {
 		assignees = [],
 		status,
 	} = req.body;
-	console.log(req.body);
-	const created_by = req.session.user?.id;
+const user = getCurrentUserData(req)
+	const created_by = user?.id;
 
 	if (!title || !project_id || !created_by) {
 		res.status(400).json({ error: "Missing required fields" });

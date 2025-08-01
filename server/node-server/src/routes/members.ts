@@ -1,7 +1,8 @@
 // src/routes/members.ts
 import express, { type Request, type Response } from "express";
-import { pool } from "../index";
-import { isAuthenticated } from "../middlewares/auth";
+import { pool } from "../db";
+import { isAuthenticated } from "../middlewares/auth-jwt";
+import { getCurrentUserData } from "../controllers/users";
 const router = express.Router();
 
 router.get("/status", (_req, res) => {
@@ -30,8 +31,8 @@ router.get("/:projectId", isAuthenticated, async (req, res) => {
 router.post("/invite/:projectId", isAuthenticated, async (req, res) => {
 	const { projectId } = req.params;
 	const { email, role } = req.body;
-
-	const senderId = req.session.user?.id;
+	const user = getCurrentUserData(req);
+	const senderId = user?.id;
 
 	try {
 		const userResult = await pool.query(
@@ -61,7 +62,8 @@ router.post(
 	isAuthenticated,
 	async (req: Request, res: Response) => {
 		const { invitationId } = req.params;
-		const userId = req.session.user?.id;
+		const user = getCurrentUserData(req);
+		const userId = user?.id;
 
 		try {
 			const result = await pool.query(
