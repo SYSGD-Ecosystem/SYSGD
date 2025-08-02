@@ -32,8 +32,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { EditUserDialog } from "../components/edit-user-dialog";
-import { CreateUserDialog } from "../components/create-user-dialog";
+import { EditUserDialog } from "../components/admin/edit-user-dialog";
+import { CreateUserDialog } from "../components/admin/create-user-dialog";
 import {
 	Users,
 	UserPlus,

@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
-import { pool } from "../index";
-import { isAuthenticated } from "../middlewares/auth";
+import { pool } from "../db";
+import { isAuthenticated } from "../middlewares/auth-jwt";
+import { getCurrentUserData } from "../controllers/users";
 
 const router = Router();
 
@@ -8,7 +9,8 @@ router.post("/:projectId", isAuthenticated, async (req, res) => {
 	const { projectId } = req.params;
 	const { title, description, category, priority, implementability, impact } =
 		req.body;
-	const userId = req.session.user?.id;
+		const user = getCurrentUserData(req)
+	const userId = user?.id;
 
 	if (
 		!title ||

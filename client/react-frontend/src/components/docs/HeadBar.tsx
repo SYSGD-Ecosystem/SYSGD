@@ -1,7 +1,7 @@
 import type { FC } from "react";
 import { IoIosApps } from "react-icons/io";
-import UserProfileTrigger from "./UserProfileTrigger";
-import ButtonSwitchTheme from "./ButtonSwitchTheme";
+import UserProfileTrigger from "../UserProfileTrigger";
+import ButtonSwitchTheme from "../ButtonSwitchTheme";
 import { Link } from "react-router-dom";
 
 const HeadBar: FC = () => {

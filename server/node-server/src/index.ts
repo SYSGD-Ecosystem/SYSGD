@@ -3,34 +3,33 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "node:path";
 import fs from "node:fs";
-import { Pool } from "pg";
 import { initDatabase } from "./initDatabase";
 import routes from "./routes";
-import session from "express-session";
 import passport from "passport";
 import "./passport";
 import { setupSwagger } from "./swagger";
+import cookieParser from "cookie-parser";
 
 dotenv.config();
 
-const shouldInitDB = process.env.INIT_DB_ON_START === "true";
 const app = express();
+
+app.use(cookieParser());
+
 const PORT = process.env.PORT || 3000;
 const CLIENT_HOST = process.env.CLIENT_HOST;
-const SECRET_SESSION = process.env.SECRET_SESSION || "SECRETDEFAULT";
+const shouldInitDB = process.env.INIT_DB_ON_START === "true";
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [];
+const isAcceptAllOrigins = process.env.ACCEPT_ALL_ORIGINS === "true";
 
-console.log("Allowed origins:", allowedOrigins);
-
-export const pool = new Pool({
-	host: process.env.DB_HOST,
-	user: process.env.DB_USER,
-	password: process.env.DB_PASSWORD,
-	database: process.env.DB_NAME,
-	port: Number(process.env.DB_PORT),
-});
-
-if (allowedOrigins.length === 0) {
+if (isAcceptAllOrigins) {
+	app.use(
+		cors({
+			origin: true, // SOLO se debe usar durante el desarrollo
+			credentials: true,
+		}),
+	);
+} else if (allowedOrigins.length === 0) {
 	app.use(
 		cors({
 			origin: CLIENT_HOST,
@@ -38,7 +37,7 @@ if (allowedOrigins.length === 0) {
 		}),
 	);
 } else {
-	console.log("Usando CORS con orígenes permitidos:", allowedOrigins);
+	// Usando CORS con orígenes multiples
 	app.use(
 		cors({
 			origin: (origin, callback) => {
@@ -54,92 +53,43 @@ if (allowedOrigins.length === 0) {
 	);
 }
 
-if (
-	CLIENT_HOST === "http://127.0.0.1:5173" ||
-	CLIENT_HOST === "http://localhost:5173"
-) {
-	app.use(
-		session({
-			secret: SECRET_SESSION,
-			resave: false,
-			saveUninitialized: false,
-			cookie: {
-				secure: false,
-				maxAge: 1000 * 60 * 60 * 24,
-				sameSite: "lax",
-				httpOnly: true,
-			},
-		}),
-	);
-} else {
-	console.log("Recibiendo en producción...");
-	app.set("trust proxy", 1);
-	app.use(
-		session({
-			secret: SECRET_SESSION,
-			resave: false,
-			saveUninitialized: false,
-			cookie: {
-				secure: true,
-				sameSite: "none",
-				maxAge: 1000 * 60 * 60 * 24,
-				httpOnly: true,
-			},
-		}),
-	);
-}
-
 app.use(express.json());
-
 app.use(passport.initialize());
-app.use(passport.session());
 
 app.get(
 	"/api/auth/google",
-	passport.authenticate("google", { scope: ["profile", "email"] }),
+	passport.authenticate("google", {
+		scope: ["profile", "email"],
+		session: false,
+	}),
 );
 
 app.get(
 	"/api/auth/google/callback",
-	passport.authenticate("google", { failureRedirect: "/login" }),
+	passport.authenticate("google", {
+		failureRedirect: "/login",
+		session: false,
+	}),
 	(req, res) => {
-		console.log("Verificacion de que esta funcion se esta ejecutando");
+		const { token } = req.user as { token: string };
 
-		if (req.user && typeof req.user === "object") {
-			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-			const { id, username, name, privileges } = req.user as any;
-			req.session.user = { id, username, name, privileges };
-			console.log("Usuario autenticado:", req.session.user);
-		} else if (req.user) {
-			req.session.user = {
-				id: req.user,
-				username: req.user,
-				name: req.user,
-				privileges: "user",
-			};
-			console.log("Usuario autenticado (string):", req.session.user);
-		} else {
-			console.log("Usuario no autenticado, asignando undefined");
-			req.session.user = undefined;
-		}
+		res.cookie("token", token, {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: "none",
+			maxAge: 1000 * 60 * 60 * 24,
+		});
 
-		res.redirect(process.env.CLIENT_HOST || "http://localhost:5173");
+		res.redirect(
+			`${process.env.CLIENT_HOST}/login` || "http://localhost:5173/login",
+		);
 	},
 );
-
-// Ruta protegida de prueba
-app.get("/api/profile", (req, res) => {
-	if (req.isAuthenticated()) {
-		res.json(req.user);
-	} else {
-		res.status(401).json({ error: "No autenticado" });
-	}
-});
-
 
 app.use("/api", routes);
 
 setupSwagger(app);
+
 // Ruta raíz que sirve la página de bienvenida desde un archivo externo
 app.get("/", (_req, res) => {
 	const filePath = path.join(__dirname, "../public/index.html");
@@ -152,7 +102,6 @@ app.get("/", (_req, res) => {
 	});
 });
 
-// Hold metosd to initialize the database
 if (shouldInitDB) {
 	initDatabase()
 		.then(() => {
@@ -169,10 +118,3 @@ if (shouldInitDB) {
 		console.log(`🚀 SYSGD corriendo en http://localhost:${PORT}`);
 	});
 }
-
-// Uncomment the following lines if you want to initialize the database on server start
-// initDatabase().then(() => {
-// 	app.listen(PORT, () => {
-// 		console.log(`🚀 SYSGD corriendo en http://localhost:${PORT}`);
-// 	});
-// });
