@@ -1,46 +1,46 @@
 import { useEffect, type FC } from "react";
-import { Button } from "./ui/button";
+import { Button } from "../ui/button";
 import { AlertCircle, FileIcon, Plus, SaveAll } from "lucide-react";
 import useEditableTable from "@/hooks/useEditableTable";
-import Table, { Td } from "./BasicTableComponents";
+import Table, { Td } from "../BasicTableComponents";
 import useConnection from "@/hooks/connection/useConnection";
-import useGetEntryRegister from "@/hooks/connection/useGetEntryRegister";
 import { useToast } from "@/hooks/use-toast";
-import Loading from "./Loading";
+import useGetExitRegister from "@/hooks/connection/useGetExitRegister";
+import Loading from "../Loading";
 
-export type RegistroDeEntradaData = {
-	numero_registro: string;
+export type ExitRegisterData = {
+	no_exit_register: string;
 	fecha: string;
-	tipo_documento: string;
+	no_registro_entrada: string;
+	serie_documental: string;
 	sujeto_productor: string;
-	titulo: string;
-	observaciones?: string;
+	causa_de_salida: string;
 };
 
-export type RegistroDeEntradaProps = {
+export type ExitRegisterProps = {
 	archiveId: string;
 	company: string;
 	managementFile: string;
 };
 
-const RegistroDeEntrada: FC<RegistroDeEntradaProps> = ({
+const ExitRegister: FC<ExitRegisterProps> = ({
 	archiveId,
 	company,
 	managementFile,
 }) => {
 	const { rows, addRow, updateRow, saveAllRows, setPrevious } =
-		useEditableTable<RegistroDeEntradaData>([
+		useEditableTable<ExitRegisterData>([
 			{
-				numero_registro: "",
+				no_exit_register: "",
 				fecha: "",
-				tipo_documento: "",
+				no_registro_entrada: "",
+				serie_documental: "",
 				sujeto_productor: "",
-				titulo: "",
-				observaciones: "",
+				causa_de_salida: "",
 			},
 		]);
-	const { handleNewDocumentEntry } = useConnection();
-	const { entry, error, loading } = useGetEntryRegister(archiveId);
+	const { handleNewDocumentExit } = useConnection();
+	const { exit, error, loading } = useGetExitRegister(archiveId);
 	const { toast } = useToast();
 
 	const handleSaveData = (data: string) => {
@@ -48,7 +48,7 @@ const RegistroDeEntrada: FC<RegistroDeEntradaProps> = ({
 			alert("No hay datos para guardar");
 			return;
 		}
-		handleNewDocumentEntry(
+		handleNewDocumentExit(
 			data,
 			archiveId,
 			() => {
@@ -69,27 +69,28 @@ const RegistroDeEntrada: FC<RegistroDeEntradaProps> = ({
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	useEffect(() => {
-		if (entry && Array.isArray(entry)) {
-			const allRegisters = entry
-				.filter((item) => Array.isArray(item.entry_register))
-				.flatMap((item) => item.entry_register);
+		if (exit && Array.isArray(exit)) {
+			// Combina todos los exit_register de cada objeto en un solo array
+			const allRegisters = exit
+				.filter((item) => Array.isArray(item.exit_register))
+				.flatMap((item) => item.exit_register);
 
 			if (allRegisters.length > 0) {
 				setPrevious(allRegisters);
 			} else {
 				setPrevious([
 					{
-						numero_registro: "",
+						no_exit_register: "",
 						fecha: "",
-						tipo_documento: "",
+						no_registro_entrada: "",
+						serie_documental: "",
 						sujeto_productor: "",
-						titulo: "",
-						observaciones: "",
+						causa_de_salida: "",
 					},
 				]);
 			}
 		}
-	}, [entry, archiveId]);
+	}, [exit, archiveId]);
 
 	if (error) {
 		return (
@@ -130,7 +131,7 @@ const RegistroDeEntrada: FC<RegistroDeEntradaProps> = ({
 									<th colSpan={11} className="py-2">
 										<div className="flex">
 											<div className="w-full">ANEXO</div>
-											<div className="w-full text-right"> A2</div>
+											<div className="w-full text-right"> A4</div>
 										</div>
 									</th>
 								</tr>
@@ -139,7 +140,7 @@ const RegistroDeEntrada: FC<RegistroDeEntradaProps> = ({
 										colSpan={11}
 										className="text-center py-2 text-base uppercase"
 									>
-										<div>REGISTRO DE ENTRADA DE DOCUMENTOS</div>
+										<div>REGISTRO DE SALIDA DE DOCUMENTOS</div>
 									</th>
 								</tr>
 								<tr>
@@ -161,11 +162,11 @@ const RegistroDeEntrada: FC<RegistroDeEntradaProps> = ({
 										// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
 										<tr key={index}>
 											<Td
-												label={props.numero_registro}
+												label={props.no_exit_register}
 												onBlur={(e) => {
 													updateRow(
 														index,
-														"numero_registro",
+														"no_exit_register",
 														e.currentTarget.innerText,
 													);
 												}}
@@ -177,11 +178,21 @@ const RegistroDeEntrada: FC<RegistroDeEntradaProps> = ({
 												}}
 											/>
 											<Td
-												label={props.tipo_documento}
+												label={props.no_registro_entrada}
 												onBlur={(e) => {
 													updateRow(
 														index,
-														"tipo_documento",
+														"no_registro_entrada",
+														e.currentTarget.innerText,
+													);
+												}}
+											/>
+											<Td
+												label={props.serie_documental}
+												onBlur={(e) => {
+													updateRow(
+														index,
+														"serie_documental",
 														e.currentTarget.innerText,
 													);
 												}}
@@ -196,18 +207,13 @@ const RegistroDeEntrada: FC<RegistroDeEntradaProps> = ({
 													);
 												}}
 											/>
+
 											<Td
-												label={props.titulo}
-												onBlur={(e) => {
-													updateRow(index, "titulo", e.currentTarget.innerText);
-												}}
-											/>
-											<Td
-												label={props.observaciones ?? ""}
+												label={props.causa_de_salida}
 												onBlur={(e) => {
 													updateRow(
 														index,
-														"observaciones",
+														"causa_de_salida",
 														e.currentTarget.innerText,
 													);
 												}}
@@ -242,25 +248,29 @@ const RegistroDeEntrada: FC<RegistroDeEntradaProps> = ({
 	);
 };
 
-export default RegistroDeEntrada;
+export default ExitRegister;
 
 const TableHeading: FC = () => {
 	return (
 		<>
 			<tr className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-slate-900 dark:text-gray-400">
-				<th className="p-2 border dark:border-gray-700">No. Reg. Entrada</th>
-				<th className="p-2 border dark:border-gray-700 text-left">Fecha</th>
-				<th className="p-2 border dark:border-gray-700 text-center">
-					Tipo de Documento
+				<th className="p-2 border dark:border-gray-700 min-w-20">
+					No. Reg. Salida
 				</th>
-				<th className="p-2 border dark:border-gray-700 text-center">
+				<th className="p-2 border dark:border-gray-700 text-left min-w-20">
+					Fecha
+				</th>
+				<th className="p-2 border dark:border-gray-700 text-center min-w-20">
+					No. Reg. Entr.
+				</th>
+				<th className="p-2 border dark:border-gray-700 text-center w-full">
+					Serie Documental
+				</th>
+				<th className="p-2 border dark:border-gray-700 text-center min-w-20">
 					Sujeto Productor
 				</th>
-				<th className="p-2 border dark:border-gray-700 text-center w-full">
-					Título
-				</th>
-				<th className="p-2 border dark:border-gray-700 text-center w-full">
-					Observaciones
+				<th className="p-2 border dark:border-gray-700 text-center min-w-20">
+					Causa de Salida
 				</th>
 			</tr>
 		</>

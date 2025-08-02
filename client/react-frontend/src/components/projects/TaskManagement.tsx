@@ -30,7 +30,7 @@ import { useTasks } from "@/hooks/connection/useTask";
 import type { Task } from "@/types/Task";
 import { getPriorityColor } from "@/utils/util";
 import { getStatusIcon } from "@/utils/util-components";
-import DialogViewTask from "./dialogs/DialogViewTask";
+import DialogViewTask from "../dialogs/DialogViewTask";
 
 import { useProjectMembers } from "@/hooks/connection/useProjectMembers";
 import {

@@ -24,14 +24,14 @@ import {
 import type { Idea } from "@/types/ProjectTypes";
 import { useIdeas } from "@/hooks/connection/useIdeas";
 import { timeAgo } from "@/utils/util";
-import { Label } from "./ui/label";
+import { Label } from "../ui/label";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "./ui/select";
+} from "../ui/select";
 
 const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 	const { ideas, createIdea, deleteIdea, updateIdea } = useIdeas(projectId);

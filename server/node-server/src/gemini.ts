@@ -1,4 +1,3 @@
-// src/lib/gemini.ts
 import { GoogleGenerativeAI } from "@google/generative-ai";
 // Asegúrate de tener esta variable en tu `.env`
 const apiKey = process.env.GEMINI_API_KEY;

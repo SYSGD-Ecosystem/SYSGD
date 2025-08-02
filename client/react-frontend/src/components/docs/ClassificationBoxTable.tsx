@@ -1,13 +1,13 @@
 import { type FC, useEffect } from "react";
-import Table, { Td, type Row } from "./BasicTableComponents";
-import useEditableTable from "../hooks/useEditableTable";
-import useConnection from "../hooks/connection/useConnection";
-import { spanish } from "../lang/spanish";
-import useGetData from "../hooks/connection/useGetData";
-import Loading from "./Loading";
+import Table, { Td, type Row } from "../BasicTableComponents";
+import useEditableTable from "../../hooks/useEditableTable";
+import useConnection from "../../hooks/connection/useConnection";
+import { spanish } from "../../lang/spanish";
+import useGetData from "../../hooks/connection/useGetData";
+import Loading from "../Loading";
 import { IoAlertCircle } from "react-icons/io5";
 import { FaFileAlt } from "react-icons/fa";
-import { Button } from "./ui/button";
+import { Button } from "../ui/button";
 import { Plus, SaveAll } from "lucide-react";
 import { toast } from "sonner";
 

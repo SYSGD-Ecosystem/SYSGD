@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useSelectionStore } from "@/store/selection";
 import TaskManagement from "./TaskManagement";
 import useCurrentUser from "@/hooks/connection/useCurrentUser";
-import Loading from "./Loading";
+import Loading from "../Loading";
 import { ProjectSidebar } from "./ProjectSidebar";
 import TeamManagement from "./TeamManagement";
 import IdeasBank from "./IdeasBank";

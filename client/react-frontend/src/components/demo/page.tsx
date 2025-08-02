@@ -1,17 +1,17 @@
 "use client"
 
 import { useState } from "react"
-import { Sidebar } from "@/components/projects/sidebar"
-import { TopNavigation } from "@/components/projects/top-navigation"
-import { KanbanBoard } from "@/components/projects/kanban-board"
-import { TeamManagement } from "@/components/projects/team-management"
-import NotesSection from "@/components/projects/NotesSection"
-import { IdeasBank } from "@/components/projects/ideas-bank"
-import { TaskManagement } from "@/components/projects/task-management"
-import { CalendarSection } from "@/components/projects/calendar-section"
-import { HomeDashboard } from "@/components/projects/home-dashboard"
+import { Sidebar } from "@/components/demo/sidebar"
+import { TopNavigation } from "@/components/demo/top-navigation"
+import { KanbanBoard } from "@/components/demo/kanban-board"
+import { TeamManagement } from "@/components/demo/team-management"
+import { NotesSection } from "@/components/demo/notes-section"
+import { IdeasBank } from "@/components/demo/ideas-bank"
+import { TaskManagement } from "@/components/demo/task-management"
+import { CalendarSection } from "@/components/demo/calendar-section"
+import { HomeDashboard } from "@/components/demo/home-dashboard"
 import { ThemeProvider } from "@/contexts/theme-context";
-import { TimeTracking } from "@/components/projects/time-tracking"
+import { TimeTracking } from "@/components/demo/time-tracking"
 import { DocumentFormExample } from "./document-form-example"
 
 function MainAppProjectDemo() {
@@ -71,7 +71,7 @@ function MainAppProjectDemo() {
           {activeSection === "kanban" && <KanbanBoard />}
           {activeSection === "calendar" && <CalendarSection />}
           {activeSection === "team" && <TeamManagement />}
-          {activeSection === "notes" && <NotesSection projectId={selectedProject} />}
+          {activeSection === "notes" && <NotesSection />}
           {activeSection === "ideas" && <IdeasBank />}
           {activeSection === "time-tracking" && <TimeTracking />}
           {activeSection === "document-form" && <DocumentFormExample />}

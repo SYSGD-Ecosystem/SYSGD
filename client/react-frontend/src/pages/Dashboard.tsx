@@ -1,8 +1,8 @@
 import { useEffect, useState, type FC } from "react";
-import WorkSpace from "../components/WorkSpace";
-import Sidebar from "../components/Sidebar";
-import HeadBar from "../components/HeadBar";
-import NavBar from "../components/Navbar";
+import WorkSpace from "../components/docs/WorkSpace";
+import Sidebar from "../components/docs/Sidebar";
+import HeadBar from "../components/docs/HeadBar";
+import NavBar from "../components/docs/Navbar";
 import { useNavigate } from "react-router-dom";
 import useServerStatus from "../hooks/connection/useServerStatus";
 import { useAuthSession } from "../hooks/connection/useAuthSession";

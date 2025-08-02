@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { pool } from "../index";
-import { isAuthenticated } from "../middlewares/auth";
+import { pool } from "../db";
+import { isAuthenticated } from "../middlewares/auth-jwt";
+import { getCurrentUserData } from "../controllers/users";
 
 const router = Router();
 
@@ -36,8 +37,8 @@ router.post("/", async (req, res) => {
 		res.status(400).json({ error: "Faltan datos" });
 		return;
 	}
-
-	const userId = req.session.user?.id;
+const user = getCurrentUserData(req)
+	const userId = user?.id;
 	try {
 		const owner = await pool.query(
 			"SELECT user_id FROM document_management_file WHERE id = $1",
@@ -50,7 +51,7 @@ router.post("/", async (req, res) => {
 
 		if (
 			owner.rows[0].user_id !== userId &&
-			req.session.user?.privileges !== "admin"
+			user?.privileges !== "admin"
 		) {
 			res.status(403).json({ error: "Sin permisos" });
 			return;

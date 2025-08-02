@@ -1,4 +1,4 @@
-import { pool } from "./index";
+import { pool } from "./db";
 
 export async function initDatabase() {
 	await pool.query(`

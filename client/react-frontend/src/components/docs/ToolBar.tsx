@@ -1,8 +1,8 @@
 import type { FC } from "react";
-import IconButton from "./IconButton";
+import IconButton from "../IconButton";
 import { IoIosHelpCircle } from "react-icons/io";
 import { twMerge } from "tailwind-merge";
-import Text from "./Text";
+import Text from "../Text";
 
 const ToolBar: FC<{ className?: string }> = ({ className }) => {
   return (
