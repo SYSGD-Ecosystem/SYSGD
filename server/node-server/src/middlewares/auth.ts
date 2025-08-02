@@ -80,7 +80,7 @@ export async function hasProjectAccessFromNote(req: Request, res: Response, next
 			return;
 		}
 
-		// Verificar que el usuario sea el autor de la nota Y tenga acceso al proyecto
+		// Verificar que el usuario tenga acceso al proyecto de la nota
 		const result = await pool.query(`
 			SELECT n.user_id, p.id as project_id FROM project_notes n
 			JOIN projects p ON n.project_id = p.id
@@ -88,7 +88,6 @@ export async function hasProjectAccessFromNote(req: Request, res: Response, next
 				AND ra.resource_type = 'project' 
 				AND ra.user_id = $2
 			WHERE n.id = $1 
-				AND n.user_id = $2
 				AND (p.created_by = $2 OR ra.user_id IS NOT NULL)
 		`, [noteId, userId]);
 
@@ -101,6 +100,5 @@ export async function hasProjectAccessFromNote(req: Request, res: Response, next
 	} catch (error) {
 		console.error("Error verificando acceso a la nota:", error);
 		res.status(500).json({ error: "Error interno del servidor" });
-		return;
 	}
 }

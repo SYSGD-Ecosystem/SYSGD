@@ -19,9 +19,21 @@ export const useNotes = (projectId: number | string): UseNotesResult => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper function to validate projectId
+  const validateProjectId = (): boolean => {
+    if (projectId === null || projectId === undefined) {
+      setError('No projectId provided');
+      return false;
+    }
+    return true;
+  };
+
   // Función para obtener todas las notas del proyecto
   const fetchNotes = useCallback(async (): Promise<void> => {
-    if (projectId === null || projectId === undefined) return;
+    if (!validateProjectId()) {
+      setNotes([]);
+      return;
+    }
     
     setLoading(true);
     setError(null);
@@ -42,6 +54,11 @@ export const useNotes = (projectId: number | string): UseNotesResult => {
       }
 
       const result = await response.json();
+      if (!result || typeof result !== 'object' || !('data' in result)) {
+        setError('Respuesta de la API inválida: falta la propiedad "data"');
+        setNotes([]);
+        return;
+      }
       setNotes(result.data || []);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido al cargar las notas';
@@ -54,8 +71,7 @@ export const useNotes = (projectId: number | string): UseNotesResult => {
 
   // Función para crear una nueva nota
   const createNote = async (data: CreateNoteData): Promise<ProjectNote | null> => {
-    if (projectId === null || projectId === undefined) {
-      setError('No projectId provided');
+    if (!validateProjectId()) {
       return null;
     }
     

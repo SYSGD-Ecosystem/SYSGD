@@ -40,6 +40,8 @@ const NotesSection: React.FC<NoteSectionProps> = ({ projectId }) => {
 	const [editingNote, setEditingNote] = useState<EditingNote | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [actionLoading, setActionLoading] = useState(false);
+	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+	const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
 
 	const filteredNotes = notes.filter((note) => {
 		const matchesSearch =
@@ -101,16 +103,22 @@ const NotesSection: React.FC<NoteSectionProps> = ({ projectId }) => {
 		}
 	};
 
-	const handleDeleteNote = async (noteId: string) => {
-		if (window.confirm("¿Estás seguro de que quieres eliminar esta nota?")) {
-			setActionLoading(true);
-			try {
-				await deleteNote(noteId);
-			} catch (err) {
-				console.error("Error deleting note:", err);
-			} finally {
-				setActionLoading(false);
-			}
+	const handleDeleteNote = (noteId: string) => {
+		setNoteToDelete(noteId);
+		setDeleteDialogOpen(true);
+	};
+
+	const confirmDeleteNote = async () => {
+		if (!noteToDelete) return;
+		setActionLoading(true);
+		try {
+			await deleteNote(noteToDelete);
+			setDeleteDialogOpen(false);
+			setNoteToDelete(null);
+		} catch (err) {
+			console.error("Error deleting note:", err);
+		} finally {
+			setActionLoading(false);
 		}
 	};
 
@@ -133,7 +141,8 @@ const NotesSection: React.FC<NoteSectionProps> = ({ projectId }) => {
 	};
 
 	return (
-		<div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm">
+		<>
+			<div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm">
 			<div className="p-6 border-b border-gray-200 dark:border-gray-700">
 				<div className="flex justify-between items-start mb-4">
 					<div>
@@ -157,12 +166,11 @@ const NotesSection: React.FC<NoteSectionProps> = ({ projectId }) => {
 								placeholder="Buscar notas..."
 								value={searchTerm}
 								onChange={(e) => setSearchTerm(e.target.value)}
-								className="pl-10 w-64 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-							/>
+								className="pl-10 w-64 dark:bg-gray-800 dark:border-gray-600 dark:text-white" />
 						</div>
-						<Button 
-							variant="outline" 
-							size="sm" 
+						<Button
+							variant="outline"
+							size="sm"
 							onClick={refreshNotes}
 							disabled={loading}
 						>
@@ -248,7 +256,7 @@ const NotesSection: React.FC<NoteSectionProps> = ({ projectId }) => {
 				{!loading && filteredNotes.length === 0 && !error && (
 					<div className="text-center py-12">
 						<p className="text-gray-500 dark:text-gray-400">
-							{searchTerm 
+							{searchTerm
 								? "No se encontraron notas que coincidan con la búsqueda."
 								: "No hay notas en este proyecto. ¡Crea la primera nota!"}
 						</p>
@@ -269,29 +277,23 @@ const NotesSection: React.FC<NoteSectionProps> = ({ projectId }) => {
 								<label className="text-sm font-medium block mb-2 text-gray-700 dark:text-gray-300">Título</label>
 								<Input
 									value={editingNote.title}
-									onChange={(e) =>
-										setEditingNote({ ...editingNote, title: e.target.value })
-									}
+									onChange={(e) => setEditingNote({ ...editingNote, title: e.target.value })}
 									placeholder="Título de la nota"
 									disabled={actionLoading}
-									className="dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-								/>
+									className="dark:bg-gray-800 dark:border-gray-600 dark:text-white" />
 							</div>
 							<div>
 								<label className="text-sm font-medium block mb-2 text-gray-700 dark:text-gray-300">Contenido</label>
 								<Textarea
 									value={editingNote.content}
-									onChange={(e) =>
-										setEditingNote({
-											...editingNote,
-											content: e.target.value,
-										})
-									}
+									onChange={(e) => setEditingNote({
+										...editingNote,
+										content: e.target.value,
+									})}
 									placeholder="Contenido de la nota"
 									rows={8}
 									disabled={actionLoading}
-									className="dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-								/>
+									className="dark:bg-gray-800 dark:border-gray-600 dark:text-white" />
 							</div>
 							<div className="flex justify-end gap-2">
 								<Button
@@ -301,7 +303,7 @@ const NotesSection: React.FC<NoteSectionProps> = ({ projectId }) => {
 								>
 									Cancelar
 								</Button>
-								<Button 
+								<Button
 									onClick={handleSaveNote}
 									disabled={actionLoading || !editingNote.title.trim()}
 								>
@@ -319,7 +321,38 @@ const NotesSection: React.FC<NoteSectionProps> = ({ projectId }) => {
 					)}
 				</DialogContent>
 			</Dialog>
-		</div>
+		</div><Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Confirmar eliminación</DialogTitle>
+					</DialogHeader>
+					<p>¿Estás seguro de que quieres eliminar esta nota? Esta acción no se puede deshacer.</p>
+					<div className="flex justify-end gap-2 mt-4">
+						<Button
+							variant="outline"
+							onClick={() => setDeleteDialogOpen(false)}
+							disabled={actionLoading}
+						>
+							Cancelar
+						</Button>
+						<Button
+							variant="destructive"
+							onClick={confirmDeleteNote}
+							disabled={actionLoading}
+						>
+							{actionLoading ? (
+								<>
+									<Loader2 className="w-4 h-4 animate-spin mr-2" />
+									Eliminando...
+								</>
+							) : (
+								"Eliminar"
+							)}
+						</Button>
+					</div>
+				</DialogContent>
+			</Dialog>
+		</>
 	);
 };
 

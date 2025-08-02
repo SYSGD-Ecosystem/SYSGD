@@ -156,15 +156,21 @@ router.put(
 
 			updates.push(`updated_at = NOW()`);
 			values.push(noteId);
-
+			const whereParamIndex = paramIndex;
+			
 			const updateQuery = `
 				UPDATE project_notes 
 				SET ${updates.join(", ")}
-				WHERE id = $${paramIndex}
+				WHERE id = $${whereParamIndex}
 				RETURNING *
 			`;
-
+			
 			const result = await pool.query(updateQuery, values);
+
+			if (result.rows.length === 0) {
+				res.status(404).json({ error: "Nota no encontrada" });
+				return;
+			}
 
 			// Obtener la nota actualizada con información del autor
 			const updatedNoteWithAuthor = await pool.query(`
@@ -218,7 +224,20 @@ router.delete(
 
 		try {
 			// Eliminar la nota directamente - el middleware ya verificó permisos
-			await pool.query("DELETE FROM project_notes WHERE id = $1", [noteId]);
+			const deleteResult = await pool.query(`
+				DELETE FROM project_notes 
+				WHERE id = $1
+			`, [noteId]);
+
+			if ((deleteResult.rowCount ?? 0) === 0) {
+				res.status(404).json({ error: "Nota no encontrada" });
+				return;
+			}
+
+			if (deleteResult.rowCount === 0) {
+				res.status(404).json({ error: "Nota no encontrada" });
+				return;
+			}
 
 			res.json({ 
 				success: true,
