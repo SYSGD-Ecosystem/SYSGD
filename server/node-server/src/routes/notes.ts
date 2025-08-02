@@ -62,6 +62,11 @@ router.post(
 		const projectId = req.params.id;
 		const userId = req.session.user?.id;
 
+		if (!userId) {
+			res.status(401).json({ error: "Usuario no autenticado" });
+			return;
+		}
+
 		try {
 			// Validar datos de entrada
 			const validatedData = createNoteSchema.parse(req.body);
@@ -114,6 +119,11 @@ router.put(
 	async (req: Request, res: Response) => {
 		const noteId = req.params.id;
 		const userId = req.session.user?.id;
+
+		if (!userId) {
+			res.status(401).json({ error: "Usuario no autenticado" });
+			return;
+		}
 
 		try {
 			// Validar datos de entrada
@@ -216,6 +226,11 @@ router.delete(
 	async (req: Request, res: Response) => {
 		const noteId = req.params.id;
 		const userId = req.session.user?.id;
+
+		if (!userId) {
+			res.status(401).json({ error: "Usuario no autenticado" });
+			return;
+		}
 
 		try {
 			// Verificar que la nota existe y obtener información del proyecto

@@ -55,7 +55,7 @@ export const useNotes = (projectId: number | string): UseNotesResult => {
   // Función para crear una nueva nota
   const createNote = async (data: CreateNoteData): Promise<ProjectNote | null> => {
     if (!projectId) {
-      console.log('❌ No projectId, returning null');
+      setError('No projectId provided');
       return null;
     }
     

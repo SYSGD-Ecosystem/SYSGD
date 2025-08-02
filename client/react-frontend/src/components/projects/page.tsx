@@ -71,7 +71,7 @@ function MainAppProjectDemo() {
           {activeSection === "kanban" && <KanbanBoard />}
           {activeSection === "calendar" && <CalendarSection />}
           {activeSection === "team" && <TeamManagement />}
-          {activeSection === "notes" && <NotesSection projectId="cecfb271-fa4f-45c5-ba85-f2047d0c3d6f" />}
+          {activeSection === "notes" && <NotesSection projectId={selectedProject} />}
           {activeSection === "ideas" && <IdeasBank />}
           {activeSection === "time-tracking" && <TimeTracking />}
           {activeSection === "document-form" && <DocumentFormExample />}
