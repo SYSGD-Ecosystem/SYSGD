@@ -5,7 +5,7 @@ import { isAuthenticated, hasProjectAccess } from "../middlewares/auth";
 
 const router = Router();
 
-// Esquemas de validación con Zod
+// Validation schemas with Zod
 const createNoteSchema = z.object({
 	title: z.string().min(1, "El título es requerido").max(255, "El título no puede exceder 255 caracteres"),
 	content: z.string().optional().default(""),
@@ -142,7 +142,7 @@ router.put(
 
 			// Construir query de actualización dinámicamente
 			const updates: string[] = [];
-			const values: any[] = [];
+			const values: unknown[] = [];
 			let paramIndex = 1;
 
 			if (validatedData.title !== undefined) {

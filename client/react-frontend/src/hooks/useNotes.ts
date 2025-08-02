@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { ProjectNote, CreateNoteData, UpdateNoteData } from '@/types/Note';
 
 interface UseNotesResult {
@@ -20,7 +20,7 @@ export const useNotes = (projectId: number | string): UseNotesResult => {
   const [error, setError] = useState<string | null>(null);
 
   // Función para obtener todas las notas del proyecto
-  const fetchNotes = async (): Promise<void> => {
+  const fetchNotes = useCallback(async (): Promise<void> => {
     if (!projectId) return;
     
     setLoading(true);
@@ -50,7 +50,7 @@ export const useNotes = (projectId: number | string): UseNotesResult => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
 
   // Función para crear una nueva nota
   const createNote = async (data: CreateNoteData): Promise<ProjectNote | null> => {
@@ -177,7 +177,7 @@ export const useNotes = (projectId: number | string): UseNotesResult => {
     if (projectId) {
       fetchNotes();
     }
-  }, [projectId]); // Removed fetchNotes from dependencies to avoid infinite loop
+  }, [projectId, fetchNotes]);
 
   return {
     notes,
