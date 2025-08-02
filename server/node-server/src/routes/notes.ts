@@ -234,11 +234,6 @@ router.delete(
 				WHERE id = $1
 			`, [noteId]);
 
-			if ((deleteResult.rowCount ?? 0) === 0) {
-				res.status(404).json({ error: "Nota no encontrada" });
-				return;
-			}
-
 			if (deleteResult.rowCount === 0) {
 				res.status(404).json({ error: "Nota no encontrada" });
 				return;
