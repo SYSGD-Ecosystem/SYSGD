@@ -1,6 +1,6 @@
 import { type FC, useEffect, useState } from "react";
 import SecondarySidebar from "./SecondarySidebar";
-import IconButton from "./IconButton";
+import IconButton from "../IconButton";
 import { IoPrint } from "react-icons/io5";
 import { IoIosAddCircle } from "react-icons/io";
 import {
@@ -9,22 +9,22 @@ import {
 	DropdownMenuContent,
 	DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import Text from "./Text";
+import Text from "../Text";
 import ClassificationBoxTable from "./ClassificationBoxTable";
-import useDialog from "../hooks/useDialog";
-import CreateArchiving from "./dialogs/CreateArchive";
-import useArchives from "../hooks/connection/useArchives";
+import useDialog from "../../hooks/useDialog";
+import CreateArchiving from "../dialogs/CreateArchive";
+import useArchives from "../../hooks/connection/useArchives";
 import { FaFileAlt, FaFileExport, FaGhost } from "react-icons/fa";
-import Loading from "./Loading";
-import useExportTable from "../hooks/useExportTable";
-import usePrint from "../hooks/usePrint";
-import useAlertDialog from "../hooks/useAlertDialog";
+import Loading from "../Loading";
+import useExportTable from "../../hooks/useExportTable";
+import usePrint from "../../hooks/usePrint";
+import useAlertDialog from "../../hooks/useAlertDialog";
 import RegistroDeEntrada from "./RegistroDeEntrada";
 import ExitRegister from "./ExitRegister";
 import LoanRegister from "./LoanRegister";
 import TopographicRegister from "./TopographicRegister";
 import RetentionScheduleTable from "./RetentionScheduleTable";
-import type { DropdownOptionProps } from "./Dropdown";
+import type { DropdownOptionProps } from "../Dropdown";
 import { Edit3 } from "lucide-react";
 import { useArchivesApi } from "@/hooks/connection/useArchivesApi";
 import { useArchiveStore } from "@/store/useArchiveStore";

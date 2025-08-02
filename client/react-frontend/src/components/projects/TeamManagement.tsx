@@ -12,10 +12,10 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "./ui/label";
+import { Label } from "../ui/label";
 import { useProjectMembers } from "@/hooks/connection/useProjectMembers";
 import type { Member } from "@/types/Member";
-import DialogInvite from "./dialogs/DialogInvite";
+import DialogInvite from "../dialogs/DialogInvite";
 import { Skeleton } from "./TaskManagement";
 
 const TeamManagement: FC<{ projectId: string }> = ({ projectId }) => {

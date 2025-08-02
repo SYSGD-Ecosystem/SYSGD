@@ -53,8 +53,6 @@ export const login = async (req: Request, res: Response) => {
 			req.headers["user-agent"] || "",
 		);
 
-		//res.json({ token });
-
 		res.cookie("token", token, {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === "production", // importante en producción
@@ -111,7 +109,7 @@ export const logout = async (req: Request, res: Response) => {
 	res.clearCookie("token", {
 		httpOnly: true,
 		secure: process.env.NODE_ENV === "production",
-		sameSite: "strict",
+		sameSite: "none",
 	});
 	res.status(200).json({ message: "Sesión cerrada" });
 };
