@@ -21,7 +21,7 @@ export const useNotes = (projectId: number | string): UseNotesResult => {
 
   // Función para obtener todas las notas del proyecto
   const fetchNotes = useCallback(async (): Promise<void> => {
-    if (!projectId) return;
+    if (projectId === null || projectId === undefined) return;
     
     setLoading(true);
     setError(null);
@@ -54,7 +54,7 @@ export const useNotes = (projectId: number | string): UseNotesResult => {
 
   // Función para crear una nueva nota
   const createNote = async (data: CreateNoteData): Promise<ProjectNote | null> => {
-    if (!projectId) {
+    if (projectId === null || projectId === undefined) {
       setError('No projectId provided');
       return null;
     }
@@ -174,7 +174,7 @@ export const useNotes = (projectId: number | string): UseNotesResult => {
 
   // Cargar las notas al montar el componente o cuando cambie el projectId
   useEffect(() => {
-    if (projectId) {
+    if (projectId !== null && projectId !== undefined) {
       fetchNotes();
     }
   }, [projectId, fetchNotes]);

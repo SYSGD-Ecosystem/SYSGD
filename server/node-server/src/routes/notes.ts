@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { pool } from "../index";
-import { isAuthenticated, hasProjectAccess } from "../middlewares/auth";
+import { isAuthenticated, hasProjectAccess, hasProjectAccessFromNote } from "../middlewares/auth";
 
 const router = Router();
 
@@ -49,6 +49,7 @@ router.get(
 		} catch (error) {
 			console.error("Error al obtener notas:", error);
 			res.status(500).json({ error: "Error al obtener las notas" });
+			return;
 		}
 	}
 );
@@ -108,6 +109,7 @@ router.post(
 			}
 			console.error("Error al crear nota:", error);
 			res.status(500).json({ error: "Error al crear la nota" });
+			return;
 		}
 	}
 );
@@ -115,7 +117,8 @@ router.post(
 // PUT /notes/:id - Actualizar una nota existente
 router.put(
 	"/notes/:id", 
-	isAuthenticated, 
+	isAuthenticated,
+	hasProjectAccessFromNote,
 	async (req: Request, res: Response) => {
 		const noteId = req.params.id;
 		const userId = req.session.user?.id;
@@ -128,27 +131,6 @@ router.put(
 		try {
 			// Validar datos de entrada
 			const validatedData = updateNoteSchema.parse(req.body);
-
-			// Verificar que la nota existe y pertenece al usuario (o es admin)
-			const noteCheck = await pool.query(`
-				SELECT n.*, p.id as project_id 
-				FROM project_notes n
-				JOIN projects p ON n.project_id = p.id
-				WHERE n.id = $1
-			`, [noteId]);
-
-			if (noteCheck.rows.length === 0) {
-				res.status(404).json({ error: "Nota no encontrada" });
-				return;
-			}
-
-			const note = noteCheck.rows[0];
-
-			// Verificar permisos: solo el autor o admin pueden editar
-			if (note.user_id !== userId && req.session.user?.privileges !== "admin") {
-				res.status(403).json({ error: "No tienes permisos para editar esta nota" });
-				return;
-			}
 
 			// Construir query de actualización dinámicamente
 			const updates: string[] = [];
@@ -215,6 +197,7 @@ router.put(
 			}
 			console.error("Error al actualizar nota:", error);
 			res.status(500).json({ error: "Error al actualizar la nota" });
+			return;
 		}
 	}
 );
@@ -222,7 +205,8 @@ router.put(
 // DELETE /notes/:id - Eliminar una nota
 router.delete(
 	"/notes/:id", 
-	isAuthenticated, 
+	isAuthenticated,
+	hasProjectAccessFromNote,
 	async (req: Request, res: Response) => {
 		const noteId = req.params.id;
 		const userId = req.session.user?.id;
@@ -233,28 +217,7 @@ router.delete(
 		}
 
 		try {
-			// Verificar que la nota existe y obtener información del proyecto
-			const noteCheck = await pool.query(`
-				SELECT n.*, p.id as project_id 
-				FROM project_notes n
-				JOIN projects p ON n.project_id = p.id
-				WHERE n.id = $1
-			`, [noteId]);
-
-			if (noteCheck.rows.length === 0) {
-				res.status(404).json({ error: "Nota no encontrada" });
-				return;
-			}
-
-			const note = noteCheck.rows[0];
-
-			// Verificar permisos: solo el autor o admin pueden eliminar
-			if (note.user_id !== userId && req.session.user?.privileges !== "admin") {
-				res.status(403).json({ error: "No tienes permisos para eliminar esta nota" });
-				return;
-			}
-
-			// Eliminar la nota
+			// Eliminar la nota directamente - el middleware ya verificó permisos
 			await pool.query("DELETE FROM project_notes WHERE id = $1", [noteId]);
 
 			res.json({ 
@@ -264,6 +227,7 @@ router.delete(
 		} catch (error) {
 			console.error("Error al eliminar nota:", error);
 			res.status(500).json({ error: "Error al eliminar la nota" });
+			return;
 		}
 	}
 );

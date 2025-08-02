@@ -87,7 +87,6 @@ const NotesSection: React.FC<NoteSectionProps> = ({ projectId }) => {
 				});
 				
 				if (result) {
-					console.log("✅ Nota creada exitosamente:", result);
 					// Refrescar las notas para asegurar que aparezcan
 					await refreshNotes();
 				}
