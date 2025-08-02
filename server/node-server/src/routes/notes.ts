@@ -1,7 +1,9 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import { pool } from "../index";
-import { isAuthenticated, hasProjectAccess, hasProjectAccessFromNote } from "../middlewares/auth";
+import { pool } from "../db";
+import { hasProjectAccess, hasProjectAccessFromNote } from "../middlewares/auth";
+import { isAuthenticated } from "../middlewares/auth-jwt";
+import { getCurrentUserData } from "../controllers/users";
 
 const router = Router();
 
@@ -56,12 +58,13 @@ router.get(
 
 // POST /projects/:id/notes - Crear una nueva nota
 router.post(
-	"/projects/:id/notes", 
-	isAuthenticated, 
-	hasProjectAccess, 
+	"/projects/:id/notes",
+	isAuthenticated,
+	hasProjectAccess,
 	async (req: Request, res: Response) => {
 		const projectId = req.params.id;
-		const userId = req.session.user?.id;
+		const user = getCurrentUserData(req)
+		const userId = user?.id;
 
 		if (!userId) {
 			res.status(401).json({ error: "Usuario no autenticado" });
@@ -121,7 +124,8 @@ router.put(
 	hasProjectAccessFromNote,
 	async (req: Request, res: Response) => {
 		const noteId = req.params.id;
-		const userId = req.session.user?.id;
+		const user = getCurrentUserData(req)
+		const userId = user?.id;
 
 		if (!userId) {
 			res.status(401).json({ error: "Usuario no autenticado" });
@@ -154,7 +158,7 @@ router.put(
 				return;
 			}
 
-			updates.push(`updated_at = NOW()`);
+			updates.push("updated_at = NOW()");
 			values.push(noteId);
 			const whereParamIndex = paramIndex;
 			
@@ -215,7 +219,8 @@ router.delete(
 	hasProjectAccessFromNote,
 	async (req: Request, res: Response) => {
 		const noteId = req.params.id;
-		const userId = req.session.user?.id;
+		const user = getCurrentUserData(req)
+		const userId = user?.id;
 
 		if (!userId) {
 			res.status(401).json({ error: "Usuario no autenticado" });
@@ -239,9 +244,9 @@ router.delete(
 				return;
 			}
 
-			res.json({ 
+			res.json({
 				success: true,
-				message: "Nota eliminada exitosamente" 
+				message: "Nota eliminada exitosamente"
 			});
 		} catch (error) {
 			console.error("Error al eliminar nota:", error);

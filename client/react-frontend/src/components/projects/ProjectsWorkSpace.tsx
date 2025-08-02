@@ -8,7 +8,7 @@ import Loading from "../Loading";
 import { ProjectSidebar } from "./ProjectSidebar";
 import TeamManagement from "./TeamManagement";
 import IdeasBank from "./IdeasBank";
-import NotesSection from "./projects/NotesSection";
+import NotesSection from "./NotesSection";
 
 const ProjectWorkSpace: FC = () => {
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
