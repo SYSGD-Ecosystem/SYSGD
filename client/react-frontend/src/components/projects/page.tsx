@@ -5,7 +5,7 @@ import { Sidebar } from "@/components/projects/sidebar"
 import { TopNavigation } from "@/components/projects/top-navigation"
 import { KanbanBoard } from "@/components/projects/kanban-board"
 import { TeamManagement } from "@/components/projects/team-management"
-import { NotesSection } from "@/components/projects/notes-section"
+import NotesSection from "@/components/projects/NotesSection"
 import { IdeasBank } from "@/components/projects/ideas-bank"
 import { TaskManagement } from "@/components/projects/task-management"
 import { CalendarSection } from "@/components/projects/calendar-section"
@@ -71,7 +71,7 @@ function MainAppProjectDemo() {
           {activeSection === "kanban" && <KanbanBoard />}
           {activeSection === "calendar" && <CalendarSection />}
           {activeSection === "team" && <TeamManagement />}
-          {activeSection === "notes" && <NotesSection />}
+          {activeSection === "notes" && <NotesSection projectId="cecfb271-fa4f-45c5-ba85-f2047d0c3d6f" />}
           {activeSection === "ideas" && <IdeasBank />}
           {activeSection === "time-tracking" && <TimeTracking />}
           {activeSection === "document-form" && <DocumentFormExample />}

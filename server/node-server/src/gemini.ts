@@ -1,8 +1,5 @@
 // src/lib/gemini.ts
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import dotenv from "dotenv";
-
-dotenv.config();
 // Asegúrate de tener esta variable en tu `.env`
 const apiKey = process.env.GEMINI_API_KEY;
 

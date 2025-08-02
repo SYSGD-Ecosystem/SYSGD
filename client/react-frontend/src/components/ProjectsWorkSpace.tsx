@@ -8,6 +8,7 @@ import Loading from "./Loading";
 import { ProjectSidebar } from "./ProjectSidebar";
 import TeamManagement from "./TeamManagement";
 import IdeasBank from "./IdeasBank";
+import NotesSection from "./projects/NotesSection";
 
 const ProjectWorkSpace: FC = () => {
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -75,6 +76,10 @@ const ProjectWorkSpace: FC = () => {
 
 					{activeSection === "ideas" && (
 						<IdeasBank projectId={selectedProject} />
+					)}
+
+					{activeSection === "notes" && selectedProject && (
+						<NotesSection projectId={selectedProject} />
 					)}
 				</main>
 			</div>

@@ -1,6 +1,5 @@
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import path from "node:path";
 import fs from "node:fs";
 import { Pool } from "pg";
@@ -10,8 +9,6 @@ import session from "express-session";
 import passport from "passport";
 import "./passport";
 import { setupSwagger } from "./swagger";
-
-dotenv.config();
 
 const shouldInitDB = process.env.INIT_DB_ON_START === "true";
 const app = express();
