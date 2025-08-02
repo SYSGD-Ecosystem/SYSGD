@@ -1,6 +1,6 @@
 import express from "express";
 import { generarRespuesta } from "../gemini";
-import { isAuthenticated } from "../middlewares/auth";
+import { isAuthenticated } from "../middlewares/auth-jwt";
 
 const router = express.Router();
 
