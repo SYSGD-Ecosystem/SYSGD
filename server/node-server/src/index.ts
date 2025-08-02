@@ -20,8 +20,16 @@ const PORT = process.env.PORT || 3000;
 const CLIENT_HOST = process.env.CLIENT_HOST;
 const shouldInitDB = process.env.INIT_DB_ON_START === "true";
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [];
+const isAcceptAllOrigins = process.env.ACCEPT_ALL_ORIGINS === "true";
 
-if (allowedOrigins.length === 0) {
+if (isAcceptAllOrigins) {
+	app.use(
+		cors({
+			origin: true, // SOLO se debe usar durante el desarrollo
+			credentials: true,
+		}),
+	);
+} else if (allowedOrigins.length === 0) {
 	app.use(
 		cors({
 			origin: CLIENT_HOST,
@@ -58,18 +66,23 @@ app.get(
 
 app.get(
 	"/api/auth/google/callback",
-	passport.authenticate("google", { failureRedirect: "/login", session: false }),
+	passport.authenticate("google", {
+		failureRedirect: "/login",
+		session: false,
+	}),
 	(req, res) => {
 		const { token } = req.user as { token: string };
 
 		res.cookie("token", token, {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === "production",
-			sameSite: "lax",
+			sameSite: "none",
 			maxAge: 1000 * 60 * 60 * 24,
 		});
 
-		res.redirect(`${process.env.CLIENT_HOST}/login` || "http://localhost:5173/login");
+		res.redirect(
+			`${process.env.CLIENT_HOST}/login` || "http://localhost:5173/login",
+		);
 	},
 );
 

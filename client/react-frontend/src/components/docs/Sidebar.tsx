@@ -1,5 +1,5 @@
 import { type FC, useEffect, useState } from "react";
-import BarButton from "./BarButton";
+import BarButton from "../BarButton";
 import { IoArchive } from "react-icons/io5";
 import { Link } from "react-router-dom";
 import { Github, Twitter } from "lucide-react";
