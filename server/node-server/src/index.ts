@@ -9,7 +9,6 @@ import "./passport";
 import { setupSwagger } from "./swagger";
 import cookieParser from "cookie-parser";
 
-
 const app = express();
 
 app.use(cookieParser());
@@ -74,7 +73,7 @@ app.get(
 		res.cookie("token", token, {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === "production",
-			sameSite: "none",
+			sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
 			maxAge: 1000 * 60 * 60 * 24,
 		});
 

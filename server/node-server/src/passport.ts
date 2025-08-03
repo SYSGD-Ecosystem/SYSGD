@@ -4,7 +4,7 @@ import type { VerifyCallback } from "passport-google-oauth20";
 import { createUser, findUserByUsername } from "./services/authService";
 import { generateJWT } from "./controllers/auth";
 
-const googleClientId = process.env.GOOGLE_CLIENT_ID
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
 if (!googleClientId || !googleClientSecret) {
@@ -28,7 +28,7 @@ passport.use(
 				const user = await findUserByUsername(email);
 
 				if (user === null) {
-					const result = await createUser(email, name, "", "user");
+					const result = await createUser(name, email, "", "user");
 
 					if (!result.success) {
 						console.error("Error al crear usuario:", result.message);
