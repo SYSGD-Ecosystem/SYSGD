@@ -17,6 +17,7 @@ Nos enfocamos en crear herramientas con una **interfaz simple, moderna e intuiti
 Próximamente: IA generativa, notificaciones, control de acceso por permisos, y más...
 
 ---
+
 ## 🚀 Características Principales
 
 - 📁 Gestión de archivos documentales (entrada, salida, préstamo)
@@ -31,6 +32,7 @@ Próximamente: IA generativa, notificaciones, control de acceso por permisos, y 
 ## 📦 Tecnologías
 
 ### Backend
+
 - Node.js
 - Express
 - PostgreSQL
@@ -38,6 +40,7 @@ Próximamente: IA generativa, notificaciones, control de acceso por permisos, y 
 - Swagger para documentación de la API
 
 ### Frontend
+
 - React
 - TypeScript
 - TailwindCSS
@@ -52,7 +55,7 @@ Este proyecto está bajo la **GNU Affero General Public License v3.0**. Consulta
 
 ## 📬 Contacto
 
-- 📧 lazaroyunier96@outlook.es
+- 📧 <lazaroyunier96@outlook.es>
 - 📱 WhatsApp: [+53 51158544](https://wa.me/5351158544)
 
 ## 💡 Agradecimientos
@@ -109,6 +112,7 @@ cp .env.example .env
 # Agrega variables de DB, Google Auth, etc.
 npm run dev
 ```
+
 ### 🔄 Todo en una sola orden
 
 Si ya instalaste dependencias en `client/react-frontend` y `server/node-server`, desde la raíz:
@@ -118,6 +122,7 @@ cd sysgd
 npm install
 npm run dev
 ```
+
 ### 🔐 Variables de entorno
 
 Cada parte del sistema usa su archivo `.env`.
@@ -126,7 +131,6 @@ Cada parte del sistema usa su archivo `.env`.
 - `server/node-server/.env.example`
 
 Duplica y renombra estos archivos a `.env` y completa los valores según tu entorno.
-
 
 ## Tecnologías utilizadas
 
@@ -143,7 +147,6 @@ Duplica y renombra estos archivos a `.env` y completa los valores según tu ento
 
 ¡Genial! Puedes enviar un PR, abrir una issue o simplemente escribirme.
 Toda ayuda es bienvenida 🚀
-
 
 ![Node.js](https://img.shields.io/badge/Node.js-16+-green?logo=node.js)
 ![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react)

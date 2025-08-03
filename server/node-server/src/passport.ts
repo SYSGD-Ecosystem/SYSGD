@@ -1,13 +1,10 @@
 import passport from "passport";
-import dotenv from "dotenv";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import type { VerifyCallback } from "passport-google-oauth20";
 import { createUser, findUserByUsername } from "./services/authService";
 import { generateJWT } from "./controllers/auth";
 
-dotenv.config();
-
-const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientId = process.env.GOOGLE_CLIENT_ID
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
 if (!googleClientId || !googleClientSecret) {
