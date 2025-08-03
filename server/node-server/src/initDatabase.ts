@@ -149,7 +149,7 @@ await pool.query(`
 `);
 
 await pool.query(`
-  CREATE INDEX IF NOT EXISTS idx_project_notes_project_user 
+  CREATE INDEX IF NOT EXISTS idx_project_notes_project_user
   ON project_notes(project_id, user_id);
 `);
 
