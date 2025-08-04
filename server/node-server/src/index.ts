@@ -20,6 +20,7 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [];
 const isAcceptAllOrigins = process.env.ACCEPT_ALL_ORIGINS === "true";
 
 if (isAcceptAllOrigins) {
+	console.warn("Aceptando todos los origenes");
 	app.use(
 		cors({
 			origin: true, // SOLO se debe usar durante el desarrollo
@@ -27,6 +28,7 @@ if (isAcceptAllOrigins) {
 		}),
 	);
 } else if (allowedOrigins.length === 0) {
+	console.log(`Aceptando solicitudes desde ${CLIENT_HOST}`);
 	app.use(
 		cors({
 			origin: CLIENT_HOST,
@@ -35,6 +37,7 @@ if (isAcceptAllOrigins) {
 	);
 } else {
 	// Usando CORS con orígenes multiples
+	console.log("Aceptando solicitudes desde", allowedOrigins);
 	app.use(
 		cors({
 			origin: (origin, callback) => {

@@ -33,6 +33,7 @@
     "clsx": "^2.1.1",
     "docx": "^9.5.1",
     "file-saver": "^2.0.5",
+    "framer-motion": "^12.23.12",
     "lucide-react": "^0.525.0",
     "markdown-it": "^14.1.0",
     "react": "^18.3.1",

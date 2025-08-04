@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { ThemeProvider } from "@/contexts/theme-context";
 import App from "./pages/App.tsx";
 import Login from "./pages/Login.tsx";
 import DevPreview from "./pages/DevPreview.tsx";
@@ -22,7 +23,8 @@ import LandingPage from "./pages/LandingPage.tsx";
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
     <Routes>
       <Route path="/" element={<App/>}/>
       <Route path="/login" element={<Login/>}/>
@@ -41,6 +43,7 @@ createRoot(document.getElementById("root")!).render(
       <Route path="/landpage" element={<LandingPage />} />
     </Routes>
     </BrowserRouter>
+    </ThemeProvider>
     <Toaster/>
   </StrictMode>
 );

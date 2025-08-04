@@ -1,5 +1,5 @@
 import { TopNavigation } from "./TopNavigationDashboard";
-import { ThemeProvider } from "@/contexts/theme-context";
+
 import { HomeDashboard } from "./home-dashboard";
 import { useAuthSession } from "@/hooks/connection/useAuthSession";
 import Loading from "./Loading";
@@ -37,8 +37,8 @@ function MainPage() {
 
 export default function Page() {
 	return (
-		<ThemeProvider>
+		
 			<MainPage />
-		</ThemeProvider>
+		
 	);
 }

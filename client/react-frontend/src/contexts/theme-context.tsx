@@ -331,12 +331,21 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // console.log(localStorage.getItem("sysgd-theme"))
 
 		const savedTheme = localStorage.getItem("sysgd-theme") as Theme;
-		const savedMode = localStorage.getItem("sysgd-dark-mode");
+		const savedModeStr = localStorage.getItem("sysgd-dark-mode");
+
+		// Apply saved settings immediately to avoid initial flash
+		if (savedTheme) {
+			document.documentElement.setAttribute("data-theme", savedTheme);
+		}
+		if (savedModeStr) {
+			document.documentElement.classList.toggle("dark", savedModeStr === "true");
+		}
+
 
 		// console.log(savedTheme);
 
 		if (savedTheme) setTheme(savedTheme);
-		if (savedMode) setIsDark(savedMode === "false");
+		if (savedModeStr) setIsDark(savedModeStr === "true");
 	}, []);
 
 	useEffect(() => {

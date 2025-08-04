@@ -4,7 +4,6 @@ import { NotificationsPopup } from "./NotificationsPopup";
 import { useState } from "react";
 import UserProfileTrigger from "./UserProfileTrigger";
 import SettingsModal from "./SettingsModal";
-import ButtonSwitchTheme from "./ButtonSwitchTheme";
 
 interface TopNavigationProps {
 	onHomeClick: () => void;
@@ -64,7 +63,6 @@ export function TopNavigation({ onHomeClick }: TopNavigationProps) {
 					>
 						<Settings className="w-4 h-4" />
 					</Button>
-					<ButtonSwitchTheme />
 					<div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-300 dark:border-gray-600">
 						<UserProfileTrigger />
 					</div>

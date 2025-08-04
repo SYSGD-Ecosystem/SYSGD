@@ -10,7 +10,7 @@ import { IdeasBank } from "@/components/demo/ideas-bank"
 import { TaskManagement } from "@/components/demo/task-management"
 import { CalendarSection } from "@/components/demo/calendar-section"
 import { HomeDashboard } from "@/components/demo/home-dashboard"
-import { ThemeProvider } from "@/contexts/theme-context";
+
 import { TimeTracking } from "@/components/demo/time-tracking"
 import { DocumentFormExample } from "./document-form-example"
 
@@ -83,8 +83,8 @@ function MainAppProjectDemo() {
 
 export default function Page() {
   return (
-    <ThemeProvider>
+    
       <MainAppProjectDemo />
-    </ThemeProvider>
+    
   )
 }
