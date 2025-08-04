@@ -4,7 +4,6 @@ import { NotificationsPopup } from "./NotificationsPopup";
 import { useState } from "react";
 import UserProfileTrigger from "./UserProfileTrigger";
 import SettingsModal from "./SettingsModal";
-import ButtonSwitchTheme from "./ButtonSwitchTheme";
 
 interface TopNavigationProps {
 	onHomeClick: () => void;

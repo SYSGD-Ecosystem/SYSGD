@@ -11,7 +11,6 @@ import useProjects from "@/hooks/connection/useProjects";
 //import useTheme from "@/hooks/useTheme";
 import { Home, ChevronRight } from "lucide-react";
 import UserProfileTrigger from "../UserProfileTrigger";
-import ButtonSwitchTheme from "../ButtonSwitchTheme";
 
 interface TopNavigationProps {
 	selectedProject: string;
