@@ -1,6 +1,5 @@
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import path from "node:path";
 import fs from "node:fs";
 import { initDatabase } from "./initDatabase";
@@ -9,8 +8,6 @@ import passport from "passport";
 import "./passport";
 import { setupSwagger } from "./swagger";
 import cookieParser from "cookie-parser";
-
-dotenv.config();
 
 const app = express();
 
