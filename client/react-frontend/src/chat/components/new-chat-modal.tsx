@@ -63,7 +63,7 @@ export function NewChatModal({ open, onOpenChange, onSelectContact }: NewChatMod
   const [searchQuery, setSearchQuery] = useState("")
   const [inviteLink, setInviteLink] = useState("")
   const [generatedLink, setGeneratedLink] = useState("")
-  const [copied, setCopied] = useState(false)
+ // const [copied, setCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
 
   const filteredContacts = mockPublicContacts.filter(
