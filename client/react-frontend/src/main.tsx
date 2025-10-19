@@ -18,6 +18,7 @@ import ProjectsPage from "./components/DashboardPage.tsx";
 import ProjectWorkSpace from "./components/projects/ProjectsWorkSpace.tsx";
 import ProjectPageDemo from "./components/demo/page.tsx";
 import LandingPage from "./pages/LandingPage.tsx";
+import HomeChat from "./chat/app/page.tsx";
 
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
@@ -41,6 +42,7 @@ createRoot(document.getElementById("root")!).render(
       <Route path="/dashboard" element={<ProjectsPage />} />
       <Route path="/projects" element={<ProjectWorkSpace />} />
       <Route path="/landpage" element={<LandingPage />} />
+      <Route path="/chat" element={<HomeChat />} />
     </Routes>
     </BrowserRouter>
     </ThemeProvider>

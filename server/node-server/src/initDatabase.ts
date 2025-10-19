@@ -153,5 +153,53 @@ await pool.query(`
   ON project_notes(project_id, user_id);
 `);
 
+// ==============================
+// Chat module
+// ==============================
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title TEXT,
+    type TEXT CHECK (type IN ('user', 'agent')) NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+  );
+`);
+
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+    sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT,
+    attachment_type TEXT CHECK (attachment_type IN ('image','audio','video','file')),
+    attachment_url TEXT,
+    reply_to UUID REFERENCES messages(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+  );
+`);
+
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS conversation_read_status (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    last_read_message_id UUID REFERENCES messages(id) ON DELETE SET NULL,
+    unread_count INTEGER DEFAULT 0,
+    UNIQUE(conversation_id, user_id)
+  );
+`);
+
+// Índices opcionales para optimización de consultas
+await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
+`);
+await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at DESC);
+`);
+await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_read_status_user ON conversation_read_status(user_id, conversation_id);
+`);
+
+
 	console.log("✅ Tablas verificadas o creadas correctamente.");
 }

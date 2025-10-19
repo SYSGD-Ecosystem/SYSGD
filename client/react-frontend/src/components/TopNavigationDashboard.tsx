@@ -4,6 +4,8 @@ import { NotificationsPopup } from "./NotificationsPopup";
 import { useState } from "react";
 import UserProfileTrigger from "./UserProfileTrigger";
 import SettingsModal from "./SettingsModal";
+import { IoChatboxOutline } from "react-icons/io5";
+import { useNavigate } from "react-router-dom";
 
 interface TopNavigationProps {
 	onHomeClick: () => void;
@@ -12,6 +14,7 @@ interface TopNavigationProps {
 export function TopNavigation({ onHomeClick }: TopNavigationProps) {
 	const [showNotifications, setShowNotifications] = useState(false);
 	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+	const navigate = useNavigate();
 
 	return (
 		<header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 sticky top-0 z-50">
@@ -45,6 +48,14 @@ export function TopNavigation({ onHomeClick }: TopNavigationProps) {
 				</div>
 
 				<div className="flex items-center gap-1 md:gap-2">
+					<Button
+						onClick={() => navigate("/chat")}
+						variant="ghost"
+						size="sm"
+						className="flex"
+					>
+						<IoChatboxOutline className="w-4 h-4" />
+					</Button>
 					<Button
 						variant="ghost"
 						size="sm"
