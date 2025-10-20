@@ -79,6 +79,21 @@ export function useUsers(): UseUsersReturn {
     fetchUsers()
   }
 
+  // modificar estado publico o privado del usuario
+  const toggleUserPublic = async (isPublic: boolean) => {
+    const res = await fetch(`${serverUrl}/api/users/public`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ isPublic }),
+    })
+    if (!res.ok) {
+      const msg = await res.text()
+      throw new Error(msg || "Error al modificar estado de usuario")
+    }
+    fetchUsers()
+  }
+
   return {
     users,
     loading,
@@ -87,5 +102,6 @@ export function useUsers(): UseUsersReturn {
     createUser,
     updateUser,
     deleteUser,
+    toggleUserPublic,
   }
 }

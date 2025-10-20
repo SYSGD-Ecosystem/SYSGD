@@ -7,8 +7,9 @@ export async function initDatabase() {
       name TEXT,
       username TEXT,
       password TEXT,
-      privileges TEXT DEFAULT 'user' -- o 'admin',
-      -- created_at TIMESTAMP DEFAULT NOW()
+      privileges TEXT DEFAULT 'user',
+      is_public BOOLEAN DEFAULT false,
+      created_at TIMESTAMP DEFAULT NOW()
     );
   `);
 

@@ -13,8 +13,37 @@ router.get("/me", getCurrentUser);
 // Register new user (first becomes admin)
 router.post("/register", register);
 
+router.get("/public-users", async (req, res) => {
+  const { rows } = await pool.query("SELECT id, name, username FROM users WHERE is_public = true");
+  res.json(rows);
+});
+
 // ---- Admin only CRUD ----
 router.use(isAuthenticated);
+
+router.put("/public", async (req, res) => {
+	const user = getCurrentUserData(req)
+	const userId = user?.id;
+	const { isPublic } = req.body;
+	if (Number.isNaN(userId) || typeof isPublic !== "boolean") {
+		res.status(400).json({ error: "Datos inválidos" });
+		return;
+	}
+	try {
+		const result = await pool.query(
+			"UPDATE users SET is_public = $1 WHERE id = $2 RETURNING id",
+			[isPublic, userId],
+		);
+		if (result.rowCount === 0) {
+			res.status(404).json({ error: "Usuario no encontrado" });
+			return;
+		}
+		res.json({ message: "Usuario actualizado" });
+	} catch {
+		res.status(500).json({ error: "Error al actualizar" });
+	}
+});
+
 router.use((req, res, next) => {
 	const user = getCurrentUserData(req)
 	if (user?.privileges !== "admin") {
