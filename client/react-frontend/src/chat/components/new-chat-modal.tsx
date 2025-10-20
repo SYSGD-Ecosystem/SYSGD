@@ -24,11 +24,11 @@ interface NewChatModalProps {
 }
 
 interface Contact {
-	id: string;
+	id: number;
 	name: string;
 	email: string;
 	username: string;
-	type: "user" | "agent";
+	type: "user" | "agent" | "bot";
 	avatar: string;
 	online: boolean;
 	isPublic?: boolean;
@@ -105,7 +105,7 @@ export function NewChatModal({
 		// Aquí iría la lógica para validar y usar el link de invitación
 		// Por ahora simulamos agregar un contacto
 		const newContact: Contact = {
-			id: "invited-" + Date.now(),
+			id: 999,
 			name: "Usuario Invitado",
 			email: "invitado@example.com",
 			username: "@invitado",
@@ -174,6 +174,7 @@ export function NewChatModal({
 								) : (
 									filteredContacts.map((contact) => (
 										<button
+											type="button"
 											key={contact.id}
 											onClick={() => handleSelectContact(contact)}
 											className="w-full p-3 rounded-lg hover:bg-accent transition-colors text-left"
@@ -217,6 +218,7 @@ export function NewChatModal({
 								<div className="flex gap-2">
 									<div className="relative flex-1">
 										<Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+										{/** biome-ignore lint/correctness/useUniqueElementIds: <explanation> */}
 										<Input
 											id="invite-link"
 											placeholder="https://sysgd.app/invite/..."
