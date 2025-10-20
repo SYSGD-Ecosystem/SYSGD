@@ -6,6 +6,17 @@ export interface User {
   privileges: "user" | "admin"
 }
 
+export interface PublicUser {
+  id: number
+  name: string
+  username: string
+  avatar: string
+  online: boolean
+  isPublic: boolean
+  type: "user" | "bot" | "agent"
+  email: string
+}
+
 export interface CreateUserData {
   name: string
   username: string

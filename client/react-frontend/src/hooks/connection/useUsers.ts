@@ -1,20 +1,24 @@
 import { useCallback, useEffect, useState } from "react"
-import type { CreateUserData, UpdateUserData, User } from "../../types/user"
+import type { CreateUserData, PublicUser, UpdateUserData, User } from "../../types/user"
 
 const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000"
 
 interface UseUsersReturn {
   users: User[]
+  publicUsers: PublicUser[]
   loading: boolean
   error: string | null
   refetch: () => void
   createUser: (data: CreateUserData) => Promise<User>
   updateUser: (id: number, data: UpdateUserData) => Promise<void>
   deleteUser: (id: number) => Promise<void>
+  toggleUserPublic: (isPublic: boolean) => Promise<void>
+  
 }
 
 export function useUsers(): UseUsersReturn {
   const [users, setUsers] = useState<User[]>([])
+  const [publicUsers, setPublicUsers] = useState<PublicUser[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -35,6 +39,8 @@ export function useUsers(): UseUsersReturn {
   useEffect(() => {
     fetchUsers()
   }, [fetchUsers])
+
+
 
   const createUser = async (data: CreateUserData): Promise<User> => {
     const res = await fetch(`${serverUrl}/api/users`, {
@@ -94,8 +100,27 @@ export function useUsers(): UseUsersReturn {
     fetchUsers()
   }
 
+  // obtener usuarios publicos
+  const fetchPublicUsers = async () => {
+    const res = await fetch(`${serverUrl}/api/users/public`, {
+      credentials: "include",
+    })
+    if (!res.ok) {
+      const msg = await res.text()
+      throw new Error(msg || "Error al obtener usuarios públicos")
+    }
+    const data = await res.json()
+    setPublicUsers(data)
+  }
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  useEffect(() => {
+    fetchPublicUsers()
+  }, [])
+
   return {
     users,
+    publicUsers,
     loading,
     error,
     refetch: fetchUsers,
