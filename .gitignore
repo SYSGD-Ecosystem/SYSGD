@@ -141,3 +141,6 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Cloudflare Workers build directory
+!/server/node-server/dist
