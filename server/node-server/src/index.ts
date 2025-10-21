@@ -8,6 +8,9 @@ import passport from "passport";
 import "./passport";
 import { setupSwagger } from "./swagger";
 import cookieParser from "cookie-parser";
+import dotenv from "dotenv";
+dotenv.config();
+
 
 const app = express();
 
