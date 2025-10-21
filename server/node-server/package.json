@@ -9,9 +9,9 @@
 		"test-start": "dotenvx run -f ./.env.production -- node dist/index.js",
 
 		"dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-		"build": "tsc",
+		"build": "npm install --include=dev && tsc",
 		"start": "node dist/index.js",
-		"postinstall": "npm run build"
+		"postinstall": "npm start"
 	},
 	"keywords": [],
 	"author": "",
