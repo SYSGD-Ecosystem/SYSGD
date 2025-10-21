@@ -20,6 +20,7 @@ export function useConversations(userId: number) {
 				if (!res.ok) throw new Error("Error al cargar conversaciones");
 				const data = await res.json();
 				setConversations(data);
+			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 			} catch (err: any) {
 				setError(err.message || "Error desconocido");
 			} finally {
