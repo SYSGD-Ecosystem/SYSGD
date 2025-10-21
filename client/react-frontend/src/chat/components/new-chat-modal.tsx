@@ -14,8 +14,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, User, Bot, Link2, Copy, Check, UserPlus } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import { useUsers } from "@/hooks/connection/useUsers";
 import { PublicUser } from "@/types/user";
+import { usePublicUsers } from "@/hooks/connection/usePublicUsers";
 
 interface NewChatModalProps {
 	open: boolean;
@@ -79,10 +79,11 @@ export function NewChatModal({
 	// const [copied, setCopied] = useState(false)
 	const [linkCopied, setLinkCopied] = useState(false);
 
-	const { publicUsers: users } = useUsers();
+	const { publicUsers: users } = usePublicUsers();
 
 	useEffect(() => {
 		setPublicUsers(users);
+		console.log("Public users loaded:", users);
 	}, [users]);
 
 	const filteredContacts = publicUsers.filter(
