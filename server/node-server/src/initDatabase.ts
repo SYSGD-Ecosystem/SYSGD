@@ -13,7 +13,7 @@ export async function initDatabase() {
     );
   `);
 
-  await pool.query(`
+	await pool.query(`
     CREATE TABLE IF NOT EXISTS users_logins (
       id SERIAL PRIMARY KEY,
       user_id INTEGER REFERENCES users(id),
@@ -57,7 +57,7 @@ export async function initDatabase() {
     );
   `);
 
-  await pool.query(`
+	await pool.query(`
   CREATE TABLE IF NOT EXISTS tasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMP DEFAULT NOW(),
@@ -73,7 +73,7 @@ export async function initDatabase() {
   );
 `);
 
-await pool.query(`
+	await pool.query(`
   CREATE TABLE IF NOT EXISTS task_assignees (
     task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
     user_id INTEGER REFERENCES users(id),
@@ -81,8 +81,7 @@ await pool.query(`
   );
 `);
 
-
-await pool.query(`
+	await pool.query(`
 CREATE TABLE IF NOT EXISTS invitations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -96,7 +95,7 @@ CREATE TABLE IF NOT EXISTS invitations (
 );
 `);
 
-await pool.query(`
+	await pool.query(`
 CREATE TABLE IF NOT EXISTS resource_access (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -107,7 +106,7 @@ CREATE TABLE IF NOT EXISTS resource_access (
 );
 `);
 
-await pool.query(`
+	await pool.query(`
   CREATE TABLE IF NOT EXISTS ideas (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
@@ -126,7 +125,7 @@ await pool.query(`
   );
 `);
 
-await pool.query(`
+	await pool.query(`
   CREATE TABLE IF NOT EXISTS idea_votes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     idea_id UUID REFERENCES ideas(id) ON DELETE CASCADE,
@@ -137,7 +136,7 @@ await pool.query(`
   );
 `);
 
-await pool.query(`
+	await pool.query(`
   CREATE TABLE IF NOT EXISTS project_notes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
@@ -149,58 +148,77 @@ await pool.query(`
   );
 `);
 
-await pool.query(`
+	await pool.query(`
   CREATE INDEX IF NOT EXISTS idx_project_notes_project_user
   ON project_notes(project_id, user_id);
 `);
 
-// ==============================
-// Chat module
-// ==============================
-await pool.query(`
+	// ==============================
+	// Chat module
+	// ==============================
+	await pool.query(`
   CREATE TABLE IF NOT EXISTS conversations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    title TEXT,
-    type TEXT CHECK (type IN ('user', 'agent')) NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
-  );
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  type TEXT CHECK (type IN ('private', 'group', 'channel')) NOT NULL DEFAULT 'private',
+  title TEXT,
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
 `);
 
-await pool.query(`
-  CREATE TABLE IF NOT EXISTS messages (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
-    sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    content TEXT,
-    attachment_type TEXT CHECK (attachment_type IN ('image','audio','video','file')),
-    attachment_url TEXT,
-    reply_to UUID REFERENCES messages(id) ON DELETE SET NULL,
-    created_at TIMESTAMP DEFAULT NOW()
-  );
+	await pool.query(`
+  CREATE TABLE IF NOT EXISTS conversation_members (
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  role TEXT DEFAULT 'member' CHECK (role IN ('admin', 'member', 'guest')),
+  joined_at TIMESTAMP DEFAULT NOW(),
+  PRIMARY KEY (conversation_id, user_id)
+);
 `);
 
-await pool.query(`
-  CREATE TABLE IF NOT EXISTS conversation_read_status (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    last_read_message_id UUID REFERENCES messages(id) ON DELETE SET NULL,
-    unread_count INTEGER DEFAULT 0,
-    UNIQUE(conversation_id, user_id)
-  );
+	await pool.query(`
+ CREATE TABLE IF NOT EXISTS messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+  sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  content TEXT,
+  attachment_type TEXT CHECK (attachment_type IN ('image','audio','video','file')),
+  attachment_url TEXT,
+  reply_to UUID REFERENCES messages(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
 `);
 
-// Índices opcionales para optimización de consultas
-await pool.query(`
+	await pool.query(`
+CREATE TABLE IF NOT EXISTS message_reads (
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  last_read_message_id UUID REFERENCES messages(id) ON DELETE SET NULL,
+  unread_count INTEGER DEFAULT 0,
+  PRIMARY KEY (conversation_id, user_id)
+);`);
+
+	await pool.query(`
+CREATE TABLE IF NOT EXISTS conversation_invitations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+  sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  receiver_email TEXT,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+`);
+
+	// Índices opcionales para optimización de consultas
+	await pool.query(`
   CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
 `);
-await pool.query(`
+	await pool.query(`
   CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at DESC);
 `);
-await pool.query(`
-  CREATE INDEX IF NOT EXISTS idx_read_status_user ON conversation_read_status(user_id, conversation_id);
+	await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_message_reads_user_conversation ON message_reads(user_id, conversation_id);
 `);
-
 
 	console.log("✅ Tablas verificadas o creadas correctamente.");
 }
