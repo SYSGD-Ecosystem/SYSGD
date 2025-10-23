@@ -1,8 +1,14 @@
 import AWS from 'aws-sdk';
 import { randomUUID } from 'crypto';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI, PersonGeneration } from '@google/genai';
+import Replicate from "replicate";
+
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const ai = new GoogleGenAI({
+    apiKey: process.env.GEMINI_API_KEY,
+  });
 
 // Configuración de S3 (usando AWS SDK v2 como en upload.controller.ts)
 const s3 = new AWS.S3({
@@ -109,7 +115,7 @@ const SYSTEM_PROMPTS = {
   - Conversaciones normales
   - Instrucciones, guías, tutoriales
 
-  Responde SOLO con un JSON en este formato:
+  Responde SOLO con un JSON en este formato sin comillas invertidas o markdown:
   {
     "type": "text" | "image",
     "confidence": 0.0-1.0,
@@ -190,15 +196,26 @@ export async function generateTextResponse(prompt: string): Promise<string> {
  * Genera una imagen real usando Gemini
  */
 export async function generateImage(prompt: string): Promise<string> {
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash-image"
-  });
 
   try {
-    console.log('🎨 Generando imagen con Gemini:', prompt);
+    console.log('🎨 Generando imagen:', prompt);
 
-    const result = await model.generateContent(prompt);
-    const response = result.response;
+
+
+    const replicate = new Replicate({auth: process.env.REPLICATE_API_TOKEN || ''});
+
+    const input = {
+        prompt,
+        aspect_ratio: "16:9",
+        safety_filter_level: "block_medium_and_above"
+    };
+
+    const output = await replicate.run("google/imagen-4", { input });
+    const imageUrl = output.url();
+    console.log(imageUrl);
+
+
+    return imageUrl.href;
 
     console.log('📊 Respuesta de Gemini:', typeof response, Object.keys(response || {}));
 
