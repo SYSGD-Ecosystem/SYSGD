@@ -1,84 +1,97 @@
 import AWS from 'aws-sdk';
 import { randomUUID } from 'crypto';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { GoogleGenAI, PersonGeneration } from '@google/genai';
-import Replicate from "replicate";
-
+import Replicate from 'replicate';
+import https from 'https';
+import { promisify } from 'util';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
-  });
 
 // Configuración de S3 (usando AWS SDK v2 como en upload.controller.ts)
 const s3 = new AWS.S3({
-  endpoint: process.env.AWS_ENDPOINT,
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION || 'us-east-1',
-  s3ForcePathStyle: true,
-  signatureVersion: 'v4'
+    endpoint: process.env.AWS_ENDPOINT,
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    region: process.env.AWS_REGION || 'us-east-1',
+    s3ForcePathStyle: true,
+    signatureVersion: 'v4'
 });
 
 const S3_BUCKET = process.env.AWS_S3_BUCKET_NAME || 'sysgd-uploads';
 
 /**
- * Sube una imagen a S3 y devuelve la URL (compatible con AWS SDK v2)
+ * Descarga una imagen desde una URL y la sube a S3 (igual que upload.controller.ts)
  */
-async function uploadImageToS3(imageData: string, prompt: string): Promise<string> {
-  try {
-    // Generar nombre único para la imagen
-    const imageId = randomUUID();
-    const key = `generated-images/${imageId}.png`;
+async function downloadImageAndUploadToS3(imageUrl: string, prompt: string): Promise<string> {
+    try {
+        console.log('📥 Descargando imagen desde:', imageUrl);
 
-    // Decodificar base64 si es necesario
-    let buffer: Buffer;
-    if (imageData.startsWith('data:image')) {
-      // Es un data URL
-      const base64Data = imageData.split(',')[1];
-      buffer = Buffer.from(base64Data, 'base64');
-    } else {
-      // Asumir que es base64 directo
-      buffer = Buffer.from(imageData, 'base64');
+        // Descargar la imagen desde la URL
+        const imageBuffer = await downloadImage(imageUrl);
+
+        // Generar nombre único para la imagen
+        const imageId = randomUUID();
+        const fileExtension = '.png'; // Asumir PNG por defecto
+        const key = `generated-images/${imageId}${fileExtension}`;
+
+        // Subir a S3 usando la misma lógica que upload.controller.ts
+        const uploadParams = {
+            Bucket: S3_BUCKET,
+            Key: key,
+            Body: imageBuffer,
+            ContentType: 'image/png',
+            ACL: 'public-read', // Hacer la imagen pública
+            Metadata: {
+                prompt: prompt.substring(0, 255),
+                generatedAt: new Date().toISOString(),
+                model: 'replicate-google-imagen-4',
+                'upload-type': 'generated-image',
+                'original-url': imageUrl
+            }
+        };
+
+        console.log('📤 Subiendo imagen a S3:', key);
+        const result = await s3.upload(uploadParams).promise();
+
+        // Usar result.Location como en upload.controller.ts
+        const finalImageUrl = result.Location;
+        console.log('✅ Imagen subida a S3:', finalImageUrl);
+
+        return finalImageUrl;
+
+    } catch (error) {
+        console.error('❌ Error procesando imagen:', error);
+        throw new Error('Error guardando imagen en S3');
     }
+}
 
-    // Subir a S3 usando AWS SDK v2 (igual que en upload.controller.ts)
-    const uploadParams = {
-      Bucket: S3_BUCKET,
-      Key: key,
-      Body: buffer,
-      ContentType: 'image/png',
-      ACL: 'public-read', // Hacer la imagen pública como en upload.controller.ts
-      Metadata: {
-        prompt: prompt.substring(0, 255),
-        generatedAt: new Date().toISOString(),
-        model: 'gemini-2.5-flash-image',
-        'upload-type': 'generated-image' // Para diferenciar de uploads normales
-      }
-    };
+/**
+ * Descarga una imagen desde una URL
+ */
+async function downloadImage(url: string): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+        https.get(url, (res) => {
+            if (res.statusCode !== 200) {
+                reject(new Error(`Error descargando imagen: ${res.statusCode}`));
+                return;
+            }
 
-    const result = await s3.upload(uploadParams).promise();
-
-    // Usar result.Location como en upload.controller.ts
-    const imageUrl = result.Location;
-    console.log('✅ Imagen subida a S3:', imageUrl);
-
-    return imageUrl;
-
-  } catch (error) {
-    console.error('Error subiendo imagen a S3:', error);
-    throw new Error('Error guardando imagen en S3');
-  }
+            const chunks: Buffer[] = [];
+            res.on('data', (chunk) => chunks.push(chunk));
+            res.on('end', () => resolve(Buffer.concat(chunks)));
+            res.on('error', reject);
+        }).on('error', reject);
+    });
 }
 
 // System prompts para diferentes tipos de tareas
 const SYSTEM_PROMPTS = {
-  text: `Eres un asistente de IA inteligente y útil. Proporciona respuestas claras, precisas y bien estructuradas.
+    text: `Eres un asistente de IA inteligente y útil. Proporciona respuestas claras, precisas y bien estructuradas.
   Si te piden información, sé informativo y detallado.
   Si te piden análisis, sé crítico y objetivo.
   Mantén un tono profesional pero amigable.`,
 
-  image: `Eres un generador de imágenes con IA avanzada. Cuando recibas una solicitud para crear una imagen:
+    image: `Eres un generador de imágenes con IA avanzada. Cuando recibas una solicitud para crear una imagen:
 
   1. **Analiza la solicitud** del usuario para entender qué imagen crear
   2. **Genera la imagen real** usando tus capacidades de generación de imágenes
@@ -98,7 +111,7 @@ const SYSTEM_PROMPTS = {
 
   IMPORTANTE: Genera la imagen visual real, no solo texto descriptivo. El usuario recibirá la imagen que crees.`,
 
-  analyzer: `Eres un analizador de peticiones que determina si el usuario quiere generar una imagen real o recibir una respuesta de texto.
+    analyzer: `Eres un analizador de peticiones que determina si el usuario quiere generar una imagen real o recibir una respuesta de texto.
 
   REGLAS DE CLASIFICACIÓN:
 
@@ -125,196 +138,171 @@ const SYSTEM_PROMPTS = {
 
 // Interface para las peticiones del agente
 export interface AgentRequest {
-  prompt: string;
-  image?: string;
-  audio?: string;
-  video?: string;
-  file?: string;
+    prompt: string;
+    image?: string;
+    audio?: string;
+    video?: string;
+    file?: string;
 }
 
 // Interface para las respuestas del agente
 export interface AgentResponse {
-  respuesta: string;
-  response?: string;
-  message?: string;
-  metadata?: {
-    type: 'text' | 'image';
-    model: string;
-    confidence: number;
-    reasoning: string;
-  };
+    respuesta: string;
+    response?: string;
+    message?: string;
+    metadata?: {
+        type: 'text' | 'image';
+        model: string;
+        confidence: number;
+        reasoning: string;
+    };
 }
 
 /**
  * Analiza el prompt del usuario para determinar el tipo de respuesta esperada
  */
-export async function analyzeRequest(prompt: string): Promise<{type: 'text' | 'image', confidence: number, reasoning: string}> {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+export async function analyzeRequest(prompt: string): Promise<{ type: 'text' | 'image', confidence: number, reasoning: string }> {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-  const fullPrompt = `${SYSTEM_PROMPTS.analyzer}\n\nMensaje del usuario: "${prompt}"`;
+    const fullPrompt = `${SYSTEM_PROMPTS.analyzer}\n\nMensaje del usuario: "${prompt}"`;
 
-  try {
-    const result = await model.generateContent(fullPrompt);
-    console.log('Respuesta del modelo:', result.response.text());
-    const response = result.response.text();
+    try {
+        const result = await model.generateContent(fullPrompt);
+        console.log('Respuesta del modelo:', result.response.text());
+        const response = result.response.text();
 
-    console.log('Análisis de la petición:', response);
+        console.log('Análisis de la petición:', response);
 
-    // Parsear la respuesta JSON
-    const analysis = JSON.parse(response.trim());
+        // Parsear la respuesta JSON
+        const analysis = JSON.parse(response.trim());
 
-    return {
-      type: analysis.type || 'text',
-      confidence: analysis.confidence || 0.5,
-      reasoning: analysis.reasoning || 'Análisis automático'
-    };
-  } catch (error) {
-    console.error('Error analizando la petición:', error);
-    // Fallback: si no puede analizar, asumir texto
-    return {
-      type: 'text',
-      confidence: 0.3,
-      reasoning: 'Error en análisis, usando texto por defecto'
-    };
-  }
+        return {
+            type: analysis.type || 'text',
+            confidence: analysis.confidence || 0.5,
+            reasoning: analysis.reasoning || 'Análisis automático'
+        };
+    } catch (error) {
+        console.error('Error analizando la petición:', error);
+        // Fallback: si no puede analizar, asumir texto
+        return {
+            type: 'text',
+            confidence: 0.3,
+            reasoning: 'Error en análisis, usando texto por defecto'
+        };
+    }
 }
-
 /**
  * Genera una respuesta de texto usando Gemini
  */
 export async function generateTextResponse(prompt: string): Promise<string> {
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
-    systemInstruction: SYSTEM_PROMPTS.text
-  });
+    const model = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        systemInstruction: SYSTEM_PROMPTS.text
+    });
 
-  const result = await model.generateContent(prompt);
-  return result.response.text();
+    const result = await model.generateContent(prompt);
+    return result.response.text();
 }
 
 /**
- * Genera una imagen real usando Gemini
+ * Genera una imagen usando Replicate y la sube a S3
  */
 export async function generateImage(prompt: string): Promise<string> {
+    try {
+        console.log('🎨 Generando imagen con Replicate:', prompt);
 
-  try {
-    console.log('🎨 Generando imagen:', prompt);
+        const replicate = new Replicate({
+            auth: process.env.REPLICATE_API_TOKEN || ''
+        });
 
+        const input = {
+            prompt,
+            aspect_ratio: "16:9",
+            safety_filter_level: "block_medium_and_above"
+        };
 
-
-    const replicate = new Replicate({auth: process.env.REPLICATE_API_TOKEN || ''});
-
-    const input = {
-        prompt,
-        aspect_ratio: "16:9",
-        safety_filter_level: "block_medium_and_above"
-    };
-
+        console.log('📤 Enviando a Replicate...');
     const output = await replicate.run("google/imagen-4", { input });
-    const imageUrl = output.url();
-    console.log(imageUrl);
 
+    console.log('📥 Respuesta de Replicate:', output);
 
-    return imageUrl.href;
+    // Replicate devuelve un objeto con método url()
+    if (output && typeof output === 'object' && typeof output.url === 'function') {
+        const urlObject = output.url();
+        console.log('🔗 URL Object:', urlObject);
 
-    console.log('📊 Respuesta de Gemini:', typeof response, Object.keys(response || {}));
+        // El objeto URL tiene una propiedad href con la URL completa
+        const imageUrl = urlObject.href;
+        console.log('📸 URL de imagen:', imageUrl);
 
-    // Gemini puede devolver la imagen de diferentes formas
-    let imageData: string | null = null;
-
-    // Método 1: Como data URL base64
-    if (response.imageData) {
-      imageData = response.imageData;
-    }
-    // Método 2: En el texto de la respuesta (si Gemini describe la imagen)
-    else if (response.text && response.text.includes('data:image')) {
-      imageData = response.text;
-    }
-    // Método 3: Gemini podría generar la imagen y devolver una URL
-    else if (response.imageUrl) {
-      return response.imageUrl;
-    }
-
-    if (imageData) {
-      // Subir a S3 y devolver URL
-      const imageUrl = await uploadImageToS3(imageData, prompt);
-      console.log('✅ Imagen procesada y subida:', imageUrl);
-      return imageUrl;
+        // Descargar la imagen y subirla a S3
+        console.log('🔄 Descargando y subiendo a S3...');
+        return await downloadImageAndUploadToS3(imageUrl, prompt);
     } else {
-      // Si no hay imagen, generar una descripción como fallback
-      console.log('⚠️ No se recibió imagen, generando descripción como fallback');
-      return await generateTextResponse(`Describe en detalle la imagen que se generaría para: ${prompt}`);
+        throw new Error('No se recibió objeto URL de Replicate');
     }
 
-  } catch (error) {
-    console.error('❌ Error generando imagen con Gemini:', error);
-
-    // Si el modelo de imagen no está disponible, hacer fallback a descripción
-    if (error.message?.includes('not found') || error.message?.includes('404')) {
-      console.log('🔄 Fallback: modelo de imagen no disponible, usando descripción');
-      return await generateTextResponse(`Describe en detalle la imagen que se generaría para: ${prompt}`);
+    } catch (error) {
+        console.error('❌ Error generando imagen con Replicate:', error);
+        throw new Error('Error generando imagen');
     }
-
-    throw new Error('Error generando imagen con Gemini');
-  }
 }
 
 /**
  * Procesa una petición del agente de manera inteligente
  */
 export async function processAgentRequest(request: AgentRequest): Promise<AgentResponse> {
-  const { prompt } = request;
+    const { prompt } = request;
 
-  if (!prompt) {
-    throw new Error('El prompt es requerido');
-  }
-
-  try {
-    // 1. Analizar la petición
-    const analysis = await analyzeRequest(prompt);
-    console.log('Análisis de la petición:', analysis);
-
-    let response: string;
-    let responseType: 'text' | 'image';
-
-    if (analysis.type === 'image' && analysis.confidence > 0.6) {
-      // 2. Si es imagen, generar imagen real y subir a S3
-      response = await generateImage(prompt);
-      responseType = 'image';
-    } else {
-      // 3. Si es texto, generar respuesta normal
-      response = await generateTextResponse(prompt);
-      responseType = 'text';
+    if (!prompt) {
+        throw new Error('El prompt es requerido');
     }
 
-    return {
-      respuesta: response,
-      metadata: {
-        type: responseType,
-        model: responseType === 'image' ? 'gemini-2.5-flash-image' : 'gemini-1.5-flash',
-        confidence: analysis.confidence,
-        reasoning: analysis.reasoning
-      }
-    };
+    try {
+        // 1. Analizar la petición
+        const analysis = await analyzeRequest(prompt);
+        console.log('Análisis de la petición:', analysis);
 
-  } catch (error) {
-    console.error('Error procesando la petición del agente:', error);
-    throw new Error('Error interno del agente');
-  }
+        let response: string;
+        let responseType: 'text' | 'image';
+
+        if (analysis.type === 'image' && analysis.confidence > 0.6) {
+            // 2. Si es imagen, generar imagen real y subir a S3
+            response = await generateImage(prompt);
+            responseType = 'image';
+        } else {
+            // 3. Si es texto, generar respuesta normal
+            response = await generateTextResponse(prompt);
+            responseType = 'text';
+        }
+        return {
+            respuesta: response,
+            metadata: {
+                type: responseType,
+                model: responseType === 'image' ? 'replicate-google-imagen-4' : 'gemini-2.5-flash',
+                confidence: analysis.confidence,
+                reasoning: analysis.reasoning
+            }
+        };
+
+    } catch (error) {
+        console.error('❌ Error procesando la petición del agente:', error);
+        throw new Error('Error interno del agente');
+    }
 }
 
 /**
  * Función principal del agente - compatible con el protocolo del sistema
  */
 export async function geminiAgent(request: AgentRequest): Promise<AgentResponse> {
-  console.log('🤖 Gemini Agent procesando:', request.prompt);
+    console.log('🤖 Gemini Agent procesando:', request.prompt);
 
-  const result = await processAgentRequest(request);
+    const result = await processAgentRequest(request);
 
-  console.log('✅ Gemini Agent respuesta generada:', {
-    type: result.metadata?.type,
-    length: result.respuesta.length
-  });
+    console.log('✅ Gemini Agent respuesta generada:', {
+        type: result.metadata?.type,
+        length: result.respuesta.length
+    });
 
-  return result;
+    return result;
 }

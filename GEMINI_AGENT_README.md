@@ -3,9 +3,10 @@
 ## Descripción
 Este agente inteligente basado en Gemini AI analiza las peticiones de los usuarios y **genera imágenes reales** usando la API de Gemini. El sistema funciona con el flujo correcto:
 
-1. **Análisis** de la petición para determinar la intención del usuario
-2. **Routing inteligente**: texto → modelo de texto, imagen → modelo de imágenes
-3. **Generación real** de imágenes con Gemini y subida automática a S3
+1. **Análisis**: El sistema analiza el prompt usando un modelo especializado
+2. **Clasificación**: Determina si es texto o imagen con un nivel de confianza
+3. **Routing**:
+   - **Texto**: Envía a modelo de texto de Gemini
 4. **Respuesta**: Devuelve texto o URL de la imagen generada
 
 ## API Endpoints
@@ -14,26 +15,25 @@ Para verificar que funciona correctamente:
 ```bash
 # Ejecutar verificación rápida
 ./verify-gemini-agent.sh
-# Ejecutar pruebas completas actualizadas
-./test-gemini-updated.sh
+
+# Ejecutar pruebas completas (Replicate + S3)
+./test-replicate-s3.sh
 
 # O manualmente
 curl -X POST http://localhost:3000/api/generate \
   -H "Content-Type: application/json" \
-
-**Respuesta:**
-```json
-{
-  "analysis": {
-    "type": "text",
-    "confidence": 0.9,
-    "reasoning": "Pregunta informativa que requiere respuesta de texto"
-  },
-  "prompt": "¿Qué es la inteligencia artificial?"
-}
+  -d '{"prompt": "¿Qué es la inteligencia artificial?"}'
 ```
 
-## Ejemplos de Uso
+**Respuesta esperada para texto:**
+```json
+{
+  "respuesta": "La inteligencia artificial es una rama de la ciencia computacional que se enfoca en la creación de máquinas que pueden realizar tareas que normalmente requieren inteligencia humana, como el razonamiento, el aprendizaje y la percepción.",
+  "metadata": {
+    "type": "text",
+    "model": "gemini-1.5-flash",
+    "confidence": 0.9,
+    "reasoning": "El usuario pidió explícitamente crear un texto"
 
 ### Petición de Texto
 ```bash
@@ -79,32 +79,28 @@ S3_BUCKET=sysgd-images
   "reasoning": "explicación"
 }
 ```
-
-#### Generador de Texto
 - Tono profesional y amigable
 - Respuestas informativas y estructuradas
 - Ideal para preguntas, análisis y explicaciones
 
 #### Generador de Imágenes
-- **Modelo:** `gemini-2.5-flash-image`
-- **Propósito:** Crear imágenes reales usando Gemini AI
+- **Modelo:** `google/imagen-4` (via Replicate) - Modelo especializado en crear imágenes reales
+- **Propósito:** Crear imágenes reales usando Replicate y subirlas a S3
 - **Características:**
-  - Genera imágenes visuales reales, no descripciones
-  - Sube automáticamente a Amazon S3
-  - Devuelve URL pública de la imagen generada
+  - Genera imágenes visuales reales usando Replicate
+  - Descarga automáticamente la imagen desde Replicate
+  - Sube a Amazon S3 con la misma configuración que upload.controller.ts
+  - Devuelve URL pública de la imagen en S3
   - Soporta cualquier tipo de imagen: paisajes, personajes, abstracto, etc.
-  - Integración automática con el sistema de chat
-
-## Configuración
 
 ### Variables de Entorno
 
-**Para Gemini API:**
+**Para Replicate API (generación de imágenes):**
 ```env
-GEMINI_API_KEY=tu_clave_de_api_aquí
+REPLICATE_API_TOKEN=tu_token_de_replicate_aquí
 ```
 
-**Para Amazon S3 (generación de imágenes):**
+**Para Amazon S3 (almacenamiento de imágenes generadas):**
 ```env
 AWS_ENDPOINT=http://localhost:9000  # Para S3 local/compatible
 AWS_REGION=us-east-1
@@ -157,7 +153,7 @@ const response = await fetch('/api/agents/message', {
   "respuesta": "http://localhost:9000/sysgd-uploads/generated-images/uuid.png",
   "metadata": {
     "type": "image",
-    "model": "gemini-2.5-flash-image",
+    "model": "replicate-google-imagen-4",
     "confidence": 0.95
   }
 }
@@ -182,12 +178,14 @@ El sistema incluye logging detallado:
   confidence: 0.95,
   reasoning: 'El usuario pidió explícitamente crear una imagen'
 }
-🎨 Generando imagen con Gemini: Crea una imagen de un paisaje montañoso
-📊 Respuesta de Gemini: [object Object]
+🎨 Generando imagen con Replicate: Crea una imagen de un paisaje montañoso
+📤 Enviando a Replicate...
+📥 Respuesta de Replicate: [object Object]
+🔄 Descargando y subiendo a S3...
 ✅ Imagen subida a S3: http://localhost:9000/sysgd-uploads/generated-images/uuid.png
 ✅ Gemini Agent respuesta generada: {
   type: 'image',
-  model: 'gemini-2.5-flash-image',
+  model: 'replicate-google-imagen-4',
   length: 245
 }
 ```

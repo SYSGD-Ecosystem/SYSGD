@@ -20,13 +20,13 @@ async function testGeminiAgent() {
       name: 'Generación de imagen - Paisaje',
       prompt: 'Crea una imagen de un paisaje montañoso con un lago en el valle',
       expectedType: 'image',
-      expectedModel: 'gemini-2.5-flash-image'
+      expectedModel: 'replicate-google-imagen-4'
     },
     {
       name: 'Generación de imagen - Personaje',
       prompt: 'Un robot amigable en estilo cartoon con ojos brillantes',
       expectedType: 'image',
-      expectedModel: 'gemini-2.5-flash-image'
+      expectedModel: 'replicate-google-imagen-4'
     },
     {
       name: 'Descripción técnica',
@@ -37,7 +37,7 @@ async function testGeminiAgent() {
       name: 'Arte visual abstracto',
       prompt: 'Imagina una explosión de colores representando la creatividad',
       expectedType: 'image',
-      expectedModel: 'gemini-2.5-flash-image'
+      expectedModel: 'replicate-google-imagen-4'
     },
     {
       name: 'Análisis de datos',
