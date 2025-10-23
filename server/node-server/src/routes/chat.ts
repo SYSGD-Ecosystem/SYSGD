@@ -162,7 +162,7 @@ router.get("/messages/:conversationId", isAuthenticated, async (req: Request, re
       res.status(403).json({ error: "No es miembro de la conversación" });
       return;
     }
-
+console.log("Hola mundo")
     const result = await pool.query(
       `
       SELECT

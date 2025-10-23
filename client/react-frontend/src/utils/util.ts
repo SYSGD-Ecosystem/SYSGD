@@ -58,3 +58,15 @@ export function timeAgo(dateString: string): string {
 	}
 	return "Justo ahora";
 }
+
+export function getRandomEmoji() {
+  const emojis = [
+    "😀", "😎", "🤖", "👽", "🐱", "🐶", "🐵", "🦊", "🐸", "🐼",
+    "🐧", "🐙", "🐢", "🐝", "🐳", "🌵", "🌈", "🔥", "⚡", "🍕",
+    "🍔", "🍩", "🍉", "🍒", "🥑", "🚀", "🎮", "🎨", "🎧", "💡",
+    "💎", "🧠", "👾", "🤡", "🦄", "🐉", "🦕", "🦖", "🥷", "🦸‍♂️"
+  ];
+
+  const randomIndex = Math.floor(Math.random() * emojis.length);
+  return emojis[randomIndex];
+}

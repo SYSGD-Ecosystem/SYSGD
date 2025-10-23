@@ -217,6 +217,8 @@ export function useChat() {
           if (opts.type) body.type = opts.type;
         }
 
+        console.log("Creating conversation with body:", body);
+
         const newConv: Conversation = await safeFetch(`${serverUrl}/api/chat/conversations/create`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

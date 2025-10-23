@@ -90,7 +90,7 @@ export function NewChatModal({
 	const handleSelectContact = async (contact: Contact) => {
 		try {
 			// createConversation espera un objeto opts
-			const conv = await createConversation({ contactUsername: contact.username });
+			const conv = await createConversation({ contactUsername: contact.email });
 			// opcional: refrescar conversaciones globales
 			await fetchConversations();
 			onSelectContact(contact);
