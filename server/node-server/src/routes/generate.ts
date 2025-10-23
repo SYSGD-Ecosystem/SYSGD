@@ -5,6 +5,7 @@ import { isAuthenticated } from "../middlewares/auth-jwt";
 const router = express.Router();
 
 router.post("/", isAuthenticated, async (req, res) => {
+	console.log('req.body', req.body);
 	const { prompt } = req.body;
 
 	if (!prompt) {

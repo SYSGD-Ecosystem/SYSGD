@@ -3,9 +3,11 @@
 import { useState } from "react"
 import { ChatSidebar } from "./chat-sidebar"
 import { ChatConversation } from "./chat-conversation"
+import { ChatToolbar } from "./chat-toolbar"
 import { ThemeToggle } from "./theme-toggle"
 import { Menu, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Agent } from "../../types/Agent"
 
 export type ChatType = "user" | "agent"
 
@@ -33,6 +35,7 @@ export function ChatInterface() {
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [showSettings, setShowSettings] = useState(false)
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
 
   return (
     <div className="flex h-screen bg-background">
@@ -84,7 +87,12 @@ export function ChatInterface() {
         {/* Conversation */}
         <div className="flex-1 overflow-hidden">
           {selectedChat ? (
-            <ChatConversation chat={selectedChat} showSettings={showSettings} onShowSettingsChange={setShowSettings} />
+            <ChatConversation 
+              chat={selectedChat} 
+              showSettings={showSettings} 
+              onShowSettingsChange={setShowSettings}
+              selectedAgent={selectedAgent}
+            />
           ) : (
             <div className="h-full flex items-center justify-center text-muted-foreground">
               <div className="text-center">
@@ -105,6 +113,13 @@ export function ChatInterface() {
           )}
         </div>
       </div>
+
+      {/* Toolbar */}
+      <ChatToolbar 
+        selectedChat={selectedChat}
+        onGoHome={() => setSelectedChat(null)}
+        onAgentSelect={setSelectedAgent}
+      />
     </div>
   )
 }

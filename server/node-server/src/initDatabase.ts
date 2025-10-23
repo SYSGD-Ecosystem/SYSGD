@@ -209,6 +209,33 @@ CREATE TABLE IF NOT EXISTS conversation_invitations (
 );
 `);
 
+	// ==============================
+	// Agents module
+	// ==============================
+	await pool.query(`
+CREATE TABLE IF NOT EXISTS agents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  url TEXT NOT NULL,
+  support TEXT[] NOT NULL DEFAULT '{}', -- Array de tipos soportados: 'text', 'image', 'audio', 'video'
+  description TEXT,
+  created_by INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+`);
+
+	await pool.query(`
+CREATE TABLE IF NOT EXISTS agent_conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+  agent_id UUID REFERENCES agents(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(conversation_id, agent_id)
+);
+`);
+
 	// Índices opcionales para optimización de consultas
 	await pool.query(`
   CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);

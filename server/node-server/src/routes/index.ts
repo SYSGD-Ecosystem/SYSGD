@@ -11,6 +11,8 @@ import authRoutes from "./auth.routes";
 import generate from "./generate"; // new route for Gemini API
 import docApi from "./api"; // existing large router with document-management endpoints
 import chat  from "./chat";
+import agents from "./agents";
+import upload from "./upload";
 
 const router = Router();
 
@@ -25,6 +27,8 @@ router.use("/ideas", ideas);
 router.use("/", notes); // notas tienen rutas mixtas (/projects/:id/notes y /notes/:id)
 router.use("/auth", authRoutes);
 router.use("/chat", chat);
+router.use("/agents", agents);
+router.use("/uploads", upload);
 
 
 // others (document registers, classification, etc.) remain in docApi

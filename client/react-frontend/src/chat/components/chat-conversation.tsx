@@ -5,17 +5,21 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Paperclip, Smile, X, File, Mic, Video } from "lucide-react";
+import { Send, Paperclip, Smile, X, File, Mic, Video, Bot } from "lucide-react";
 import type { Chat, Message } from "./chat-interface";
 import { MessageActions } from "./message-actions";
 import { ChatSettings } from "./chat-settings";
 import { AudioPlayer } from "./audio-player";
+import { MarkdownRenderer } from "./markdown-renderer";
 import { useChat, type Message as BackendMessage } from "../hooks/useChat";
+import { useAgents } from "../hooks/useAgents";
+import { Agent } from "../../types/Agent";
 
 interface ChatConversationProps {
 	chat: Chat;
 	showSettings: boolean;
 	onShowSettingsChange: (show: boolean) => void;
+	selectedAgent?: Agent | null;
 }
 
 export interface ExtendedMessage extends Message {
@@ -43,6 +47,7 @@ export function ChatConversation({
 	chat,
 	showSettings,
 	onShowSettingsChange,
+	selectedAgent,
 }: ChatConversationProps) {
 	const {
 		fetchMessages,
@@ -51,6 +56,8 @@ export function ChatConversation({
 		setMessagesForConversation,
 		markAsRead,
 	} = useChat();
+
+	const { sendMessageToAgent } = useAgents();
 
 	const [messages, setMessages] = useState<ExtendedMessage[]>([]);
 	const [newMessage, setNewMessage] = useState("");
@@ -63,6 +70,7 @@ export function ChatConversation({
 		null,
 	);
 	const [sending, setSending] = useState(false);
+	const [waitingForAgent, setWaitingForAgent] = useState(false);
 
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -134,7 +142,11 @@ export function ChatConversation({
 	// --- Scroll to bottom when messages change ---
 	useEffect(() => {
 		if (scrollRef.current) {
-			scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+			// Smooth scroll to bottom
+			scrollRef.current.scrollTo({
+				top: scrollRef.current.scrollHeight,
+				behavior: 'smooth'
+			});
 		}
 	}, [messages]);
 
@@ -171,7 +183,7 @@ export function ChatConversation({
 		return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 	};
 
-	// upload file to backend: expects backend endpoint /api/uploads that returns { url, attachment_name?, attachment_size?, attachment_type? }
+	// upload file to S3 via backend
 	const uploadFile = useCallback(
 		async (file: File) => {
 			const fd = new FormData();
@@ -182,9 +194,12 @@ export function ChatConversation({
 					body: fd,
 					credentials: "include",
 				});
-				if (!res.ok) throw new Error("Upload failed");
+				if (!res.ok) {
+					const errorData = await res.json();
+					throw new Error(errorData.error || "Upload failed");
+				}
 				const data = await res.json();
-				return data; // { url, attachment_name, attachment_size, attachment_type }
+				return data; // { url, attachment_name, attachment_size, attachment_type, key, bucket }
 			} catch (err) {
 				console.error("uploadFile error:", err);
 				throw err;
@@ -261,17 +276,94 @@ export function ChatConversation({
 				}
 			}
 
-			// build payload for backend
+			// Check if we have a selected agent
+			if (selectedAgent) {
+				// Set loading state for agent
+				setWaitingForAgent(true);
+				
+				// Send message to agent
+				const agentPayload = {
+					agent_id: selectedAgent.id,
+					conversation_id: chat.id,
+					content: newMessage || "",
+					...(attachment_payload.attachment_type && {
+						attachment_type: attachment_payload.attachment_type as 'image' | 'audio' | 'video' | 'file',
+						attachment_url: attachment_payload.attachment_url,
+					}),
+				};
+
+				const agentResponse = await sendMessageToAgent(agentPayload);
+				
+				if (agentResponse) {
+					// Replace optimistic message with user message
+					const userMessage: ExtendedMessage = {
+						id: String(agentResponse.userMessage.id),
+						content: agentResponse.userMessage.content || "",
+						sender: "me",
+						timestamp: agentResponse.userMessage.created_at
+							? new Date(agentResponse.userMessage.created_at).toLocaleTimeString("es-ES", {
+									hour: "2-digit",
+									minute: "2-digit",
+								})
+							: new Date().toLocaleTimeString(),
+						senderName: undefined,
+						attachment: attachment_payload.attachment_url
+							? {
+									url: attachment_payload.attachment_url,
+									type: (attachment_payload.attachment_type as 'image' | 'audio' | 'video' | 'file') || "file",
+									name: attachment_payload.attachment_name,
+									size: attachment_payload.attachment_size,
+								}
+							: undefined,
+					};
+
+					// Add agent response message
+					const agentMessage: ExtendedMessage = {
+						id: String(agentResponse.agentMessage.id),
+						content: agentResponse.agentMessage.content || "",
+						sender: "other",
+						timestamp: agentResponse.agentMessage.created_at
+							? new Date(agentResponse.agentMessage.created_at).toLocaleTimeString("es-ES", {
+									hour: "2-digit",
+									minute: "2-digit",
+								})
+							: new Date().toLocaleTimeString(),
+						senderName: selectedAgent.name,
+					};
+
+					setMessages((prev) => [
+						...prev.filter((m) => m.id !== tempId),
+						userMessage,
+						agentMessage,
+					]);
+
+					// Update hook's messages map
+					const currentHookMsgs = messagesMap[chat.id] ?? [];
+					setMessagesForConversation(chat.id, [
+						...currentHookMsgs,
+						agentResponse.userMessage as BackendMessage,
+						agentResponse.agentMessage as BackendMessage,
+					]);
+
+					// Mark as read
+					try {
+						await markAsRead(chat.id, String(agentResponse.agentMessage.id));
+					} catch {}
+				} else {
+					// Agent failed, remove optimistic message
+					setMessages((prev) => prev.filter((m) => m.id !== tempId));
+					alert("No se pudo conectar con el agente. Intenta de nuevo.");
+				}
+			} else {
+				// Regular message sending (existing logic)
 			const payload: any = {
 				content: newMessage || null,
 				...attachment_payload,
 				reply_to: replyingTo?.id ?? null,
 			};
 
-			const sent = await sendMessage(chat.id, payload); // hook will POST to /api/chat/messages/send with credentials
-			// sent should be backend message (with id)
+				const sent = await sendMessage(chat.id, payload);
 			if (sent) {
-				// replace optimistic message with backend message in local UI & update hook's messages map
 				const normalizedBackend: ExtendedMessage = {
 					id: String((sent as any).id),
 					content: sent.content ?? "",
@@ -310,24 +402,25 @@ export function ChatConversation({
 				setMessages((prev) =>
 					prev.map((m) => (m.id === tempId ? normalizedBackend : m)),
 				);
-				// also update hook internal map so other components see the new message
+					
 				const currentHookMsgs = messagesMap[chat.id] ?? [];
 				setMessagesForConversation(chat.id, [
 					...currentHookMsgs,
 					sent as BackendMessage,
 				]);
-				// mark as read locally
+					
 				try {
 					await markAsRead(chat.id, String(sent.id));
 				} catch {}
+				}
 			}
 		} catch (err) {
 			console.error("Error sending message:", err);
-			// if send failed, remove optimistic or mark as failed (keep simple: remove)
 			setMessages((prev) => prev.filter((m) => m.id !== tempId));
 			alert("No se pudo enviar el mensaje. Intenta de nuevo.");
 		} finally {
 			setSending(false);
+			setWaitingForAgent(false);
 			setNewMessage("");
 			setAttachment(null);
 			setAttachmentPreview(null);
@@ -444,7 +537,7 @@ export function ChatConversation({
 					);
 			}
 		}
-		return <p className="text-sm leading-relaxed">{message.content}</p>;
+		return <MarkdownRenderer content={message.content} />;
 	};
 
 	return (
@@ -540,12 +633,54 @@ export function ChatConversation({
 							</div>
 						</div>
 					))}
+					
+					{/* Loading message for agent */}
+					{waitingForAgent && selectedAgent && (
+						<div className="flex gap-3">
+							<div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
+								🤖
+							</div>
+							<div className="flex flex-col items-start max-w-[70%]">
+								<span className="text-xs text-muted-foreground mb-1 px-1">
+									{selectedAgent.name}
+								</span>
+								<div className="bg-muted text-foreground rounded-2xl px-4 py-2">
+									<div className="flex items-center gap-2">
+										<div className="flex space-x-1">
+											<div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+											<div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+											<div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+										</div>
+										<span className="text-sm text-muted-foreground">Escribiendo...</span>
+									</div>
+								</div>
+							</div>
+						</div>
+					)}
 				</div>
 			</ScrollArea>
 
 			{/* Input */}
 			<div className="border-t border-border p-4 bg-card">
 				<div className="max-w-4xl mx-auto">
+					{selectedAgent && (
+						<div className="mb-2 p-2 bg-blue-50 dark:bg-blue-950/20 rounded-lg flex items-center justify-between">
+							<div className="flex items-center gap-2">
+								<div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+									<Bot className="h-3 w-3 text-blue-600" />
+								</div>
+								<div className="flex-1 min-w-0">
+									<p className="text-xs font-medium text-blue-900 dark:text-blue-100">
+										Agente activo: {selectedAgent.name}
+									</p>
+									<p className="text-xs text-blue-700 dark:text-blue-300">
+										Soporte: {selectedAgent.support.join(", ")}
+									</p>
+								</div>
+							</div>
+						</div>
+					)}
+
 					{replyingTo && (
 						<div className="mb-2 p-2 bg-muted rounded-lg flex items-center justify-between">
 							<div className="flex-1 min-w-0">
