@@ -25,6 +25,7 @@ export const useAgents = () => {
       }
 
       const data = await response.json();
+      console.log('📊 Agentes cargados:', data); // Debug info
       setAgents(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
