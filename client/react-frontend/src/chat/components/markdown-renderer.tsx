@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -10,7 +11,7 @@ interface MarkdownRendererProps {
   className?: string;
 }
 
-export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ 
+const MarkdownRendererComponent: React.FC<MarkdownRendererProps> = ({ 
   content, 
   className = "" 
 }) => {
@@ -103,3 +104,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     </div>
   );
 };
+
+// Memoize to prevent unnecessary re-renders
+export const MarkdownRenderer = React.memo(MarkdownRendererComponent);

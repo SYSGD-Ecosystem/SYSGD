@@ -1,5 +1,4 @@
-"use client"
-
+/** biome-ignore-all assist/source/organizeImports: <explanation> */
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
@@ -90,6 +89,7 @@ export function AudioPlayer({ src, className = "" }: AudioPlayerProps) {
 
   return (
     <div className={`flex items-center gap-3 p-3 bg-background/50 rounded-lg min-w-[280px] max-w-sm ${className}`}>
+      {/** biome-ignore lint/a11y/useMediaCaption: <explanation> */}
       <audio ref={audioRef} src={src} preload="metadata" />
 
       {/* Play/Pause Button */}

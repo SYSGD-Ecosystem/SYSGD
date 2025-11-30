@@ -150,6 +150,8 @@ export interface AgentResponse {
     respuesta: string;
     response?: string;
     message?: string;
+    attachment_type?: "image" | "audio" | "video" | "file" | string | null;
+    attachment_url?: string | null;
     metadata?: {
         type: 'text' | 'image';
         model: string;
@@ -222,30 +224,72 @@ export async function generateImage(prompt: string): Promise<string> {
         };
 
         console.log('📤 Enviando a Replicate...');
-    const output = await replicate.run("google/imagen-4", { input });
+        const output = await replicate.run("google/imagen-4", { input });
 
-    console.log('📥 Respuesta de Replicate:', output);
+        console.log('📥 Respuesta de Replicate:', output);
 
-    // Replicate devuelve un objeto con método url()
-    if (output && typeof output === 'object' && typeof output.url === 'function') {
-        const urlObject = output.url();
-        console.log('🔗 URL Object:', urlObject);
+        // Replicate devuelve un objeto con método url()
+        if (output && typeof output === 'object' && typeof output.url === 'function') {
+            const urlObject = output.url();
+            console.log('🔗 URL Object:', urlObject);
 
-        // El objeto URL tiene una propiedad href con la URL completa
-        const imageUrl = urlObject.href;
-        console.log('📸 URL de imagen:', imageUrl);
+            // El objeto URL tiene una propiedad href con la URL completa
+            const imageUrl = urlObject.href;
+            console.log('📸 URL de imagen:', imageUrl);
 
-        // Descargar la imagen y subirla a S3
-        console.log('🔄 Descargando y subiendo a S3...');
-        return await downloadImageAndUploadToS3(imageUrl, prompt);
-    } else {
-        throw new Error('No se recibió objeto URL de Replicate');
-    }
+            // Descargar la imagen y subirla a S3
+            console.log('🔄 Descargando y subiendo a S3...');
+            return await downloadImageAndUploadToS3(imageUrl, prompt);
+        } else {
+            throw new Error('No se recibió objeto URL de Replicate');
+        }
 
     } catch (error) {
         console.error('❌ Error generando imagen con Replicate:', error);
         throw new Error('Error generando imagen');
     }
+}
+
+
+const generateImageFromReveCreate = async (prompt: string): Promise<string> => {
+// usa replicate con reve/create para generar una imagen
+try {
+        console.log('🎨 Generando imagen con Replicate:', prompt);
+
+        const replicate = new Replicate({
+            auth: process.env.REPLICATE_API_TOKEN || ''
+        });
+
+        const input = {
+            prompt
+        };
+
+        console.log('📤 Enviando a Replicate...');
+        const output = await replicate.run("reve/create", { input });
+
+        console.log('📥 Respuesta de Replicate:', output);
+
+        // Replicate devuelve un objeto con método url()
+        if (output && typeof output === 'object' && typeof output.url === 'function') {
+            const urlObject = output.url();
+            console.log('🔗 URL Object:', urlObject);
+
+            // El objeto URL tiene una propiedad href con la URL completa
+            const imageUrl = urlObject.href;
+            console.log('📸 URL de imagen:', imageUrl);
+
+            // Descargar la imagen y subirla a S3
+            console.log('🔄 Descargando y subiendo a S3...');
+            return await downloadImageAndUploadToS3(imageUrl, prompt);
+        } else {
+            throw new Error('No se recibió objeto URL de Replicate');
+        }
+
+    } catch (error) {
+        console.error('❌ Error generando imagen con Replicate:', error);
+        throw new Error('Error generando imagen');
+    }
+
 }
 
 /**
@@ -265,18 +309,26 @@ export async function processAgentRequest(request: AgentRequest): Promise<AgentR
 
         let response: string;
         let responseType: 'text' | 'image';
+        let attachment_type: 'image' | 'audio' | 'video' | 'file' | string | null;
+        let attachment_url: string | null;
 
         if (analysis.type === 'image' && analysis.confidence > 0.6) {
             // 2. Si es imagen, generar imagen real y subir a S3
-            response = await generateImage(prompt);
+            response = await generateImageFromReveCreate(prompt);
             responseType = 'image';
+            attachment_type = 'image';
+            attachment_url = response;
         } else {
             // 3. Si es texto, generar respuesta normal
             response = await generateTextResponse(prompt);
             responseType = 'text';
+            attachment_type = null;
+            attachment_url = null;
         }
         return {
             respuesta: response,
+            attachment_type,
+            attachment_url,
             metadata: {
                 type: responseType,
                 model: responseType === 'image' ? 'replicate-google-imagen-4' : 'gemini-2.5-flash',

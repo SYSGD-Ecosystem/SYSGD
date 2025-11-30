@@ -30,6 +30,9 @@ import {
   AlertCircle 
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { IoChatboxOutline } from "react-icons/io5";
+import { useChat } from "../hooks/useChat";
+import useCurrentUser from "@/hooks/connection/useCurrentUser";
 
 interface AgentsListModalProps {
   open: boolean;
@@ -45,6 +48,8 @@ export const AgentsListModal: FC<AgentsListModalProps> = ({
   const { agents, loading, deleteAgent, updateAgent } = useAgents();
   const [deleteAgentId, setDeleteAgentId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { createConversation } = useChat()
+  const { user } = useCurrentUser()
 
   const getSupportBadgeColor = (support: AgentSupport) => {
     switch (support) {
@@ -184,6 +189,15 @@ export const AgentsListModal: FC<AgentsListModalProps> = ({
                               ) : (
                                 <Play className="h-4 w-4" />
                               )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => createConversation({type:"bot", contactUsername: user?.username,members:[user?.username],title:agent.name})}
+                              title="Nuevo chat"
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <IoChatboxOutline className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"

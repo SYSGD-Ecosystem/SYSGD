@@ -1,7 +1,9 @@
-import React, { memo } from "react";
+// biome-ignore assist/source/organizeImports: <explanation>
+import type React from "react";
+import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { File, Mic, Video } from "lucide-react";
+import { File } from "lucide-react";
 import { MessageActions } from "./message-actions";
 import { AudioPlayer } from "./audio-player";
 import { MarkdownRenderer } from "./markdown-renderer";
@@ -64,6 +66,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 				case "video":
 					return (
 						<div className="space-y-2">
+							{/** biome-ignore lint/a11y/useMediaCaption: <explanation> */}
 							<video controls className="rounded-lg max-w-sm max-h-64">
 								<source src={msg.attachment.url} type="video/mp4" />
 								Tu navegador no soporta el elemento de video.
@@ -79,9 +82,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 							<div className="flex items-center gap-2 p-3 bg-background/50 rounded-lg">
 								<File className="h-5 w-5" />
 								<div className="flex-1">
-									<p className="text-sm font-medium">
-										{msg.attachment.name}
-									</p>
+									<p className="text-sm font-medium">{msg.attachment.name}</p>
 									<p className="text-xs text-muted-foreground">
 										{msg.attachment.size}
 									</p>
@@ -98,6 +99,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 	};
 
 	return (
+		// biome-ignore lint/a11y/noStaticElementInteractions: <explanation>
 		<div
 			className={`flex gap-3 ${message.sender === "me" ? "flex-row-reverse" : ""}`}
 			onMouseEnter={() => onHover(message.id)}
@@ -126,17 +128,10 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 								autoFocus
 							/>
 							<div className="flex gap-2">
-								<Button
-									size="sm"
-									onClick={() => onSaveEdit(message.id)}
-								>
+								<Button size="sm" onClick={() => onSaveEdit(message.id)}>
 									Guardar
 								</Button>
-								<Button
-									size="sm"
-									variant="outline"
-									onClick={onCancelEdit}
-								>
+								<Button size="sm" variant="outline" onClick={onCancelEdit}>
 									Cancelar
 								</Button>
 							</div>
@@ -187,13 +182,16 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 };
 
 // Memoize the component to prevent unnecessary re-renders
-export const ChatMessage = memo(ChatMessageComponent, (prevProps, nextProps) => {
-	// Only re-render if these specific props change
-	return (
-		prevProps.message.id === nextProps.message.id &&
-		prevProps.message.content === nextProps.message.content &&
-		prevProps.isHovered === nextProps.isHovered &&
-		prevProps.isEditing === nextProps.isEditing &&
-		prevProps.editingContent === nextProps.editingContent
-	);
-});
+export const ChatMessage = memo(
+	ChatMessageComponent,
+	(prevProps, nextProps) => {
+		// Only re-render if these specific props change
+		return (
+			prevProps.message.id === nextProps.message.id &&
+			prevProps.message.content === nextProps.message.content &&
+			prevProps.isHovered === nextProps.isHovered &&
+			prevProps.isEditing === nextProps.isEditing &&
+			prevProps.editingContent === nextProps.editingContent
+		);
+	},
+);

@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { Button } from "@/components/ui/button"
 import { Reply, Edit, Trash2, Copy } from "lucide-react"
 
@@ -11,7 +12,7 @@ interface MessageActionsProps {
   isOwnMessage: boolean
 }
 
-export function MessageActions({ onReply, onEdit, onDelete, onCopy, isOwnMessage }: MessageActionsProps) {
+const MessageActionsComponent = ({ onReply, onEdit, onDelete, onCopy, isOwnMessage }: MessageActionsProps) => {
   return (
     <div className="flex items-center gap-1 bg-background border border-border rounded-lg shadow-lg p-1">
       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onReply} title="Responder">
@@ -33,3 +34,6 @@ export function MessageActions({ onReply, onEdit, onDelete, onCopy, isOwnMessage
     </div>
   )
 }
+
+// Memoize to prevent unnecessary re-renders
+export const MessageActions = React.memo(MessageActionsComponent)

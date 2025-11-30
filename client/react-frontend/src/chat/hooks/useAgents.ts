@@ -163,6 +163,7 @@ export const useAgents = () => {
       }
 
       const agentData = await agentResponse.json();
+      console.log('Respuesta del agente:', agentData);
       const agentResponseContent = agentData.respuesta || agentData.response || agentData.message || 'Sin respuesta del agente';
 
       // Ahora enviar el mensaje del usuario y la respuesta del agente al servidor

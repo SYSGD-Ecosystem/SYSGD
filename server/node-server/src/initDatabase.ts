@@ -159,7 +159,7 @@ CREATE TABLE IF NOT EXISTS resource_access (
 	await pool.query(`
   CREATE TABLE IF NOT EXISTS conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  type TEXT CHECK (type IN ('private', 'group', 'channel')) NOT NULL DEFAULT 'private',
+  type TEXT CHECK (type IN ('private', 'group', 'channel', 'bot')) NOT NULL DEFAULT 'private',
   title TEXT,
   created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMP DEFAULT NOW()

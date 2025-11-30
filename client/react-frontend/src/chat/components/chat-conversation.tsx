@@ -1,22 +1,18 @@
-"use client";
-
 import type React from "react";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Paperclip, Smile, X, File, Mic, Video, Bot } from "lucide-react";
 import type { Chat, Message } from "./chat-interface";
-import { MessageActions } from "./message-actions";
 import { ChatSettings } from "./chat-settings";
-import { AudioPlayer } from "./audio-player";
-import { MarkdownRenderer } from "./markdown-renderer";
-import { useChat, type Message as BackendMessage } from "../hooks/useChat";
+import { type Conversation, useChat, type Message as BackendMessage } from "../hooks/useChat";
 import { useAgents } from "../hooks/useAgents";
-import { Agent } from "../../types/Agent";
+import type { Agent } from "../../types/Agent";
+import { ChatMessage } from "./chat-message";
 
 interface ChatConversationProps {
-	chat: Chat;
+	chat: Conversation;
 	showSettings: boolean;
 	onShowSettingsChange: (show: boolean) => void;
 	selectedAgent?: Agent | null;
@@ -80,7 +76,7 @@ export function ChatConversation({
 
 	// --- Load messages from backend when chat changes ---
 	useEffect(() => {
-    console.log("Chat changed:", chat);
+		console.log("Chat changed:", chat);
 		if (!chat?.id) return;
 		// fetchMessages will populate messagesMap inside the hook
 		fetchMessages(chat.id).catch((e) => {
@@ -91,53 +87,56 @@ export function ChatConversation({
 	}, [chat?.id]);
 
 	// --- Mirror hook's messagesMap into local messages state for rendering and local UX edits ---
-	useEffect(() => {
+	// Use useMemo to avoid recalculating on every render
+	const normalizedMessages = useMemo(() => {
 		const list = messagesMap?.[chat.id] ?? [];
 		// map backend message shape to ExtendedMessage if needed
-		const normalized: ExtendedMessage[] = (list as BackendMessage[]).map(
-			(m) => ({
-				id: String(m.id),
-				content: m.content ?? "",
-				sender:
-					m.sender_id === undefined || m.sender_id === null
-						? "other"
-						: m.sender_id ===
-								/* local heuristic: */ ((window as any).__CURRENT_USER_ID ??
-									m.sender_id)
-							? "me"
-							: "other",
-				timestamp: m.created_at
-					? new Date(m.created_at).toLocaleTimeString("es-ES", {
-							hour: "2-digit",
-							minute: "2-digit",
-						})
-					: "",
-				senderName: (m as any).sender_name ?? undefined,
-				attachment: m.attachment_url
-					? {
-							type: (m.attachment_type as any) ?? "file",
-							url: (m as any).attachment_url,
-							name: (m as any).attachment_name,
-							size: (m as any).attachment_size,
-						}
-					: undefined,
-				replyTo: m.reply_to
-					? {
-							id: String(m.reply_to),
-							content: (m as any).reply_preview ?? "",
-							senderName: undefined,
-						}
-					: undefined,
-			}),
-		);
-		setMessages(normalized);
+		return (list as BackendMessage[]).map((m) => ({
+			id: String(m.id),
+			content: m.content ?? "",
+			sender:
+				m.sender_id === undefined || m.sender_id === null
+					? "other"
+					: m.sender_id ===
+							/* local heuristic: */ ((window as any).__CURRENT_USER_ID ??
+								m.sender_id)
+						? "me"
+						: "other",
+			timestamp: m.created_at
+				? new Date(m.created_at).toLocaleTimeString("es-ES", {
+						hour: "2-digit",
+						minute: "2-digit",
+					})
+				: "",
+			senderName: (m as any).sender_name ?? undefined,
+			attachment: m.attachment_url
+				? {
+						type: (m.attachment_type as any) ?? "file",
+						url: (m as any).attachment_url,
+						name: (m as any).attachment_name,
+						size: (m as any).attachment_size,
+					}
+				: undefined,
+			replyTo: m.reply_to
+				? {
+						id: String(m.reply_to),
+						content: (m as any).reply_preview ?? "",
+						senderName: undefined,
+					}
+				: undefined,
+		}));
+	}, [messagesMap, chat.id]);
+
+	// Update local messages state when normalized messages change
+	useEffect(() => {
+		setMessages(normalizedMessages);
 		// auto mark as read using last message id
-		if (normalized.length > 0) {
-			const last = normalized[normalized.length - 1];
+		if (normalizedMessages.length > 0) {
+			const last = normalizedMessages[normalizedMessages.length - 1];
 			// call markAsRead with backend id (we stored id as string); the hook will send it
 			markAsRead(chat.id, last.id).catch(() => {});
 		}
-	}, [messagesMap, chat.id, markAsRead]);
+	}, [normalizedMessages, chat.id, markAsRead]);
 
 	// --- Scroll to bottom when messages change ---
 	useEffect(() => {
@@ -145,7 +144,7 @@ export function ChatConversation({
 			// Smooth scroll to bottom
 			scrollRef.current.scrollTo({
 				top: scrollRef.current.scrollHeight,
-				behavior: 'smooth'
+				behavior: "smooth",
 			});
 		}
 	}, [messages]);
@@ -246,7 +245,7 @@ export function ChatConversation({
 		setMessages((prev) => [...prev, optimistic]);
 
 		try {
-			let attachment_payload: {
+			const attachment_payload: {
 				attachment_url?: string;
 				attachment_type?: string;
 				attachment_name?: string;
@@ -266,7 +265,10 @@ export function ChatConversation({
 						uploaded.attachment_size || formatFileSize(attachment.size);
 				} catch (err) {
 					// if upload fails, remove optimistic attachment preview but still attempt to send text
-					console.warn("upload failed, will send message without attachment");
+					console.warn(
+						"upload failed, will send message without attachment",
+						err,
+					);
 					// remove preview from optimistic message
 					setMessages((prev) =>
 						prev.map((m) =>
@@ -280,20 +282,24 @@ export function ChatConversation({
 			if (selectedAgent) {
 				// Set loading state for agent
 				setWaitingForAgent(true);
-				
+
 				// Send message to agent
 				const agentPayload = {
 					agent_id: selectedAgent.id,
 					conversation_id: chat.id,
 					content: newMessage || "",
 					...(attachment_payload.attachment_type && {
-						attachment_type: attachment_payload.attachment_type as 'image' | 'audio' | 'video' | 'file',
+						attachment_type: attachment_payload.attachment_type as
+							| "image"
+							| "audio"
+							| "video"
+							| "file",
 						attachment_url: attachment_payload.attachment_url,
 					}),
 				};
 
 				const agentResponse = await sendMessageToAgent(agentPayload);
-				
+
 				if (agentResponse) {
 					// Replace optimistic message with user message
 					const userMessage: ExtendedMessage = {
@@ -301,7 +307,9 @@ export function ChatConversation({
 						content: agentResponse.userMessage.content || "",
 						sender: "me",
 						timestamp: agentResponse.userMessage.created_at
-							? new Date(agentResponse.userMessage.created_at).toLocaleTimeString("es-ES", {
+							? new Date(
+									agentResponse.userMessage.created_at,
+								).toLocaleTimeString("es-ES", {
 									hour: "2-digit",
 									minute: "2-digit",
 								})
@@ -310,7 +318,12 @@ export function ChatConversation({
 						attachment: attachment_payload.attachment_url
 							? {
 									url: attachment_payload.attachment_url,
-									type: (attachment_payload.attachment_type as 'image' | 'audio' | 'video' | 'file') || "file",
+									type:
+										(attachment_payload.attachment_type as
+											| "image"
+											| "audio"
+											| "video"
+											| "file") || "file",
 									name: attachment_payload.attachment_name,
 									size: attachment_payload.attachment_size,
 								}
@@ -323,7 +336,9 @@ export function ChatConversation({
 						content: agentResponse.agentMessage.content || "",
 						sender: "other",
 						timestamp: agentResponse.agentMessage.created_at
-							? new Date(agentResponse.agentMessage.created_at).toLocaleTimeString("es-ES", {
+							? new Date(
+									agentResponse.agentMessage.created_at,
+								).toLocaleTimeString("es-ES", {
 									hour: "2-digit",
 									minute: "2-digit",
 								})
@@ -348,7 +363,9 @@ export function ChatConversation({
 					// Mark as read
 					try {
 						await markAsRead(chat.id, String(agentResponse.agentMessage.id));
-					} catch {}
+					} catch (err) {
+						console.error(err);
+					}
 				} else {
 					// Agent failed, remove optimistic message
 					setMessages((prev) => prev.filter((m) => m.id !== tempId));
@@ -356,62 +373,64 @@ export function ChatConversation({
 				}
 			} else {
 				// Regular message sending (existing logic)
-			const payload: any = {
-				content: newMessage || null,
-				...attachment_payload,
-				reply_to: replyingTo?.id ?? null,
-			};
-
-				const sent = await sendMessage(chat.id, payload);
-			if (sent) {
-				const normalizedBackend: ExtendedMessage = {
-					id: String((sent as any).id),
-					content: sent.content ?? "",
-					sender: "me",
-					timestamp: sent.created_at
-						? new Date(sent.created_at).toLocaleTimeString("es-ES", {
-								hour: "2-digit",
-								minute: "2-digit",
-							})
-						: new Date().toLocaleTimeString(),
-					senderName: (sent as any).sender_name ?? undefined,
-					attachment: (sent as any).attachment_url
-						? {
-								url: (sent as any).attachment_url,
-								type:
-									(sent as any).attachment_type ??
-									attachment_payload.attachment_type ??
-									"file",
-								name:
-									(sent as any).attachment_name ??
-									attachment_payload.attachment_name,
-								size:
-									(sent as any).attachment_size ??
-									attachment_payload.attachment_size,
-							}
-						: undefined,
-					replyTo: sent.reply_to
-						? {
-								id: String(sent.reply_to),
-								content: (sent as any).reply_preview ?? "",
-								senderName: undefined,
-							}
-						: undefined,
+				const payload: any = {
+					content: newMessage || null,
+					...attachment_payload,
+					reply_to: replyingTo?.id ?? null,
 				};
 
-				setMessages((prev) =>
-					prev.map((m) => (m.id === tempId ? normalizedBackend : m)),
-				);
-					
-				const currentHookMsgs = messagesMap[chat.id] ?? [];
-				setMessagesForConversation(chat.id, [
-					...currentHookMsgs,
-					sent as BackendMessage,
-				]);
-					
-				try {
-					await markAsRead(chat.id, String(sent.id));
-				} catch {}
+				const sent = await sendMessage(chat.id, payload);
+				if (sent) {
+					const normalizedBackend: ExtendedMessage = {
+						id: String((sent as any).id),
+						content: sent.content ?? "",
+						sender: "me",
+						timestamp: sent.created_at
+							? new Date(sent.created_at).toLocaleTimeString("es-ES", {
+									hour: "2-digit",
+									minute: "2-digit",
+								})
+							: new Date().toLocaleTimeString(),
+						senderName: (sent as any).sender_name ?? undefined,
+						attachment: (sent as any).attachment_url
+							? {
+									url: (sent as any).attachment_url,
+									type:
+										(sent as any).attachment_type ??
+										attachment_payload.attachment_type ??
+										"file",
+									name:
+										(sent as any).attachment_name ??
+										attachment_payload.attachment_name,
+									size:
+										(sent as any).attachment_size ??
+										attachment_payload.attachment_size,
+								}
+							: undefined,
+						replyTo: sent.reply_to
+							? {
+									id: String(sent.reply_to),
+									content: (sent as any).reply_preview ?? "",
+									senderName: undefined,
+								}
+							: undefined,
+					};
+
+					setMessages((prev) =>
+						prev.map((m) => (m.id === tempId ? normalizedBackend : m)),
+					);
+
+					const currentHookMsgs = messagesMap[chat.id] ?? [];
+					setMessagesForConversation(chat.id, [
+						...currentHookMsgs,
+						sent as BackendMessage,
+					]);
+
+					try {
+						await markAsRead(chat.id, String(sent.id));
+					} catch (err) {
+						console.error(err);
+					}
 				}
 			}
 		} catch (err) {
@@ -436,40 +455,43 @@ export function ChatConversation({
 		}
 	};
 
-	const handleReply = (message: ExtendedMessage) => {
+	const handleReply = useCallback((message: ExtendedMessage) => {
 		setReplyingTo(message);
-	};
+	}, []);
 
-	const handleEdit = (message: ExtendedMessage) => {
+	const handleEdit = useCallback((message: ExtendedMessage) => {
 		setEditingMessageId(message.id);
 		setEditingContent(message.content);
-	};
+	}, []);
 
-	const handleDelete = (messageId: string) => {
+	const handleDelete = useCallback((messageId: string) => {
 		// no backend delete implemented in endpoints — do local remove for now
 		setMessages((prev) => prev.filter((m) => m.id !== messageId));
 		// note: if you implement backend delete, call it here and refresh hook messages
-	};
+	}, []);
 
-	const handleCopy = (content: string) => {
+	const handleCopy = useCallback((content: string) => {
 		navigator.clipboard.writeText(content);
-	};
+	}, []);
 
-	const handleSaveEdit = (messageId: string) => {
-		setMessages((prev) =>
-			prev.map((m) =>
-				m.id === messageId ? { ...m, content: editingContent } : m,
-			),
-		);
+	const handleSaveEdit = useCallback(
+		(messageId: string) => {
+			setMessages((prev) =>
+				prev.map((m) =>
+					m.id === messageId ? { ...m, content: editingContent } : m,
+				),
+			);
+			setEditingMessageId(null);
+			setEditingContent("");
+			// note: no backend edit endpoint implemented; if you add it, call it here and refresh hook
+		},
+		[editingContent],
+	);
+
+	const handleCancelEdit = useCallback(() => {
 		setEditingMessageId(null);
 		setEditingContent("");
-		// note: no backend edit endpoint implemented; if you add it, call it here and refresh hook
-	};
-
-	const handleCancelEdit = () => {
-		setEditingMessageId(null);
-		setEditingContent("");
-	};
+	}, []);
 
 	const removeAttachment = () => {
 		setAttachment(null);
@@ -479,66 +501,9 @@ export function ChatConversation({
 		}
 	};
 
-	const renderMessageContent = (message: ExtendedMessage) => {
-		if (message.attachment) {
-			switch (message.attachment.type) {
-				case "image":
-					return (
-						<div className="space-y-2">
-							<img
-								src={message.attachment.url || "/placeholder.svg"}
-								alt="Imagen adjunta"
-								className="rounded-lg max-w-sm max-h-64 object-cover"
-							/>
-							{message.content && (
-								<p className="text-sm leading-relaxed">{message.content}</p>
-							)}
-						</div>
-					);
-				case "audio":
-					return (
-						<div className="space-y-2">
-							<AudioPlayer src={message.attachment.url} />
-							{message.content && (
-								<p className="text-sm leading-relaxed">{message.content}</p>
-							)}
-						</div>
-					);
-				case "video":
-					return (
-						<div className="space-y-2">
-							<video controls className="rounded-lg max-w-sm max-h-64">
-								<source src={message.attachment.url} type="video/mp4" />
-								Tu navegador no soporta el elemento de video.
-							</video>
-							{message.content && (
-								<p className="text-sm leading-relaxed">{message.content}</p>
-							)}
-						</div>
-					);
-				case "file":
-					return (
-						<div className="space-y-2">
-							<div className="flex items-center gap-2 p-3 bg-background/50 rounded-lg">
-								<File className="h-5 w-5" />
-								<div className="flex-1">
-									<p className="text-sm font-medium">
-										{message.attachment.name}
-									</p>
-									<p className="text-xs text-muted-foreground">
-										{message.attachment.size}
-									</p>
-								</div>
-							</div>
-							{message.content && (
-								<p className="text-sm leading-relaxed">{message.content}</p>
-							)}
-						</div>
-					);
-			}
-		}
-		return <MarkdownRenderer content={message.content} />;
-	};
+	const handleSetEditingContent = useCallback((content: string) => {
+		setEditingContent(content);
+	}, []);
 
 	return (
 		<div className="h-full flex flex-col">
@@ -546,94 +511,23 @@ export function ChatConversation({
 			<ScrollArea className="flex-1 p-4" ref={scrollRef}>
 				<div className="space-y-4 max-w-4xl mx-auto">
 					{messages.map((message) => (
-						<div
+						<ChatMessage
 							key={message.id}
-							className={`flex gap-3 ${message.sender === "me" ? "flex-row-reverse" : ""}`}
-							onMouseEnter={() => setHoveredMessageId(message.id)}
-							onMouseLeave={() => setHoveredMessageId(null)}
-						>
-							{message.sender === "other" && (
-								<div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
-									{message.avatar || message.senderName?.charAt(0)}
-								</div>
-							)}
-							<div
-								className={`flex flex-col ${message.sender === "me" ? "items-end" : "items-start"} max-w-[70%]`}
-							>
-								{message.sender === "other" && message.senderName && (
-									<span className="text-xs text-muted-foreground mb-1 px-1">
-										{message.senderName}
-									</span>
-								)}
-								<div className="relative group">
-									{editingMessageId === message.id ? (
-										<div className="space-y-2">
-											<Input
-												value={editingContent}
-												onChange={(e) => setEditingContent(e.target.value)}
-												className="min-w-[300px]"
-												autoFocus
-											/>
-											<div className="flex gap-2">
-												<Button
-													size="sm"
-													onClick={() => handleSaveEdit(message.id)}
-												>
-													Guardar
-												</Button>
-												<Button
-													size="sm"
-													variant="outline"
-													onClick={handleCancelEdit}
-												>
-													Cancelar
-												</Button>
-											</div>
-										</div>
-									) : (
-										<>
-											<div
-												className={`rounded-2xl px-4 py-2 ${
-													message.sender === "me"
-														? "bg-primary text-primary-foreground"
-														: "bg-muted text-foreground"
-												}`}
-											>
-												{message.replyTo && (
-													<div className="mb-2 pb-2 border-b border-current/20">
-														<p className="text-xs opacity-70 font-medium">
-															{message.replyTo.senderName || "Usuario"}
-														</p>
-														<p className="text-xs opacity-70 truncate">
-															{message.replyTo.content}
-														</p>
-													</div>
-												)}
-												{renderMessageContent(message)}
-											</div>
-											{hoveredMessageId === message.id && (
-												<div
-													className={`absolute -top-3 ${message.sender === "me" ? "right-0" : "left-0"} opacity-0 group-hover:opacity-100 transition-opacity`}
-												>
-													<MessageActions
-														onReply={() => handleReply(message)}
-														onEdit={() => handleEdit(message)}
-														onDelete={() => handleDelete(message.id)}
-														onCopy={() => handleCopy(message.content)}
-														isOwnMessage={message.sender === "me"}
-													/>
-												</div>
-											)}
-										</>
-									)}
-								</div>
-								<span className="text-xs text-muted-foreground mt-1 px-1">
-									{message.timestamp}
-								</span>
-							</div>
-						</div>
+							message={message}
+							isHovered={hoveredMessageId === message.id}
+							isEditing={editingMessageId === message.id}
+							editingContent={editingContent}
+							onHover={setHoveredMessageId}
+							onReply={handleReply}
+							onEdit={handleEdit}
+							onDelete={handleDelete}
+							onCopy={handleCopy}
+							onSaveEdit={handleSaveEdit}
+							onCancelEdit={handleCancelEdit}
+							onEditingContentChange={handleSetEditingContent}
+						/>
 					))}
-					
+
 					{/* Loading message for agent */}
 					{waitingForAgent && selectedAgent && (
 						<div className="flex gap-3">
@@ -647,11 +541,22 @@ export function ChatConversation({
 								<div className="bg-muted text-foreground rounded-2xl px-4 py-2">
 									<div className="flex items-center gap-2">
 										<div className="flex space-x-1">
-											<div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-											<div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-											<div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+											<div
+												className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
+												style={{ animationDelay: "0ms" }}
+											></div>
+											<div
+												className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
+												style={{ animationDelay: "150ms" }}
+											></div>
+											<div
+												className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
+												style={{ animationDelay: "300ms" }}
+											></div>
 										</div>
-										<span className="text-sm text-muted-foreground">Escribiendo...</span>
+										<span className="text-sm text-muted-foreground">
+											Escribiendo...
+										</span>
 									</div>
 								</div>
 							</div>
