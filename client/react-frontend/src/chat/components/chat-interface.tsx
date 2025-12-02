@@ -34,7 +34,7 @@ export interface Message {
 }
 
 export function ChatInterface() {
-	const [selectedChat, setSelectedChat] = useState<Conversation | null>(null);
+	const [selectedChat, setSelectedChat] = useState<Conversation | undefined>(undefined);
 	const [sidebarOpen, setSidebarOpen] = useState(true);
 	const [showSettings, setShowSettings] = useState(false);
 	const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
@@ -148,7 +148,7 @@ export function ChatInterface() {
 			{/* Toolbar */}
 			<ChatToolbar
 				selectedChat={selectedChat}
-				onGoHome={() => setSelectedChat(null)}
+				onGoHome={() => setSelectedChat(undefined)}
 				onAgentSelect={setSelectedAgent}
 			/>
 		</div>

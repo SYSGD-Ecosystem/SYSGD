@@ -24,7 +24,7 @@ interface NewChatModalProps {
 	onSelectContact: (contact: Contact) => void;
 }
 
-interface Contact {
+export interface Contact {
 	id: number;
 	name: string;
 	email: string;
@@ -90,7 +90,7 @@ export function NewChatModal({
 	const handleSelectContact = async (contact: Contact) => {
 		try {
 			// createConversation espera un objeto opts
-			const conv = await createConversation({ contactUsername: contact.email });
+			// const conv = await createConversation({ contactUsername: contact.email });
 			// opcional: refrescar conversaciones globales
 			await fetchConversations();
 			onSelectContact(contact);

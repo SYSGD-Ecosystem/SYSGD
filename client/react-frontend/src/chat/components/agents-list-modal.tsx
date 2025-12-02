@@ -21,13 +21,11 @@ import {
 import { Agent, AgentSupport } from "../../types/Agent";
 import { useAgents } from "../hooks/useAgents";
 import { 
-  Bot, 
-  Edit, 
+  Bot,  
   Trash2, 
   Play, 
   Pause, 
   Loader2,
-  AlertCircle 
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { IoChatboxOutline } from "react-icons/io5";
@@ -193,7 +191,7 @@ export const AgentsListModal: FC<AgentsListModalProps> = ({
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => createConversation({type:"bot", contactUsername: user?.username,members:[user?.username],title:agent.name})}
+                              onClick={() => createConversation({type:"bot", contactUsername: user?.username || '', members:[user?.username || ''], title:agent.name})}
                               title="Nuevo chat"
                               className="text-red-600 hover:text-red-700"
                             >

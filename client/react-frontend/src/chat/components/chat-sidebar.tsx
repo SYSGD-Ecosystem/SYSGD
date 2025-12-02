@@ -15,6 +15,7 @@ import { type Conversation, useChat } from "../hooks/useChat";
 import { getRandomEmoji } from "@/utils/util";
 import { useNavigate } from "react-router-dom";
 import { IoChatboxOutline } from "react-icons/io5";
+import type { Contact } from "./new-chat-modal";
 
 interface ChatSidebarProps {
 	selectedChat?: Conversation;
@@ -93,9 +94,17 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 		return matchesSearch && matchesFilter;
 	});
 
-	const handleNewChat = (contact: Conversation) => {
+	const handleNewChat = (contact: Contact) => {
 		fetchConversations();
-		onSelectChat(contact);
+		// Convert Contact to Conversation format
+		const conversation: Conversation = {
+			id: contact.id.toString(),
+			title: contact.name,
+			type: contact.type === "agent" || contact.type === "bot" ? "private" : "private",
+			created_by: null,
+			created_at: new Date().toISOString(),
+		};
+		onSelectChat(conversation);
 	};
 
 	return (

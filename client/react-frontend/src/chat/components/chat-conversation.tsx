@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Paperclip, Smile, X, File, Mic, Video, Bot } from "lucide-react";
-import type { Chat, Message } from "./chat-interface";
+import type { Message } from "./chat-interface";
 import { ChatSettings } from "./chat-settings";
 import { type Conversation, useChat, type Message as BackendMessage } from "../hooks/useChat";
 import { useAgents } from "../hooks/useAgents";
@@ -91,38 +91,41 @@ export function ChatConversation({
 	const normalizedMessages = useMemo(() => {
 		const list = messagesMap?.[chat.id] ?? [];
 		// map backend message shape to ExtendedMessage if needed
+		const userId = (window as any).__CURRENT_USER_ID;
 		return (list as BackendMessage[]).map((m) => ({
 			id: String(m.id),
 			content: m.content ?? "",
 			sender:
 				m.sender_id === undefined || m.sender_id === null
-					? "other"
-					: m.sender_id ===
-							/* local heuristic: */ ((window as any).__CURRENT_USER_ID ??
-								m.sender_id)
-						? "me"
-						: "other",
+					? ("other" as const)
+					: m.sender_id === userId
+					? ("me" as const)
+					: ("other" as const),
 			timestamp: m.created_at
 				? new Date(m.created_at).toLocaleTimeString("es-ES", {
 						hour: "2-digit",
 						minute: "2-digit",
-					})
+				  })
 				: "",
-			senderName: (m as any).sender_name ?? undefined,
+			senderName:
+				m.sender_id === userId
+					? "Tú"
+					: m.sender_name || m.sender_username || "Usuario",
+			avatar: undefined, // Backend Message doesn't have avatar field
 			attachment: m.attachment_url
 				? {
 						type: (m.attachment_type as any) ?? "file",
-						url: (m as any).attachment_url,
-						name: (m as any).attachment_name,
-						size: (m as any).attachment_size,
-					}
+						url: m.attachment_url,
+						name: undefined,
+						size: undefined,
+				  }
 				: undefined,
 			replyTo: m.reply_to
 				? {
 						id: String(m.reply_to),
-						content: (m as any).reply_preview ?? "",
+						content: "", // Backend doesn't have reply_to content
 						senderName: undefined,
-					}
+				  }
 				: undefined,
 		}));
 	}, [messagesMap, chat.id]);

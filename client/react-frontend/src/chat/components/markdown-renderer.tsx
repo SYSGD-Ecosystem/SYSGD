@@ -25,8 +25,8 @@ const MarkdownRendererComponent: React.FC<MarkdownRendererProps> = ({
           p: ({ children }) => (
             <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
           ),
-          code: ({ node, inline, className, children, ...props }) => {
-            if (inline) {
+          code: ({ /*node, inline,*/ className, children, ...props }) => {
+            /*if (inline) {
               return (
                 <code 
                   className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono" 
@@ -35,7 +35,7 @@ const MarkdownRendererComponent: React.FC<MarkdownRendererProps> = ({
                   {children}
                 </code>
               );
-            }
+            }*/
             return (
               <code className={className} {...props}>
                 {children}
