@@ -28,7 +28,9 @@
     "main.js",
     "preload.js",
     "splash.html",
-    "assets/**/*"
+    "aythen-splash.html",
+    "assets/**/*",
+    "www/**/*"
   ],
   "linux": {
     "target": ["AppImage"],

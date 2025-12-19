@@ -1,18 +1,32 @@
 import { BrowserRouter, HashRouter } from "react-router-dom";
 
-// Detección robusta del entorno
+interface CapacitorAPI {
+  getPlatform?: () => string;
+  isNative?: () => boolean;
+}
+
+interface ElectronAPI {
+  appReady: () => void;
+  minimize: () => void;
+  maximize: () => void;
+  unmaximize: () => void;
+  close: () => void;
+  isMaximized: () => Promise<boolean>;
+  isDev: () => boolean;
+}
+
 const isElectron = () => {
-  // Verificar si estamos en Electron
   return !!(window && window.process && window.process.versions && window.process.versions.electron) ||
-         !!(window && (window as any).electronAPI) ||
-         // Verificación por user agent
+         !!(window && (window as Window & { electronAPI?: ElectronAPI }).electronAPI) ||
          navigator.userAgent.toLowerCase().indexOf('electron') > -1;
 };
 
 const isCapacitor = () => {
-  // Verificar si estamos en Capacitor
-  return !!(window && (window as any).Capacitor) ||
-         !!(window && (window as any).capacitor);
+  const capacitorWindow = window as Window & {
+    Capacitor?: CapacitorAPI;
+    capacitor?: CapacitorAPI
+  };
+  return !!(capacitorWindow.Capacitor) || !!(capacitorWindow.capacitor);
 };
 
 const AppRouter = ({ children }: { children: React.ReactNode }) => {

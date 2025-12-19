@@ -120,6 +120,40 @@ La aplicación incluye una barra de título personalizada que reemplaza la barra
 
 La barra de título personalizada proporciona una apariencia moderna y consistente en todas las plataformas.
 
+## ElectronWrapper - Wrapper Universal
+
+Para manejar la barra de título en toda la aplicación, se ha implementado un wrapper inteligente:
+
+### Características del ElectronWrapper
+- **Detección automática**: Identifica si la aplicación corre en Electron
+- **Wrapper condicional**: Solo aplica la barra de título en entorno Electron
+- **Cobertura total**: Envuelve toda la aplicación incluyendo todas las rutas
+- **Sin impacto en web**: En navegador funciona normalmente sin barra de título
+- **Layout flexible**: Mantiene el diseño responsive en todos los entornos
+
+### Componentes del Wrapper
+- `src/components/ElectronWrapper.tsx`: Wrapper principal con detección de entorno
+- Integrado en `src/main.tsx` para cubrir toda la aplicación
+- Compatible con `AppRouter` y `ThemeProvider`
+
+### Funcionamiento
+```typescript
+// En Electron: muestra barra de título + contenido
+<ElectronWrapper>
+  <TitleBar />
+  <div className="flex-1">
+    {children} // Toda la app
+  </div>
+</ElectronWrapper>
+
+// En Web: solo el contenido
+<ElectronWrapper>
+  {children} // Toda la app sin barra
+</ElectronWrapper>
+```
+
+Este enfoque garantiza que la barra de título esté presente en **todas las páginas** cuando se ejecuta en Electron, mientras que en el navegador web funciona normalmente.
+
 ## Arquitectura
 
 La aplicación sigue la arquitectura estándar de Electron:

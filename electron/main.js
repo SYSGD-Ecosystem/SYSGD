@@ -32,7 +32,10 @@ function createMainWindow() {
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
-            contextIsolation: true
+            contextIsolation: true,
+            webSecurity: true,
+            allowRunningInsecureContent: false,
+            experimentalFeatures: false
         }
     });
 
@@ -40,16 +43,39 @@ function createMainWindow() {
     //mainWindow.loadURL('http://localhost:5173'); // si usas vite en modo dev
 
     // Para producción:
-    mainWindow.loadFile(path.join(__dirname, './www/index.html'));
+    const indexPath = path.join(__dirname, 'www/index.html');
+    console.log('Loading index.html from:', indexPath);
+    
+    // Verificar si el archivo existe antes de cargarlo
+    const fs = require('fs');
+    if (fs.existsSync(indexPath)) {
+        mainWindow.loadFile(indexPath);
+    } else {
+        console.error('Index.html not found at:', indexPath);
+        // Intentar rutas alternativas
+        const alternativePaths = [
+            path.join(__dirname, '../www/index.html'),
+            path.join(process.resourcesPath, 'www/index.html'),
+            path.join(__dirname, 'dist/index.html')
+        ];
+        
+        for (const altPath of alternativePaths) {
+            if (fs.existsSync(altPath)) {
+                console.log('Found index.html at alternative path:', altPath);
+                mainWindow.loadFile(altPath);
+                break;
+            }
+        }
+    }
 
     // Mostrar ventana principal cuando esté lista
     mainWindow.once('ready-to-show', () => {
-        if (splashWindow) {
-            splashWindow.close();
-            splashWindow = null;
-        }
-        mainWindow.show();
-    });
+            if (splashWindow) {
+                splashWindow.close();
+                splashWindow = null;
+            }
+            mainWindow.show();
+        });
 }
 
 // IPC handlers
