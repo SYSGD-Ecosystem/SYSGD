@@ -28,6 +28,8 @@ const pullRequestFiltersSchema = z.object({
   state: z.enum(['open', 'closed', 'all']).optional(),
   sort: z.enum(['created', 'updated', 'popularity']).optional(),
   direction: z.enum(['asc', 'desc']).optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),
   perPage: z.coerce.number().int().min(1).max(100).default(50),
 });
@@ -282,6 +284,8 @@ export class GitHubController {
           state: filters.state,
           sort: filters.sort,
           direction: filters.direction,
+          dateFrom: filters.dateFrom,
+          dateTo: filters.dateTo,
         }
       );
 

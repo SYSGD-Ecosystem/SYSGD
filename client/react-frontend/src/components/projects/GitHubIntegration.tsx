@@ -47,6 +47,7 @@ export default function GitHubIntegration({
   const [showConfig, setShowConfig] = useState(false);
   const [hasUserToken, setHasUserToken] = useState(false);
   const [showTokenForm, setShowTokenForm] = useState(false);
+  const [isCheckingConfig, setIsCheckingConfig] = useState(true);
   
   // Configuration state (from project)
   const [repoUrl, setRepoUrl] = useState('');
@@ -68,7 +69,9 @@ export default function GitHubIntegration({
   const [filters, setFilters] = useState<PullRequestFilters>({
     state: 'all',
     sort: 'created',
-    direction: 'desc'
+    direction: 'desc',
+    dateFrom: '',
+    dateTo: ''
   });
 
   const { exportToXlsx } = useExportTable();
@@ -117,6 +120,8 @@ export default function GitHubIntegration({
         }
       } catch (e) {
         console.error('Error loading project config', e);
+      } finally {
+        setIsCheckingConfig(false);
       }
     };
 
@@ -278,6 +283,8 @@ export default function GitHubIntegration({
         ...(filters.state && { state: filters.state }),
         ...(filters.sort && { sort: filters.sort }),
         ...(filters.direction && { direction: filters.direction }),
+        ...(filters.dateFrom && { dateFrom: filters.dateFrom }),
+        ...(filters.dateTo && { dateTo: filters.dateTo }),
       });
 
       const response = await fetch(`/api/github/pull-requests?${queryParams}`, {
@@ -421,6 +428,14 @@ export default function GitHubIntegration({
     if (parsedOwner) setOwner(parsedOwner);
     if (parsedRepo) setRepo(parsedRepo);
   };
+
+  if (isCheckingConfig) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
 
   if (!isConfigured) {
     return (
@@ -617,7 +632,7 @@ export default function GitHubIntegration({
           <CardTitle>Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div>
               <Label>Estado</Label>
               <Select value={filters.state} onValueChange={(value) => handleFilterChange('state', value)}>
@@ -656,6 +671,24 @@ export default function GitHubIntegration({
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Fecha desde</Label>
+              <Input
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
+                placeholder="YYYY-MM-DD"
+              />
+            </div>
+            <div>
+              <Label>Fecha hasta</Label>
+              <Input
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => handleFilterChange('dateTo', e.target.value)}
+                placeholder="YYYY-MM-DD"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -680,8 +713,9 @@ export default function GitHubIntegration({
                     <TableHead>Autor</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Fecha</TableHead>
-                    <TableHead className="text-right">+/-</TableHead>
-                    <TableHead className="text-right">Archivos</TableHead>
+                    <TableHead className="text-right truncate">Líneas +</TableHead>
+                    <TableHead className="text-right truncate">Líneas -</TableHead>
+                    <TableHead className="text-right truncate">Archivos</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -701,10 +735,12 @@ export default function GitHubIntegration({
                         </div>
                       </TableCell>
                       <TableCell>{getStateBadge(pr.state)}</TableCell>
-                      <TableCell className="text-sm">{formatDate(pr.created_at)}</TableCell>
-                      <TableCell className="text-right text-sm">
+                      <TableCell className="text-sm truncate">{formatDate(pr.created_at)}</TableCell>
+                      <TableCell className="text-right text-sm truncate">
                         <span className="text-green-600">+{pr.additions}</span>
-                        <span className="text-red-600 ml-1">-{pr.deletions}</span>
+                      </TableCell>
+                      <TableCell className="text-right text-sm truncate">
+                        <span className="text-red-600">-{pr.deletions}</span>
                       </TableCell>
                       <TableCell className="text-right text-sm">{pr.changed_files}</TableCell>
                       <TableCell>

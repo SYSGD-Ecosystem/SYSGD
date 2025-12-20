@@ -56,6 +56,8 @@ export interface PullRequestFilters {
   state?: 'open' | 'closed' | 'all';
   sort?: 'created' | 'updated' | 'popularity';
   direction?: 'asc' | 'desc';
+  dateFrom?: string; // YYYY-MM-DD format
+  dateTo?: string; // YYYY-MM-DD format
 }
 
 export interface PaginatedPullRequests {

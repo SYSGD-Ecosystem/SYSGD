@@ -48,6 +48,8 @@ export interface PullRequestFilters {
   state?: 'open' | 'closed' | 'all';
   sort?: 'created' | 'updated' | 'popularity';
   direction?: 'asc' | 'desc';
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export interface PaginatedPullRequests {
@@ -127,7 +129,8 @@ export class GitHubService {
     filters: PullRequestFilters = {}
   ): Promise<PaginatedPullRequests> {
     try {
-      const { data } = await this.octokit.pulls.list({
+      // Build query parameters for GitHub API
+      const queryParams: any = {
         owner,
         repo,
         state: filters.state || 'all',
@@ -135,7 +138,17 @@ export class GitHubService {
         direction: filters.direction || 'desc',
         page,
         per_page: perPage,
-      });
+      };
+
+      // Add date range filtering if provided
+      if (filters.dateFrom || filters.dateTo) {
+        // GitHub API doesn't directly support date range in pulls.list
+        // We'll need to filter the results after fetching
+        // For now, fetch all and filter client-side
+        // TODO: Implement more efficient date filtering using search API if needed
+      }
+
+      const { data } = await this.octokit.pulls.list(queryParams);
 
       // Nota: GitHub NO incluye additions/deletions/changed_files en pulls.list.
       // Para mostrar esas métricas hay que pedir el detalle de cada PR (pulls.get).
@@ -170,12 +183,41 @@ export class GitHubService {
 
       const pullRequests = await this.enrichPullRequestsWithStats(owner, repo, pullRequestsBase);
 
-      // Get total count for pagination
-      const totalCount = await this.getTotalPullRequestsCount(owner, repo, filters.state);
+      // Apply date range filtering if provided
+      let filteredPullRequests = pullRequests;
+      if (filters.dateFrom || filters.dateTo) {
+        filteredPullRequests = pullRequests.filter(pr => {
+          const createdDate = new Date(pr.created_at);
+          let matches = true;
+          
+          if (filters.dateFrom) {
+            const fromDate = new Date(filters.dateFrom);
+            matches = matches && createdDate >= fromDate;
+          }
+          
+          if (filters.dateTo) {
+            const toDate = new Date(filters.dateTo);
+            // Add one day to include the end date
+            toDate.setDate(toDate.getDate() + 1);
+            matches = matches && createdDate < toDate;
+          }
+          
+          return matches;
+        });
+      }
+
+      // Get total count for pagination (adjusted for date filtering)
+      let totalCount = await this.getTotalPullRequestsCount(owner, repo, filters.state);
+      if (filters.dateFrom || filters.dateTo) {
+        // For date filtering, we need to estimate or calculate the actual count
+        // For now, use the filtered count as approximation
+        // TODO: Implement more accurate counting for date ranges
+        totalCount = filteredPullRequests.length + (page - 1) * perPage;
+      }
       const totalPages = Math.ceil(totalCount / perPage);
 
       return {
-        pullRequests,
+        pullRequests: filteredPullRequests,
         totalCount,
         currentPage: page,
         totalPages,
