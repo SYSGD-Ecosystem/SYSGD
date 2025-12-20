@@ -102,7 +102,7 @@ const user = getCurrentUserData(req)
 		for (const userId of assignees) {
 			await client.query(
 				"INSERT INTO task_assignees (task_id, user_id) VALUES ($1, $2)",
-				[newTask.id, userId],
+				[newTask.id, typeof userId === 'object' ? userId.id : userId],
 			);
 		}
 
@@ -192,7 +192,7 @@ router.put("/:taskId", isAuthenticated, async (req: Request, res: Response) => {
 		for (const userId of assignees) {
 			await client.query(
 				"INSERT INTO task_assignees (task_id, user_id) VALUES ($1, $2)",
-				[taskId, userId.id],
+				[taskId, typeof userId === 'object' ? userId.id : userId],
 			);
 		}
 

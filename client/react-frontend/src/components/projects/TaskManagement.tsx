@@ -31,6 +31,7 @@ import type { Task } from "@/types/Task";
 import { getPriorityColor } from "@/utils/util";
 import { getStatusIcon } from "@/utils/util-components";
 import DialogViewTask from "../dialogs/DialogViewTask";
+import MarkdownEditor from "@/components/ui/markdown-editor";
 
 import { useProjectMembers } from "@/hooks/connection/useProjectMembers";
 import {
@@ -418,16 +419,16 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 							</div>
 							<div>
 								<Label htmlFor="descripcion">Descripción</Label>
-								<Textarea
-									className="min-h-32"
-									id="descripcion"
+								<MarkdownEditor
 									value={editingTask.description || ""}
-									onChange={(e) =>
+									onChange={(value) =>
 										setEditingTask({
 											...editingTask,
-											description: e.target.value,
+											description: value,
 										})
 									}
+									placeholder="Describe la tarea usando Markdown..."
+									className="mt-2"
 								/>
 							</div>
 							<div className="border hidden p-4 rounded-lg bg-muted space-y-4">

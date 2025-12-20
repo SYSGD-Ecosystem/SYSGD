@@ -25,112 +25,142 @@ const DialogViewTask: FC<{
 	return (
 		<>
 			<Dialog open={isOpen} onOpenChange={onOpenChange}>
-				<DialogContent className="max-w-md">
-					<DialogHeader>
-						<DialogTitle>Detalles de la Tarea</DialogTitle>
-					</DialogHeader>
-					{
-						<div className="space-y-4">
-							<Label className="text-xs bg-slate-200 p-1 font-medium rounded dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+				<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+					<DialogHeader className="border-b pb-4">
+						<div className="flex items-center justify-between">
+							<DialogTitle className="text-xl font-semibold">Detalles de la Tarea</DialogTitle>
+							<Badge variant="outline" className="text-xs">
 								ID: {selectedTask.id}
-							</Label>
-							<div className="grid grid-cols-2 gap-4">
-								<div>
-									<Label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-										No.
-									</Label>
-									<p className="text-xs text-gray-600 dark:text-white">
-										{selectedTask.project_task_number}
-									</p>
-								</div>
-								<div>
-									<Label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-										Fecha
-									</Label>
-									<p className="text-xs text-gray-600 dark:text-white">
-										{formatDate(selectedTask.created_at)}
-									</p>
-								</div>
-							</div>
-
-							<div className="text-gray-900 border-neutral-100 dark:bg-slate-900 rounded dark:text-white custom-html-style p-1 max-h-80 overflow-auto">
-								<ReactMarkdown>{`### ${selectedTask.title}\n${selectedTask.description}`}</ReactMarkdown>
-							</div>
-
-							<div className="grid grid-cols-3 gap-4">
-								<div>
-									<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-										Tipo
-									</Label>
-									<p className="text-sm text-gray-900 dark:text-white">
-										{selectedTask.type}
-									</p>
-								</div>
-								<div>
-									<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-										Prioridad
-									</Label>
-									<p>
-										<Badge variant={getPriorityColor(selectedTask.priority)}>
-											{selectedTask.priority}
-										</Badge>
-									</p>
-								</div>
-								<div>
-									<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-										Estado
-									</Label>
-									<div className="flex items-center gap-2">
-										{getStatusIcon(selectedTask.status)}
-										<span className="text-sm text-gray-900 dark:text-white">
-											{selectedTask.status}
-										</span>
-									</div>
-								</div>
-							</div>
-
+							</Badge>
+						</div>
+					</DialogHeader>
+					
+					<div className="space-y-6 pt-4">
+						{/* Header Info */}
+						<div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
 							<div>
-								<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-									Asignado a
+								<Label className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+									Número de Tarea
 								</Label>
-								<p className="text-sm text-gray-900 dark:text-white">
-									<div className="flex -space-x-2">
-										{/* biome-ignore lint/complexity/useOptionalChain: <explanation> */}
-										{selectedTask.assignees &&
-											selectedTask.assignees.map((assignee) => (
-												<div
-													key={assignee.id}
-													className="text-xs bg-slate-200 p-1 font-medium rounded dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-													title={assignee.name}
-												>
-													{assignee.name}
-												</div>
-											))}
-									</div>
+								<p className="text-lg font-medium text-gray-900 dark:text-white">
+									{selectedTask.project_task_number}
 								</p>
 							</div>
-
-							<div className="flex justify-end gap-2 pt-4">
-								<Button
-									variant="default"
-									disabled={isButtonDisabled}
-									onClick={onEditChange}
-								>
-									Editar
-								</Button>
-								<Button
-									variant="destructive"
-									disabled={isButtonDisabled}
-									onClick={() => {
-										setIsButtionDisabled(true);
-										onDeleteChange();
-									}}
-								>
-									Eliminar
-								</Button>
+							<div>
+								<Label className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+									Fecha de Creación
+								</Label>
+								<p className="text-lg font-medium text-gray-900 dark:text-white">
+									{formatDate(selectedTask.created_at)}
+								</p>
 							</div>
 						</div>
-					}
+
+						{/* Title and Description */}
+						<div className="space-y-4">
+							<div>
+								<Label className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 block">
+									Título
+								</Label>
+								<h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+									{selectedTask.title}
+								</h3>
+							</div>
+							
+							<div>
+								<Label className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 block">
+									Descripción
+								</Label>
+								<div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 max-h-60 overflow-y-auto">
+									<div className="prose prose-sm dark:prose-invert max-w-none">
+										<ReactMarkdown>
+											{selectedTask.description}
+										</ReactMarkdown>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						{/* Task Properties */}
+						<div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+							<div className="text-center">
+								<Label className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 block">
+									Tipo
+								</Label>
+								<Badge variant="secondary" className="w-full justify-center">
+									{selectedTask.type}
+								</Badge>
+							</div>
+							<div className="text-center">
+								<Label className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 block">
+									Prioridad
+								</Label>
+								<Badge variant={getPriorityColor(selectedTask.priority)} className="w-full justify-center">
+									{selectedTask.priority}
+								</Badge>
+							</div>
+							<div className="text-center">
+								<Label className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 block">
+									Estado
+								</Label>
+								<div className="flex items-center justify-center gap-2">
+									{getStatusIcon(selectedTask.status)}
+									<span className="text-sm font-medium text-gray-900 dark:text-white">
+										{selectedTask.status}
+									</span>
+								</div>
+							</div>
+						</div>
+
+						{/* Assignees */}
+						<div>
+							<Label className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-3 block">
+								Asignado a
+							</Label>
+							<div className="flex flex-wrap gap-2">
+								{selectedTask.assignees && selectedTask.assignees.length > 0 ? (
+									selectedTask.assignees.map((assignee) => (
+										<Badge
+											key={assignee.id}
+											variant="outline"
+											className="flex items-center gap-2 px-3 py-1"
+											title={assignee.name}
+										>
+											<div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+											{assignee.name}
+										</Badge>
+									))
+								) : (
+									<Badge variant="outline" className="text-gray-500">
+										Sin asignar
+									</Badge>
+								)}
+							</div>
+						</div>
+
+						{/* Action Buttons */}
+						<div className="flex justify-end gap-3 pt-4 border-t">
+							<Button
+								variant="outline"
+								disabled={isButtonDisabled}
+								onClick={onEditChange}
+								className="flex items-center gap-2"
+							>
+								Editar
+							</Button>
+							<Button
+								variant="destructive"
+								disabled={isButtonDisabled}
+								onClick={() => {
+									setIsButtionDisabled(true);
+									onDeleteChange();
+								}}
+								className="flex items-center gap-2"
+							>
+								Eliminar
+							</Button>
+						</div>
+					</div>
 				</DialogContent>
 			</Dialog>
 		</>
