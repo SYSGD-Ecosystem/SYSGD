@@ -9,6 +9,7 @@ import { ProjectSidebar } from "./ProjectSidebar";
 import TeamManagement from "./TeamManagement";
 import IdeasBank from "./IdeasBank";
 import NotesSection from "./NotesSection";
+import GitHubIntegration from "./GitHubIntegration.tsx";
 
 const ProjectWorkSpace: FC = () => {
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -80,6 +81,10 @@ const ProjectWorkSpace: FC = () => {
 
 					{activeSection === "notes" && selectedProject && (
 						<NotesSection projectId={selectedProject} />
+					)}
+
+					{activeSection === "github" && selectedProject && (
+						<GitHubIntegration projectId={selectedProject} />
 					)}
 				</main>
 			</div>

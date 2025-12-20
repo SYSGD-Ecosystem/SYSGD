@@ -14,6 +14,7 @@ import docApi from "./api"; // existing large router with document-management en
 import chat  from "./chat";
 import agents from "./agents";
 import upload from "./upload";
+import github from "./github.routes";
 
 const router = Router();
 
@@ -31,6 +32,7 @@ router.use("/auth", authRoutes);
 router.use("/chat", chat);
 router.use("/agents", agents);
 router.use("/uploads", upload);
+router.use("/github", github);
 
 
 // others (document registers, classification, etc.) remain in docApi

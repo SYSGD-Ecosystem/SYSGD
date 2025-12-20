@@ -17,6 +17,7 @@
     "@dotenvx/dotenvx": "^1.48.4",
     "@google/genai": "^1.26.0",
     "@google/generative-ai": "^0.24.1",
+    "@octokit/rest": "^22.0.1",
     "@types/multer": "^2.0.0",
     "@types/uuid": "^11.0.0",
     "aws-sdk": "^2.1692.0",

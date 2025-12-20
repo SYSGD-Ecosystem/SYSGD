@@ -21,6 +21,7 @@ import ProjectPageDemo from "./components/demo/page.tsx";
 import LandingPage from "./pages/LandingPage.tsx";
 import HomeChat from "./chat/app/page.tsx";
 import AppRouter from "./AppRouter.tsx";
+import { Toaster as SonnerToaster } from "sonner";
 
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
@@ -51,5 +52,6 @@ createRoot(document.getElementById("root")!).render(
       </ElectronWrapper>
     </ThemeProvider>
     <Toaster/>
+    <SonnerToaster />
   </StrictMode>
 );
