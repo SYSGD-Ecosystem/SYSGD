@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { Loader2, Github, ExternalLink, Settings, BarChart3, Download } from 'lucide-react';
+import { Loader2, Github, ExternalLink, Settings, BarChart3, Download, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { GitHubPullRequest, GitHubRepository, GitHubMetrics, PullRequestFilters } from '@/types/GitHubTypes';
 import useExportTable from '@/hooks/useExportTable';
@@ -378,11 +378,18 @@ export default function GitHubIntegration({
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
+  const handleRefresh = () => {
+    // clearGitHubCache(projectId);
+    fetchPullRequests(1); // Reset to page 1 when applying filters
+    fetchMetrics();
+  };
+
+  // Apply filters when they change
   useEffect(() => {
-    if (filters.state || filters.sort || filters.direction) {
-      fetchPullRequests(1);
+    if (filters.state || filters.sort || filters.direction || filters.dateFrom || filters.dateTo) {
+      handleRefresh();
     }
-  }, [filters]);
+  }, [filters.state, filters.sort, filters.direction, filters.dateFrom, filters.dateTo]);
 
   const getStateBadge = (state: string) => {
     switch (state) {
@@ -520,23 +527,33 @@ export default function GitHubIntegration({
           )}
         </div>
         <div className="flex gap-2">
-          {pullRequests.length > 0 && (
+          <div className="flex gap-2">
+            {pullRequests.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={exportToXlsx}
+                className="flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Exportar a Excel
+              </Button>
+            )}
             <Button
               variant="outline"
-              onClick={exportToXlsx}
+              onClick={handleRefresh}
               className="flex items-center gap-2"
             >
-              <Download className="w-4 h-4" />
-              Exportar a Excel
+              <RefreshCw className="w-4 h-4" />
+              Recargar
             </Button>
-          )}
-          <Button
-            variant="outline"
-            onClick={() => setShowConfig(!showConfig)}
-          >
-            <Settings className="w-4 h-4 mr-2" />
-            Configuración
-          </Button>
+            <Button
+              variant="outline"
+              onClick={() => setShowConfig(!showConfig)}
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Configuración
+            </Button>
+          </div>
         </div>
       </div>
 
