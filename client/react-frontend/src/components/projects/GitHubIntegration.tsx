@@ -8,15 +8,39 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { Loader2, Github, ExternalLink, AlertCircle, CheckCircle, XCircle, Settings, BarChart3 } from 'lucide-react';
+import { Loader2, Github, ExternalLink, Settings, BarChart3, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { GitHubPullRequest, GitHubRepository, GitHubMetrics, PullRequestFilters } from '@/types/GitHubTypes';
+import useExportTable from '@/hooks/useExportTable';
 
 interface GitHubIntegrationProps {
   projectId: string;
+  getGitHubCache: (projectId: string) => {
+    repository: GitHubRepository | null;
+    pullRequests: GitHubPullRequest[] | null;
+    metrics: GitHubMetrics | null;
+    pullRequestsKey?: string;
+    pagination?: { currentPage: number; totalPages: number; totalCount: number };
+  } | null;
+  setGitHubCache: (
+    projectId: string,
+    patch: {
+      repository?: GitHubRepository | null;
+      pullRequests?: GitHubPullRequest[] | null;
+      metrics?: GitHubMetrics | null;
+      pullRequestsKey?: string;
+      pagination?: { currentPage: number; totalPages: number; totalCount: number };
+    },
+  ) => void;
+  clearGitHubCache: (projectId: string) => void;
 }
 
-export default function GitHubIntegration({ projectId }: GitHubIntegrationProps) {
+export default function GitHubIntegration({
+  projectId,
+  getGitHubCache,
+  setGitHubCache,
+  clearGitHubCache,
+}: GitHubIntegrationProps) {
   const [isConfigured, setIsConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
@@ -47,6 +71,8 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
     direction: 'desc'
   });
 
+  const { exportToXlsx } = useExportTable();
+
   // Load project config and user token status on mount
   useEffect(() => {
     const loadProjectConfig = async () => {
@@ -60,6 +86,31 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
             setRepo(cfg.repo);
             setRepoUrl(`https://github.com/${cfg.owner}/${cfg.repo}`);
             setIsConfigured(true);
+
+            // Load cached data from parent (survives mount/unmount between sidebar sections)
+            const cached = getGitHubCache(projectId);
+            if (cached?.repository) {
+              setRepository(cached.repository);
+            } else {
+              fetchRepositoryInfo();
+            }
+
+            if (cached?.pullRequests) {
+              setPullRequests(cached.pullRequests);
+              if (cached.pagination) {
+                setCurrentPage(cached.pagination.currentPage);
+                setTotalPages(cached.pagination.totalPages);
+                setTotalCount(cached.pagination.totalCount);
+              }
+            } else {
+              fetchPullRequests();
+            }
+
+            if (cached?.metrics) {
+              setMetrics(cached.metrics);
+            } else {
+              fetchMetrics();
+            }
           } else {
             setShowConfig(true);
           }
@@ -86,7 +137,7 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
 
     loadProjectConfig();
     loadUserTokenStatus();
-  }, [projectId, isConfigured]);
+  }, [projectId]);
 
   const saveProjectConfig = async () => {
     if (!owner || !repo) {
@@ -114,6 +165,7 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
       setRepoUrl(`https://github.com/${owner}/${repo}`);
       toast.success('Configuración guardada. Ahora configura tu token.', { id: toastId });
       setShowTokenForm(true);
+      clearGitHubCache(projectId);
     } catch (e) {
       toast.error('Error al guardar configuración', { id: toastId });
     }
@@ -165,6 +217,7 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
         setShowConfig(false);
         setShowTokenForm(false);
         toast.success('Repositorio validado correctamente', { id: toastId });
+        clearGitHubCache(projectId);
         fetchRepositoryInfo();
         fetchPullRequests();
         fetchMetrics();
@@ -180,6 +233,12 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
   };
 
   const fetchRepositoryInfo = async () => {
+    const cached = getGitHubCache(projectId);
+    if (cached?.repository) {
+      setRepository(cached.repository);
+      return;
+    }
+
     try {
       const response = await fetch('/api/github/repository', {
         method: 'POST',
@@ -191,6 +250,7 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
       if (response.ok) {
         const data = await response.json();
         setRepository(data);
+        setGitHubCache(projectId, { repository: data });
       }
     } catch (error) {
       console.error('Error fetching repository info:', error);
@@ -198,6 +258,18 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
   };
 
   const fetchPullRequests = async (page: number = 1) => {
+    const pullRequestsKey = `${filters.state}|${filters.sort}|${filters.direction}|${page}`;
+    const cached = getGitHubCache(projectId);
+    if (cached?.pullRequests && cached.pullRequestsKey === pullRequestsKey) {
+      setPullRequests(cached.pullRequests);
+      if (cached.pagination) {
+        setCurrentPage(cached.pagination.currentPage);
+        setTotalPages(cached.pagination.totalPages);
+        setTotalCount(cached.pagination.totalCount);
+      }
+      return;
+    }
+
     setIsLoading(true);
     try {
       const queryParams = new URLSearchParams({
@@ -221,6 +293,15 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
         setCurrentPage(data.currentPage);
         setTotalPages(data.totalPages);
         setTotalCount(data.totalCount);
+        setGitHubCache(projectId, {
+          pullRequests: data.pullRequests,
+          pullRequestsKey,
+          pagination: {
+            currentPage: data.currentPage,
+            totalPages: data.totalPages,
+            totalCount: data.totalCount,
+          },
+        });
       }
     } catch (error) {
       toast.error('Error al cargar los Pull Requests');
@@ -230,6 +311,12 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
   };
 
   const fetchMetrics = async () => {
+    const cached = getGitHubCache(projectId);
+    if (cached?.metrics) {
+      setMetrics(cached.metrics);
+      return;
+    }
+
     try {
       const response = await fetch('/api/github/metrics', {
         method: 'POST',
@@ -241,6 +328,7 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
       if (response.ok) {
         const data = await response.json();
         setMetrics(data);
+        setGitHubCache(projectId, { metrics: data });
       }
     } catch (error) {
       console.error('Error fetching metrics:', error);
@@ -416,13 +504,25 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
             </p>
           )}
         </div>
-        <Button
-          variant="outline"
-          onClick={() => setShowConfig(!showConfig)}
-        >
-          <Settings className="w-4 h-4 mr-2" />
-          Configuración
-        </Button>
+        <div className="flex gap-2">
+          {pullRequests.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={exportToXlsx}
+              className="flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Exportar a Excel
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            onClick={() => setShowConfig(!showConfig)}
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            Configuración
+          </Button>
+        </div>
       </div>
 
       {/* Configuration Panel */}
@@ -572,7 +672,7 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
             </div>
           ) : (
             <>
-              <Table>
+              <Table id="myTable">
                 <TableHeader>
                   <TableRow>
                     <TableHead>#</TableHead>
