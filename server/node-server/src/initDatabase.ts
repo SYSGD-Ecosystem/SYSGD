@@ -247,5 +247,44 @@ CREATE TABLE IF NOT EXISTS agent_conversations (
   CREATE INDEX IF NOT EXISTS idx_message_reads_user_conversation ON message_reads(user_id, conversation_id);
 `);
 
+	// ==============================
+	// GitHub integration (config por proyecto)
+	// ==============================
+	await pool.query(`
+  CREATE TABLE IF NOT EXISTS github_project_config (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    owner TEXT NOT NULL,
+    repo TEXT NOT NULL,
+    token_encrypted BYTEA,
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(project_id)
+  );
+`);
+
+	await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_github_project_config_project_id
+  ON github_project_config(project_id);
+`);
+
+	await pool.query(`
+  CREATE TABLE IF NOT EXISTS github_project_user_token (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    token_encrypted BYTEA,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(project_id, user_id)
+  );
+`);
+
+	await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_github_project_user_token_project_user
+  ON github_project_user_token(project_id, user_id);
+`);
+
 	console.log("✅ Tablas verificadas o creadas correctamente.");
 }

@@ -21,8 +21,10 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
   const [isLoading, setIsLoading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
+  const [hasUserToken, setHasUserToken] = useState(false);
+  const [showTokenForm, setShowTokenForm] = useState(false);
   
-  // Configuration state
+  // Configuration state (from project)
   const [repoUrl, setRepoUrl] = useState('');
   const [owner, setOwner] = useState('');
   const [repo, setRepo] = useState('');
@@ -45,9 +47,87 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
     direction: 'desc'
   });
 
+  // Load project config and user token status on mount
+  useEffect(() => {
+    const loadProjectConfig = async () => {
+      try {
+        const res = await fetch(`/api/github/project-config/${projectId}`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.configured) {
+            const cfg = data.configuration;
+            setOwner(cfg.owner);
+            setRepo(cfg.repo);
+            setRepoUrl(`https://github.com/${cfg.owner}/${cfg.repo}`);
+            setIsConfigured(true);
+          } else {
+            setShowConfig(true);
+          }
+        }
+      } catch (e) {
+        console.error('Error loading project config', e);
+      }
+    };
+
+    const loadUserTokenStatus = async () => {
+      try {
+        const res = await fetch(`/api/github/user-token/${projectId}/status`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          setHasUserToken(data.configured);
+          if (!data.configured && isConfigured) {
+            setShowTokenForm(true);
+          }
+        }
+      } catch (e) {
+        console.error('Error loading user token status', e);
+      }
+    };
+
+    loadProjectConfig();
+    loadUserTokenStatus();
+  }, [projectId, isConfigured]);
+
+  const saveProjectConfig = async () => {
+    if (!owner || !repo) {
+      toast.error('Por favor completa owner y repo');
+      return;
+    }
+
+    const toastId = toast.loading('Guardando configuración del repositorio...');
+    try {
+      const response = await fetch('/api/github/project-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ projectId, owner, repo }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        toast.error(data?.message || 'Error al guardar configuración', { id: toastId });
+        return;
+      }
+
+      setIsConfigured(true);
+      setShowConfig(false);
+      setRepoUrl(`https://github.com/${owner}/${repo}`);
+      toast.success('Configuración guardada. Ahora configura tu token.', { id: toastId });
+      setShowTokenForm(true);
+    } catch (e) {
+      toast.error('Error al guardar configuración', { id: toastId });
+    }
+  };
+
   const validateRepository = async () => {
-    if (!owner || !repo || !token) {
-      toast.error('Por favor completa todos los campos');
+    if (!isConfigured) {
+      toast.error('Primero guarda la configuración del repositorio');
+      return;
+    }
+
+    if (!hasUserToken) {
+      toast.error('Necesitas configurar tu token de GitHub para continuar');
+      setShowTokenForm(true);
       return;
     }
 
@@ -56,11 +136,9 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
     try {
       const response = await fetch('/api/github/validate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ owner, repo, token }),
+        body: JSON.stringify({ projectId }),
       });
 
       const raw = await response.text();
@@ -85,6 +163,7 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
       if (data?.valid) {
         setIsConfigured(true);
         setShowConfig(false);
+        setShowTokenForm(false);
         toast.success('Repositorio validado correctamente', { id: toastId });
         fetchRepositoryInfo();
         fetchPullRequests();
@@ -104,11 +183,9 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
     try {
       const response = await fetch('/api/github/repository', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ owner, repo, token }),
+        body: JSON.stringify({ projectId }),
       });
 
       if (response.ok) {
@@ -133,11 +210,9 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
 
       const response = await fetch(`/api/github/pull-requests?${queryParams}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ owner, repo, token }),
+        body: JSON.stringify({ projectId }),
       });
 
       if (response.ok) {
@@ -158,11 +233,9 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
     try {
       const response = await fetch('/api/github/metrics', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ owner, repo, token }),
+        body: JSON.stringify({ projectId }),
       });
 
       if (response.ok) {
@@ -171,6 +244,38 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
       }
     } catch (error) {
       console.error('Error fetching metrics:', error);
+    }
+  };
+
+  const saveUserToken = async () => {
+    if (!token) {
+      toast.error('Por favor ingresa tu token de GitHub');
+      return;
+    }
+    const toastId = toast.loading('Guardando token...');
+    try {
+      const res = await fetch('/api/github/user-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ projectId, token }),
+      });
+      if (res.ok) {
+        toast.success('Token guardado correctamente', { id: toastId });
+        setHasUserToken(true);
+        setShowTokenForm(false);
+        setToken('');
+        validateRepository();
+        // Now we can fetch data
+        fetchRepositoryInfo();
+        fetchPullRequests();
+        fetchMetrics();
+      } else {
+        const err = await res.json();
+        toast.error(err.message || 'Error al guardar token', { id: toastId });
+      }
+    } catch (e) {
+      toast.error('Error al guardar token', { id: toastId });
     }
   };
 
@@ -276,25 +381,19 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
               </div>
             </div>
             <div>
-              <Label htmlFor="token">GitHub Token</Label>
-              <Input
-                id="token"
-                type="password"
-                placeholder="ghp_xxxxxxxxxxxx"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-              />
-              <p className="text-sm text-gray-500 mt-1">
-                Token con permisos de lectura (public_repo)
-              </p>
+              <Alert>
+                <AlertDescription>
+                  Primero guarda el repositorio del proyecto. Luego cada usuario debe ingresar su token personal.
+                </AlertDescription>
+              </Alert>
             </div>
             <Button 
-              onClick={validateRepository} 
+              onClick={saveProjectConfig} 
               disabled={isValidating}
               className="w-full"
             >
               {isValidating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Validar Repositorio
+              Guardar Repositorio
             </Button>
           </CardContent>
         </Card>
@@ -343,17 +442,38 @@ export default function GitHubIntegration({ projectId }: GitHubIntegrationProps)
                 <Input value={repo} onChange={(e) => setRepo(e.target.value)} />
               </div>
             </div>
+            <Button onClick={saveProjectConfig} disabled={isValidating}>
+              {isValidating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Guardar Configuración
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Token Panel */}
+      {(showTokenForm || (!hasUserToken && isConfigured)) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Token de GitHub</CardTitle>
+            <CardDescription>
+              Cada usuario debe configurar su token personal para este proyecto.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div>
-              <Label>Token</Label>
+              <Label>GitHub Token</Label>
               <Input
                 type="password"
+                placeholder="ghp_xxxxxxxxxxxx"
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
               />
+              <p className="text-sm text-gray-500 mt-1">
+                Token con permisos de lectura (public_repo)
+              </p>
             </div>
-            <Button onClick={validateRepository} disabled={isValidating}>
-              {isValidating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Actualizar Configuración
+            <Button onClick={saveUserToken}>
+              Guardar Token
             </Button>
           </CardContent>
         </Card>

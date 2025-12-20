@@ -20,6 +20,7 @@ import ProjectWorkSpace from "./components/projects/ProjectsWorkSpace.tsx";
 import ProjectPageDemo from "./components/demo/page.tsx";
 import LandingPage from "./pages/LandingPage.tsx";
 import HomeChat from "./chat/app/page.tsx";
+import Help from "./pages/Help.tsx";
 import AppRouter from "./AppRouter.tsx";
 import { Toaster as SonnerToaster } from "sonner";
 
@@ -47,6 +48,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/projects" element={<ProjectWorkSpace />} />
             <Route path="/landpage" element={<LandingPage />} />
             <Route path="/chat" element={<HomeChat />} />
+            <Route path="/help" element={<Help />} />
           </Routes>
         </AppRouter>
       </ElectronWrapper>
