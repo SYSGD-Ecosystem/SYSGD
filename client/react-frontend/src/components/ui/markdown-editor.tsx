@@ -1,8 +1,8 @@
-import { useState, type FC } from "react";
+import { useState, type FC, useRef } from "react";
 import { Textarea } from "./textarea";
 import { Button } from "./button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
-import { Eye, Edit3, Bold, Italic, List, ListOrdered, Quote, Code, Link } from "lucide-react";
+import { Eye, Edit3, Bold, Italic, List, ListOrdered, Quote, Code, Link, Image, Upload } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 interface MarkdownEditorProps {
@@ -19,6 +19,10 @@ const MarkdownEditor: FC<MarkdownEditorProps> = ({
   className = "",
 }) => {
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 
   const insertMarkdown = (before: string, after: string = "") => {
     const textarea = document.querySelector("#markdown-textarea") as HTMLTextAreaElement;
@@ -42,6 +46,68 @@ const MarkdownEditor: FC<MarkdownEditorProps> = ({
     }, 0);
   };
 
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor selecciona un archivo de imagen');
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('La imagen no debe superar los 5MB');
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`${serverUrl}/api/upload`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al subir la imagen');
+      }
+
+      const result = await response.json();
+      
+      // Insert markdown image syntax
+      const imageMarkdown = `![${file.name}](${result.url})`;
+      const textarea = document.querySelector("#markdown-textarea") as HTMLTextAreaElement;
+      
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const newValue = value.substring(0, start) + imageMarkdown + value.substring(end);
+        onChange(newValue);
+        
+        // Restore cursor position after image
+        setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(start + imageMarkdown.length, start + imageMarkdown.length);
+        }, 0);
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Error al subir la imagen. Por favor intenta nuevamente.');
+    } finally {
+      setIsUploading(false);
+      // Clear file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const toolbarButtons = [
     { icon: Bold, action: () => insertMarkdown("**", "**"), title: "Negrita" },
     { icon: Italic, action: () => insertMarkdown("*", "*"), title: "Cursiva" },
@@ -52,6 +118,10 @@ const MarkdownEditor: FC<MarkdownEditorProps> = ({
     { icon: Code, action: () => insertMarkdown("```\n", "\n```"), title: "Bloque de código" },
     { icon: Link, action: () => insertMarkdown("[", "](url)"), title: "Enlace" },
   ];
+
+  const handleImageClick = () => {
+    fileInputRef.current?.click();
+  };
 
   return (
     <div className={`border rounded-lg overflow-hidden ${className}`}>
@@ -71,6 +141,32 @@ const MarkdownEditor: FC<MarkdownEditorProps> = ({
               <btn.icon className="w-4 h-4" />
             </Button>
           ))}
+          
+          {/* Image upload button */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleImageClick}
+            disabled={isUploading}
+            title="Subir imagen"
+            className="h-8 w-8 p-0"
+          >
+            {isUploading ? (
+              <div className="w-4 h-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
+            ) : (
+              <Image className="w-4 h-4" />
+            )}
+          </Button>
+          
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            className="hidden"
+          />
         </div>
       </div>
 
@@ -98,7 +194,7 @@ const MarkdownEditor: FC<MarkdownEditorProps> = ({
         </TabsContent>
 
         <TabsContent value="preview" className="m-0">
-          <div className="min-h-[200px] p-4 bg-white dark:bg-gray-900 overflow-auto">
+          <div className="min-h-[200px] max-h-[400px] p-4 bg-white dark:bg-gray-900 overflow-auto">
             <div className="prose prose-sm dark:prose-invert max-w-none">
               {value ? (
                 <ReactMarkdown>{value}</ReactMarkdown>

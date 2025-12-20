@@ -397,7 +397,7 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 			</div>
 
 			<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-				<DialogContent className="max-w-md">
+				<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
 					<DialogHeader>
 						<DialogTitle>
 							{editingTask?.id && tasks.find((t) => t.id === editingTask.id)

@@ -32,6 +32,7 @@ router.use("/auth", authRoutes);
 router.use("/chat", chat);
 router.use("/agents", agents);
 router.use("/uploads", upload);
+router.use("/upload", upload);
 router.use("/github", github);
 
 
