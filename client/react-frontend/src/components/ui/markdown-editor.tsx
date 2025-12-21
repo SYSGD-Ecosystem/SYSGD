@@ -2,7 +2,7 @@ import { useState, type FC, useRef } from "react";
 import { Textarea } from "./textarea";
 import { Button } from "./button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
-import { Eye, Edit3, Bold, Italic, List, ListOrdered, Quote, Code, Link, Image, Upload } from "lucide-react";
+import { Eye, Edit3, Bold, Italic, List, ListOrdered, Quote, Code, Link, Image } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 interface MarkdownEditorProps {

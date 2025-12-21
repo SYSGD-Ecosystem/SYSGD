@@ -25,16 +25,24 @@ export const formatSimpleDate = (isoDate: string): string => {
 
 export const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 
-export const getPriorityColor = (priority: string) => {
+export const getPriorityColor = (priority: string, taskConfig?: any) => {
+    if (taskConfig?.priorities) {
+      const priorityConfig = taskConfig.priorities.find((p: any) => p.name === priority);
+      if (priorityConfig) {
+        return priorityConfig.color;
+      }
+    }
+    
+    // Fallback to static colors
     switch (priority) {
       case "Alta":
-        return "destructive";
+        return "#ef4444";
       case "Media":
-        return "default";
+        return "#f59e0b";
       case "Baja":
-        return "secondary";
+        return "#10b981";
       default:
-        return "default";
+        return "#6b7280";
     }
   };
 

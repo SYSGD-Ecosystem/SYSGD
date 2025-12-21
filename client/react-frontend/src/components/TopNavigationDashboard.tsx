@@ -1,11 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Home, Settings, Bell } from "lucide-react";
 import { NotificationsPopup } from "./NotificationsPopup";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import UserProfileTrigger from "./UserProfileTrigger";
 import SettingsModal from "./SettingsModal";
 import { IoChatboxOutline } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
+import { useGetInvitations } from "@/hooks/connection/useGetInvitations";
 
 interface TopNavigationProps {
 	onHomeClick: () => void;
@@ -14,7 +15,21 @@ interface TopNavigationProps {
 export function TopNavigation({ onHomeClick }: TopNavigationProps) {
 	const [showNotifications, setShowNotifications] = useState(false);
 	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+	const [unreadCount, setUnreadCount] = useState(0);
 	const navigate = useNavigate();
+	const { invitations } = useGetInvitations();
+
+	useEffect(() => {
+		if (invitations) {
+			// Contar invitaciones pendientes (no aceptadas ni rechazadas)
+			const pendingInvitations = invitations.filter(inv => inv.status === 'pending');
+			console.log('Invitaciones:', invitations);
+			console.log('Invitaciones pendientes:', pendingInvitations);
+			setUnreadCount(pendingInvitations.length);
+		} else {
+			setUnreadCount(0);
+		}
+	}, [invitations]);
 
 	return (
 		<header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 sticky top-0 z-50">
@@ -63,7 +78,11 @@ export function TopNavigation({ onHomeClick }: TopNavigationProps) {
 						className="relative"
 					>
 						<Bell className="w-4 h-4" />
-						<div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+						{unreadCount > 0 && (
+							<div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-pulse">
+								{unreadCount > 9 ? '9+' : unreadCount}
+							</div>
+						)}
 					</Button>
 
 					<Button

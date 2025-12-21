@@ -15,6 +15,7 @@ import chat  from "./chat";
 import agents from "./agents";
 import upload from "./upload";
 import github from "./github.routes";
+import taskConfig from "./task-config";
 
 const router = Router();
 
@@ -34,6 +35,7 @@ router.use("/agents", agents);
 router.use("/uploads", upload);
 router.use("/upload", upload);
 router.use("/github", github);
+router.use("/", taskConfig);
 
 
 // others (document registers, classification, etc.) remain in docApi

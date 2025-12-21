@@ -53,7 +53,25 @@ export async function initDatabase() {
       created_by INTEGER REFERENCES users(id),
       created_at TIMESTAMP DEFAULT NOW(),
       status TEXT DEFAULT 'activo',
-      visibility TEXT DEFAULT 'privado'
+      visibility TEXT DEFAULT 'privado',
+      task_config JSONB DEFAULT '{
+        "types": [
+          {"name": "Tarea", "color": "#3B82F6"},
+          {"name": "Idea", "color": "#10B981"},
+          {"name": "Nota", "color": "#6B7280"}
+        ],
+        "priorities": [
+          {"name": "Alta", "level": 3, "color": "#EF4444"},
+          {"name": "Media", "level": 2, "color": "#F59E0B"},
+          {"name": "Baja", "level": 1, "color": "#10B981"}
+        ],
+        "states": [
+          {"name": "Pendiente", "requires_context": false, "color": "#6B7280"},
+          {"name": "En Progreso", "requires_context": false, "color": "#3B82F6"},
+          {"name": "Requiere Video", "requires_context": true, "color": "#EF4444"},
+          {"name": "Completado", "requires_context": false, "color": "#10B981"}
+        ]
+      }'
     );
   `);
 
