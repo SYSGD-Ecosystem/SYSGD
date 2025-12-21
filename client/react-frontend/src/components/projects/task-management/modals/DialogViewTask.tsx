@@ -1,13 +1,13 @@
 import { useEffect, useState, type FC } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
-import { Button } from "../ui/button";
+import { Dialog, DialogContent } from "../../../ui/dialog";
+import { Button } from "../../../ui/button";
 import type { Task } from "@/types/Task";
-import { Badge } from "../ui/badge";
+import { Badge } from "../../../ui/badge";
 import { getPriorityColor } from "@/utils/util";
 import { getStatusIcon } from "@/utils/util-components";
 import ReactMarkdown from "react-markdown";
 import { Calendar, User, Tag, AlertCircle } from "lucide-react";
-import { useTaskConfig } from "@/hooks/connection/useTaskConfig";
+import { useTaskConfig } from "@/components/projects/task-management/hooks/useTaskConfig";
 
 const DialogViewTask: FC<{
 	selectedTask: Task;

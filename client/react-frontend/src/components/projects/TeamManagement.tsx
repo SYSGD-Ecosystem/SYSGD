@@ -16,7 +16,7 @@ import { Label } from "../ui/label";
 import { useProjectMembers } from "@/hooks/connection/useProjectMembers";
 import type { Member } from "@/types/Member";
 import DialogInvite from "../dialogs/DialogInvite";
-import { Skeleton } from "./TaskManagement";
+import { Skeleton } from "./task-management/TaskManagement";
 
 const TeamManagement: FC<{ projectId: string }> = ({ projectId }) => {
 	const { members, loading } = useProjectMembers(projectId);

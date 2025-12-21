@@ -26,11 +26,11 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Filter, Plus, Search, X } from "lucide-react";
-import { useTasks } from "@/hooks/connection/useTask";
+import { useTasks } from "@/components/projects/task-management/hooks/useTask";
 import type { Task } from "@/types/Task";
 import { getPriorityColor } from "@/utils/util";
 import { getStatusIcon } from "@/utils/util-components";
-import DialogViewTask from "../dialogs/DialogViewTask";
+import DialogViewTask from "./modals/DialogViewTask";
 import MarkdownEditor from "@/components/ui/markdown-editor";
 
 import { useProjectMembers } from "@/hooks/connection/useProjectMembers";
@@ -43,6 +43,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useGemini } from "@/hooks/connection/useGemini";
+import DialogCreateTask from "./modals/DialogCreateTask";
 
 const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 	const { tasks, loading, createTask, updateTask, deleteTask } =
@@ -396,7 +397,7 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 				</Table>
 			</div>
 
-			<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+			{/* <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
 				<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
 					<DialogHeader>
 						<DialogTitle>
@@ -518,6 +519,7 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 											<SelectItem value="Pendiente">Pendiente</SelectItem>
 											<SelectItem value="En Progreso">En Progreso</SelectItem>
 											<SelectItem value="Completado">Completado</SelectItem>
+
 										</SelectContent>
 									</Select>
 								</div>
@@ -590,7 +592,23 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 						</div>
 					)}
 				</DialogContent>
-			</Dialog>
+			</Dialog> */}
+
+
+			<DialogCreateTask
+				projectId={project_id}
+				isOpen={isDialogOpen}
+				onOpenChange={setIsDialogOpen}
+				editingTask={editingTask}
+				setEditingTask={setEditingTask}
+				tasks={tasks}
+				members={members}
+				isEditing={isEditing}
+				handleSaveTask={handleSaveTask}
+				geminiIsLoading={geminiIsLoading}
+				improvedText={improvedText}
+				handleImprove={handleImprove}
+			/>
 			{selectedTask && (
 				<DialogViewTask
 					isOpen={isDialogViewOpen}

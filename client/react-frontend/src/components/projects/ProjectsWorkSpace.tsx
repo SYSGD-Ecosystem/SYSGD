@@ -2,7 +2,7 @@ import { useCallback, useRef, useState, type FC } from "react";
 import { TopNavigation } from "./top-navigation";
 import { useNavigate } from "react-router-dom";
 import { useSelectionStore } from "@/store/selection";
-import TaskManagement from "./TaskManagement";
+import TaskManagement from "./task-management/TaskManagement.tsx";
 import useCurrentUser from "@/hooks/connection/useCurrentUser";
 import Loading from "../Loading";
 import { ProjectSidebar } from "./ProjectSidebar";
@@ -10,6 +10,7 @@ import TeamManagement from "./TeamManagement";
 import IdeasBank from "./IdeasBank";
 import NotesSection from "./NotesSection";
 import GitHubIntegration from "./GitHubIntegration.tsx";
+import ProjectSettings from "./ProjectSettings";
 
 type GitHubCacheEntry = {
 	cacheTime: number;
@@ -139,6 +140,10 @@ const ProjectWorkSpace: FC = () => {
 							setGitHubCache={setGitHubCache}
 							clearGitHubCache={clearGitHubCache}
 						/>
+					)}
+
+					{activeSection === "settings" && selectedProject && (
+						<ProjectSettings projectId={selectedProject} />
 					)}
 				</main>
 			</div>
