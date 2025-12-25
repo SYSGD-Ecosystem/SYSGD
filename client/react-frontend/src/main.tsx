@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/contexts/theme-context";
 import { ElectronWrapper } from "@/components/ElectronWrapper";
 import App from "./pages/App.tsx";
 import Login from "./pages/Login.tsx";
+import Auth from "./pages/Auth.tsx";
 import DevPreview from "./pages/DevPreview.tsx";
 import Print from "./pages/Print.tsx";
 import ErrorServer from "./pages/ErrorServer.tsx";
@@ -34,6 +35,7 @@ createRoot(document.getElementById("root")!).render(
           <Routes>
             <Route path="/" element={<App/>}/>
             <Route path="/login" element={<Login/>}/>
+            <Route path="/auth" element={<Auth/>}/>
             <Route path="/print" element={<Print/>}/>
             <Route path="/dev" element={<DevPreview/>}/>
             <Route path="/error" element={<ErrorServer/>}/>

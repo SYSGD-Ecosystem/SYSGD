@@ -82,6 +82,33 @@ export const login = async (req: Request, res: Response) => {
 	}
 };
 
+// Nuevo: verificación por email para flujo en 2 pasos
+export const checkUser = async (req: Request, res: Response) => {
+  const { email } = req.body;
+  if (!email) {
+    res.status(400).json({ message: "Falta email" });
+    return;
+  }
+
+  try {
+    const user = await findUserByemail(email);
+    if (!user) {
+      res.status(404).json({ exists: false });
+      return;
+    }
+    res.status(200).json({
+      exists: true,
+      id: user.id,
+      status: user.status,
+      hasPassword: !!user.password,
+      privileges: user.privileges,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+};
+
 export const getCurrentUser = async (req: Request, res: Response) => {
 	const token = req.cookies.token;
 
