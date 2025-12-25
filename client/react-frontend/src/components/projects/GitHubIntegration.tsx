@@ -51,16 +51,18 @@ import type {
 } from "@/types/GitHubTypes";
 import useExportTable from "@/hooks/useExportTable";
 
+const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+
 export type GitHubCacheEntry = {
-  repository: GitHubRepository | null;
-  pullRequests: GitHubPullRequest[] | null;
-  metrics: GitHubMetrics | null;
-  pullRequestsKey?: string;
-  pagination?: {
-    currentPage: number;
-    totalPages: number;
-    totalCount: number;
-  };
+	repository: GitHubRepository | null;
+	pullRequests: GitHubPullRequest[] | null;
+	metrics: GitHubMetrics | null;
+	pullRequestsKey?: string;
+	pagination?: {
+		currentPage: number;
+		totalPages: number;
+		totalCount: number;
+	};
 };
 
 interface GitHubIntegrationProps {
@@ -138,9 +140,12 @@ export default function GitHubIntegration({
 	useEffect(() => {
 		const loadProjectConfig = async () => {
 			try {
-				const res = await fetch(`/api/github/project-config/${projectId}`, {
-					credentials: "include",
-				});
+				const res = await fetch(
+					`${serverUrl}/api/github/project-config/${projectId}`,
+					{
+						credentials: "include",
+					},
+				);
 				if (res.ok) {
 					const data = await res.json();
 					if (data.configured) {
@@ -187,9 +192,12 @@ export default function GitHubIntegration({
 
 		const loadUserTokenStatus = async () => {
 			try {
-				const res = await fetch(`/api/github/user-token/${projectId}/status`, {
-					credentials: "include",
-				});
+				const res = await fetch(
+					`${serverUrl}/api/github/user-token/${projectId}/status`,
+					{
+						credentials: "include",
+					},
+				);
 				if (res.ok) {
 					const data = await res.json();
 					setHasUserToken(data.configured);
@@ -214,7 +222,7 @@ export default function GitHubIntegration({
 
 		const toastId = toast.loading("Guardando configuración del repositorio...");
 		try {
-			const response = await fetch("/api/github/project-config", {
+			const response = await fetch(`${serverUrl}/api/github/project-config`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include",
@@ -257,7 +265,7 @@ export default function GitHubIntegration({
 		setIsValidating(true);
 		const toastId = toast.loading("Validando repositorio...");
 		try {
-			const response = await fetch("/api/github/validate", {
+			const response = await fetch(`${serverUrl}/api/github/validate`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include",
@@ -316,7 +324,7 @@ export default function GitHubIntegration({
 		}
 
 		try {
-			const response = await fetch("/api/github/repository", {
+			const response = await fetch(`${serverUrl}/api/github/repository`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include",
@@ -358,12 +366,15 @@ export default function GitHubIntegration({
 				...(filters.dateTo && { dateTo: filters.dateTo }),
 			});
 
-			const response = await fetch(`/api/github/pull-requests?${queryParams}`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify({ projectId }),
-			});
+			const response = await fetch(
+				`${serverUrl}/api/github/pull-requests?${queryParams}`,
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					credentials: "include",
+					body: JSON.stringify({ projectId }),
+				},
+			);
 
 			if (response.ok) {
 				const data = await response.json();
@@ -396,7 +407,7 @@ export default function GitHubIntegration({
 		}
 
 		try {
-			const response = await fetch("/api/github/metrics", {
+			const response = await fetch(`${serverUrl}/api/github/metrics`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include",
@@ -420,7 +431,7 @@ export default function GitHubIntegration({
 		}
 		const toastId = toast.loading("Guardando token...");
 		try {
-			const res = await fetch("/api/github/user-token", {
+			const res = await fetch(`${serverUrl}/api/github/user-token`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include",
