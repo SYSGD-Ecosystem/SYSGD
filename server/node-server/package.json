@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "dotenvx run -f ./.env.development -- ts-node-dev --respawn --transpile-only src/index.ts",
-    "local": "dotenvx run -f ./.env.local -- ts-node-dev --respawn --transpile-only src/index.ts",
-    "build": "dotenvx run -f ./.env.production -- tsc",
-    "start": "dotenvx run -f ./.env.production -- node dist/index.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "local": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
     "postinstall": "npm run build"
   },
   "keywords": [],
@@ -14,7 +14,6 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@dotenvx/dotenvx": "^1.48.4",
     "@google/genai": "^1.26.0",
     "@google/generative-ai": "^0.24.1",
     "@octokit/rest": "^22.0.1",
@@ -24,6 +23,7 @@
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
@@ -40,6 +40,7 @@
     "@types/bcrypt": "^5.0.2",
     "@types/cookie-parser": "^1.4.9",
     "@types/cors": "^2.8.19",
+    "@types/dotenv": "^6.1.1",
     "@types/express": "^5.0.3",
     "@types/express-session": "^1.18.2",
     "@types/jsonwebtoken": "^9.0.10",
