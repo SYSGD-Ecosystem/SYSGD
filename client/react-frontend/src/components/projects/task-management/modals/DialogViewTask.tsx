@@ -17,8 +17,10 @@ const DialogViewTask: FC<{
 	onDeleteChange: () => void;
 }> = ({ selectedTask, isOpen, onOpenChange, onEditChange, onDeleteChange }) => {
 	const [isButtonDisabled, setIsButtonDisabled] = useState(false);
-	const { taskConfig } = useTaskConfig(selectedTask.project_id);
 
+	const { config:taskConfig } = useTaskConfig(selectedTask.project_id);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	useEffect(() => {
 		setIsButtonDisabled(false);
 	}, [selectedTask]);

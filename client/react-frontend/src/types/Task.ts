@@ -1,7 +1,7 @@
 export type Assignee = {
-    id: number;
+    id: string;
     name: string;
-    username: string;
+    email: string;
 }
 
 export type Task = {

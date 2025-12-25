@@ -43,7 +43,7 @@ router.get("/conversations", isAuthenticated, async (req: Request, res: Response
         c.created_by,
         c.created_at,
         (
-          SELECT json_agg(json_build_object('id', u.id, 'username', u.username, 'name', u.name, 'role', cm.role))
+          SELECT json_agg(json_build_object('id', u.id, 'email', u.email, 'name', u.name, 'role', cm.role))
           FROM conversation_members cm
           JOIN users u ON u.id = cm.user_id
           WHERE cm.conversation_id = c.id
@@ -102,7 +102,7 @@ router.get("/conversations/user/:userId", isAuthenticated, async (req: Request, 
         c.created_by,
         c.created_at,
         (
-          SELECT json_agg(json_build_object('id', u.id, 'username', u.username, 'name', u.name, 'role', cm.role))
+          SELECT json_agg(json_build_object('id', u.id, 'email', u.email, 'name', u.name, 'role', cm.role))
           FROM conversation_members cm
           JOIN users u ON u.id = cm.user_id
           WHERE cm.conversation_id = c.id
@@ -167,7 +167,7 @@ console.log("Hola mundo")
       `
       SELECT
         m.*,
-        u.username AS sender_username,
+        u.email AS sender_email,
         u.name AS sender_name
       FROM messages m
       LEFT JOIN users u ON u.id = m.sender_id
@@ -268,7 +268,7 @@ router.post("/conversations/create", isAuthenticated, async (req: Request, res: 
     return;
   }
 
-  const { contactUsername, members, title, type } = req.body;
+  const { contactemail, members, title, type } = req.body;
   const client = await pool.connect();
 
   try {
@@ -277,24 +277,24 @@ router.post("/conversations/create", isAuthenticated, async (req: Request, res: 
     let memberIds: number[] = [];
 
     if (Array.isArray(members) && members.length > 0) {
-      // members: array of usernames
+      // members: array of emails
       const placeholders = members.map((_, i) => `$${i + 1}`).join(",");
       const usersRes = await client.query(
-        `SELECT id, username FROM users WHERE username IN (${placeholders})`,
+        `SELECT id, email FROM users WHERE email IN (${placeholders})`,
         members
       );
       if (usersRes.rowCount !== members.length) {
         throw new Error("Alguno de los miembros no existe");
       }
       memberIds = usersRes.rows.map((r) => r.id);
-    } else if (contactUsername) {
-      const ures = await client.query(`SELECT id FROM users WHERE username = $1`, [contactUsername]);
+    } else if (contactemail) {
+      const ures = await client.query(`SELECT id FROM users WHERE email = $1`, [contactemail]);
       if (ures.rowCount === 0) {
         throw new Error("Usuario de contacto no existe");
       }
       memberIds = [ures.rows[0].id];
     } else {
-      throw new Error("Se requiere contactUsername o members");
+      throw new Error("Se requiere contactemail o members");
     }
 
     // asegurar que el creador esté en la lista
@@ -342,7 +342,7 @@ router.post("/conversations/create", isAuthenticated, async (req: Request, res: 
     await client.query("COMMIT");
 
     const fullConv = await pool.query(
-      `SELECT c.*, (SELECT json_agg(json_build_object('id', u.id, 'username', u.username, 'name', u.name, 'role', cm.role)) FROM conversation_members cm JOIN users u ON u.id = cm.user_id WHERE cm.conversation_id = c.id) AS members FROM conversations c WHERE c.id = $1`,
+      `SELECT c.*, (SELECT json_agg(json_build_object('id', u.id, 'email', u.email, 'name', u.name, 'role', cm.role)) FROM conversation_members cm JOIN users u ON u.id = cm.user_id WHERE cm.conversation_id = c.id) AS members FROM conversations c WHERE c.id = $1`,
       [conversationId]
     );
 
@@ -437,7 +437,7 @@ router.get("/conversations/invitations", isAuthenticated, async (req: Request, r
     }
 
     const invites = await pool.query(
-      `SELECT ci.*, c.title, c.type, u.username as sender_username FROM conversation_invitations ci LEFT JOIN conversations c ON c.id = ci.conversation_id LEFT JOIN users u ON u.id = ci.sender_id WHERE ci.receiver_email = $1 AND ci.status = 'pending' ORDER BY ci.created_at DESC;`,
+      `SELECT ci.*, c.title, c.type, u.email as sender_email FROM conversation_invitations ci LEFT JOIN conversations c ON c.id = ci.conversation_id LEFT JOIN users u ON u.id = ci.sender_id WHERE ci.receiver_email = $1 AND ci.status = 'pending' ORDER BY ci.created_at DESC;`,
       [email]
     );
 

@@ -2,6 +2,7 @@ import { type FC } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Settings, Palette, GitBranch, Users, Bell, Shield } from "lucide-react";
+import TaskConfigManager from "@/components/projects/task-management/TaskConfigManager";
 
 interface ProjectSettingsProps {
 	projectId: string;
@@ -27,9 +28,7 @@ const ProjectSettings: FC<ProjectSettingsProps> = ({ projectId }) => {
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<p className="text-sm text-gray-500">
-						Próximamente: Configuración de tipos, estados y prioridades de tareas...
-					</p>
+					<TaskConfigManager projectId={projectId} />
 				</CardContent>
 			</Card>
 

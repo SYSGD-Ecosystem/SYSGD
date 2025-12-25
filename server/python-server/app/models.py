@@ -10,7 +10,7 @@ class User(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(Text)
-    username = Column(Text, unique=True, index=True)
+    email = Column(Text, unique=True, index=True)
     password = Column(Text)
     privileges = Column(Text, default="user")
     

@@ -191,7 +191,7 @@ export const AgentsListModal: FC<AgentsListModalProps> = ({
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => createConversation({type:"bot", contactUsername: user?.username || '', members:[user?.username || ''], title:agent.name})}
+                              onClick={() => createConversation({type:"bot", contactemail: user?.email || '', members:[user?.email || ''], title:agent.name})}
                               title="Nuevo chat"
                               className="text-red-600 hover:text-red-700"
                             >

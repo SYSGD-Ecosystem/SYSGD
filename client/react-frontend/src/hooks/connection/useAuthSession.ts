@@ -7,7 +7,7 @@ export function useAuthSession() {
 	const [loading, setLoading] = useState(true);
 	const [user, setUser] = useState<null | {
 		id: number;
-		username: string;
+		email: string;
 		name: string;
 		privileges: string;
 	}>(null);

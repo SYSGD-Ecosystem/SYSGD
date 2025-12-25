@@ -3,7 +3,7 @@ import { pool } from "../db";
 
 export interface User {
 	id: number;
-	username: string;
+	email: string;
 	privileges: string;
 	// otras propiedades
 }
@@ -12,7 +12,7 @@ export const getArchives = async (req: Request, res: Response) => {
 	console.log("la funcion de ontener archivos se esta ejecutando");
 	const user: User = req.user as User;
 	console.log(user);
-	if (!user || !user.id || !user.username || !user.privileges) {
+	if (!user || !user.id || !user.email || !user.privileges) {
 		res.status(401).json({ error: "Usuario no autenticado" });
 		return;
 	}

@@ -1,4 +1,5 @@
-import { Request, Response } from 'express';
+/** biome-ignore-all lint/complexity/noStaticOnlyClass: <explanation> */
+import type { Request, Response } from 'express';
 import { GitHubService } from '../services/github.service';
 import { z } from 'zod';
 import { pool } from '../db';
@@ -49,7 +50,7 @@ export class GitHubController {
     return typeof userId === 'number' ? userId : null;
   }
 
-  private static async assertProjectAccess(projectId: string, userId: number) {
+  private static async assertProjectAccess(projectId: string, userId: string) {
     // Admin puede todo, pero si no tenemos privileges en el token, seguimos el patrón existente.
     const result = await pool.query(
       `
@@ -168,7 +169,7 @@ export class GitHubController {
     }
   }
 
-  private static async getUserToken(projectId: string, userId: number) {
+  private static async getUserToken(projectId: string, userId: string) {
     const key = GitHubController.getEncryptionKey();
     const result = await pool.query(
       `

@@ -5,8 +5,8 @@ import bcrypt from "bcrypt";
 
 export const register = async (req: Request, res: Response) => {
     //TODO: Implementar verificación de email
-    const { name, username, password } = req.body;
-    if (!name || !username || !password) {
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) {
         res.status(400).send("400");
         return;
     }
@@ -20,8 +20,8 @@ export const register = async (req: Request, res: Response) => {
         }
 
         const userExists = await pool.query(
-            "SELECT id FROM users WHERE username = $1",
-            [username],
+            "SELECT id FROM users WHERE email = $1",
+            [email],
         );
         if (userExists.rows.length > 0) {
             res.status(409).send("Usuario ya existe");
@@ -30,8 +30,8 @@ export const register = async (req: Request, res: Response) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
         await pool.query(
-            "INSERT INTO users (name, username, password, privileges) VALUES ($1, $2, $3, $4)",
-            [name, username, hashedPassword, privileges],
+            "INSERT INTO users (name, email, password, privileges) VALUES ($1, $2, $3, $4)",
+            [name, email, hashedPassword, privileges],
         );
 
         res.status(201).send("Usuario registrado");
@@ -43,7 +43,7 @@ export const register = async (req: Request, res: Response) => {
 
 type UserCurrentDataType = {
     id:string,
-    username:string,
+    email:string,
     privileges: "admin" | "user" | "moderator"
     name:string,
 
@@ -66,7 +66,7 @@ export const getCurrentUserData = (req: Request):UserCurrentDataType|null =>{
 export const getUsers = async (req: Request, res: Response) => {
     try {
         const { rows } = await pool.query(
-            "SELECT id, name, username, privileges FROM users ORDER BY id",
+            "SELECT id, name, email, privileges FROM users ORDER BY id",
         );
         res.json(rows);
     } catch {

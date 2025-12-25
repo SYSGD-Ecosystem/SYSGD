@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
-import { findUserByUsername, logUserLogin } from "../services/authService";
+import { findUserByemail, logUserLogin } from "../services/authService";
 
 dotenv.config();
 
@@ -13,14 +13,14 @@ if (!process.env.JWT_SECRET) {
 const JWT_SECRET = process.env.JWT_SECRET;
 
 export const login = async (req: Request, res: Response) => {
-	const { username, password } = req.body;
-	if (!username || !password) {
+	const { email, password } = req.body;
+	if (!email || !password) {
 		res.status(400).json({ message: "Faltan credenciales" });
 		return;
 	}
 
 	try {
-		const user = await findUserByUsername(username);
+		const user = await findUserByemail(email);
 
 		if (user === null) {
 			res.status(401).json({ message: "Usuario no encontrado" });
@@ -38,7 +38,7 @@ export const login = async (req: Request, res: Response) => {
 		const token = jwt.sign(
 			{
 				id: user.id,
-				username: user.username,
+				email: user.email,
 				name: user.name,
 				privileges: user.privileges,
 			},
@@ -89,14 +89,14 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 
 export function generateJWT(user: {
 	id: number;
-	username: string;
+	email: string;
 	name: string;
 	privileges: string;
 }) {
 	return jwt.sign(
 		{
 			id: user.id,
-			username: user.username,
+			email: user.email,
 			name: user.name,
 			privileges: user.privileges,
 		},

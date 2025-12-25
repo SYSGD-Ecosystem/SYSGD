@@ -14,7 +14,7 @@ router.get("/me", getCurrentUser);
 router.post("/register", register);
 
 router.get("/public-users", async (req, res) => {
-  const { rows } = await pool.query("SELECT id, name, username FROM users WHERE is_public = true");
+  const { rows } = await pool.query("SELECT id, name, email FROM users WHERE is_public = true");
   res.json(rows);
 });
 
@@ -58,16 +58,16 @@ router.get("/", getUsers);
 
 // Create user
 router.post("/", async (req, res) => {
-	const { name, username, password, privileges } = req.body;
-	if (!name || !username || !password || !privileges) {
+	const { name, email, password, privileges } = req.body;
+	if (!name || !email || !password || !privileges) {
 		res.status(400).json({ error: "Faltan datos" });
 		return;
 	}
 
 	try {
 		await pool.query(
-			"INSERT INTO users (name, username, password, privileges) VALUES ($1,$2,crypt($3, gen_salt('bf')),$4)",
-			[name, username, password, privileges],
+			"INSERT INTO users (name, email, password, privileges) VALUES ($1,$2,crypt($3, gen_salt('bf')),$4)",
+			[name, email, password, privileges],
 		);
 		res.status(201).send("201");
 		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
@@ -81,8 +81,8 @@ router.post("/", async (req, res) => {
 // Update basic data
 router.put("/:id", async (req, res) => {
 	const userId = Number.parseInt(req.params.id, 10);
-	const { name, username } = req.body;
-	if (Number.isNaN(userId) || (!name && !username)) {
+	const { name, email } = req.body;
+	if (Number.isNaN(userId) || (!name && !email)) {
 		res.status(400).json({ error: "Datos inválidos" });
 		return;
 	}
@@ -94,9 +94,9 @@ router.put("/:id", async (req, res) => {
 			fields.push(`name = $${idx++}`);
 			values.push(name);
 		}
-		if (username) {
-			fields.push(`username = $${idx++}`);
-			values.push(username);
+		if (email) {
+			fields.push(`email = $${idx++}`);
+			values.push(email);
 		}
 		values.push(userId);
 		const result = await pool.query(

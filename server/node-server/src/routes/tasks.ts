@@ -23,7 +23,7 @@ router.get(
                 t.*,
                 COALESCE(
                     (
-                        SELECT json_agg(json_build_object('id', u.id, 'name', u.name, 'username', u.username))
+                        SELECT json_agg(json_build_object('id', u.id, 'name', u.name, 'email', u.email))
                         FROM task_assignees ta
                         JOIN users u ON ta.user_id = u.id
                         WHERE ta.task_id = t.id

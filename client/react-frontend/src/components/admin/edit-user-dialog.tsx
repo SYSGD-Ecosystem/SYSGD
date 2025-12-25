@@ -87,14 +87,14 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="username" className="text-right">
+              <Label htmlFor="email" className="text-right">
                 Usuario
               </Label>
               <Input
-                id="username"
-                defaultValue={user.username}
+                id="email"
+                defaultValue={user.email}
                 className="col-span-3"
-                onChange={(e) => setFormData((prev) => ({ ...prev, username: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">

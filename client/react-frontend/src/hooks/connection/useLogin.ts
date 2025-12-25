@@ -3,7 +3,7 @@ import { useState } from "react";
 const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 
 interface LoginData {
-	username: string;
+	email: string;
 	password: string;
 }
 
@@ -19,7 +19,7 @@ export function useLogin(): LoginResult {
 	const [error, setError] = useState("");
 	const [success, setSuccess] = useState(false);
 
-	const login = async ({ username, password }: LoginData) => {
+	const login = async ({ email, password }: LoginData) => {
 		setLoading(true);
 		setError("");
 		setSuccess(false);
@@ -31,7 +31,7 @@ export function useLogin(): LoginResult {
 					"Content-Type": "application/json",
 				},
 				credentials: "include",
-				body: JSON.stringify({ username, password }),
+				body: JSON.stringify({ email, password }),
 			});
 
 			if (res.status === 201) {

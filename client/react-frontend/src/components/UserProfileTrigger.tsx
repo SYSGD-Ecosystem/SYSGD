@@ -48,7 +48,7 @@ const UserProfileTrigger: FC = () => {
           </Avatar>
           <div className="hidden sm:block text-left">
             <p className="text-sm font-medium leading-none">{user.name}</p>
-            <p className="text-xs text-muted-foreground">{user.username}</p>
+            <p className="text-xs text-muted-foreground">{user.email}</p>
           </div>
           <ChevronDown className="h-4 w-4 text-muted-foreground" />
         </Button>

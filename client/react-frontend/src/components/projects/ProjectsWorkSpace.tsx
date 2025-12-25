@@ -11,16 +11,20 @@ import IdeasBank from "./IdeasBank";
 import NotesSection from "./NotesSection";
 import GitHubIntegration from "./GitHubIntegration.tsx";
 import ProjectSettings from "./ProjectSettings";
+import type { GitHubCacheEntry } from "./GitHubIntegration";
 
-type GitHubCacheEntry = {
-	cacheTime: number;
-	repository: unknown | null;
-	pullRequests: unknown[] | null;
-	metrics: unknown | null;
-	pullRequestsKey?: string;
-	pullRequestsPage?: number;
-	pagination?: { currentPage: number; totalPages: number; totalCount: number };
-};
+
+// type GitHubCacheEntry = {
+// 	cacheTime: number;
+// 	repository: unknown | null;
+// 	pullRequests: unknown[] | null;
+// 	metrics: unknown | null;
+// 	pullRequestsKey?: string;
+// 	pullRequestsPage?: number;
+// 	pagination?: { currentPage: number; totalPages: number; totalCount: number };
+// };
+
+
 
 const ProjectWorkSpace: FC = () => {
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -35,31 +39,25 @@ const ProjectWorkSpace: FC = () => {
 	// GitHub cache at parent level so it survives GitHubIntegration mount/unmount.
 	// TTL: 5 minutes
 	const githubCacheRef = useRef<Map<string, GitHubCacheEntry>>(new Map());
-	const githubCacheTtlMs = 5 * 60 * 1000;
+	// const githubCacheTtlMs = 5 * 60 * 1000;
+
 
 	const getGitHubCache = useCallback(
 		(projectId: string): GitHubCacheEntry | null => {
-			const entry = githubCacheRef.current.get(projectId);
-			if (!entry) return null;
-			if (Date.now() - entry.cacheTime > githubCacheTtlMs) {
-				githubCacheRef.current.delete(projectId);
-				return null;
-			}
-			return entry;
+			return githubCacheRef.current.get(projectId) ?? null;
 		},
-		[githubCacheTtlMs],
+		[],
 	);
 
 	const setGitHubCache = useCallback(
 		(projectId: string, patch: Partial<Omit<GitHubCacheEntry, "cacheTime">>) => {
 			const prev = githubCacheRef.current.get(projectId);
 			githubCacheRef.current.set(projectId, {
-				cacheTime: Date.now(),
 				repository: prev?.repository ?? null,
 				pullRequests: prev?.pullRequests ?? null,
 				metrics: prev?.metrics ?? null,
 				pullRequestsKey: prev?.pullRequestsKey,
-				pullRequestsPage: prev?.pullRequestsPage,
+				//pullRequestsPage: prev?.pullRequestsPage,
 				pagination: prev?.pagination,
 				...patch,
 			});
@@ -84,7 +82,7 @@ const ProjectWorkSpace: FC = () => {
 	}
 
 	if (!selectedProject) {
-		return <>No hay proyecto seleccionado</>;
+		return <div>No hay proyecto seleccionado</div>;
 	}
 
 	const handleHomeClick = () => {

@@ -6,7 +6,7 @@ export const getTaskConfig = async (req: Request, res: Response) => {
     const { projectId } = req.params;
     
     const result = await pool.query(
-      'SELECT task_config FROM projects WHERE id = $1',
+      'SELECT task_config FROM projects_config WHERE project_id = $1',
       [projectId]
     );
     
@@ -34,7 +34,7 @@ export const updateTaskConfig = async (req: Request, res: Response) => {
     }
     
     const result = await pool.query(
-      'UPDATE projects SET task_config = $1 WHERE id = $2 RETURNING task_config',
+      'UPDATE projects_config SET task_config = $1 WHERE project_id = $2 RETURNING task_config',
       [JSON.stringify(task_config), projectId]
     );
     
@@ -59,13 +59,13 @@ export const addTaskType = async (req: Request, res: Response) => {
     }
     
     const result = await pool.query(
-      `UPDATE projects 
+      `UPDATE projects_config 
        SET task_config = jsonb_set(
          task_config, 
          '{types}', 
          (task_config->'types') || $1::jsonb
        )
-       WHERE id = $2
+       WHERE project_id = $2
        RETURNING task_config`,
       [JSON.stringify({ name, color }), projectId]
     );
@@ -86,7 +86,7 @@ export const removeTaskType = async (req: Request, res: Response) => {
     const { projectId, typeName } = req.params;
     
     const result = await pool.query(
-      `UPDATE projects 
+      `UPDATE projects_config 
        SET task_config = jsonb_set(
          task_config, 
          '{types}', 
@@ -96,7 +96,7 @@ export const removeTaskType = async (req: Request, res: Response) => {
            WHERE elem->>'name' != $1
          )
        )
-       WHERE id = $2
+       WHERE project_id = $2
        RETURNING task_config`,
       [typeName, projectId]
     );
@@ -122,13 +122,13 @@ export const addTaskState = async (req: Request, res: Response) => {
     }
     
     const result = await pool.query(
-      `UPDATE projects 
+      `UPDATE projects_config 
        SET task_config = jsonb_set(
          task_config, 
          '{states}', 
          (task_config->'states') || $1::jsonb
        )
-       WHERE id = $2
+       WHERE project_id = $2
        RETURNING task_config`,
       [JSON.stringify({ name, color, requires_context }), projectId]
     );
@@ -149,7 +149,7 @@ export const removeTaskState = async (req: Request, res: Response) => {
     const { projectId, stateName } = req.params;
     
     const result = await pool.query(
-      `UPDATE projects 
+      `UPDATE projects_config 
        SET task_config = jsonb_set(
          task_config, 
          '{states}', 
@@ -159,7 +159,7 @@ export const removeTaskState = async (req: Request, res: Response) => {
            WHERE elem->>'name' != $1
          )
        )
-       WHERE id = $2
+       WHERE project_id = $2
        RETURNING task_config`,
       [stateName, projectId]
     );
@@ -185,13 +185,13 @@ export const addTaskPriority = async (req: Request, res: Response) => {
     }
     
     const result = await pool.query(
-      `UPDATE projects 
+      `UPDATE projects_config 
        SET task_config = jsonb_set(
          task_config, 
          '{priorities}', 
          (task_config->'priorities') || $1::jsonb
        )
-       WHERE id = $2
+       WHERE project_id = $2
        RETURNING task_config`,
       [JSON.stringify({ name, level, color }), projectId]
     );
@@ -212,7 +212,7 @@ export const removeTaskPriority = async (req: Request, res: Response) => {
     const { projectId, priorityName } = req.params;
     
     const result = await pool.query(
-      `UPDATE projects 
+      `UPDATE projects_config 
        SET task_config = jsonb_set(
          task_config, 
          '{priorities}', 
@@ -222,7 +222,7 @@ export const removeTaskPriority = async (req: Request, res: Response) => {
            WHERE elem->>'name' != $1
          )
        )
-       WHERE id = $2
+       WHERE project_id = $2
        RETURNING task_config`,
       [priorityName, projectId]
     );

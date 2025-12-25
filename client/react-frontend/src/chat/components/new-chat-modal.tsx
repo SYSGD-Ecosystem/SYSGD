@@ -12,7 +12,16 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, User, Bot, Link2, Copy, Check, UserPlus, Mail } from "lucide-react";
+import {
+	Search,
+	User,
+	Bot,
+	Link2,
+	Copy,
+	Check,
+	UserPlus,
+	Mail,
+} from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { PublicUser } from "@/types/user";
 import { usePublicUsers } from "@/hooks/connection/usePublicUsers";
@@ -28,7 +37,6 @@ export interface Contact {
 	id: number;
 	name: string;
 	email: string;
-	username: string;
 	type: "user" | "agent" | "bot";
 	avatar: string;
 	online: boolean;
@@ -67,9 +75,14 @@ export function NewChatModal({
 	const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 
 	// helper: obtener usuario actual desde backend
-	const fetchCurrentUser = async (): Promise<{ id: number; username: string; email?: string } | null> => {
+	const fetchCurrentUser = async (): Promise<{
+		id: number;
+		email: string;
+	} | null> => {
 		try {
-			const res = await fetch(`${serverUrl}/api/me`, { credentials: "include" });
+			const res = await fetch(`${serverUrl}/api/me`, {
+				credentials: "include",
+			});
 			if (!res.ok) return null;
 			const data = await res.json();
 			return data;
@@ -83,14 +96,14 @@ export function NewChatModal({
 			contact.isPublic &&
 			(contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
 				contact.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				contact.username.toLowerCase().includes(searchQuery.toLowerCase())),
+				contact.email.toLowerCase().includes(searchQuery.toLowerCase())),
 	);
 
 	// Seleccionar contacto público -> crear/conseguir conversación privada con ese user
 	const handleSelectContact = async (contact: Contact) => {
 		try {
 			// createConversation espera un objeto opts
-			// const conv = await createConversation({ contactUsername: contact.email });
+			// const conv = await createConversation({ contactemail: contact.email });
 			// opcional: refrescar conversaciones globales
 			await fetchConversations();
 			onSelectContact(contact);
@@ -102,43 +115,47 @@ export function NewChatModal({
 		}
 	};
 
-	// Uso de link pegado por el usuario: parsear y abrir conversación con username embebido
+	// Uso de link pegado por el usuario: parsear y abrir conversación con email embebido
 	const handleUseInviteLink = async () => {
 		if (!pasteInviteLink.trim()) return;
 		setVerifying(true);
 		try {
-			// intentar parsear como URL y extraer parámetro 'u' (username)
-			let usernameFromLink: string | null = null;
+			// intentar parsear como URL y extraer parámetro 'u' (email)
+			let emailFromLink: string | null = null;
 			try {
-				const url = new URL(pasteInviteLink.includes("://") ? pasteInviteLink : `https://dummy${pasteInviteLink}`);
+				const url = new URL(
+					pasteInviteLink.includes("://")
+						? pasteInviteLink
+						: `https://dummy${pasteInviteLink}`,
+				);
 				// buscar query param 'u' o 'user'
-				usernameFromLink = url.searchParams.get("u") || url.searchParams.get("user");
-				// si no hay query y la ruta tiene /invite/<username> intentamos extraer
-				if (!usernameFromLink) {
+				emailFromLink =
+					url.searchParams.get("u") || url.searchParams.get("user");
+				// si no hay query y la ruta tiene /invite/<email> intentamos extraer
+				if (!emailFromLink) {
 					const path = url.pathname;
 					const m = path.match(/\/invite\/([^\/\?]+)/);
-					if (m) usernameFromLink = decodeURIComponent(m[1]);
+					if (m) emailFromLink = decodeURIComponent(m[1]);
 				}
 			} catch {
 				// si no es una URL, intentar si el usuario pegó texto tipo "sysgd.app/invite?u=..."
 				try {
 					const q = new URL(`https://${pasteInviteLink}`);
-					usernameFromLink = q.searchParams.get("u") || q.searchParams.get("user");
+					emailFromLink = q.searchParams.get("u") || q.searchParams.get("user");
 				} catch {
 					// ignore
 				}
 			}
 
-			// si encontramos username, crear conversación con ese username
-			if (usernameFromLink) {
-				const conv = await createConversation({ contactUsername: usernameFromLink });
+			// si encontramos email, crear conversación con ese email
+			if (emailFromLink) {
+				const conv = await createConversation({ contactemail: emailFromLink });
 				await fetchConversations();
 				// devolver información de contacto mínima al selector
 				onSelectContact({
 					id: conv?.created_by ?? 0,
-					name: usernameFromLink,
-					email: "",
-					username: usernameFromLink,
+					name: emailFromLink,
+					email: emailFromLink,
 					type: "user",
 					avatar: "👤",
 					online: false,
@@ -148,26 +165,30 @@ export function NewChatModal({
 				return;
 			}
 
-			// si no obtuvimos username, intentamos tratar el link como token: pedir al backend info
+			// si no obtuvimos email, intentamos tratar el link como token: pedir al backend info
 			// (endpoint opcional: /api/chat/invite/resolve?token=xxx) - si existe en tu backend, úsalo.
 			// Aquí intentamos consultar un endpoint que puede no existir; si no, mostramos error.
 			try {
 				const token = extractTokenFromLink(pasteInviteLink);
 				if (token) {
-					const res = await fetch(`/api/chat/invitations/resolve?token=${encodeURIComponent(token)}`, {
-						credentials: "include",
-					});
+					const res = await fetch(
+						`/api/chat/invitations/resolve?token=${encodeURIComponent(token)}`,
+						{
+							credentials: "include",
+						},
+					);
 					if (res.ok) {
 						const info = await res.json();
-						// info { username } o { invitation_id } dependiendo de implementación backend
-						if (info.username) {
-							const conv = await createConversation({ contactUsername: info.username });
+						// info { email } o { invitation_id } dependiendo de implementación backend
+						if (info.email) {
+							const conv = await createConversation({
+								contactemail: info.email,
+							});
 							await fetchConversations();
 							onSelectContact({
 								id: conv?.created_by ?? 0,
-								name: info.username,
-								email: info.username + "@",
-								username: info.username,
+								name: info.email,
+								email: info.email,
 								type: "user",
 								avatar: "👤",
 								online: false,
@@ -182,13 +203,18 @@ export function NewChatModal({
 							await fetchConversations();
 							// después de aceptar, backend ya añade al usuario a la conversación; intentar obtenerla
 							// se puede obtener la lista y seleccionar la conversación más reciente
-							const convs = await fetch("/api/chat/conversations", { credentials: "include" }).then((r) => r.json());
-							const joined = convs?.find((c: any) => c.id === info.conversation_id) || convs?.[0];
+							const convs = await fetch("/api/chat/conversations", {
+								credentials: "include",
+							}).then((r) => r.json());
+							const joined =
+								convs?.find((c: any) => c.id === info.conversation_id) ||
+								convs?.[0];
 							onSelectContact({
-								id: joined?.members?.find((m: any) => m.username !== undefined)?.id ?? 0,
+								id:
+									joined?.members?.find((m: any) => m.email !== undefined)
+										?.id ?? 0,
 								name: joined?.title ?? "Conversación",
-								email: "",
-								username: joined?.members?.[0]?.username ?? "unknown",
+								email: joined?.members?.[0]?.email ?? "unknown",
 								type: "user",
 								avatar: "👤",
 								online: false,
@@ -201,10 +227,15 @@ export function NewChatModal({
 				}
 			} catch (err) {
 				// Request fallback failed or endpoint no existe
-				console.warn("No se pudo resolver el token en backend (endpoint opcional).", err);
+				console.warn(
+					"No se pudo resolver el token en backend (endpoint opcional).",
+					err,
+				);
 			}
 
-			alert("No se pudo validar el link de invitación. Asegúrate de que incluya el parámetro 'u' con el username (ej: ?u=@usuario) o pega un link válido.");
+			alert(
+				"No se pudo validar el link de invitación. Asegúrate de que incluya el parámetro 'u' con el email (ej: ?u=@usuario) o pega un link válido.",
+			);
 		} catch (err) {
 			console.error("Error al usar link de invitación:", err);
 			alert("Error al procesar el link de invitación.");
@@ -213,20 +244,22 @@ export function NewChatModal({
 		}
 	};
 
-	// Generar link público (contiene username del usuario actual y token aleatorio)
+	// Generar link público (contiene email del usuario actual y token aleatorio)
 	const handleGenerateLink = async () => {
 		setGenerating(true);
 		try {
 			const me = await fetchCurrentUser();
-			if (!me || !me.username) {
-				alert("No se pudo obtener el usuario actual. Asegúrate de estar autenticado.");
+			if (!me || !me.email) {
+				alert(
+					"No se pudo obtener el usuario actual. Asegúrate de estar autenticado.",
+				);
 				setGenerating(false);
 				return;
 			}
 			// token aleatorio corto
 			const token = Math.random().toString(36).slice(2, 10);
-			// link con username embebido; al usar el link el cliente intentará crear conversación con ?u=username
-			const link = `${location.origin}/invite?u=${encodeURIComponent(me.username)}&t=${token}`;
+			// link con email embebido; al usar el link el cliente intentará crear conversación con ?u=email
+			const link = `${location.origin}/invite?u=${encodeURIComponent(me.email)}&t=${token}`;
 			setGeneratedLink(link);
 			// opcional: podrías POSTear el token al backend para registrar el invite (si tienes endpoint)
 			// try { await fetch("/api/chat/invitations/register-token", { method: "POST", credentials:'include', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token, conversation_id: null }) }) } catch(e){}
@@ -255,16 +288,18 @@ export function NewChatModal({
 		setSendingInvite(true);
 		try {
 			const me = await fetchCurrentUser();
-			if (!me || !me.username) {
-				alert("No se pudo obtener el usuario actual. Autentícate e intenta de nuevo.");
+			if (!me || !me.email) {
+				alert(
+					"No se pudo obtener el usuario actual. Autentícate e intenta de nuevo.",
+				);
 				setSendingInvite(false);
 				return;
 			}
 			// Asegurar una conversación "de invitaciones" creada por el usuario para poder enviar invitaciones vinculadas
 			// Creamos una conversación 'channel' privada solo con el creador (backend añadirá created_by)
 			const conv = await createConversation({
-				members: [me.username],
-				title: `${me.username}-invitations`,
+				members: [me.email],
+				title: `${me.email}-invitations`,
 				type: "channel",
 			});
 			const conversationId = conv.id;
@@ -286,10 +321,13 @@ export function NewChatModal({
 	const extractTokenFromLink = (link: string) => {
 		try {
 			const url = new URL(link.includes("://") ? link : `https://dummy${link}`);
-			return url.searchParams.get("t") || (() => {
-				const m = url.pathname.match(/\/invite\/([^\/\?]+)/);
-				return m ? m[1] : null;
-			})();
+			return (
+				url.searchParams.get("t") ||
+				(() => {
+					const m = url.pathname.match(/\/invite\/([^\/\?]+)/);
+					return m ? m[1] : null;
+				})()
+			);
 		} catch {
 			return null;
 		}
@@ -301,7 +339,8 @@ export function NewChatModal({
 				<DialogHeader>
 					<DialogTitle>Nueva Conversación</DialogTitle>
 					<DialogDescription>
-						Selecciona un usuario público, pega un link de invitación o genera tu propio link para compartir.
+						Selecciona un usuario público, pega un link de invitación o genera
+						tu propio link para compartir.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -364,7 +403,7 @@ export function NewChatModal({
 														)}
 													</div>
 													<p className="text-xs text-muted-foreground truncate">
-														{contact.username}
+														{contact.email}
 													</p>
 												</div>
 											</div>
@@ -378,10 +417,13 @@ export function NewChatModal({
 					<TabsContent value="invite" className="space-y-4">
 						<div className="space-y-3">
 							<div className="space-y-2">
-								<Label htmlFor="invite-link">Link de Invitación (pegar aquí)</Label>
+								<Label htmlFor="invite-link">
+									Link de Invitación (pegar aquí)
+								</Label>
 								<div className="flex gap-2">
 									<div className="relative flex-1">
 										<Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+										{/** biome-ignore lint/correctness/useUniqueElementIds: <explanation> */}
 										<Input
 											id="invite-link"
 											placeholder="https://sysgd.app/invite?u=@usuario..."
@@ -390,7 +432,10 @@ export function NewChatModal({
 											className="pl-9"
 										/>
 									</div>
-									<Button onClick={handleUseInviteLink} disabled={!pasteInviteLink.trim() || verifying}>
+									<Button
+										onClick={handleUseInviteLink}
+										disabled={!pasteInviteLink.trim() || verifying}
+									>
 										{verifying ? "Verificando..." : "Usar Link"}
 									</Button>
 								</div>
@@ -402,9 +447,19 @@ export function NewChatModal({
 									¿Cómo funciona?
 								</h4>
 								<ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-									<li>Pega el link que te compartieron (debe contener ?u=&lt;username&gt;).</li>
-									<li>El sistema intentará crear la conversación automáticamente con ese usuario.</li>
-									<li>Si el link tiene token registrado en backend, el cliente tratará de resolverlo (si tu backend soporta /invitations/resolve).</li>
+									<li>
+										Pega el link que te compartieron (debe contener
+										?u=&lt;email&gt;).
+									</li>
+									<li>
+										El sistema intentará crear la conversación automáticamente
+										con ese usuario.
+									</li>
+									<li>
+										Si el link tiene token registrado en backend, el cliente
+										tratará de resolverlo (si tu backend soporta
+										/invitations/resolve).
+									</li>
 								</ul>
 							</div>
 						</div>
@@ -415,12 +470,18 @@ export function NewChatModal({
 							<div className="space-y-2">
 								<Label>Tu Link de Invitación</Label>
 								<p className="text-sm text-muted-foreground">
-									Genera un link (contiene tu username). Quien lo abra podrá iniciar conversación contigo automáticamente.
+									Genera un link (contiene tu email). Quien lo abra podrá
+									iniciar conversación contigo automáticamente.
 								</p>
 							</div>
 
 							{!generatedLink ? (
-								<Button onClick={handleGenerateLink} className="w-full" size="lg" disabled={generating}>
+								<Button
+									onClick={handleGenerateLink}
+									className="w-full"
+									size="lg"
+									disabled={generating}
+								>
 									<Link2 className="h-4 w-4 mr-2" />
 									{generating ? "Generando..." : "Generar Link de Invitación"}
 								</Button>
@@ -437,7 +498,11 @@ export function NewChatModal({
 											variant="outline"
 											size="icon"
 										>
-											{linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+											{linkCopied ? (
+												<Check className="h-4 w-4" />
+											) : (
+												<Copy className="h-4 w-4" />
+											)}
 										</Button>
 									</div>
 
@@ -448,13 +513,21 @@ export function NewChatModal({
 											onChange={(e) => setInviteEmail(e.target.value)}
 											className="flex-1"
 										/>
-										<Button onClick={handleSendInvitationByEmail} disabled={sendingInvite}>
+										<Button
+											onClick={handleSendInvitationByEmail}
+											disabled={sendingInvite}
+										>
 											<Mail className="h-4 w-4 mr-2" />
 											{sendingInvite ? "Enviando..." : "Enviar"}
 										</Button>
 									</div>
 
-									<Button onClick={() => { setGeneratedLink(""); setInviteEmail(""); }}>
+									<Button
+										onClick={() => {
+											setGeneratedLink("");
+											setInviteEmail("");
+										}}
+									>
 										Generar Nuevo Link
 									</Button>
 								</div>
@@ -467,8 +540,14 @@ export function NewChatModal({
 								</h4>
 								<ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
 									<li>Comparte el link con quien quieras chatear.</li>
-									<li>Puedes enviar invitaciones por email vinculadas a una conversación especial.</li>
-									<li>Si tu backend registra tokens, el cliente intentará resolverlos al pegar links.</li>
+									<li>
+										Puedes enviar invitaciones por email vinculadas a una
+										conversación especial.
+									</li>
+									<li>
+										Si tu backend registra tokens, el cliente intentará
+										resolverlos al pegar links.
+									</li>
 								</ul>
 							</div>
 						</div>

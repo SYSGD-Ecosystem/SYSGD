@@ -4,7 +4,7 @@ type UUID = string;
 
 export interface UserShort {
   id: number;
-  username: string;
+  email: string;
   name?: string;
   role?: string;
 }
@@ -34,7 +34,7 @@ export interface Message {
   attachment_url?: string | null;
   reply_to?: UUID | null;
   created_at?: string;
-  sender_username?: string | null;
+  sender_email?: string | null;
   sender_name?: string | null;
 }
 
@@ -48,7 +48,7 @@ export interface Invitation {
   responded_at?: string | null;
   title?: string | null;
   type?: string | null;
-  sender_username?: string | null;
+  sender_email?: string | null;
 }
 
 /**
@@ -200,7 +200,7 @@ export function useChat() {
   // Crear conversación
   // -----------------------
   type CreateOpts =
-    | { contactUsername?: string; members?: string[]; title?: string; type?: string }
+    | { contactemail?: string; members?: string[]; title?: string; type?: string }
     | string;
 
   const createConversation = useCallback(
@@ -209,9 +209,9 @@ export function useChat() {
       try {
         const body: any = {};
         if (typeof opts === "string") {
-          body.contactUsername = opts;
+          body.contactemail = opts;
         } else if (opts && typeof opts === "object") {
-          if (opts.contactUsername) body.contactUsername = opts.contactUsername;
+          if (opts.contactemail) body.contactemail = opts.contactemail;
           if (opts.members) body.members = opts.members;
           if (opts.title) body.title = opts.title;
           if (opts.type) body.type = opts.type;
@@ -361,7 +361,7 @@ export function useChat() {
    * fetchCurrentUser - obtiene info del usuario autenticado (usa credentials include)
    * endpoint backend esperado: `${serverUrl}/api/auth/me`
    */
-  const fetchCurrentUser = useCallback(async (): Promise<{ id: number; username: string; email?: string } | null> => {
+  const fetchCurrentUser = useCallback(async (): Promise<{ id: number; email: string; } | null> => {
     try {
       const data = await safeFetch(`${serverUrl}/api/auth/me`);
       return data || null;

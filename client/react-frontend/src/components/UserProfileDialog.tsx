@@ -112,7 +112,7 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
 							<DialogTitle className="text-2xl font-bold">
 								{user.name}
 							</DialogTitle>
-							<p className="text-muted-foreground">{user.username}</p>
+							<p className="text-muted-foreground">{user.email}</p>
 						</div>
 					</div>
 				</DialogHeader>

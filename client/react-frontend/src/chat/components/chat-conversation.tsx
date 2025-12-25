@@ -110,7 +110,7 @@ export function ChatConversation({
 			senderName:
 				m.sender_id === userId
 					? "Tú"
-					: m.sender_name || m.sender_username || "Usuario",
+					: m.sender_name || m.sender_email || "Usuario",
 			avatar: undefined, // Backend Message doesn't have avatar field
 			attachment: m.attachment_url
 				? {
