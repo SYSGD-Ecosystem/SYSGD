@@ -400,9 +400,9 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 												<div
 													key={assignee.id}
 													className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center text-xs font-bold text-gray-600 border-2 border-white"
-													title={assignee.name}
+													title={assignee?.name || assignee?.email || 'Usuario sin nombre'}
 												>
-													{assignee.name.charAt(0)}
+													{assignee?.name?.charAt(0) || assignee?.email?.charAt(0) || '?'}
 												</div>
 											))}
 										</div>

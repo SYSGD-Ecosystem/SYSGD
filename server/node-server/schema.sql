@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
   privileges TEXT DEFAULT 'user',
   is_public BOOLEAN DEFAULT false,
   user_data JSONB,
+  status TEXT DEFAULT 'active',
   created_at TIMESTAMP DEFAULT NOW()
 );
 

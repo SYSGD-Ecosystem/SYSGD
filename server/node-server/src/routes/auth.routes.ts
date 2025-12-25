@@ -1,10 +1,12 @@
 import { Router } from "express";
-import { getCurrentUser, login, logout } from "../controllers/auth";
+import { getCurrentUser, login, logout, completeInvitedUserRegistration } from "../controllers/auth";
 
 
 const router = Router();
 
 router.post("/login", login);
+
+router.post("/complete-registration", completeInvitedUserRegistration);
 
 //router.post("/register", registerUser);
 

@@ -60,8 +60,8 @@ export default function AdminDashboard() {
 	const filteredUsers = useMemo(() => {
 		return users.filter(
 			(user) =>
-				user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-				user.email.toLowerCase().includes(searchTerm.toLowerCase()),
+				(user?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+				(user?.email || '').toLowerCase().includes(searchTerm.toLowerCase()),
 		);
 	}, [users, searchTerm]);
 
@@ -218,6 +218,7 @@ export default function AdminDashboard() {
 									<TableHead>Usuario</TableHead>
 									<TableHead>Nombre de Usuario</TableHead>
 									<TableHead>Privilegios</TableHead>
+									<TableHead>Estado</TableHead>
 									<TableHead className="text-right">Acciones</TableHead>
 								</TableRow>
 							</TableHeader>
@@ -228,10 +229,10 @@ export default function AdminDashboard() {
 											<div className="flex items-center space-x-3">
 												<Avatar className="h-8 w-8">
 													<AvatarFallback className="bg-primary/10 text-primary text-xs">
-														{getInitials(user.name)}
+														{getInitials(user.name || 'Sin nombre')}
 													</AvatarFallback>
 												</Avatar>
-												<span>{user.name}</span>
+												<span>{user.name || 'Sin nombre'}</span>
 											</div>
 										</TableCell>
 										<TableCell>{user.email}</TableCell>
@@ -250,6 +251,22 @@ export default function AdminDashboard() {
 												{user.privileges === "admin"
 													? "Administrador"
 													: "Usuario"}
+											</Badge>
+										</TableCell>
+										<TableCell>
+											<Badge
+												variant={
+													user.status === 'active' ? 'default' :
+													user.status === 'invited' ? 'secondary' :
+													user.status === 'suspended' ? 'destructive' :
+													user.status === 'banned' ? 'destructive' : 'secondary'
+												}
+												className="gap-1"
+											>
+												{user.status === 'active' ? 'Activo' :
+												 user.status === 'invited' ? 'Invitado' :
+												 user.status === 'suspended' ? 'Suspendido' :
+												 user.status === 'banned' ? 'Baneado' : 'Desconocido'}
 											</Badge>
 										</TableCell>
 										<TableCell className="text-right">

@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
 import { findUserByemail, logUserLogin } from "../services/authService";
+import { pool } from "../db";
 
 dotenv.config();
 
@@ -25,6 +26,20 @@ export const login = async (req: Request, res: Response) => {
 		if (user === null) {
 			res.status(401).json({ message: "Usuario no encontrado" });
 			return;
+		}
+
+		// Verificar si es un usuario invitado sin contraseña
+		if (user.status === 'invited' && !user.password) {
+			return res.status(202).json({ 
+				message: "Usuario invitado detectado",
+				status: 'invited',
+				user: {
+					id: user.id,
+					email: user.email,
+					name: user.name,
+					status: user.status
+				}
+			});
 		}
 
 		const match = await bcrypt.compare(password, user.password);
@@ -104,6 +119,68 @@ export function generateJWT(user: {
 		{ expiresIn: "7d" },
 	);
 }
+
+export const completeInvitedUserRegistration = async (req: Request, res: Response) => {
+	const { userId, name, password } = req.body;
+	
+	if (!userId || !name || !password) {
+		res.status(400).json({ message: "Faltan datos requeridos" });
+		return;
+	}
+
+	try {
+		// Verificar que el usuario existe y está en estado 'invited'
+		const userCheck = await findUserByemail(req.body.email);
+		if (!userCheck || userCheck.status !== 'invited') {
+			res.status(400).json({ message: "Usuario no válido o ya completó registro" });
+			return;
+		}
+
+		// Hashear la contraseña
+		const hashedPassword = await bcrypt.hash(password, 10);
+
+		// Actualizar el usuario
+		await pool.query(
+			`UPDATE users 
+			 SET name = $1, password = $2, status = 'active' 
+			 WHERE id = $3 AND status = 'invited'`,
+			[name, hashedPassword, userId]
+		);
+
+		// Generar token JWT para el usuario
+		const token = jwt.sign(
+			{
+				id: userId,
+				email: req.body.email,
+				name: name,
+				privileges: userCheck.privileges,
+			},
+			JWT_SECRET,
+			{ expiresIn: "24h" },
+		);
+
+		// Establecer cookie
+		res.cookie("token", token, {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+			maxAge: 1000 * 60 * 60 * 24,
+		});
+
+		res.status(201).json({ 
+			message: "Registro completado exitosamente",
+			user: {
+				id: userId,
+				email: req.body.email,
+				name: name,
+				status: 'active'
+			}
+		});
+	} catch (err) {
+		console.error(err);
+		res.status(500).json({ message: "Error interno del servidor" });
+	}
+};
 
 export const logout = async (req: Request, res: Response) => {
 	res.clearCookie("token", {

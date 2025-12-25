@@ -1,5 +1,6 @@
 import type { FC } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
 	Dialog,
 	DialogContent,
@@ -33,6 +34,10 @@ type ProjectMember = {
 	id: string;
 	name: string;
   email: string;
+	status?: string; // 'active' | 'invited'
+	sender_name?: string; // Para invitaciones
+	sender_email?: string; // Para invitaciones
+	created_at?: string; // Para invitaciones
 };
 
 // const Skeleton: FC = () => {
@@ -320,7 +325,14 @@ const DialogCreateTask: FC<Props> = ({
 													}
 												}}
 											>
-												{member.name}
+												<div className="flex items-center justify-between w-full">
+													<span>{member.name}</span>
+													{member.status === 'invited' && (
+														<Badge variant="secondary" className="text-xs ml-2">
+															Invitado
+														</Badge>
+													)}
+												</div>
 											</DropdownMenuCheckboxItem>
 										))}
 									</DropdownMenuContent>
