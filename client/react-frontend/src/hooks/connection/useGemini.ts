@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+
 export const useGemini = () => {
 	const [improvedText, setImprovedText] = useState("");
 	const [loading, setLoading] = useState(false);
@@ -8,7 +10,7 @@ export const useGemini = () => {
 		setLoading(true);
 		setImprovedText("");
 		try {
-			const response = await fetch("http://localhost:3000/api/generate", {
+			const response = await fetch(`${serverUrl}/api/generate`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include", // si usas cookies para la sesión

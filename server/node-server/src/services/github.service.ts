@@ -1,4 +1,6 @@
 import { Octokit } from "@octokit/rest";
+// const { Octokit } = (await import("@octokit/rest"));
+
 
 export interface GitHubPullRequest {
 	id: number;
