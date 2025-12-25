@@ -315,7 +315,7 @@ router.get("/users", isAuthenticated, async (req, res) => {
 	}
 	try {
 		const result = await pool.query(
-			"SELECT id, name, username, privileges FROM users ORDER BY id",
+			"SELECT id, name, email, privileges FROM users ORDER BY id",
 		);
 		res.json(result.rows);
 	} catch {
@@ -331,15 +331,15 @@ router.post("/users", isAuthenticated, async (req, res) => {
 		res.status(403).json({ error: "No autorizado" });
 		return;
 	}
-	const { name, username, password, privileges } = req.body;
-	if (!name || !username || !password || !privileges) {
+	const { name, email, password, privileges } = req.body;
+	if (!name || !email || !password || !privileges) {
 		res.status(400).json({ error: "Faltan datos" });
 		return;
 	}
 	try {
 		await pool.query(
-			"INSERT INTO users (name, username, password, privileges) VALUES ($1,$2,crypt($3, gen_salt('bf')),$4)",
-			[name, username, password, privileges],
+			"INSERT INTO users (name, email, password, privileges) VALUES ($1,$2,crypt($3, gen_salt('bf')),$4)",
+			[name, email, password, privileges],
 		);
 		res.status(201).send("201");
 		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
@@ -359,7 +359,7 @@ router.get("/admin/users", isAuthenticated, async (req, res) => {
 	}
 	try {
 		const result = await pool.query(
-			"SELECT id, name, username, privileges FROM users ORDER BY id",
+			"SELECT id, name, email, privileges FROM users ORDER BY id",
 		);
 		res.json(result.rows);
 	} catch {
@@ -376,15 +376,15 @@ router.post("/admin/users", isAuthenticated, async (req, res) => {
 		res.status(403).json({ error: "Acceso denegado" });
 		return;
 	}
-	const { name, username, password, privileges } = req.body;
-	if (!name || !username || !password || !privileges) {
+	const { name, email, password, privileges } = req.body;
+	if (!name || !email || !password || !privileges) {
 		res.status(400).json({ error: "Faltan datos obligatorios." });
 		return;
 	}
 	try {
 		await pool.query(
-			"INSERT INTO users (name, username, password, privileges) VALUES ($1,$2,crypt($3, gen_salt('bf')),$4)",
-			[name, username, password, privileges],
+			"INSERT INTO users (name, email, password, privileges) VALUES ($1,$2,crypt($3, gen_salt('bf')),$4)",
+			[name, email, password, privileges],
 		);
 		res.status(201).send("201");
 		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
@@ -397,15 +397,15 @@ router.post("/admin/users", isAuthenticated, async (req, res) => {
 // PUT /api/admin/users/:id
 router.put("/admin/users/:id", isAuthenticated, isAdmin, async (req, res) => {
 	const { id } = req.params;
-	const { name, username, password, privileges } = req.body;
+	const { name, email, password, privileges } = req.body;
 	if (!id) {
 		res.status(400).json({ error: "Id requerido" });
 		return;
 	}
 	try {
 		await pool.query(
-			"UPDATE users SET name = COALESCE($1,name), username = COALESCE($2,username), password = COALESCE(crypt($3, gen_salt('bf')),password), privileges = COALESCE($4,privileges) WHERE id = $5",
-			[name, username, password || null, privileges, id],
+			"UPDATE users SET name = COALESCE($1,name), email = COALESCE($2,email), password = COALESCE(crypt($3, gen_salt('bf')),password), privileges = COALESCE($4,privileges) WHERE id = $5",
+			[name, email, password || null, privileges, id],
 		);
 		res.sendStatus(204);
 	} catch {
@@ -723,8 +723,8 @@ router.get("/me", getCurrentUser);
 
 router.post("/register", async (req: Request, res: Response) => {
 	//TODO: Implementar verificación de email
-	const { name, username, password } = req.body;
-	if (!name || !username || !password) {
+	const { name, email, password } = req.body;
+	if (!name || !email || !password) {
 		res.status(400).send("400");
 		return;
 	}
@@ -738,8 +738,8 @@ router.post("/register", async (req: Request, res: Response) => {
 		}
 
 		const userExists = await pool.query(
-			"SELECT id FROM users WHERE username = $1",
-			[username],
+			"SELECT id FROM users WHERE email = $1",
+			[email],
 		);
 		if (userExists.rows.length > 0) {
 			res.status(409).send("Usuario ya existe");
@@ -748,8 +748,8 @@ router.post("/register", async (req: Request, res: Response) => {
 
 		const hashedPassword = await bcrypt.hash(password, 10);
 		await pool.query(
-			"INSERT INTO users (name, username, password, privileges) VALUES ($1, $2, $3, $4)",
-			[name, username, hashedPassword, privileges],
+			"INSERT INTO users (name, email, password, privileges) VALUES ($1, $2, $3, $4)",
+			[name, email, hashedPassword, privileges],
 		);
 
 		res.status(201).send("Usuario registrado");
@@ -771,7 +771,7 @@ router.get(
 	async (req: Request, res: Response) => {
 		try {
 			const result = await pool.query(
-				"SELECT id, name, username, privileges FROM users",
+				"SELECT id, name, email, privileges FROM users",
 			);
 			res.json(result.rows);
 		} catch (err) {
@@ -847,16 +847,16 @@ router.put(
 	isAdmin,
 	async (req: Request, res: Response) => {
 		const userId = Number.parseInt(req.params.id, 10);
-		const { name, username } = req.body;
-		if (Number.isNaN(userId) || (!name && !username)) {
+		const { name, email } = req.body;
+		if (Number.isNaN(userId) || (!name && !email)) {
 			res.status(400).json({ error: "Datos inválidos" });
 			return;
 		}
 		try {
-			if (username) {
+			if (email) {
 				const exists = await pool.query(
-					"SELECT id FROM users WHERE username = $1 AND id <> $2",
-					[username, userId],
+					"SELECT id FROM users WHERE email = $1 AND id <> $2",
+					[email, userId],
 				);
 				if (exists.rows.length > 0) {
 					res.status(409).json({ error: "El nombre de usuario ya existe" });
@@ -870,9 +870,9 @@ router.put(
 				fields.push(`name = $${idx++}`);
 				values.push(name);
 			}
-			if (username) {
-				fields.push(`username = $${idx++}`);
-				values.push(username);
+			if (email) {
+				fields.push(`email = $${idx++}`);
+				values.push(email);
 			}
 			values.push(userId);
 			const result = await pool.query(

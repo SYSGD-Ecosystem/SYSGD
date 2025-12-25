@@ -23,7 +23,7 @@ router.get(
                 t.*,
                 COALESCE(
                     (
-                        SELECT json_agg(json_build_object('id', u.id, 'name', u.name, 'username', u.username))
+                        SELECT json_agg(json_build_object('id', u.id, 'name', u.name, 'email', u.email))
                         FROM task_assignees ta
                         JOIN users u ON ta.user_id = u.id
                         WHERE ta.task_id = t.id
@@ -102,7 +102,7 @@ const user = getCurrentUserData(req)
 		for (const userId of assignees) {
 			await client.query(
 				"INSERT INTO task_assignees (task_id, user_id) VALUES ($1, $2)",
-				[newTask.id, userId],
+				[newTask.id, typeof userId === 'object' ? userId.id : userId],
 			);
 		}
 
@@ -192,7 +192,7 @@ router.put("/:taskId", isAuthenticated, async (req: Request, res: Response) => {
 		for (const userId of assignees) {
 			await client.query(
 				"INSERT INTO task_assignees (task_id, user_id) VALUES ($1, $2)",
-				[taskId, userId.id],
+				[taskId, typeof userId === 'object' ? userId.id : userId],
 			);
 		}
 

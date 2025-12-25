@@ -1,4 +1,4 @@
-import { CheckSquare, Lightbulb, Users, FileText } from "lucide-react";
+import { CheckSquare, Lightbulb, Users, FileText, Github, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SidebarProps {
@@ -17,8 +17,10 @@ export function ProjectSidebar({
 	const projectItems = [
 		{ id: "tasks", label: "GESTIÓN DE TAREAS", icon: CheckSquare },
 		{ id: "ideas", label: "BANCO DE IDEAS", icon: Lightbulb },
-		{ id: "team", label: "EQUIPO DE TRABAJO", icon: Users },
 		{ id: "notes", label: "NOTAS Y APUNTES", icon: FileText },
+		{ id: "github", label: "GITHUB", icon: Github },
+		{ id: "team", label: "EQUIPO DE TRABAJO", icon: Users },
+		{ id: "settings", label: "CONFIGURACIÓN", icon: Settings },
 	];
 
 	return (

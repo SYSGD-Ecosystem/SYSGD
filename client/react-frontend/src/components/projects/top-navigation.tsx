@@ -68,12 +68,10 @@ export function TopNavigation({
 							<span className="hidden sm:inline">Inicio</span>
 						</Button>
 
-						<>
-							<ChevronRight className="w-4 h-4 text-gray-400" />
-							<span className="text-sm font-medium text-gray-900 dark:text-white">
-								{currentProject?.name || "Proyecto"}
-							</span>
-						</>
+						<ChevronRight className="w-4 h-4 text-gray-400" />
+						<span className="text-sm font-medium text-gray-900 dark:text-white">
+							{currentProject?.name || "Proyecto"}
+						</span>
 					</div>
 
 					<div className="h-6 w-px bg-gray-300 dark:bg-gray-600 hidden sm:block" />

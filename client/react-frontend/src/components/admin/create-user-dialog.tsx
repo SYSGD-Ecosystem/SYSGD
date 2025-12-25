@@ -29,7 +29,7 @@ export function CreateUserDialog({ open, onOpenChange, onUserCreated }: CreateUs
   const { createUser } = useUsers()
   const [formData, setFormData] = useState<CreateUserData>({
     name: "",
-    username: "",
+    email: "",
     password: "",
     privileges: "user",
   })
@@ -39,7 +39,7 @@ export function CreateUserDialog({ open, onOpenChange, onUserCreated }: CreateUs
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.name || !formData.username || !formData.password) {
+    if (!formData.name || !formData.email || !formData.password) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -56,7 +56,7 @@ export function CreateUserDialog({ open, onOpenChange, onUserCreated }: CreateUs
       onOpenChange(false)
       setFormData({
         name: "",
-        username: "",
+        email: "",
         password: "",
         privileges: "user",
       })
@@ -98,14 +98,14 @@ export function CreateUserDialog({ open, onOpenChange, onUserCreated }: CreateUs
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="create-username" className="text-right">
+              <Label htmlFor="create-email" className="text-right">
                 Usuario *
               </Label>
               <Input
-                id="create-username"
-                value={formData.username}
+                id="create-email"
+                value={formData.email}
                 className="col-span-3"
-                onChange={(e) => setFormData((prev) => ({ ...prev, username: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
                 required
               />
             </div>

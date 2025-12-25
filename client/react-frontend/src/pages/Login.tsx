@@ -67,12 +67,12 @@ const Login: FC = () => {
 			return;
 		}
 
-		register({ name, username: user, password });
+		register({ name, email: user, password });
 	};
 
 	const handleLoginSubmit = (e: FormEvent) => {
 		e.preventDefault();
-		login({ username: user, password });
+		login({ email: user, password });
 	};
 
 	if (loginSuccess) {

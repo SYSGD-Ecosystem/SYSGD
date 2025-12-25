@@ -5,7 +5,7 @@ const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 
 interface RegisterData {
   name: string;
-  username: string;
+  email: string;
   password: string;
 }
 
@@ -21,7 +21,7 @@ export function useRegisterUser(): RegisterResult {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const register = async ({ name, username, password }: RegisterData) => {
+  const register = async ({ name, email, password }: RegisterData) => {
     setLoading(true);
     setError("");
     setSuccess(false);
@@ -32,7 +32,7 @@ export function useRegisterUser(): RegisterResult {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name, username, password }),
+        body: JSON.stringify({ name, email, password }),
       });
 
       if (res.status === 201) {

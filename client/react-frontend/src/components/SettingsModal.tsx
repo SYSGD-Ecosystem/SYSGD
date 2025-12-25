@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { useUsers } from "@/hooks/connection/useUsers";
 
 interface SettingsModalProps {
 	isOpen: boolean;
@@ -44,6 +45,7 @@ type Theme = "classic" | "red" | "green" | "fire" | "purple" | "pink";
 const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 	const [activeCategory, setActiveCategory] = useState("appearance");
 	const { theme, setTheme, isDark, setIsDark } = useTheme();
+	const { toggleUserPublic } = useUsers();
 
 	const categories = [
 		{ id: "appearance", Label: "Apariencia", icon: Palette },
@@ -223,14 +225,22 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 				<div className="space-y-4">
 					{[
 						{
+							id: "public-profile",
+							Label: "Establecer como usuario público",
+							desc: "Otros usuarios pueden ver y encontrar tu perfil",
+						},
+						{
+							id: "online-status",
 							Label: "Mostrar estado en línea",
 							desc: "Otros usuarios pueden ver cuando estás activo",
 						},
 						{
+							id: "last-seen",
 							Label: "Mostrar última actividad",
 							desc: "Mostrar cuándo fue tu última actividad",
 						},
 						{
+							id: "mentions",
 							Label: "Permitir menciones",
 							desc: "Otros pueden mencionarte en comentarios",
 						},
@@ -244,7 +254,14 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 								<p className="font-medium">{item.Label}</p>
 								<p className="text-sm text-gray-500">{item.desc}</p>
 							</div>
-							<Switch defaultChecked={index !== 1} />
+							<Switch id={item.id} 
+							// funcion para hacer publico o privado el usuario
+							onCheckedChange={(checked) => {
+								if (item.id === "public-profile") {
+									toggleUserPublic(checked as boolean);
+								}
+							}}
+							defaultChecked={index !== 1} />
 						</div>
 					))}
 				</div>

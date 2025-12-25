@@ -1,14 +1,30 @@
-import { useState, type FC } from "react";
+import { useCallback, useRef, useState, type FC } from "react";
 import { TopNavigation } from "./top-navigation";
 import { useNavigate } from "react-router-dom";
 import { useSelectionStore } from "@/store/selection";
-import TaskManagement from "./TaskManagement";
+import TaskManagement from "./task-management/TaskManagement.tsx";
 import useCurrentUser from "@/hooks/connection/useCurrentUser";
 import Loading from "../Loading";
 import { ProjectSidebar } from "./ProjectSidebar";
 import TeamManagement from "./TeamManagement";
 import IdeasBank from "./IdeasBank";
 import NotesSection from "./NotesSection";
+import GitHubIntegration from "./GitHubIntegration.tsx";
+import ProjectSettings from "./ProjectSettings";
+import type { GitHubCacheEntry } from "./GitHubIntegration";
+
+
+// type GitHubCacheEntry = {
+// 	cacheTime: number;
+// 	repository: unknown | null;
+// 	pullRequests: unknown[] | null;
+// 	metrics: unknown | null;
+// 	pullRequestsKey?: string;
+// 	pullRequestsPage?: number;
+// 	pagination?: { currentPage: number; totalPages: number; totalCount: number };
+// };
+
+
 
 const ProjectWorkSpace: FC = () => {
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -19,6 +35,39 @@ const ProjectWorkSpace: FC = () => {
 	);
 	const [selectedProject, setSelectedProject] = useState(selectedProjectId);
 	const { loading, user } = useCurrentUser();
+
+	// GitHub cache at parent level so it survives GitHubIntegration mount/unmount.
+	// TTL: 5 minutes
+	const githubCacheRef = useRef<Map<string, GitHubCacheEntry>>(new Map());
+	// const githubCacheTtlMs = 5 * 60 * 1000;
+
+
+	const getGitHubCache = useCallback(
+		(projectId: string): GitHubCacheEntry | null => {
+			return githubCacheRef.current.get(projectId) ?? null;
+		},
+		[],
+	);
+
+	const setGitHubCache = useCallback(
+		(projectId: string, patch: Partial<Omit<GitHubCacheEntry, "cacheTime">>) => {
+			const prev = githubCacheRef.current.get(projectId);
+			githubCacheRef.current.set(projectId, {
+				repository: prev?.repository ?? null,
+				pullRequests: prev?.pullRequests ?? null,
+				metrics: prev?.metrics ?? null,
+				pullRequestsKey: prev?.pullRequestsKey,
+				//pullRequestsPage: prev?.pullRequestsPage,
+				pagination: prev?.pagination,
+				...patch,
+			});
+		},
+		[],
+	);
+
+	const clearGitHubCache = useCallback((projectId: string) => {
+		githubCacheRef.current.delete(projectId);
+	}, []);
 
 	if (loading)
 		return (
@@ -33,7 +82,7 @@ const ProjectWorkSpace: FC = () => {
 	}
 
 	if (!selectedProject) {
-		return <>No hay proyecto seleccionado</>;
+		return <div>No hay proyecto seleccionado</div>;
 	}
 
 	const handleHomeClick = () => {
@@ -80,6 +129,19 @@ const ProjectWorkSpace: FC = () => {
 
 					{activeSection === "notes" && selectedProject && (
 						<NotesSection projectId={selectedProject} />
+					)}
+
+					{activeSection === "github" && selectedProject && (
+						<GitHubIntegration
+							projectId={selectedProject}
+							getGitHubCache={getGitHubCache}
+							setGitHubCache={setGitHubCache}
+							clearGitHubCache={clearGitHubCache}
+						/>
+					)}
+
+					{activeSection === "settings" && selectedProject && (
+						<ProjectSettings projectId={selectedProject} />
 					)}
 				</main>
 			</div>

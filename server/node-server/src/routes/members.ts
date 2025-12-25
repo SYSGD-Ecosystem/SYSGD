@@ -14,7 +14,7 @@ router.get("/:projectId", isAuthenticated, async (req, res) => {
 	const { projectId } = req.params;
 	try {
 		const result = await pool.query(
-			`SELECT u.id, u.name, u.username, ra.role
+			`SELECT u.id, u.name, u.email, ra.role
        FROM resource_access ra
        JOIN users u ON ra.user_id = u.id
        WHERE ra.resource_type = 'project' AND ra.resource_id = $1`,
@@ -36,7 +36,7 @@ router.post("/invite/:projectId", isAuthenticated, async (req, res) => {
 
 	try {
 		const userResult = await pool.query(
-			"SELECT id FROM users WHERE username = $1",
+			"SELECT id FROM users WHERE email = $1",
 			[email],
 		);
 		const receiverId = userResult.rows[0]?.id || null;

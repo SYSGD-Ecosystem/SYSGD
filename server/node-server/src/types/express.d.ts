@@ -5,7 +5,7 @@ declare global {
 		interface Request {
 			user?: {
 				id: number;
-				username: string;
+				email: string;
 				name: string;
 				privileges: string;
 			};
@@ -18,7 +18,7 @@ declare global {
 // 	interface SessionData {
 // 		user?: {
 // 			id: number;
-// 			username: string;
+// 			email: string;
 // 			name: string;
 // 			privileges: string;
 // 		};

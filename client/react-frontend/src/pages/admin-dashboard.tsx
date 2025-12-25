@@ -61,7 +61,7 @@ export default function AdminDashboard() {
 		return users.filter(
 			(user) =>
 				user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-				user.username.toLowerCase().includes(searchTerm.toLowerCase()),
+				user.email.toLowerCase().includes(searchTerm.toLowerCase()),
 		);
 	}, [users, searchTerm]);
 
@@ -234,7 +234,7 @@ export default function AdminDashboard() {
 												<span>{user.name}</span>
 											</div>
 										</TableCell>
-										<TableCell>{user.username}</TableCell>
+										<TableCell>{user.email}</TableCell>
 										<TableCell>
 											<Badge
 												variant={

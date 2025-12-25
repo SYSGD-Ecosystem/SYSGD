@@ -2,17 +2,25 @@ import type { Request, Response } from "express";
 import { pool } from "../db";
 
 export interface User {
-    id: number;
-    username: string;
+    id: string;
+    email: string;
     privileges: string;
     // otras propiedades
+}
+
+export interface ProjectConfig {
+id: string;
+project_id: string;
+created_by: string;
+crated_at: string;
+task_config: string;
 }
 
 
 export const createProject = async (req: Request, res: Response) => {
     const { name, description, visibility } = req.body;
     const user: User = req.user as User;
-    if (!user || !user.id || !user.username || !user.privileges) {
+    if (!user || !user.id || !user.email || !user.privileges) {
         res.status(401).json({ error: "Usuario no autenticado" });
         return;
     }
@@ -30,6 +38,18 @@ export const createProject = async (req: Request, res: Response) => {
        VALUES ($1, $2, $3, $4) RETURNING *`,
             [name, description, created_by, visibility || "privado"]
         );
+
+        console.log("Project result",{result},result.rows[0])
+
+        const project_id = result.rows[0].id
+
+        const project_config = await pool.query(
+            `INSERT INTO projects_config (project_id, created_by) VALUES ($1, $2) RETURNING *`, [project_id, created_by]
+        );
+
+        console.log("Project result config",project_config.rows[0])
+
+
         res.status(201).json(result.rows[0]);
     } catch (err) {
         console.error("Error al crear proyecto:", err);
@@ -42,7 +62,7 @@ export const createProject = async (req: Request, res: Response) => {
 export const getProjects = async (req: Request, res: Response) => {
 
     const user: User = req.user as User;
-    if (!user || !user.id || !user.username || !user.privileges) {
+    if (!user || !user.id || !user.email || !user.privileges) {
         res.status(401).json({ error: "Usuario no autenticado" });
         return;
     }
@@ -95,7 +115,7 @@ export const getProjectById = async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const user: User = req.user as User;
-    if (!user || !user.id || !user.username || !user.privileges) {
+    if (!user || !user.id || !user.email || !user.privileges) {
         res.status(401).json({ error: "Usuario no autenticado" });
         return;
     }

@@ -7,7 +7,7 @@ export interface ProjectNote {
   created_at: string;
   updated_at: string;
   author_name?: string;
-  author_username?: string;
+  author_email?: string;
 }
 
 export interface CreateNoteData {

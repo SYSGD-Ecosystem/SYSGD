@@ -466,7 +466,9 @@ export default function LandingPage() {
 							<h3 className="font-semibold mb-4">Soporte</h3>
 							<div className="space-y-2 text-sm text-muted-foreground">
 								<div>Documentación</div>
-								<div>Centro de ayuda</div>
+								<div>
+									<Link to="/help">Centro de ayuda</Link>
+								</div>
 								<div>Contacto</div>
 								<div>Estado del servicio</div>
 							</div>

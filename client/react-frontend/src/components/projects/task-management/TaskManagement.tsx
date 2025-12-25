@@ -9,12 +9,6 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -24,29 +18,24 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Filter, Plus, Search, X } from "lucide-react";
-import { useTasks } from "@/hooks/connection/useTask";
+import { useTasks } from "@/components/projects/task-management/hooks/useTask";
+import { useTaskConfig } from "@/components/projects/task-management/hooks/useTaskConfig";
 import type { Task } from "@/types/Task";
+import DialogViewTask from "./modals/DialogViewTask";
+import DialogCreateTask from "./modals/DialogCreateTask";
 import { getPriorityColor } from "@/utils/util";
 import { getStatusIcon } from "@/utils/util-components";
-import DialogViewTask from "../dialogs/DialogViewTask";
-
 import { useProjectMembers } from "@/hooks/connection/useProjectMembers";
-import {
-	DropdownMenu,
-	DropdownMenuCheckboxItem,
-	DropdownMenuContent,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useGemini } from "@/hooks/connection/useGemini";
 
 const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 	const { tasks, loading, createTask, updateTask, deleteTask } =
 		useTasks(project_id);
+	const { config } = useTaskConfig(project_id);
+	console.log("configuracion de tareas", config)
 	// 1. Obtenemos los miembros del proyecto para el dropdown
+	// TODO: Actualizar para que salgan miembros invitados aunque todavia no formen parte del proyecto. 
 	const { members } = useProjectMembers(project_id);
 	const { handleImprove, improvedText, loading: geminiIsLoading } = useGemini();
 
@@ -59,10 +48,9 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [filterAssignee, setFilterAssignee] = useState("todos");
 	const [filterType, setFilterType] = useState("todos");
+	const [filterPriority, setFilterPriority] = useState("todos");
 	const [filterStatus, setFilterStatus] = useState("todos");
 	const [showFilters, setShowFilters] = useState(false);
-
-	//if (loading) return <div>Cargando tareas...</div>;
 
 	const handleSaveTask = async () => {
 		if (!editingTask) return;
@@ -101,13 +89,20 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 	};
 
 	const handleAddNewTask = () => {
+		const defaultType = config?.types?.[0]?.name ?? "Tarea";
+		const defaultPriority =
+			config?.priorities?.find((p) => p.level === 2)?.name ??
+			config?.priorities?.[0]?.name ??
+			"Media";
+		const defaultStatus = config?.states?.[0]?.name ?? "Pendiente";
+
 		const newTask: Task = {
 			id: "new-task", // Usar un ID temporal para nuevas tareas
-			type: "Tarea",
-			priority: "Media",
+			type: defaultType,
+			priority: defaultPriority,
 			title: "",
 			description: "",
-			status: "Pendiente",
+			status: defaultStatus,
 			assignees: [],
 			created_at: new Date().toISOString(),
 			project_id,
@@ -127,8 +122,7 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 				// biome-ignore lint/complexity/useOptionalChain: <explanation>
 				(task.assignees &&
 					task.assignees.some((a) => a.name === filterAssignee));
-			const matchesType =
-				filterType === "todos" || task.priority === filterType;
+			const matchesType = filterType === "todos" || task.type === filterType;
 			const matchesStatus =
 				filterStatus === "todos" || task.status === filterStatus;
 
@@ -141,6 +135,7 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 		setSearchTerm("");
 		setFilterAssignee("todos");
 		setFilterType("todos");
+		setFilterPriority("todos");
 		setFilterStatus("todos");
 	};
 
@@ -150,6 +145,7 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 			searchTerm !== "" ||
 			filterAssignee !== "todos" ||
 			filterType !== "todos" ||
+			filterPriority !== "todos" ||
 			filterStatus !== "todos"
 		);
 	};
@@ -160,7 +156,11 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 		return uniqueNames;
 	};
 
-	const getUniqueTypes = () => {
+	// const getUniqueTypes = () => {
+	// 	return [...new Set(tasks.map((task) => task.type))];
+	// };
+
+	const getUniquePriorities = () => {
 		return [...new Set(tasks.map((task) => task.priority))];
 	};
 
@@ -258,15 +258,20 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 									<Label className="text-sm font-medium mb-2 block">
 										Prioridad
 									</Label>
-									<Select value={filterType} onValueChange={setFilterType}>
+									<Select
+										value={filterPriority}
+										onValueChange={setFilterPriority}
+									>
 										<SelectTrigger>
 											<SelectValue />
 										</SelectTrigger>
 										<SelectContent>
-											<SelectItem value="todos">Todos los tipos</SelectItem>
-											{getUniqueTypes().map((type) => (
-												<SelectItem key={type} value={type}>
-													{type}
+											<SelectItem value="todos">
+												Todas las prioridades
+											</SelectItem>
+											{getUniquePriorities().map((priority) => (
+												<SelectItem key={priority} value={priority}>
+													{priority}
 												</SelectItem>
 											))}
 										</SelectContent>
@@ -317,6 +322,11 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 												Tipo: {filterType}
 											</Badge>
 										)}
+										{filterPriority !== "todos" && (
+											<Badge variant="secondary" className="text-xs">
+												Prioridad: {filterPriority}
+											</Badge>
+										)}
 										{filterStatus !== "todos" && (
 											<Badge variant="secondary" className="text-xs">
 												Estado: {filterStatus}
@@ -337,6 +347,7 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 							<TableHead className="text-center">ESTADO</TableHead>
 
 							<TableHead className="text-left">TÍTULO</TableHead>
+							<TableHead className="text-center">TIPO</TableHead>
 							<TableHead className="text-center">PRIORIDAD</TableHead>
 							<TableHead className="text-center">ASIGNADO</TableHead>
 						</TableRow>
@@ -367,6 +378,11 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 									</TableCell>
 
 									<TableCell className="text-left">{task.title}</TableCell>
+									<TableCell className="text-center">
+										<Badge variant="outline" className="text-center">
+											{task.type}
+										</Badge>
+									</TableCell>
 									<TableCell className="text-center flex items-center justify-center">
 										<Badge
 											className="w-16 text-center flex items-center justify-center"
@@ -395,201 +411,20 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 				</Table>
 			</div>
 
-			<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-				<DialogContent className="max-w-md">
-					<DialogHeader>
-						<DialogTitle>
-							{editingTask?.id && tasks.find((t) => t.id === editingTask.id)
-								? "Editar Tarea"
-								: "Nueva Tarea"}
-						</DialogTitle>
-					</DialogHeader>
-					{editingTask && (
-						<div className="space-y-4">
-							<div>
-								<Label htmlFor="titulo">Título</Label>
-								<Input
-									id="titulo"
-									value={editingTask.title}
-									onChange={(e) =>
-										setEditingTask({ ...editingTask, title: e.target.value })
-									}
-								/>
-							</div>
-							<div>
-								<Label htmlFor="descripcion">Descripción</Label>
-								<Textarea
-									className="min-h-32"
-									id="descripcion"
-									value={editingTask.description || ""}
-									onChange={(e) =>
-										setEditingTask({
-											...editingTask,
-											description: e.target.value,
-										})
-									}
-								/>
-							</div>
-							<div className="border hidden p-4 rounded-lg bg-muted space-y-4">
-								<div className="text-sm text-muted-foreground">
-									Mejora automática de descripción con IA
-								</div>
-
-								<div className="max-h-40 overflow-auto bg-background p-2 rounded">
-									{geminiIsLoading ? (
-										<Skeleton />
-									) : (
-										<Textarea
-											readOnly
-											className="min-h-24 text-sm"
-											value={improvedText}
-										/>
-									)}
-								</div>
-
-								<Button
-									size="sm"
-									variant="secondary"
-									disabled={geminiIsLoading}
-									onClick={() =>
-										handleImprove(
-											editingTask?.title ?? "",
-											editingTask?.description ?? "",
-										)
-									}
-									className="w-full"
-								>
-									✨ Mejorar con IA
-								</Button>
-							</div>
-
-							<div className="grid grid-cols-2 gap-4">
-								<div>
-									<Label htmlFor="tipo">Tipo</Label>
-									<Select
-										value={editingTask.type}
-										onValueChange={(value) =>
-											setEditingTask({ ...editingTask, type: value })
-										}
-									>
-										<SelectTrigger>
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="Tarea">Tarea</SelectItem>
-											<SelectItem value="Idea">Idea</SelectItem>
-											<SelectItem value="Nota">Nota</SelectItem>
-										</SelectContent>
-									</Select>
-								</div>
-								<div>
-									<Label htmlFor="prioridad">Prioridad</Label>
-									<Select
-										value={editingTask.priority}
-										onValueChange={(value) =>
-											setEditingTask({ ...editingTask, priority: value })
-										}
-									>
-										<SelectTrigger>
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="Alta">Alta</SelectItem>
-											<SelectItem value="Media">Media</SelectItem>
-											<SelectItem value="Baja">Baja</SelectItem>
-										</SelectContent>
-									</Select>
-								</div>
-							</div>
-							<div className="grid grid-cols-2 gap-4">
-								<div>
-									<Label htmlFor="estado">Estado</Label>
-									<Select
-										value={editingTask.status}
-										onValueChange={(value) =>
-											setEditingTask({ ...editingTask, status: value })
-										}
-									>
-										<SelectTrigger>
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="Pendiente">Pendiente</SelectItem>
-											<SelectItem value="En Progreso">En Progreso</SelectItem>
-											<SelectItem value="Completado">Completado</SelectItem>
-										</SelectContent>
-									</Select>
-								</div>
-								<div>
-									<Label>Asignar a</Label>
-									<DropdownMenu>
-										<DropdownMenuTrigger asChild>
-											<Button
-												variant="outline"
-												className="w-full justify-start text-left font-normal"
-											>
-												{editingTask &&
-													(editingTask.assignees &&
-													editingTask.assignees.length > 0
-														? editingTask.assignees
-																.map((a) => a.name)
-																.join(", ")
-														: "Seleccionar miembros")}
-											</Button>
-										</DropdownMenuTrigger>
-										<DropdownMenuContent className="w-full">
-											<DropdownMenuLabel>
-												Miembros del Proyecto
-											</DropdownMenuLabel>
-											<DropdownMenuSeparator />
-											{members.map((member) => (
-												<DropdownMenuCheckboxItem
-													key={member.id}
-													checked={
-														editingTask?.assignees?.some(
-															(a) => a.id === member.id,
-														) || false
-													}
-													onCheckedChange={(checked) => {
-														const currentAssignees =
-															editingTask?.assignees || [];
-														if (checked) {
-															setEditingTask({
-																...editingTask,
-																assignees: [...currentAssignees, member],
-															});
-														} else {
-															setEditingTask({
-																...editingTask,
-																assignees: currentAssignees.filter(
-																	(a) => a.id !== member.id,
-																),
-															});
-														}
-													}}
-												>
-													{member.name}
-												</DropdownMenuCheckboxItem>
-											))}
-										</DropdownMenuContent>
-									</DropdownMenu>
-								</div>
-							</div>
-							<div className="flex justify-end gap-2">
-								<Button
-									variant="outline"
-									onClick={() => setIsDialogOpen(false)}
-								>
-									Cancelar
-								</Button>
-								<Button disabled={isEditing} onClick={handleSaveTask}>
-									Guardar
-								</Button>
-							</div>
-						</div>
-					)}
-				</DialogContent>
-			</Dialog>
+			<DialogCreateTask
+				projectId={project_id}
+				isOpen={isDialogOpen}
+				onOpenChange={setIsDialogOpen}
+				editingTask={editingTask}
+				setEditingTask={setEditingTask}
+				tasks={tasks}
+				members={members}
+				isEditing={isEditing}
+				handleSaveTask={handleSaveTask}
+				geminiIsLoading={geminiIsLoading}
+				improvedText={improvedText}
+				handleImprove={handleImprove}
+			/>
 			{selectedTask && (
 				<DialogViewTask
 					isOpen={isDialogViewOpen}

@@ -16,7 +16,7 @@ import { Label } from "../ui/label";
 import { useProjectMembers } from "@/hooks/connection/useProjectMembers";
 import type { Member } from "@/types/Member";
 import DialogInvite from "../dialogs/DialogInvite";
-import { Skeleton } from "./TaskManagement";
+import { Skeleton } from "./task-management/TaskManagement";
 
 const TeamManagement: FC<{ projectId: string }> = ({ projectId }) => {
 	const { members, loading } = useProjectMembers(projectId);
@@ -73,7 +73,7 @@ const TeamManagement: FC<{ projectId: string }> = ({ projectId }) => {
 		}
 	};
 
-	const handleDeleteMember = (memberId: number) => {
+	const handleDeleteMember = (memberId: string) => {
 		setTeamMembers(teamMembers.filter((member) => member.id !== memberId));
 	};
 
@@ -202,7 +202,7 @@ const TeamManagement: FC<{ projectId: string }> = ({ projectId }) => {
 										<div className="space-y-2">
 											<div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
 												<Mail className="w-4 h-4 flex-shrink-0" />
-												<span className="truncate">{member.username}</span>
+												<span className="truncate">{member.email}</span>
 											</div>
 										</div>
 
@@ -267,11 +267,11 @@ const TeamManagement: FC<{ projectId: string }> = ({ projectId }) => {
 									</Label>
 									<Input
 										type="email"
-										value={editingMember.username}
+										value={editingMember.email}
 										onChange={(e) =>
 											setEditingMember({
 												...editingMember,
-												username: e.target.value,
+												email: e.target.value,
 											})
 										}
 										placeholder="correo@ejemplo.com"

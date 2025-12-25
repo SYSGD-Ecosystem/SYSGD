@@ -6,7 +6,7 @@ const useCurrentUser = () => {
 	const [user, setUser] = useState<null | {
 		id: number;
 		name: string;
-		username: string;
+		email: string;
 		privileges: string;
 	}>(null);
 	const [loading, setLoading] = useState(true);

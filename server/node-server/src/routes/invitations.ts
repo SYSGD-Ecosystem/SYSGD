@@ -14,7 +14,7 @@ router.get("/", isAuthenticated, async (req: Request, res: Response) => {
 	try {
 		const result = await pool.query(
 			`SELECT i.id, i.resource_id, i.resource_type, i.role, i.receiver_email,
-                i.created_at, u.name as sender_name, u.username as sender_email
+                i.created_at, u.name as sender_name, u.email as sender_email
          FROM invitations i
          JOIN users u ON i.sender_id = u.id
          WHERE i.receiver_id = $1 AND i.status = 'pending'`,

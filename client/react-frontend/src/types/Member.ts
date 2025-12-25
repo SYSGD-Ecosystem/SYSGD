@@ -1,8 +1,8 @@
 export type Member = {
-	id: number;
+	id: string;
 	name: string;
 	role: string;
-	username: string;
+	email: string;
 	tareasAsignadas: number;
 	tareasCompletadas: number;
 	estado: string;

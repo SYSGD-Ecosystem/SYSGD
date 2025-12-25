@@ -1,0 +1,39 @@
+/* Estilos para la barra de título personalizada de Electron */
+
+/* Clases para el comportamiento de arrastre */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag-region {
+  -webkit-app-region: no-drag;
+}
+
+/* Evitar selección de texto en la barra de título */
+.drag-region {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Estilos para botones de ventana */
+.titlebar-button {
+  -webkit-app-region: no-drag;
+}
+
+/* Ocultar barra de desplazamiento en contenedores con overflow */
+.overflow-hidden {
+  overflow: hidden;
+}
+
+/* Ajustes para el layout con barra de título personalizada */
+.h-screen {
+  height: 100vh;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.flex-1 {
+  flex: 1;
+}
