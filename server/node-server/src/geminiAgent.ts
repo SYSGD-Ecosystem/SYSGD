@@ -206,6 +206,10 @@ export async function generateTextResponse(prompt: string): Promise<string> {
     return result.response.text();
 }
 
+interface ReplicateOutput {
+    url: () => URL;
+}
+
 /**
  * Genera una imagen usando Replicate y la sube a S3
  */
@@ -229,8 +233,9 @@ export async function generateImage(prompt: string): Promise<string> {
         console.log('📥 Respuesta de Replicate:', output);
 
         // Replicate devuelve un objeto con método url()
-        if (output && typeof output === 'object' && typeof output.url === 'function') {
-            const urlObject = output.url();
+        if (output && typeof output === 'object' && typeof (output as any).url === 'function') {
+            const outputWithUrl = output as ReplicateOutput;
+            const urlObject = outputWithUrl.url();
             console.log('🔗 URL Object:', urlObject);
 
             // El objeto URL tiene una propiedad href con la URL completa
@@ -270,8 +275,9 @@ try {
         console.log('📥 Respuesta de Replicate:', output);
 
         // Replicate devuelve un objeto con método url()
-        if (output && typeof output === 'object' && typeof output.url === 'function') {
-            const urlObject = output.url();
+        if (output && typeof output === 'object' && typeof (output as any).url === 'function') {
+            const outputWithUrl = output as ReplicateOutput;
+            const urlObject = outputWithUrl.url();
             console.log('🔗 URL Object:', urlObject);
 
             // El objeto URL tiene una propiedad href con la URL completa

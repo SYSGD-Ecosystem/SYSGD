@@ -274,7 +274,7 @@ router.post("/conversations/create", isAuthenticated, async (req: Request, res: 
   try {
     await client.query("BEGIN");
 
-    let memberIds: number[] = [];
+    let memberIds: string[] = [];
 
     if (Array.isArray(members) && members.length > 0) {
       // members: array of emails
@@ -316,7 +316,7 @@ router.post("/conversations/create", isAuthenticated, async (req: Request, res: 
         [memberIds]
       );
 
-      if (existing.rowCount > 0) {
+      if (existing.rowCount && existing.rowCount > 0) {
         await client.query("COMMIT");
         const conv = await client.query(`SELECT * FROM conversations WHERE id = $1`, [existing.rows[0].id]);
         res.status(200).json(conv.rows[0]);
