@@ -1,4 +1,4 @@
-import { type FC, useState } from "react";
+import { type FC, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Table,
@@ -39,6 +39,13 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 	const { members } = useProjectMembers(project_id);
 	const { handleImprove, improvedText, loading: geminiIsLoading } = useGemini();
 
+	// Mostrar vista previa cuando la IA genera una respuesta
+	useEffect(() => {
+		if (improvedText && !geminiIsLoading) {
+			setShowImprovedPreview(true);
+		}
+	}, [improvedText, geminiIsLoading]);
+
 	const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
 	const [selectedTask, setselectedTask] = useState<Task | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -51,23 +58,19 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 	const [filterPriority, setFilterPriority] = useState("todos");
 	const [filterStatus, setFilterStatus] = useState("todos");
 	const [showFilters, setShowFilters] = useState(false);
+	const [showImprovedPreview, setShowImprovedPreview] = useState(false);
 
 	const handleSaveTask = async () => {
 		if (!editingTask) return;
 		setIsEditing(true);
-		// Extraemos los IDs de los asignados
-		const taskPayload: Partial<Task> = {
-			...editingTask,
-			assignees: editingTask.assignees?.map((a) => a) || [],
-		};
-
+		
 		let success = false;
 		if (editingTask.id && editingTask.id !== "new-task") {
 			// Es una tarea existente, la actualizamos
-			success = await updateTask(editingTask.id, taskPayload);
+			success = await updateTask(editingTask.id, editingTask);
 		} else {
 			// Es una nueva tarea, la creamos
-			success = await createTask(taskPayload);
+			success = await createTask(editingTask);
 		}
 
 		if (success) {
@@ -424,6 +427,8 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 				geminiIsLoading={geminiIsLoading}
 				improvedText={improvedText}
 				handleImprove={handleImprove}
+				showImprovedPreview={showImprovedPreview}
+				setShowImprovedPreview={setShowImprovedPreview}
 			/>
 			{selectedTask && (
 				<DialogViewTask
