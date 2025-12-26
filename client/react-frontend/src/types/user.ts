@@ -4,6 +4,7 @@ export interface User {
   email: string
   password?: string // No la mostramos por seguridad
   privileges: "user" | "admin"
+  status?: "active" | "invited" | "suspended" | "banned"
 }
 
 export interface PublicUser {
@@ -28,4 +29,5 @@ export interface UpdateUserData {
   email?: string
   password?: string
   privileges?: "user" | "admin"
+  status?: "active" | "invited" | "suspended" | "banned"
 }

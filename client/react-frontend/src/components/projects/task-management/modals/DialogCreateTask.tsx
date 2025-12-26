@@ -1,5 +1,6 @@
-import type { FC } from "react";
+import { FC, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
 	Dialog,
 	DialogContent,
@@ -27,18 +28,23 @@ import { Textarea } from "@/components/ui/textarea";
 import MarkdownEditor from "@/components/ui/markdown-editor";
 import { useTaskConfig } from "@/components/projects/task-management/hooks/useTaskConfig";
 import type { Task } from "@/types/Task";
+import { Sparkles, Loader2, Check, X, Cpu } from "lucide-react";
 
 type ProjectMember = {
 	id: string;
 	name: string;
   email: string;
+	status?: string; // 'active' | 'invited'
+	sender_name?: string; // Para invitaciones
+	sender_email?: string; // Para invitaciones
+	created_at?: string; // Para invitaciones
 };
 
-const Skeleton: FC = () => {
-	return (
-		<div className="w-full h-4 bg-slate-300 dark:bg-slate-600 rounded-full animate-pulse" />
-	);
-};
+// const Skeleton: FC = () => {
+// 	return (
+// 		<div className="w-full h-4 bg-slate-300 dark:bg-slate-600 rounded-full animate-pulse" />
+// 	);
+// };
 
 type Props = {
 	projectId: string;
@@ -50,10 +56,12 @@ type Props = {
 	members: ProjectMember[];
 	isEditing: boolean;
 	handleSaveTask: () => void;
-	// IA opcional
+	// IA funcional
 	geminiIsLoading?: boolean;
 	improvedText?: string;
-	handleImprove?: (title: string, description: string) => void;
+	handleImprove?: (title: string, description: string, model?: string) => void;
+	showImprovedPreview?: boolean;
+	setShowImprovedPreview?: (show: boolean) => void;
 };
 
 const DialogCreateTask: FC<Props> = ({
@@ -69,8 +77,17 @@ const DialogCreateTask: FC<Props> = ({
 	geminiIsLoading,
 	improvedText,
 	handleImprove,
+	showImprovedPreview,
+	setShowImprovedPreview,
 }) => {
 	const { config } = useTaskConfig(projectId);
+	const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash");
+
+	const geminiModels = [
+		{ id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "Rápido y eficiente" },
+		{ id: "gemini-2.5-flash-lite", name: "Gemini 2.5 Flash Lite", description: "Más ligero y rápido" },
+		{ id: "gemini-3-flash", name: "Gemini 3 Flash", description: "Última generación" },
+	];
 
 	const typeOptions = config?.types?.map((t) => t.name) ?? ["Tarea"];
 	const priorityOptions = config?.priorities?.map((p) => p.name) ?? [
@@ -111,52 +128,119 @@ const DialogCreateTask: FC<Props> = ({
 
 						<div>
 							<Label htmlFor="descripcion">Descripción</Label>
-							<MarkdownEditor
-								value={editingTask.description || ""}
-								onChange={(value) =>
-									setEditingTask({
-										...editingTask,
-										description: value,
-									})
-								}
-								placeholder="Describe la tarea usando Markdown..."
-								className="mt-2"
-							/>
-						</div>
-
-						{/* Bloque IA (opcional/oculto de momento) */}
-						<div className="border p-4 rounded-lg bg-muted space-y-4">
-							<div className="text-sm text-muted-foreground">
-								Mejora automática de descripción con IA
-							</div>
-
-							<div className="max-h-40 overflow-auto bg-background p-2 rounded">
-								{geminiIsLoading ? (
-									<Skeleton />
-								) : (
-									<Textarea
-										readOnly
-										className="min-h-24 text-sm"
-										value={improvedText ?? ""}
-									/>
+							<div className="relative">
+								<MarkdownEditor
+									value={editingTask.description || ""}
+									onChange={(value) =>
+										setEditingTask({
+											...editingTask,
+											description: value,
+										})
+									}
+									placeholder="Describe la tarea usando Markdown..."
+									className="mt-2"
+								/>
+								{handleImprove && (
+									<div className="absolute top-2 right-2 flex gap-2">
+										<Select value={selectedModel} onValueChange={setSelectedModel}>
+											<SelectTrigger className="w-[160px] h-8 text-xs">
+												<Cpu className="h-3 w-3 mr-1" />
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent className="text-xs">
+												{geminiModels.map((model) => (
+													<SelectItem key={model.id} value={model.id} className="text-xs">
+														<div className="flex flex-col">
+															<span className="text-xs font-medium">{model.name}</span>
+															<span className="text-[10px] text-muted-foreground">{model.description}</span>
+														</div>
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<Button
+											type="button"
+											size="sm"
+											variant="secondary"
+											disabled={geminiIsLoading || !editingTask.title?.trim()}
+											onClick={() =>
+												handleImprove(
+													editingTask.title ?? "",
+													editingTask.description ?? "",
+													selectedModel,
+												)
+											}
+											className="h-8 px-3"
+										>
+											{geminiIsLoading ? (
+												<Loader2 className="h-4 w-4 animate-spin" />
+											) : (
+												<Sparkles className="h-4 w-4" />
+											)}
+											{!geminiIsLoading && "Mejorar"}
+										</Button>
+									</div>
 								)}
 							</div>
-
-							<Button
-								size="sm"
-								variant="secondary"
-								disabled={geminiIsLoading || !handleImprove}
-								onClick={() =>
-									handleImprove?.(
-										editingTask?.title ?? "",
-										editingTask?.description ?? "",
-									)
-								}
-								className="w-full"
-							>
-								✨ Mejorar con IA
-							</Button>
 						</div>
+
+						{/* Vista previa mejorada con IA */}
+						{showImprovedPreview && improvedText && (
+							<div className="border-2 border-blue-200 dark:border-blue-800 rounded-lg p-4 bg-blue-50/50 dark:bg-blue-950/50 space-y-3">
+								<div className="flex items-center justify-between">
+									<div className="flex items-center gap-2 text-sm font-medium text-blue-700 dark:text-blue-300">
+										<Sparkles className="h-4 w-4" />
+										Descripción mejorada con IA
+									</div>
+									<Button
+										type="button"
+										size="sm"
+										variant="ghost"
+										onClick={() => setShowImprovedPreview?.(false)}
+									>
+										<X className="h-4 w-4" />
+									</Button>
+								</div>
+								
+								<div className="bg-white dark:bg-slate-800 rounded-md p-3 max-h-48 overflow-y-auto">
+									<Textarea
+										value={improvedText}
+										readOnly
+										className="min-h-24 resize-none border-0 bg-transparent shadow-none text-sm leading-relaxed"
+										placeholder="La respuesta de la IA aparecerá aquí..."
+									/>
+								</div>
+
+								<div className="flex gap-2">
+									<Button
+										type="button"
+										size="sm"
+										onClick={() => {
+											setEditingTask({
+												...editingTask,
+												description: improvedText,
+											});
+											setShowImprovedPreview?.(false);
+										}}
+										className="flex-1"
+									>
+										<Check className="h-4 w-4 mr-1" />
+										Aceptar y aplicar
+									</Button>
+									<Button
+										type="button"
+										size="sm"
+										variant="outline"
+										onClick={() => setShowImprovedPreview?.(false)}
+										className="flex-1"
+									>
+										<X className="h-4 w-4 mr-1" />
+										Descartar
+									</Button>
+								</div>
+							</div>
+						)}
+
 
 						<div className="grid grid-cols-2 gap-4">
 							<div>
@@ -265,7 +349,14 @@ const DialogCreateTask: FC<Props> = ({
 													}
 												}}
 											>
-												{member.name}
+												<div className="flex items-center justify-between w-full">
+													<span>{member.name}</span>
+													{member.status === 'invited' && (
+														<Badge variant="secondary" className="text-xs ml-2">
+															Invitado
+														</Badge>
+													)}
+												</div>
 											</DropdownMenuCheckboxItem>
 										))}
 									</DropdownMenuContent>

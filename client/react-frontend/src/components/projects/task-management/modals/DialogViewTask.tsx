@@ -97,7 +97,7 @@ const DialogViewTask: FC<{
 									{selectedTask.assignees && selectedTask.assignees.length > 0 ? (
 										selectedTask.assignees.slice(0, 2).map((assignee) => (
 											<Badge key={assignee.id} variant="outline" className="text-xs">
-												{assignee.name}
+												{assignee?.name || assignee?.email || 'Usuario sin nombre'}
 											</Badge>
 										))
 									) : (

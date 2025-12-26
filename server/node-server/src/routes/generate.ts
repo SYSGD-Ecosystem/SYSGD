@@ -7,7 +7,7 @@ const router = express.Router();
 router.post("/", isAuthenticated, async (req, res) => {
 	console.log('🔄 Nueva petición a Gemini Agent:', req.body);
 
-	const { prompt, image, audio, video, file } = req.body;
+	const { prompt, image, audio, video, file, model } = req.body;
 
 	if (!prompt) {
 		res.status(400).json({ error: "Falta el prompt" });
@@ -21,7 +21,8 @@ router.post("/", isAuthenticated, async (req, res) => {
 			image: image || undefined,
 			audio: audio || undefined,
 			video: video || undefined,
-			file: file || undefined
+			file: file || undefined,
+			model: model || "gemini-2.5-flash"
 		});
 
 		console.log('✅ Respuesta generada exitosamente');

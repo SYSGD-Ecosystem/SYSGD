@@ -6,7 +6,7 @@ export const useGemini = () => {
 	const [improvedText, setImprovedText] = useState("");
 	const [loading, setLoading] = useState(false);
 
-	const handleImprove = async (title: string, description: string) => {
+	const handleImprove = async (title: string, description: string, model?: string) => {
 		setLoading(true);
 		setImprovedText("");
 		try {
@@ -16,6 +16,7 @@ export const useGemini = () => {
 				credentials: "include", // si usas cookies para la sesión
 				body: JSON.stringify({
 					prompt: `Mejora este texto para una IA y hazlo más claro para tareas de proyecto.\n\nTítulo: ${title}\nDescripción: ${description}`,
+					model: model || "gemini-2.5-flash",
 				}),
 			});
 

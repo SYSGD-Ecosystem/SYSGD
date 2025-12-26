@@ -39,11 +39,17 @@ export const useTasks = (project_id: string) => {
 
 	const createTask = async (task: Partial<Task>) => {
 		try {
+			// Extraemos los IDs de los asignados para el backend
+			const taskPayload = {
+				...task,
+				assignees: task.assignees?.map((a) => a.id) || [],
+			};
+			
 			const res = await fetch(`${serverUrl}/api/tasks`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include",
-				body: JSON.stringify({ ...task, project_id: project_id }),
+				body: JSON.stringify({ ...taskPayload, project_id: project_id }),
 			});
 
 			if (!res.ok) throw new Error("Error al crear tarea");
@@ -59,11 +65,17 @@ export const useTasks = (project_id: string) => {
 
 	const updateTask = async (taskId: string, taskData: Partial<Task>) => {
 		try {
+			// Extraemos los IDs de los asignados para el backend
+			const taskPayload = {
+				...taskData,
+				assignees: taskData.assignees?.map((a) => a.id) || [],
+			};
+			
 			const res = await fetch(`${serverUrl}/api/tasks/${taskId}`, {
 				method: "PUT",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include",
-				body: JSON.stringify(taskData),
+				body: JSON.stringify(taskPayload),
 			});
 			if (!res.ok) throw new Error("Error al actualizar la tarea");
 
