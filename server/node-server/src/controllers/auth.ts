@@ -30,7 +30,7 @@ export const login = async (req: Request, res: Response) => {
 
 		// Verificar si es un usuario invitado sin contraseña
 		if (user.status === 'invited' && !user.password) {
-			return res.status(202).json({ 
+			 res.status(202).json({ 
 				message: "Usuario invitado detectado",
 				status: 'invited',
 				user: {
@@ -40,6 +40,7 @@ export const login = async (req: Request, res: Response) => {
 					status: user.status
 				}
 			});
+			return;
 		}
 
 		const match = await bcrypt.compare(password, user.password);

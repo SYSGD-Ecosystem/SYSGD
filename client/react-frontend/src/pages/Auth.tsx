@@ -18,6 +18,7 @@ const Auth: FC = () => {
 	const [repetPassword, setRepetPassword] = useState("");
 	const [name, setName] = useState("");
 	const [user, setUser] = useState("");
+	const [confirmPassword, setConfirmPassword] = useState("");
 
 	const [loginStep, setLoginStep] = useState<
 		"email" | "password" | "complete" | "offer-register"
@@ -100,6 +101,14 @@ const Auth: FC = () => {
 		}
 
 		if (loginStep === "complete" && invitedUserId) {
+			if (!name || !password || !confirmPassword) {
+				alert("Por favor completa todos los campos");
+				return;
+			}
+			if (password !== confirmPassword) {
+				alert("Las contraseñas no coinciden");
+				return;
+			}
 			try {
 				const res = await fetch(`${serverUrl}/api/auth/complete-registration`, {
 					method: "POST",
@@ -110,6 +119,7 @@ const Auth: FC = () => {
 						name,
 						password,
 						email: user,
+						confirmPassword,
 					}),
 				});
 				if (res.ok) router("/dashboard");
@@ -179,6 +189,23 @@ const Auth: FC = () => {
 					<div className="flex items-center flex-col justify-center gap-3">
 						<div className="flex gap-2 items-center justify-center">
 							<h1 className="text-3xl font-bold text-white">SYSGD</h1>
+						</div>
+						<div className="flex items-center justify-between w-full">
+							<div className="text-white/60 text-sm">
+								Paso {loginStep === "email" ? "1" : loginStep === "password" ? "2" : "2"} de 2
+							</div>
+							{loginStep !== "email" && (
+								<button
+									type="button"
+									onClick={() => setLoginStep("email")}
+									className="text-white/60 hover:text-white text-sm flex items-center gap-1 transition-colors"
+								>
+									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+									</svg>
+									Regresar
+								</button>
+							)}
 						</div>
 						<div className="flex items-center gap-2 text-white/80">
 							{getStepIcon()}
@@ -253,6 +280,20 @@ const Auth: FC = () => {
 										/>
 									</div>
 								</div>
+								<div className="space-y-2">
+									<Label htmlFor="confirm-password-complete" className="text-white/80 text-sm">Confirmar contraseña</Label>
+									<div className="relative">
+										<Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" />
+										<Input 
+											id="confirm-password-complete" 
+											type="password" 
+											value={confirmPassword} 
+											onChange={(e) => setConfirmPassword(e.target.value)} 
+											className="w-full pl-10 bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-white/40"
+											placeholder="Confirma tu contraseña"
+										/>
+									</div>
+								</div>
 							</>
 						)}
 
@@ -263,25 +304,46 @@ const Auth: FC = () => {
 							</div>
 						)}
 
-						<Button
-							type="submit"
-							disabled={
-								(loginStep === "email" && (user === "" || checkingUser)) ||
-								(loginStep === "password" && (password === "" || loginLoading)) ||
-								(loginStep === "complete" && (!name || !password || loginLoading))
-							}
-							className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 transition-all duration-200 shadow-lg hover:shadow-xl"
-						>
-							{checkingUser || loginLoading ? (
-								<>
-									<div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-									Procesando...
-								</>
-							) : loginStep === "email" ? "Continuar" :
-							 loginStep === "password" ? "Iniciar sesión" :
-							 loginStep === "complete" ? "Completar registro" :
-							 "Crear cuenta"}
-						</Button>
+						{loginStep === "offer-register" ? (
+							<>
+								<Button
+									type="button"
+									onClick={() => setIsLoginPage(false)}
+									className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 transition-all duration-200 shadow-lg hover:shadow-xl"
+								>
+									Crear cuenta nueva
+								</Button>
+								<div className="text-center text-white/60">
+									<button
+										type="button"
+										onClick={() => setLoginStep("email")}
+										className="text-blue-400 hover:text-blue-300 underline text-sm transition-colors"
+									>
+										Regresar y probar otro correo
+									</button>
+								</div>
+							</>
+						) : (
+							<Button
+								type="submit"
+								disabled={
+									(loginStep === "email" && (user === "" || checkingUser)) ||
+									(loginStep === "password" && (password === "" || loginLoading)) ||
+									(loginStep === "complete" && (!name || !password || !confirmPassword || loginLoading))
+								}
+								className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 transition-all duration-200 shadow-lg hover:shadow-xl"
+							>
+								{checkingUser || loginLoading ? (
+									<>
+										<div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+										Procesando...
+									</>
+								) : loginStep === "email" ? "Continuar" :
+								 loginStep === "password" ? "Iniciar sesión" :
+								 loginStep === "complete" ? "Completar registro" :
+								 "Crear cuenta"}
+							</Button>
+						)}
 
 						{loginError && (
 							<div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3">

@@ -1,4 +1,4 @@
-import type { FC } from "react";
+import { FC, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -28,7 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import MarkdownEditor from "@/components/ui/markdown-editor";
 import { useTaskConfig } from "@/components/projects/task-management/hooks/useTaskConfig";
 import type { Task } from "@/types/Task";
-import { Sparkles, Loader2, Check, X } from "lucide-react";
+import { Sparkles, Loader2, Check, X, Cpu } from "lucide-react";
 
 type ProjectMember = {
 	id: string;
@@ -59,7 +59,7 @@ type Props = {
 	// IA funcional
 	geminiIsLoading?: boolean;
 	improvedText?: string;
-	handleImprove?: (title: string, description: string) => void;
+	handleImprove?: (title: string, description: string, model?: string) => void;
 	showImprovedPreview?: boolean;
 	setShowImprovedPreview?: (show: boolean) => void;
 };
@@ -81,6 +81,13 @@ const DialogCreateTask: FC<Props> = ({
 	setShowImprovedPreview,
 }) => {
 	const { config } = useTaskConfig(projectId);
+	const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash");
+
+	const geminiModels = [
+		{ id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "Rápido y eficiente" },
+		{ id: "gemini-2.5-flash-lite", name: "Gemini 2.5 Flash Lite", description: "Más ligero y rápido" },
+		{ id: "gemini-3-flash", name: "Gemini 3 Flash", description: "Última generación" },
+	];
 
 	const typeOptions = config?.types?.map((t) => t.name) ?? ["Tarea"];
 	const priorityOptions = config?.priorities?.map((p) => p.name) ?? [
@@ -134,7 +141,23 @@ const DialogCreateTask: FC<Props> = ({
 									className="mt-2"
 								/>
 								{handleImprove && (
-									<div className="absolute top-2 right-2">
+									<div className="absolute top-2 right-2 flex gap-2">
+										<Select value={selectedModel} onValueChange={setSelectedModel}>
+											<SelectTrigger className="w-[160px] h-8 text-xs">
+												<Cpu className="h-3 w-3 mr-1" />
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent className="text-xs">
+												{geminiModels.map((model) => (
+													<SelectItem key={model.id} value={model.id} className="text-xs">
+														<div className="flex flex-col">
+															<span className="text-xs font-medium">{model.name}</span>
+															<span className="text-[10px] text-muted-foreground">{model.description}</span>
+														</div>
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
 										<Button
 											type="button"
 											size="sm"
@@ -144,6 +167,7 @@ const DialogCreateTask: FC<Props> = ({
 												handleImprove(
 													editingTask.title ?? "",
 													editingTask.description ?? "",
+													selectedModel,
 												)
 											}
 											className="h-8 px-3"

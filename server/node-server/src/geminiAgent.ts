@@ -144,6 +144,7 @@ export interface AgentRequest {
     audio?: string;
     video?: string;
     file?: string;
+    model?: string;
 }
 
 // Interface para las respuestas del agente
@@ -194,16 +195,17 @@ export async function analyzeRequest(prompt: string): Promise<{ type: 'text' | '
         };
     }
 }
+
 /**
- * Genera una respuesta de texto usando Gemini
+ * Genera una respuesta de texto usando Gemini con modelo específico
  */
-export async function generateTextResponse(prompt: string): Promise<string> {
-    const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
+export async function generateTextResponse(prompt: string, model: string = "gemini-2.5-flash"): Promise<string> {
+    const genModel = genAI.getGenerativeModel({
+        model: model,
         systemInstruction: SYSTEM_PROMPTS.text
     });
 
-    const result = await model.generateContent(prompt);
+    const result = await genModel.generateContent(prompt);
     return result.response.text();
 }
 
@@ -303,7 +305,7 @@ try {
  * Procesa una petición del agente de manera inteligente
  */
 export async function processAgentRequest(request: AgentRequest): Promise<AgentResponse> {
-    const { prompt } = request;
+    const { prompt, model } = request;
 
     if (!prompt) {
         throw new Error('El prompt es requerido');
@@ -326,8 +328,8 @@ export async function processAgentRequest(request: AgentRequest): Promise<AgentR
             attachment_type = 'image';
             attachment_url = response;
         } else {
-            // 3. Si es texto, generar respuesta normal
-            response = await generateTextResponse(prompt);
+            // 3. Si es texto, generar respuesta normal con el modelo especificado
+            response = await generateTextResponse(prompt, model || "gemini-2.5-flash");
             responseType = 'text';
             attachment_type = null;
             attachment_url = null;
@@ -338,7 +340,7 @@ export async function processAgentRequest(request: AgentRequest): Promise<AgentR
             attachment_url,
             metadata: {
                 type: responseType,
-                model: responseType === 'image' ? 'replicate-google-imagen-4' : 'gemini-2.5-flash',
+                model: responseType === 'image' ? 'replicate-google-imagen-4' : (model || 'gemini-2.5-flash'),
                 confidence: analysis.confidence,
                 reasoning: analysis.reasoning
             }

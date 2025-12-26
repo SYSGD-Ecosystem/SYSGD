@@ -34,8 +34,8 @@ createRoot(document.getElementById("root")!).render(
         <AppRouter>
           <Routes>
             <Route path="/" element={<App/>}/>
-            <Route path="/login" element={<Login/>}/>
-            <Route path="/auth" element={<Auth/>}/>
+            <Route path="/login" element={<Auth/>}/>
+            <Route path="/login-old" element={<Login/>}/>
             <Route path="/print" element={<Print/>}/>
             <Route path="/dev" element={<DevPreview/>}/>
             <Route path="/error" element={<ErrorServer/>}/>
