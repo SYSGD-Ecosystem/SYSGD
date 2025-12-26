@@ -84,7 +84,7 @@ app.get(
 		});
 
 		res.redirect(
-			`${process.env.CLIENT_HOST}/login` || "http://localhost:5173/login",
+			`${process.env.CLIENT_HOST}/login?token=${token}` || `http://localhost:5173/login?token=${token}`,
 		);
 	},
 );
