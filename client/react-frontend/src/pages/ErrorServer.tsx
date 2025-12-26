@@ -32,7 +32,7 @@ const ErrorServer: React.FC<ErrorServerProps> = ({
 	errorMessage = "Servidor no disponible",
 	retryCount = 0,
 	onRetry,
-	serverUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin,
+	serverUrl = import.meta.env.VITE_SERVER_URL || window.location.origin,
 }) => {
 	const navigate = useNavigate();
 	const [isRetrying, setIsRetrying] = useState(false);
@@ -296,6 +296,7 @@ const ErrorServer: React.FC<ErrorServerProps> = ({
 								<div>Timestamp: {new Date().toISOString()}</div>
 								<div>User Agent: {navigator.userAgent.substring(0, 50)}...</div>
 								<div>Connection: {connectionStatus}</div>
+								<div>Server URL: {serverUrl}</div>
 							</div>
 						</details>
 					</CardContent>
