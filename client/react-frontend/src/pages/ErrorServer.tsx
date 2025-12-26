@@ -32,7 +32,7 @@ const ErrorServer: React.FC<ErrorServerProps> = ({
 	errorMessage = "Servidor no disponible",
 	retryCount = 0,
 	onRetry,
-	serverUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin,
+	serverUrl = import.meta.env.VITE_SERVER_URL || window.location.origin,
 }) => {
 	const navigate = useNavigate();
 	const [isRetrying, setIsRetrying] = useState(false);
