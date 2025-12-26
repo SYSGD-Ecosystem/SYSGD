@@ -126,6 +126,25 @@ export function EditUserDialog({ user, open, onOpenChange, onUserUpdated }: Edit
                 </SelectContent>
               </Select>
             </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="status" className="text-right">
+                Estado
+              </Label>
+              <Select
+                defaultValue={user.status || 'active'}
+                onValueChange={(value: "active" | "invited" | "suspended" | "banned") => setFormData((prev) => ({ ...prev, status: value }))}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Activo</SelectItem>
+                  <SelectItem value="invited">Invitado</SelectItem>
+                  <SelectItem value="suspended">Suspendido</SelectItem>
+                  <SelectItem value="banned">Baneado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

@@ -190,9 +190,23 @@ router.put("/:taskId", isAuthenticated, async (req: Request, res: Response) => {
 		]);
 
 		for (const userId of assignees) {
+			// Validar que userId no sea null o undefined
+			if (!userId) {
+				console.warn("Skipping null/undefined userId in assignees");
+				continue;
+			}
+			
+			const actualUserId = typeof userId === 'object' ? userId.id : userId;
+			
+			// Validar que actualUserId no sea null
+			if (!actualUserId) {
+				console.warn("Skipping null actualUserId");
+				continue;
+			}
+			
 			await client.query(
 				"INSERT INTO task_assignees (task_id, user_id) VALUES ($1, $2)",
-				[taskId, typeof userId === 'object' ? userId.id : userId],
+				[taskId, actualUserId],
 			);
 		}
 
