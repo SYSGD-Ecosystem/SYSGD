@@ -296,6 +296,7 @@ const ErrorServer: React.FC<ErrorServerProps> = ({
 								<div>Timestamp: {new Date().toISOString()}</div>
 								<div>User Agent: {navigator.userAgent.substring(0, 50)}...</div>
 								<div>Connection: {connectionStatus}</div>
+								<div>Server URL: {serverUrl}</div>
 							</div>
 						</details>
 					</CardContent>
