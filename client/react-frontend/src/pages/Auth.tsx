@@ -41,6 +41,19 @@ const Auth: FC = () => {
 
 	useEffect(() => {
 		checkServerStatus();
+		
+		// Check for token in URL (Google OAuth callback)
+		const urlParams = new URLSearchParams(window.location.search);
+		const token = urlParams.get('token');
+		
+		if (token) {
+			// Set the token as a cookie
+			document.cookie = `token=${token}; path=/; max-age=86400; secure; samesite=none`;
+			// Clean the URL
+			window.history.replaceState({}, document.title, window.location.pathname);
+			// Redirect to dashboard
+			router("/dashboard");
+		}
 	}, [checkServerStatus]);
 
 	useEffect(() => {
