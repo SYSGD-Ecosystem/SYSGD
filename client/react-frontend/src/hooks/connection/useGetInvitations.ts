@@ -4,8 +4,8 @@ export type Invitation = {
   id: string;
   resource_type: "project" | "archive";
   resource_id: string;
-  sender_id: number;
-  receiver_id: number;
+  sender_id: string;
+  receiver_id: string;
   status: "pending" | "accepted" | "rejected";
   permissions: "read" | "write" | "admin";
   created_at: string;

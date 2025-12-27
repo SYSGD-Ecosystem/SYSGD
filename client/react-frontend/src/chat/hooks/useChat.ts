@@ -1,9 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
+/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
 import { useState, useEffect, useCallback, useRef } from "react";
 
 type UUID = string;
 
 export interface UserShort {
-  id: number;
+  id: string;
   email: string;
   name?: string;
   role?: string;
@@ -13,13 +16,13 @@ export interface Conversation {
   id: UUID;
   title?: string | null;
   type: "private" | "group" | "channel" | string;
-  created_by?: number | null;
+  created_by?: string | null;
   created_at?: string;
   members?: UserShort[];
   last_message?: {
     id?: UUID;
     content?: string | null;
-    sender_id?: number | null;
+    sender_id?: string | null;
     created_at?: string | null;
   } | null;
   last_read_message_id?: UUID | null;
@@ -28,7 +31,7 @@ export interface Conversation {
 export interface Message {
   id: UUID;
   conversation_id: UUID;
-  sender_id?: number | null;
+  sender_id?: string | null;
   content?: string | null;
   attachment_type?: "image" | "audio" | "video" | "file" | string | null;
   attachment_url?: string | null;
@@ -41,7 +44,7 @@ export interface Message {
 export interface Invitation {
   id: UUID;
   conversation_id: UUID;
-  sender_id: number;
+  sender_id: string;
   receiver_email: string;
   status: "pending" | "accepted" | "declined" | string;
   created_at?: string;
@@ -361,7 +364,7 @@ export function useChat() {
    * fetchCurrentUser - obtiene info del usuario autenticado (usa credentials include)
    * endpoint backend esperado: `${serverUrl}/api/auth/me`
    */
-  const fetchCurrentUser = useCallback(async (): Promise<{ id: number; email: string; } | null> => {
+  const fetchCurrentUser = useCallback(async (): Promise<{ id: string; email: string; } | null> => {
     try {
       const data = await safeFetch(`${serverUrl}/api/auth/me`);
       return data || null;

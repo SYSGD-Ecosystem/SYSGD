@@ -9,8 +9,8 @@ interface UseUsersReturn {
 	error: string | null;
 	refetch: () => void;
 	createUser: (data: CreateUserData) => Promise<User>;
-	updateUser: (id: number, data: UpdateUserData) => Promise<void>;
-	deleteUser: (id: number) => Promise<void>;
+	updateUser: (id: string, data: UpdateUserData) => Promise<void>;
+	deleteUser: (id: string) => Promise<void>;
 	toggleUserPublic: (isPublic: boolean) => Promise<void>;
 }
 
@@ -51,10 +51,10 @@ export function useUsers(): UseUsersReturn {
 		// backend returns 201 with no body, refetch list
 		fetchUsers();
 		// Try to get created user by another call; simpler return placeholder
-		return { id: Date.now(), ...data };
+		return { id: `${Date.now()}`, ...data };
 	};
 
-	const updateUser = async (id: number, data: UpdateUserData) => {
+	const updateUser = async (id: string, data: UpdateUserData) => {
 		const res = await fetch(`${serverUrl}/api/users/${id}`, {
 			method: "PUT",
 			headers: { "Content-Type": "application/json" },
@@ -68,7 +68,7 @@ export function useUsers(): UseUsersReturn {
 		fetchUsers();
 	};
 
-	const deleteUser = async (id: number) => {
+	const deleteUser = async (id: string) => {
 		const res = await fetch(`${serverUrl}/api/users/${id}`, {
 			method: "DELETE",
 			credentials: "include",

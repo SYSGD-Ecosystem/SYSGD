@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -34,7 +36,7 @@ interface NewChatModalProps {
 }
 
 export interface Contact {
-	id: number;
+	id: string | number;
 	name: string;
 	email: string;
 	type: "user" | "agent" | "bot";
@@ -76,7 +78,7 @@ export function NewChatModal({
 
 	// helper: obtener usuario actual desde backend
 	const fetchCurrentUser = async (): Promise<{
-		id: number;
+		id: string;
 		email: string;
 	} | null> => {
 		try {

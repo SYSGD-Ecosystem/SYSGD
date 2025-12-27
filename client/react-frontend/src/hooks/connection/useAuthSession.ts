@@ -6,7 +6,7 @@ const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 export function useAuthSession() {
 	const [loading, setLoading] = useState(true);
 	const [user, setUser] = useState<null | {
-		id: number;
+		id: string;
 		email: string;
 		name: string;
 		privileges: string;

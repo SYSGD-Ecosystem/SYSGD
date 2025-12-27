@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { pool } from "../db";
 
 export interface User {
-	id: number;
+	id: string;
 	email: string;
 	privileges: string;
 	// otras propiedades

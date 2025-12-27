@@ -1,5 +1,5 @@
 export interface User {
-  id: number
+  id: string
   name: string
   email: string
   password?: string // No la mostramos por seguridad
@@ -8,7 +8,7 @@ export interface User {
 }
 
 export interface PublicUser {
-  id: number
+  id: string
   name: string
   email: string
   avatar: string

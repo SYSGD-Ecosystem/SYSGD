@@ -131,7 +131,7 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 };
 
 export function generateJWT(user: {
-	id: number;
+	id: string;
 	email: string;
 	name: string;
 	privileges: string;

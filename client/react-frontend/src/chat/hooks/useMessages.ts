@@ -32,7 +32,7 @@ export function useMessages(conversationId: string) {
 	}, [conversationId]);
 
 	const sendMessage = async (message: {
-		sender_id: number;
+		sender_id: string;
 		content: string;
 		attachment_type?: string;
 		attachment_url?: string;
