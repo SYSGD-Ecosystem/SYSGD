@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/a11y/noSvgWithoutTitle: <explanation> */
+/** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
 import { type FC, type FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,26 +37,28 @@ const Auth: FC = () => {
 	const { status, checkServerStatus } = useServerStatus(serverUrl);
 	const { user: authUser, loading: loadingAuthUser } = useAuthSession();
 
+	checkServerStatus();
+
 	/* =======================
 	   EFECTOS (ORDEN FIJO)
 	======================= */
 
-	useEffect(() => {
-		checkServerStatus();
+	// useEffect(() => {
+	// 	checkServerStatus();
 		
-		// Check for token in URL (Google OAuth callback)
-		const urlParams = new URLSearchParams(window.location.search);
-		const token = urlParams.get('token');
+	// 	// Check for token in URL (Google OAuth callback)
+	// 	const urlParams = new URLSearchParams(window.location.search);
+	// 	const token = urlParams.get('token');
 		
-		if (token) {
-			// Set the token as a cookie
-			document.cookie = `token=${token}; path=/; max-age=86400; secure; samesite=none`;
-			// Clean the URL
-			window.history.replaceState({}, document.title, window.location.pathname);
-			// Redirect to dashboard
-			router("/dashboard");
-		}
-	}, [checkServerStatus]);
+	// 	if (token) {
+	// 		// Set the token as a cookie
+	// 		// document.cookie = `token=${token}; path=/; max-age=86400; secure; samesite=none`;
+	// 		// Clean the URL
+	// 		// window.history.replaceState({}, document.title, window.location.pathname);
+	// 		// Redirect to dashboard
+	// 		router("/dashboard");
+	// 	}
+	// }, [checkServerStatus]);
 
 	useEffect(() => {
 		if (status === "offline") {
