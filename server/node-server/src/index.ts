@@ -83,6 +83,8 @@ app.get(
 			maxAge: 1000 * 60 * 60 * 24,
 		});
 
+		console.log("Redirigiendo a cliente con token:", token);
+
 		res.redirect(
 			`${process.env.CLIENT_HOST}/login?token=${token}` || `http://localhost:5173/login?token=${token}`,
 		);
@@ -95,14 +97,20 @@ setupSwagger(app);
 
 // Ruta raíz que sirve la página de bienvenida desde un archivo externo
 app.get("/", (_req, res) => {
-	const filePath = path.join(__dirname, "../public/index.html");
-	fs.readFile(filePath, "utf-8", (err, data) => {
-		if (err) {
-			res.status(500).send("Error al cargar la página de bienvenida");
-		} else {
-			res.send(data);
-		}
-	});
+
+	// redirigir hacia el cliente
+	res.redirect(process.env.CLIENT_HOST || "http://localhost:5173");
+
+	// Si se desea servir un archivo HTML estático, descomentar lo siguiente:
+
+	// const filePath = path.join(__dirname, "../public/index.html");
+	// fs.readFile(filePath, "utf-8", (err, data) => {
+	// 	if (err) {
+	// 		res.status(500).send("Error al cargar la página de bienvenida");
+	// 	} else {
+	// 		res.send(data);
+	// 	}
+	// });
 });
 
 if (shouldInitDB) {
