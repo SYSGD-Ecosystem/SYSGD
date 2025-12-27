@@ -127,21 +127,10 @@ const DialogCreateTask: FC<Props> = ({
 						</div>
 
 						<div>
-							<Label htmlFor="descripcion">Descripción</Label>
-							<div className="relative">
-								<MarkdownEditor
-									value={editingTask.description || ""}
-									onChange={(value) =>
-										setEditingTask({
-											...editingTask,
-											description: value,
-										})
-									}
-									placeholder="Describe la tarea usando Markdown..."
-									className="mt-2"
-								/>
+							<div className="flex items-center gap-2">
+								<Label htmlFor="descripcion">Descripción</Label>
 								{handleImprove && (
-									<div className="absolute top-2 right-2 flex gap-2">
+									<div className="flex w-full justify-end gap-2">
 										<Select value={selectedModel} onValueChange={setSelectedModel}>
 											<SelectTrigger className="w-[160px] h-8 text-xs">
 												<Cpu className="h-3 w-3 mr-1" />
@@ -181,6 +170,20 @@ const DialogCreateTask: FC<Props> = ({
 										</Button>
 									</div>
 								)}
+							</div>
+							<div className="relative">
+								<MarkdownEditor
+									value={editingTask.description || ""}
+									onChange={(value) =>
+										setEditingTask({
+											...editingTask,
+											description: value,
+										})
+									}
+									placeholder="Describe la tarea usando Markdown..."
+									className="mt-2"
+								/>
+								
 							</div>
 						</div>
 
