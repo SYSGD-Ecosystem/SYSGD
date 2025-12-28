@@ -1,13 +1,13 @@
-import { useEffect, type FC } from "react";
-import { Button } from "../ui/button";
 import { AlertCircle, FileIcon, Plus, SaveAll } from "lucide-react";
-import useEditableTable from "@/hooks/useEditableTable";
-import Table, { Td } from "../BasicTableComponents";
+import { type FC, useEffect } from "react";
 import useConnection from "@/hooks/connection/useConnection";
-import { useToast } from "@/hooks/use-toast";
 import useGetLoanRegister from "@/hooks/connection/useGetLoanRegister";
+import { useToast } from "@/hooks/use-toast";
+import useEditableTable from "@/hooks/useEditableTable";
 import type { LoanRegisterData } from "@/types/LoanRegister";
+import Table, { Td } from "../BasicTableComponents";
 import Loading from "../Loading";
+import { Button } from "../ui/button";
 
 export type LoanRegisterProps = {
 	archiveId: string;

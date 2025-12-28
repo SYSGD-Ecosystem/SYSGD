@@ -1,12 +1,12 @@
-import { useEffect, type FC } from "react";
-import { Button } from "../ui/button";
 import { AlertCircle, FileIcon, Plus, SaveAll } from "lucide-react";
+import { type FC, useEffect } from "react";
+import useConnection from "@/hooks/connection/useConnection";
+import useGetExitRegister from "@/hooks/connection/useGetExitRegister";
+import { useToast } from "@/hooks/use-toast";
 import useEditableTable from "@/hooks/useEditableTable";
 import Table, { Td } from "../BasicTableComponents";
-import useConnection from "@/hooks/connection/useConnection";
-import { useToast } from "@/hooks/use-toast";
-import useGetExitRegister from "@/hooks/connection/useGetExitRegister";
 import Loading from "../Loading";
+import { Button } from "../ui/button";
 
 export type ExitRegisterData = {
 	no_exit_register: string;

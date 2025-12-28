@@ -1,18 +1,17 @@
-import { useCallback, useRef, useState, type FC } from "react";
-import { TopNavigation } from "./top-navigation.tsx";
+import { type FC, useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSelectionStore } from "@/store/selection";
-import TaskManagement from "./task-management/TaskManagement.tsx";
 import useCurrentUser from "@/hooks/connection/useCurrentUser";
+import { useSelectionStore } from "@/store/selection";
 import Loading from "../Loading.tsx";
-import { ProjectSidebar } from "./ProjectSidebar.tsx";
-import TeamManagement from "./TeamManagement.tsx";
+import type { GitHubCacheEntry } from "./GitHubIntegration.tsx";
+import GitHubIntegration from "./GitHubIntegration.tsx";
 import IdeasBank from "./IdeasBank.tsx";
 import NotesSection from "./NotesSection.tsx";
-import GitHubIntegration from "./GitHubIntegration.tsx";
 import ProjectSettings from "./ProjectSettings.tsx";
-import type { GitHubCacheEntry } from "./GitHubIntegration.tsx";
-
+import { ProjectSidebar } from "./ProjectSidebar.tsx";
+import TeamManagement from "./TeamManagement.tsx";
+import TaskManagement from "./task-management/TaskManagement.tsx";
+import { TopNavigation } from "./top-navigation.tsx";
 
 // type GitHubCacheEntry = {
 // 	cacheTime: number;
@@ -23,8 +22,6 @@ import type { GitHubCacheEntry } from "./GitHubIntegration.tsx";
 // 	pullRequestsPage?: number;
 // 	pagination?: { currentPage: number; totalPages: number; totalCount: number };
 // };
-
-
 
 const ProjectWorkSpace: FC = () => {
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -41,7 +38,6 @@ const ProjectWorkSpace: FC = () => {
 	const githubCacheRef = useRef<Map<string, GitHubCacheEntry>>(new Map());
 	// const githubCacheTtlMs = 5 * 60 * 1000;
 
-
 	const getGitHubCache = useCallback(
 		(projectId: string): GitHubCacheEntry | null => {
 			return githubCacheRef.current.get(projectId) ?? null;
@@ -50,7 +46,10 @@ const ProjectWorkSpace: FC = () => {
 	);
 
 	const setGitHubCache = useCallback(
-		(projectId: string, patch: Partial<Omit<GitHubCacheEntry, "cacheTime">>) => {
+		(
+			projectId: string,
+			patch: Partial<Omit<GitHubCacheEntry, "cacheTime">>,
+		) => {
 			const prev = githubCacheRef.current.get(projectId);
 			githubCacheRef.current.set(projectId, {
 				repository: prev?.repository ?? null,
@@ -93,8 +92,7 @@ const ProjectWorkSpace: FC = () => {
 		setActiveSection(section);
 		setIsMobileSidebarOpen(false);
 	};
-// TODO: Realizar comprobacion de proyecto seleccionado por aqui antes de mostrar cualquier cosa
-
+	// TODO: Realizar comprobacion de proyecto seleccionado por aqui antes de mostrar cualquier cosa
 
 	return (
 		<div className="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">

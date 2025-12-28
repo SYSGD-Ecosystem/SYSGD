@@ -1,10 +1,10 @@
 import { type FC, useState } from "react";
-import Input from "../Input";
-import Button from "../Button";
-import Text from "../Text";
-import useConnection from "../../hooks/connection/useConnection";
 import { IoCloseCircle } from "react-icons/io5";
 import { toast } from "sonner";
+import useConnection from "../../hooks/connection/useConnection";
+import Button from "../Button";
+import Input from "../Input";
+import Text from "../Text";
 
 const CreateArchiving: FC<{ onClose: () => void; onCreate: () => void }> = ({
 	onClose,

@@ -1,7 +1,7 @@
 "use client";
 
-import { EmployeeCard } from "./employee-card";
 import type { Employee } from "../types/organigrama";
+import { EmployeeCard } from "./employee-card";
 
 interface OrganigramaTreeProps {
 	employee: Employee;

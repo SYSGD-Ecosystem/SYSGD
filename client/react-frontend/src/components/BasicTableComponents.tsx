@@ -20,10 +20,10 @@ const Table: FC<TableProps> = ({ children }) => {
 };
 
 export interface TdProps extends HTMLAttributes<HTMLTableCellElement> {
-	label:string
+	label: string;
 }
 
-export const Td: FC<TdProps> = ({ label,...props }) => {
+export const Td: FC<TdProps> = ({ label, ...props }) => {
 	return (
 		<td
 			suppressContentEditableWarning

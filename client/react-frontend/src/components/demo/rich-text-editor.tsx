@@ -1,8 +1,36 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import {
+	AlignCenter,
+	AlignJustify,
+	AlignLeft,
+	AlignRight,
+	Bold,
+	Code,
+	Highlighter,
+	ImageIcon,
+	Indent,
+	Italic,
+	LinkIcon,
+	List,
+	ListOrdered,
+	Outdent,
+	Quote,
+	Redo,
+	Strikethrough,
+	Table,
+	Type,
+	Underline,
+	Undo,
+} from "lucide-react";
+import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
 import {
 	Select,
 	SelectContent,
@@ -10,35 +38,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
-import {
-	Bold,
-	Italic,
-	Underline,
-	Strikethrough,
-	AlignLeft,
-	AlignCenter,
-	AlignRight,
-	AlignJustify,
-	List,
-	ListOrdered,
-	Quote,
-	LinkIcon,
-	ImageIcon,
-	Code,
-	Undo,
-	Redo,
-	Type,
-	Highlighter,
-	Indent,
-	Outdent,
-	Table,
-} from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 interface RichTextEditorProps {
 	value?: string;

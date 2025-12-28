@@ -1,15 +1,15 @@
 "use client";
 
+import { Menu, Settings } from "lucide-react";
 import { useState } from "react";
-import { ChatSidebar } from "./chat-sidebar";
+import { Button } from "@/components/ui/button";
+import { getRandomEmoji } from "@/utils/util";
+import type { Agent } from "../../types/Agent";
+import type { Conversation } from "../hooks/useChat";
 import { ChatConversation } from "./chat-conversation";
+import { ChatSidebar } from "./chat-sidebar";
 import { ChatToolbar } from "./chat-toolbar";
 import { ThemeToggle } from "./theme-toggle";
-import { Menu, Settings } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Agent } from "../../types/Agent";
-import { Conversation } from "../hooks/useChat";
-import { getRandomEmoji } from "@/utils/util";
 
 export type ChatType = "user" | "agent";
 
@@ -34,7 +34,9 @@ export interface Message {
 }
 
 export function ChatInterface() {
-	const [selectedChat, setSelectedChat] = useState<Conversation | undefined>(undefined);
+	const [selectedChat, setSelectedChat] = useState<Conversation | undefined>(
+		undefined,
+	);
 	const [sidebarOpen, setSidebarOpen] = useState(true);
 	const [showSettings, setShowSettings] = useState(false);
 	const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);

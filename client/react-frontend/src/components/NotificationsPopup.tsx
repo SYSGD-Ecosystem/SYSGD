@@ -1,17 +1,17 @@
+import { Bell, UserPlus, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bell, X, UserPlus } from "lucide-react";
 import type { IconType } from "react-icons";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	type Invitation,
 	useGetInvitations,
 } from "@/hooks/connection/useGetInvitations";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { useInvitations } from "@/hooks/connection/useProjectMembers";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 
 interface Notification {
 	id: string;

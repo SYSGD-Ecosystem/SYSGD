@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
-import api from "@/lib/api";
 import axios from "axios";
+import { useCallback, useEffect, useState } from "react";
+import api from "@/lib/api";
 
 export type Project = {
 	id: string;
@@ -31,8 +31,7 @@ const useProjects = () => {
 		} catch (err) {
 			if (axios.isAxiosError(err)) {
 				setError(
-					err.response?.data?.message ||
-						"Error al obtener los proyectos",
+					err.response?.data?.message || "Error al obtener los proyectos",
 				);
 			} else {
 				setError("Error inesperado");

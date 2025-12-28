@@ -1,40 +1,40 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import api from "@/lib/api";
 
 interface User {
-    id: string;
-    name: string;
-    email: string;
-    privileges: string;
+	id: string;
+	name: string;
+	email: string;
+	privileges: string;
 }
 
 const useCurrentUser = () => {
-    const [user, setUser] = useState<User | null>(null);
-    const [loading, setLoading] = useState(true);
+	const [user, setUser] = useState<User | null>(null);
+	const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                const res = await api.get<User>("/api/auth/me");
-                
-                const userData = res.data;
+	useEffect(() => {
+		const fetchUser = async () => {
+			try {
+				const res = await api.get<User>("/api/auth/me");
 
-                if (userData && userData.privileges === null) {
-                    userData.privileges = "user";
-                }
+				const userData = res.data;
 
-                setUser(userData);
-            } catch {
-                setUser(null);
-            } finally {
-                setLoading(false);
-            }
-        };
+				if (userData && userData.privileges === null) {
+					userData.privileges = "user";
+				}
 
-        fetchUser();
-    }, []);
+				setUser(userData);
+			} catch {
+				setUser(null);
+			} finally {
+				setLoading(false);
+			}
+		};
 
-    return { user, loading };
+		fetchUser();
+	}, []);
+
+	return { user, loading };
 };
 
 export default useCurrentUser;

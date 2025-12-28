@@ -1,14 +1,14 @@
 import { type FC, type FormEvent, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Loading from "@/components/Loading";
+import LoadingLogo from "@/components/LoadingLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRegisterUser } from "@/hooks/connection/useRegisterUser";
-import { useLogin } from "@/hooks/connection/useLogin";
-import { useNavigate } from "react-router-dom";
-import useServerStatus from "@/hooks/connection/useServerStatus";
 import { useAuthSession } from "@/hooks/connection/useAuthSession";
-import Loading from "@/components/Loading";
-import LoadingLogo from "@/components/LoadingLogo";
+import { useLogin } from "@/hooks/connection/useLogin";
+import { useRegisterUser } from "@/hooks/connection/useRegisterUser";
+import useServerStatus from "@/hooks/connection/useServerStatus";
 
 const Login: FC = () => {
 	const [isLoginPage, setIsLoginPage] = useState(true);
@@ -32,11 +32,11 @@ const Login: FC = () => {
 
 	useEffect(() => {
 		checkServerStatus();
-		
+
 		// Check for token in URL (Google OAuth callback)
 		const urlParams = new URLSearchParams(window.location.search);
-		const token = urlParams.get('token');
-		
+		const token = urlParams.get("token");
+
 		if (token) {
 			// Set the token as a cookie
 			document.cookie = `token=${token}; path=/; max-age=86400; secure; samesite=none`;

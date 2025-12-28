@@ -1,7 +1,16 @@
-import { useState, useEffect } from "react";
+import {
+	BarChart3,
+	Download,
+	ExternalLink,
+	Github,
+	Loader2,
+	RefreshCw,
+	Settings,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
 	Card,
 	CardContent,
@@ -9,7 +18,16 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+	Pagination,
+	PaginationContent,
+	PaginationItem,
+	PaginationLink,
+	PaginationNext,
+	PaginationPrevious,
+} from "@/components/ui/pagination";
 import {
 	Select,
 	SelectContent,
@@ -25,31 +43,13 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import {
-	Pagination,
-	PaginationContent,
-	PaginationItem,
-	PaginationLink,
-	PaginationNext,
-	PaginationPrevious,
-} from "@/components/ui/pagination";
-import {
-	Loader2,
-	Github,
-	ExternalLink,
-	Settings,
-	BarChart3,
-	Download,
-	RefreshCw,
-} from "lucide-react";
-import { toast } from "sonner";
+import useExportTable from "@/hooks/useExportTable";
 import type {
+	GitHubMetrics,
 	GitHubPullRequest,
 	GitHubRepository,
-	GitHubMetrics,
 	PullRequestFilters,
 } from "@/types/GitHubTypes";
-import useExportTable from "@/hooks/useExportTable";
 
 const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 
@@ -531,7 +531,7 @@ export default function GitHubIntegration({
 		// - git@github.com:OWNER/REPO.git
 		// - OWNER/REPO
 		const match = trimmed.match(
-			/^(?:https?:\/\/github\.com\/|git@github\.com:)?([^\s\/]+)\/([^\s\/]+?)(?:\.git)?\/?$/i,
+			/^(?:https?:\/\/github\.com\/|git@github\.com:)?([^\s/]+)\/([^\s/]+?)(?:\.git)?\/?$/i,
 		);
 		if (!match) return;
 

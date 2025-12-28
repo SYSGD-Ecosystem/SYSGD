@@ -1,9 +1,9 @@
 import { useEffect } from "react"; // 1. Importamos useEffect
 import { useNavigate } from "react-router-dom";
 import { useAuthSession } from "@/hooks/connection/useAuthSession";
-import { TopNavigation } from "./TopNavigationDashboard";
 import { HomeDashboard } from "./home-dashboard";
 import Loading from "./Loading";
+import { TopNavigation } from "./TopNavigationDashboard";
 
 function MainPage() {
 	const navigate = useNavigate();

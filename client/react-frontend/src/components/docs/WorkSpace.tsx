@@ -1,33 +1,33 @@
+import { Edit3 } from "lucide-react";
 import { type FC, useEffect, useState } from "react";
-import SecondarySidebar from "./SecondarySidebar";
-import IconButton from "../IconButton";
-import { IoPrint } from "react-icons/io5";
+import { FaFileAlt, FaFileExport, FaGhost } from "react-icons/fa";
 import { IoIosAddCircle } from "react-icons/io";
+import { IoPrint } from "react-icons/io5";
 import {
 	DropdownMenu,
-	DropdownMenuTrigger,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import Text from "../Text";
-import ClassificationBoxTable from "./ClassificationBoxTable";
-import useDialog from "../../hooks/useDialog";
-import CreateArchiving from "../dialogs/CreateArchive";
-import useArchives from "../../hooks/connection/useArchives";
-import { FaFileAlt, FaFileExport, FaGhost } from "react-icons/fa";
-import Loading from "../Loading";
-import useExportTable from "../../hooks/useExportTable";
-import usePrint from "../../hooks/usePrint";
-import useAlertDialog from "../../hooks/useAlertDialog";
-import RegistroDeEntrada from "./RegistroDeEntrada";
-import ExitRegister from "./ExitRegister";
-import LoanRegister from "./LoanRegister";
-import TopographicRegister from "./TopographicRegister";
-import RetentionScheduleTable from "./RetentionScheduleTable";
-import type { DropdownOptionProps } from "../Dropdown";
-import { Edit3 } from "lucide-react";
 import { useArchivesApi } from "@/hooks/connection/useArchivesApi";
 import { useArchiveStore } from "@/store/useArchiveStore";
+import useArchives from "../../hooks/connection/useArchives";
+import useAlertDialog from "../../hooks/useAlertDialog";
+import useDialog from "../../hooks/useDialog";
+import useExportTable from "../../hooks/useExportTable";
+import usePrint from "../../hooks/usePrint";
+import type { DropdownOptionProps } from "../Dropdown";
+import CreateArchiving from "../dialogs/CreateArchive";
+import IconButton from "../IconButton";
+import Loading from "../Loading";
+import Text from "../Text";
+import ClassificationBoxTable from "./ClassificationBoxTable";
+import ExitRegister from "./ExitRegister";
+import LoanRegister from "./LoanRegister";
+import RegistroDeEntrada from "./RegistroDeEntrada";
+import RetentionScheduleTable from "./RetentionScheduleTable";
+import SecondarySidebar from "./SecondarySidebar";
+import TopographicRegister from "./TopographicRegister";
 
 const WorkSpace: FC<{ page: number }> = ({ page }) => {
 	const { DialogComponent, openDialog, closeDialog } = useDialog();
@@ -37,14 +37,13 @@ const WorkSpace: FC<{ page: number }> = ({ page }) => {
 		{ Icon: FC; label: string; onClick: () => void }[]
 	>([]);
 
-	const {
-		selectedArchiveId,
-		selectedArchiveInfo,
-	} = useArchiveStore();
+	const { selectedArchiveId, selectedArchiveInfo } = useArchiveStore();
 
 	const [archiveId, setArchiveId] = useState(selectedArchiveId ?? "");
 	const [selectCode, setSelectCode] = useState(selectedArchiveInfo.code ?? "");
-	const [archiveName, setArchiveName] = useState(selectedArchiveInfo.name ?? "");
+	const [archiveName, setArchiveName] = useState(
+		selectedArchiveInfo.name ?? "",
+	);
 	const [company, setCompany] = useState(selectedArchiveInfo.company ?? "");
 	const { exportToXlsx } = useExportTable();
 	const { print } = usePrint();

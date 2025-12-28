@@ -1,6 +1,6 @@
+import { useCallback, useEffect, useState } from "react";
 import type { Member } from "@/types/Member";
 import { SERVER_URL } from "@/utils/util";
-import { useCallback, useEffect, useState } from "react";
 
 export const useProjectMembers = (projectId: string) => {
 	const [members, setMembers] = useState<Member[]>([]);
@@ -19,7 +19,7 @@ export const useProjectMembers = (projectId: string) => {
 			}
 
 			const data = await response.json();
-            console.log(data)
+			console.log(data);
 			setMembers(data);
 			setError(false);
 		} catch (err) {
@@ -47,7 +47,7 @@ type useInvitationsReturnType = {
 		onFail: () => void,
 	) => Promise<void>;
 
-    acceptInvitation: (
+	acceptInvitation: (
 		invitationId: string,
 		onSuccess: () => void,
 		onFail: () => void,
@@ -81,17 +81,19 @@ export const useInvitations = (): useInvitationsReturnType => {
 		}
 	};
 
-
-    const acceptInvitation = async (
+	const acceptInvitation = async (
 		invitationId: string,
 		onSuccess: () => void,
 		onFail: () => void,
 	) => {
 		try {
-			const res = await fetch(`${SERVER_URL}/api/members/accept-invite/${invitationId}`, {
-				method: "POST",
-				credentials: "include",
-			});
+			const res = await fetch(
+				`${SERVER_URL}/api/members/accept-invite/${invitationId}`,
+				{
+					method: "POST",
+					credentials: "include",
+				},
+			);
 
 			if (!res.ok) {
 				onFail();

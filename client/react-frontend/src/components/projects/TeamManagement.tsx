@@ -1,10 +1,9 @@
+import { Mail, Plus } from "lucide-react";
 import { type FC, useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
-import { Plus, Mail } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
@@ -12,10 +11,11 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "../ui/label";
+import { Progress } from "@/components/ui/progress";
 import { useProjectMembers } from "@/hooks/connection/useProjectMembers";
 import type { Member } from "@/types/Member";
 import DialogInvite from "../dialogs/DialogInvite";
+import { Label } from "../ui/label";
 import { Skeleton } from "./task-management/TaskManagement";
 
 const TeamManagement: FC<{ projectId: string }> = ({ projectId }) => {

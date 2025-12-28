@@ -2,31 +2,31 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
 "use client";
 
+import {
+	Bot,
+	Check,
+	Copy,
+	Link2,
+	Mail,
+	Search,
+	User,
+	UserPlus,
+} from "lucide-react";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
+	DialogDescription,
 	DialogHeader,
 	DialogTitle,
-	DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-	Search,
-	User,
-	Bot,
-	Link2,
-	Copy,
-	Check,
-	UserPlus,
-	Mail,
-} from "lucide-react";
-import { Label } from "@/components/ui/label";
-import { PublicUser } from "@/types/user";
 import { usePublicUsers } from "@/hooks/connection/usePublicUsers";
+import type { PublicUser } from "@/types/user";
 import { useChat } from "../hooks/useChat";
 
 interface NewChatModalProps {
@@ -137,7 +137,7 @@ export function NewChatModal({
 				// si no hay query y la ruta tiene /invite/<email> intentamos extraer
 				if (!emailFromLink) {
 					const path = url.pathname;
-					const m = path.match(/\/invite\/([^\/\?]+)/);
+					const m = path.match(/\/invite\/([^/?]+)/);
 					if (m) emailFromLink = decodeURIComponent(m[1]);
 				}
 			} catch {
@@ -327,7 +327,7 @@ export function NewChatModal({
 			return (
 				url.searchParams.get("t") ||
 				(() => {
-					const m = url.pathname.match(/\/invite\/([^\/\?]+)/);
+					const m = url.pathname.match(/\/invite\/([^/?]+)/);
 					return m ? m[1] : null;
 				})()
 			);

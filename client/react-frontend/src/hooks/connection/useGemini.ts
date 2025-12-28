@@ -6,7 +6,11 @@ export const useGemini = () => {
 	const [improvedText, setImprovedText] = useState("");
 	const [loading, setLoading] = useState(false);
 
-	const handleImprove = async (title: string, description: string, model?: string) => {
+	const handleImprove = async (
+		title: string,
+		description: string,
+		model?: string,
+	) => {
 		setLoading(true);
 		setImprovedText("");
 		try {

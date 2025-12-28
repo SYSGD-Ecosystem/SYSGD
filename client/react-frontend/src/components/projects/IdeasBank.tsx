@@ -1,28 +1,28 @@
+import {
+	Calendar,
+	Edit,
+	Lightbulb,
+	Plus,
+	Star,
+	ThumbsDown,
+	ThumbsUp,
+	Trash2,
+	User,
+} from "lucide-react";
 import { type FC, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import {
-	Plus,
-	Edit,
-	Trash2,
-	ThumbsUp,
-	ThumbsDown,
-	Lightbulb,
-	Calendar,
-	User,
-	Star,
-} from "lucide-react";
-import type { Idea } from "@/types/ProjectTypes";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useIdeas } from "@/hooks/connection/useIdeas";
+import type { Idea } from "@/types/ProjectTypes";
 import { timeAgo } from "@/utils/util";
 import { Label } from "../ui/label";
 import {

@@ -1,18 +1,19 @@
 /** biome-ignore-all lint/a11y/noSvgWithoutTitle: <explanation> */
 /** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
+
+import { AlertCircle, CheckCircle, Lock, Mail, User } from "lucide-react";
 import { type FC, type FormEvent, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Loading from "@/components/Loading";
+import LoadingLogo from "@/components/LoadingLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRegisterUser } from "@/hooks/connection/useRegisterUser";
-import { useLogin } from "@/hooks/connection/useLogin";
-import { useCheckUser } from "@/hooks/connection/useCheckUser";
-import { useNavigate } from "react-router-dom";
-import useServerStatus from "@/hooks/connection/useServerStatus";
 import { useAuthSession } from "@/hooks/connection/useAuthSession";
-import Loading from "@/components/Loading";
-import LoadingLogo from "@/components/LoadingLogo";
-import { Mail, Lock, User, AlertCircle, CheckCircle } from "lucide-react";
+import { useCheckUser } from "@/hooks/connection/useCheckUser";
+import { useLogin } from "@/hooks/connection/useLogin";
+import { useRegisterUser } from "@/hooks/connection/useRegisterUser";
+import useServerStatus from "@/hooks/connection/useServerStatus";
 
 const Auth: FC = () => {
 	const [isLoginPage, setIsLoginPage] = useState(true);
@@ -30,8 +31,18 @@ const Auth: FC = () => {
 	const router = useNavigate();
 
 	const { register, loading, error, success } = useRegisterUser();
-	const { login, error: loginError, loading: loginLoading, success: loginSuccess } = useLogin();
-	const { checkUser, data: checkData, loading: checkingUser, error: checkError } = useCheckUser();
+	const {
+		login,
+		error: loginError,
+		loading: loginLoading,
+		success: loginSuccess,
+	} = useLogin();
+	const {
+		checkUser,
+		data: checkData,
+		loading: checkingUser,
+		error: checkError,
+	} = useCheckUser();
 
 	const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 	const { status, checkServerStatus } = useServerStatus(serverUrl);
@@ -39,24 +50,22 @@ const Auth: FC = () => {
 
 	checkServerStatus();
 
+	useEffect(() => {
+		// 1. Verificar si venimos de un redireccionamiento de Google
+		const urlParams = new URLSearchParams(window.location.search);
+		const token = urlParams.get("token");
 
+		if (token) {
+			// Guardamos en localStorage como respaldo (Fallback)
+			localStorage.setItem("token", token);
 
-useEffect(() => {
-    // 1. Verificar si venimos de un redireccionamiento de Google
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    
-    if (token) {
-        // Guardamos en localStorage como respaldo (Fallback)
-        localStorage.setItem('token', token);
-        
-        // Limpiamos la URL por seguridad y estética
-        window.history.replaceState({}, document.title, window.location.pathname);
-        
-        // El hook useAuthSession detectará el token y validará la sesión
-        router("/dashboard");
-    }
-}, [router]);
+			// Limpiamos la URL por seguridad y estética
+			window.history.replaceState({}, document.title, window.location.pathname);
+
+			// El hook useAuthSession detectará el token y validará la sesión
+			router("/dashboard");
+		}
+	}, [router]);
 
 	useEffect(() => {
 		if (status === "offline") {
@@ -171,19 +180,27 @@ useEffect(() => {
 
 	const getStepIcon = () => {
 		switch (loginStep) {
-			case "password": return <Lock className="w-5 h-5" />;
-			case "complete": return <User className="w-5 h-5" />;
-			case "offer-register": return <AlertCircle className="w-5 h-5" />;
-			default: return <Mail className="w-5 h-5" />;
+			case "password":
+				return <Lock className="w-5 h-5" />;
+			case "complete":
+				return <User className="w-5 h-5" />;
+			case "offer-register":
+				return <AlertCircle className="w-5 h-5" />;
+			default:
+				return <Mail className="w-5 h-5" />;
 		}
 	};
 
 	const getStepTitle = () => {
 		switch (loginStep) {
-			case "password": return "Ingresa tu contraseña";
-			case "complete": return "Completa tu registro";
-			case "offer-register": return "Crear nueva cuenta";
-			default: return "Ingresa tu correo";
+			case "password":
+				return "Ingresa tu contraseña";
+			case "complete":
+				return "Completa tu registro";
+			case "offer-register":
+				return "Crear nueva cuenta";
+			default:
+				return "Ingresa tu correo";
 		}
 	};
 
@@ -198,7 +215,7 @@ useEffect(() => {
 				<div className="absolute inset-0 bg-black opacity-50" />
 				<div className="nebula" />
 			</div>
-			
+
 			{isLoginPage ? (
 				<div className="w-full max-w-md relative bg-white/10 backdrop-blur-lg border border-white/20 overflow-hidden rounded-2xl px-8 py-8 flex items-center flex-col gap-6 shadow-2xl z-10">
 					<div className="flex items-center flex-col justify-center gap-3">
@@ -207,7 +224,13 @@ useEffect(() => {
 						</div>
 						<div className="flex items-center justify-between w-full">
 							<div className="text-white/60 text-sm">
-								Paso {loginStep === "email" ? "1" : loginStep === "password" ? "2" : "2"} de 2
+								Paso{" "}
+								{loginStep === "email"
+									? "1"
+									: loginStep === "password"
+										? "2"
+										: "2"}{" "}
+								de 2
 							</div>
 							{loginStep !== "email" && (
 								<button
@@ -215,8 +238,18 @@ useEffect(() => {
 									onClick={() => setLoginStep("email")}
 									className="text-white/60 hover:text-white text-sm flex items-center gap-1 transition-colors"
 								>
-									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+									<svg
+										className="w-4 h-4"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M15 19l-7-7 7-7"
+										/>
 									</svg>
 									Regresar
 								</button>
@@ -228,9 +261,14 @@ useEffect(() => {
 						</div>
 					</div>
 
-					<form onSubmit={handleLoginSubmit} className="flex flex-col gap-5 w-full">
+					<form
+						onSubmit={handleLoginSubmit}
+						className="flex flex-col gap-5 w-full"
+					>
 						<div className="space-y-2">
-							<Label htmlFor="user" className="text-white/80 text-sm">Correo electrónico</Label>
+							<Label htmlFor="user" className="text-white/80 text-sm">
+								Correo electrónico
+							</Label>
 							<div className="relative">
 								<Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" />
 								<Input
@@ -246,7 +284,9 @@ useEffect(() => {
 
 						{loginStep === "password" && (
 							<div className="space-y-2">
-								<Label htmlFor="password" className="text-white/80 text-sm">Contraseña</Label>
+								<Label htmlFor="password" className="text-white/80 text-sm">
+									Contraseña
+								</Label>
 								<div className="relative">
 									<Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" />
 									<Input
@@ -265,45 +305,63 @@ useEffect(() => {
 							<>
 								<div className="bg-green-500/20 border border-green-500/30 rounded-lg p-4 flex items-center gap-3">
 									<CheckCircle className="w-5 h-5 text-green-400" />
-									<p className="text-sm text-green-100">Hemos encontrado una invitación para este correo. Completa tus datos para activar tu cuenta.</p>
+									<p className="text-sm text-green-100">
+										Hemos encontrado una invitación para este correo. Completa
+										tus datos para activar tu cuenta.
+									</p>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="name-complete" className="text-white/80 text-sm">Nombre completo</Label>
+									<Label
+										htmlFor="name-complete"
+										className="text-white/80 text-sm"
+									>
+										Nombre completo
+									</Label>
 									<div className="relative">
 										<User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" />
-										<Input 
-											id="name-complete" 
-											type="text" 
-											value={name} 
-											onChange={(e) => setName(e.target.value)} 
+										<Input
+											id="name-complete"
+											type="text"
+											value={name}
+											onChange={(e) => setName(e.target.value)}
 											className="w-full pl-10 bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-white/40"
 											placeholder="Tu nombre"
 										/>
 									</div>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="password-complete" className="text-white/80 text-sm">Crear contraseña</Label>
+									<Label
+										htmlFor="password-complete"
+										className="text-white/80 text-sm"
+									>
+										Crear contraseña
+									</Label>
 									<div className="relative">
 										<Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" />
-										<Input 
-											id="password-complete" 
-											type="password" 
-											value={password} 
-											onChange={(e) => setPassword(e.target.value)} 
+										<Input
+											id="password-complete"
+											type="password"
+											value={password}
+											onChange={(e) => setPassword(e.target.value)}
 											className="w-full pl-10 bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-white/40"
 											placeholder="Crea una contraseña segura"
 										/>
 									</div>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="confirm-password-complete" className="text-white/80 text-sm">Confirmar contraseña</Label>
+									<Label
+										htmlFor="confirm-password-complete"
+										className="text-white/80 text-sm"
+									>
+										Confirmar contraseña
+									</Label>
 									<div className="relative">
 										<Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" />
-										<Input 
-											id="confirm-password-complete" 
-											type="password" 
-											value={confirmPassword} 
-											onChange={(e) => setConfirmPassword(e.target.value)} 
+										<Input
+											id="confirm-password-complete"
+											type="password"
+											value={confirmPassword}
+											onChange={(e) => setConfirmPassword(e.target.value)}
 											className="w-full pl-10 bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-white/40"
 											placeholder="Confirma tu contraseña"
 										/>
@@ -315,7 +373,10 @@ useEffect(() => {
 						{loginStep === "offer-register" && (
 							<div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-4 flex items-center gap-3">
 								<AlertCircle className="w-5 h-5 text-blue-400" />
-								<p className="text-sm text-blue-100">No encontramos una cuenta con este correo. ¿Deseas crear una cuenta nueva?</p>
+								<p className="text-sm text-blue-100">
+									No encontramos una cuenta con este correo. ¿Deseas crear una
+									cuenta nueva?
+								</p>
 							</div>
 						)}
 
@@ -343,8 +404,10 @@ useEffect(() => {
 								type="submit"
 								disabled={
 									(loginStep === "email" && (user === "" || checkingUser)) ||
-									(loginStep === "password" && (password === "" || loginLoading)) ||
-									(loginStep === "complete" && (!name || !password || !confirmPassword || loginLoading))
+									(loginStep === "password" &&
+										(password === "" || loginLoading)) ||
+									(loginStep === "complete" &&
+										(!name || !password || !confirmPassword || loginLoading))
 								}
 								className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 transition-all duration-200 shadow-lg hover:shadow-xl"
 							>
@@ -353,10 +416,15 @@ useEffect(() => {
 										<div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
 										Procesando...
 									</>
-								) : loginStep === "email" ? "Continuar" :
-								 loginStep === "password" ? "Iniciar sesión" :
-								 loginStep === "complete" ? "Completar registro" :
-								 "Crear cuenta"}
+								) : loginStep === "email" ? (
+									"Continuar"
+								) : loginStep === "password" ? (
+									"Iniciar sesión"
+								) : loginStep === "complete" ? (
+									"Completar registro"
+								) : (
+									"Crear cuenta"
+								)}
 							</Button>
 						)}
 
@@ -374,7 +442,9 @@ useEffect(() => {
 
 					<div className="w-full flex items-center justify-center gap-2">
 						<div className="flex-1 h-px bg-white/20" />
-						<span className="text-xs text-white/50 whitespace-nowrap">O CONTINUA CON</span>
+						<span className="text-xs text-white/50 whitespace-nowrap">
+							O CONTINUA CON
+						</span>
 						<div className="flex-1 h-px bg-white/20" />
 					</div>
 
@@ -412,9 +482,14 @@ useEffect(() => {
 						<p className="text-lg text-white/80">Crear cuenta nueva</p>
 					</div>
 
-					<form onSubmit={handleRegisterSubmit} className="flex flex-col gap-5 w-full">
+					<form
+						onSubmit={handleRegisterSubmit}
+						className="flex flex-col gap-5 w-full"
+					>
 						<div className="space-y-2">
-							<Label htmlFor="name" className="text-white/80 text-sm">Nombre completo</Label>
+							<Label htmlFor="name" className="text-white/80 text-sm">
+								Nombre completo
+							</Label>
 							<div className="relative">
 								<User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" />
 								<Input
@@ -429,7 +504,9 @@ useEffect(() => {
 						</div>
 
 						<div className="space-y-2">
-							<Label htmlFor="email" className="text-white/80 text-sm">Correo electrónico</Label>
+							<Label htmlFor="email" className="text-white/80 text-sm">
+								Correo electrónico
+							</Label>
 							<div className="relative">
 								<Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" />
 								<Input
@@ -444,7 +521,12 @@ useEffect(() => {
 						</div>
 
 						<div className="space-y-2">
-							<Label htmlFor="register-password" className="text-white/80 text-sm">Contraseña</Label>
+							<Label
+								htmlFor="register-password"
+								className="text-white/80 text-sm"
+							>
+								Contraseña
+							</Label>
 							<div className="relative">
 								<Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" />
 								<Input
@@ -459,7 +541,12 @@ useEffect(() => {
 						</div>
 
 						<div className="space-y-2">
-							<Label htmlFor="confirm-password" className="text-white/80 text-sm">Confirmar contraseña</Label>
+							<Label
+								htmlFor="confirm-password"
+								className="text-white/80 text-sm"
+							>
+								Confirmar contraseña
+							</Label>
 							<div className="relative">
 								<Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" />
 								<Input
@@ -475,7 +562,9 @@ useEffect(() => {
 
 						<Button
 							type="submit"
-							disabled={loading || password === "" || user === "" || name === ""}
+							disabled={
+								loading || password === "" || user === "" || name === ""
+							}
 							className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 transition-all duration-200 shadow-lg hover:shadow-xl"
 						>
 							{loading ? (
@@ -483,7 +572,9 @@ useEffect(() => {
 									<div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
 									Registrando...
 								</>
-							) : "Crear cuenta"}
+							) : (
+								"Crear cuenta"
+							)}
 						</Button>
 
 						{error && (
@@ -493,7 +584,9 @@ useEffect(() => {
 						)}
 						{success && (
 							<div className="bg-green-500/20 border border-green-500/30 rounded-lg p-3">
-								<p className="text-green-200 text-sm text-center">¡Usuario registrado con éxito!</p>
+								<p className="text-green-200 text-sm text-center">
+									¡Usuario registrado con éxito!
+								</p>
 							</div>
 						)}
 					</form>
@@ -522,7 +615,9 @@ useEffect(() => {
 
 					<div className="w-full flex items-center justify-center gap-2">
 						<div className="flex-1 h-px bg-white/20" />
-						<span className="text-xs text-white/50 whitespace-nowrap">O CONTINUA CON</span>
+						<span className="text-xs text-white/50 whitespace-nowrap">
+							O CONTINUA CON
+						</span>
 						<div className="flex-1 h-px bg-white/20" />
 					</div>
 

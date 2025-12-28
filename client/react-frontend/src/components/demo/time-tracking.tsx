@@ -1,9 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import {
+	Calendar,
+	Clock,
+	Edit,
+	Pause,
+	Play,
+	Plus,
+	Square,
+	Target,
+	Timer,
+	Trash2,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
 	Select,
@@ -12,25 +30,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import {
-	Play,
-	Pause,
-	Square,
-	Clock,
-	Calendar,
-	Plus,
-	Edit,
-	Trash2,
-	Timer,
-	Target,
-} from "lucide-react";
 
 interface TimeEntry {
 	id: number;

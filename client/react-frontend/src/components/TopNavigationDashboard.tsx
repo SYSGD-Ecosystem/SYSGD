@@ -1,12 +1,12 @@
-import { Button } from "@/components/ui/button";
-import { Home, Settings, Bell } from "lucide-react";
-import { NotificationsPopup } from "./NotificationsPopup";
-import { useState, useEffect } from "react";
-import UserProfileTrigger from "./UserProfileTrigger";
-import SettingsModal from "./SettingsModal";
+import { Bell, Home, Settings } from "lucide-react";
+import { useEffect, useState } from "react";
 import { IoChatboxOutline } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { useGetInvitations } from "@/hooks/connection/useGetInvitations";
+import { NotificationsPopup } from "./NotificationsPopup";
+import SettingsModal from "./SettingsModal";
+import UserProfileTrigger from "./UserProfileTrigger";
 
 interface TopNavigationProps {
 	onHomeClick: () => void;
@@ -22,9 +22,11 @@ export function TopNavigation({ onHomeClick }: TopNavigationProps) {
 	useEffect(() => {
 		if (invitations) {
 			// Contar invitaciones pendientes (no aceptadas ni rechazadas)
-			const pendingInvitations = invitations.filter(inv => inv.status === 'pending');
-			console.log('Invitaciones:', invitations);
-			console.log('Invitaciones pendientes:', pendingInvitations);
+			const pendingInvitations = invitations.filter(
+				(inv) => inv.status === "pending",
+			);
+			console.log("Invitaciones:", invitations);
+			console.log("Invitaciones pendientes:", pendingInvitations);
 			setUnreadCount(pendingInvitations.length);
 		} else {
 			setUnreadCount(0);
@@ -80,7 +82,7 @@ export function TopNavigation({ onHomeClick }: TopNavigationProps) {
 						<Bell className="w-4 h-4" />
 						{unreadCount > 0 && (
 							<div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-pulse">
-								{unreadCount > 9 ? '9+' : unreadCount}
+								{unreadCount > 9 ? "9+" : unreadCount}
 							</div>
 						)}
 					</Button>

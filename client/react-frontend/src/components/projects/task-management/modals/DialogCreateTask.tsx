@@ -1,6 +1,8 @@
-import { FC, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Check, Cpu, Loader2, Sparkles, X } from "lucide-react";
+import { type FC, useState } from "react";
+import { useTaskConfig } from "@/components/projects/task-management/hooks/useTaskConfig";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -17,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import MarkdownEditor from "@/components/ui/markdown-editor";
 import {
 	Select,
 	SelectContent,
@@ -25,15 +28,12 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import MarkdownEditor from "@/components/ui/markdown-editor";
-import { useTaskConfig } from "@/components/projects/task-management/hooks/useTaskConfig";
 import type { Task } from "@/types/Task";
-import { Sparkles, Loader2, Check, X, Cpu } from "lucide-react";
 
 type ProjectMember = {
 	id: string;
 	name: string;
-  email: string;
+	email: string;
 	status?: string; // 'active' | 'invited'
 	sender_name?: string; // Para invitaciones
 	sender_email?: string; // Para invitaciones
@@ -81,12 +81,25 @@ const DialogCreateTask: FC<Props> = ({
 	setShowImprovedPreview,
 }) => {
 	const { config } = useTaskConfig(projectId);
-	const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash");
+	const [selectedModel, setSelectedModel] =
+		useState<string>("gemini-2.5-flash");
 
 	const geminiModels = [
-		{ id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "Rápido y eficiente" },
-		{ id: "gemini-2.5-flash-lite", name: "Gemini 2.5 Flash Lite", description: "Más ligero y rápido" },
-		{ id: "gemini-3-flash", name: "Gemini 3 Flash", description: "Última generación" },
+		{
+			id: "gemini-2.5-flash",
+			name: "Gemini 2.5 Flash",
+			description: "Rápido y eficiente",
+		},
+		{
+			id: "gemini-2.5-flash-lite",
+			name: "Gemini 2.5 Flash Lite",
+			description: "Más ligero y rápido",
+		},
+		{
+			id: "gemini-3-flash",
+			name: "Gemini 3 Flash",
+			description: "Última generación",
+		},
 	];
 
 	const typeOptions = config?.types?.map((t) => t.name) ?? ["Tarea"];
@@ -131,17 +144,28 @@ const DialogCreateTask: FC<Props> = ({
 								<Label htmlFor="descripcion">Descripción</Label>
 								{handleImprove && (
 									<div className="flex w-full justify-end gap-2">
-										<Select value={selectedModel} onValueChange={setSelectedModel}>
+										<Select
+											value={selectedModel}
+											onValueChange={setSelectedModel}
+										>
 											<SelectTrigger className="w-[160px] h-8 text-xs">
 												<Cpu className="h-3 w-3 mr-1" />
 												<SelectValue />
 											</SelectTrigger>
 											<SelectContent className="text-xs">
 												{geminiModels.map((model) => (
-													<SelectItem key={model.id} value={model.id} className="text-xs">
+													<SelectItem
+														key={model.id}
+														value={model.id}
+														className="text-xs"
+													>
 														<div className="flex flex-col">
-															<span className="text-xs font-medium">{model.name}</span>
-															<span className="text-[10px] text-muted-foreground">{model.description}</span>
+															<span className="text-xs font-medium">
+																{model.name}
+															</span>
+															<span className="text-[10px] text-muted-foreground">
+																{model.description}
+															</span>
 														</div>
 													</SelectItem>
 												))}
@@ -183,7 +207,6 @@ const DialogCreateTask: FC<Props> = ({
 									placeholder="Describe la tarea usando Markdown..."
 									className="mt-2"
 								/>
-								
 							</div>
 						</div>
 
@@ -204,7 +227,7 @@ const DialogCreateTask: FC<Props> = ({
 										<X className="h-4 w-4" />
 									</Button>
 								</div>
-								
+
 								<div className="bg-white dark:bg-slate-800 rounded-md p-3 max-h-48 overflow-y-auto">
 									<Textarea
 										value={improvedText}
@@ -243,7 +266,6 @@ const DialogCreateTask: FC<Props> = ({
 								</div>
 							</div>
 						)}
-
 
 						<div className="grid grid-cols-2 gap-4">
 							<div>
@@ -354,7 +376,7 @@ const DialogCreateTask: FC<Props> = ({
 											>
 												<div className="flex items-center justify-between w-full">
 													<span>{member.name}</span>
-													{member.status === 'invited' && (
+													{member.status === "invited" && (
 														<Badge variant="secondary" className="text-xs ml-2">
 															Invitado
 														</Badge>

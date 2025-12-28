@@ -1,32 +1,32 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
-	FileText,
-	Users,
-	BarChart3,
-	CheckCircle,
 	ArrowRight,
-	Menu,
-	X,
+	BarChart3,
+	Building2,
+	CheckCircle,
+	Cpu,
+	FileText,
+	FolderKanban,
 	Github,
+	Globe,
 	Mail,
 	MapPin,
-	Zap,
-	Twitter,
-	FolderKanban,
-	Target,
+	Menu,
 	Rocket,
-	Globe,
-	Cpu,
 	ShoppingCart,
-	Building2,
 	Sparkles,
+	Target,
+	Twitter,
+	Users,
+	X,
+	Zap,
 } from "lucide-react";
-import { Link } from "react-router-dom";
-import useUserCount from "@/hooks/connection/useUserCount";
+import { useState } from "react";
 import { IoLogoWhatsapp } from "react-icons/io5";
+import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import useUserCount from "@/hooks/connection/useUserCount";
 
 export default function LandingPage() {
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -710,7 +710,8 @@ export default function LandingPage() {
 									<Mail className="w-4 h-4" />
 									lazaroyunier96@gmail.com
 								</Link>
-								<Link target="_blank"
+								<Link
+									target="_blank"
 									className="flex items-center gap-2"
 									to="https://wa.me/+5353935724"
 								>

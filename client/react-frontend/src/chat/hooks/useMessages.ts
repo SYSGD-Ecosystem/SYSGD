@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ExtendedMessage } from "../components/chat-conversation";
 
 export function useMessages(conversationId: string) {

@@ -1,15 +1,28 @@
+import {
+	Activity,
+	Calendar,
+	Edit,
+	Eye,
+	File,
+	FileText,
+	Folder,
+	FolderPlus,
+	MoreVertical,
+	Search,
+	Users,
+} from "lucide-react";
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
 	Select,
 	SelectContent,
@@ -17,30 +30,17 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import {
-	Search,
-	FolderPlus,
-	FileText,
-	Users,
-	Calendar,
-	Activity,
-	MoreVertical,
-	Edit,
-	Eye,
-	Folder,
-	File,
-} from "lucide-react";
-import useProjects from "@/hooks/connection/useProjects";
-import useProjectConnection from "@/hooks/connection/useProjectConnection";
-import { Label } from "./ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import useArchives from "@/hooks/connection/useArchives";
-import { formatDate } from "@/utils/util";
-import { useNavigate } from "react-router-dom";
+import useConnection from "@/hooks/connection/useConnection";
+import useCurrentUser from "@/hooks/connection/useCurrentUser";
+import useProjectConnection from "@/hooks/connection/useProjectConnection";
+import useProjects from "@/hooks/connection/useProjects";
+import { useToast } from "@/hooks/use-toast";
 import { useSelectionStore } from "@/store/selection";
 import { useArchiveStore } from "@/store/useArchiveStore";
-import useCurrentUser from "@/hooks/connection/useCurrentUser";
-import { useToast } from "@/hooks/use-toast";
-import useConnection from "@/hooks/connection/useConnection";
+import { formatDate } from "@/utils/util";
+import { Label } from "./ui/label";
 import { Progress } from "./ui/progress";
 
 interface DocumentFile {
@@ -518,7 +518,12 @@ export function HomeDashboard() {
 										<Eye className="w-3 h-3 mr-1" />
 										Ver
 									</Button>
-									<Button disabled variant="ghost" size="sm" className="flex-1 cursor-pointer">
+									<Button
+										disabled
+										variant="ghost"
+										size="sm"
+										className="flex-1 cursor-pointer"
+									>
 										<Edit className="w-3 h-3 mr-1" />
 										Editar
 									</Button>

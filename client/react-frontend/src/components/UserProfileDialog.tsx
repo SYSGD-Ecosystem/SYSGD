@@ -1,7 +1,11 @@
+import { KeyRound, Loader2, LogOut, Shield, User } from "lucide-react";
 import type React from "react";
-
 import type { FC } from "react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -9,14 +13,9 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User, Shield, LogOut, Loader2, KeyRound } from "lucide-react";
-import useCurrentUser from "../hooks/connection/useCurrentUser";
-import { Link } from "react-router-dom";
 import api from "@/lib/api";
+import useCurrentUser from "../hooks/connection/useCurrentUser";
 
 interface UserProfileDialogProps {
 	trigger?: React.ReactNode;
@@ -56,7 +55,7 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
 		try {
 			await api.post("/api/auth/logout");
 			localStorage.removeItem("token");
-			setOpen(false); 
+			setOpen(false);
 			location.reload();
 		} catch (error) {
 			console.error("Error al cerrar sesión:", error);

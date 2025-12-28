@@ -1,5 +1,5 @@
+import { useCallback, useEffect, useState } from "react";
 import type { Task } from "@/types/Task";
-import { useEffect, useState, useCallback } from "react";
 
 const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 
@@ -44,7 +44,7 @@ export const useTasks = (project_id: string) => {
 				...task,
 				assignees: task.assignees?.map((a) => a.id) || [],
 			};
-			
+
 			const res = await fetch(`${serverUrl}/api/tasks`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
@@ -70,7 +70,7 @@ export const useTasks = (project_id: string) => {
 				...taskData,
 				assignees: taskData.assignees?.map((a) => a.id) || [],
 			};
-			
+
 			const res = await fetch(`${serverUrl}/api/tasks/${taskId}`, {
 				method: "PUT",
 				headers: { "Content-Type": "application/json" },
