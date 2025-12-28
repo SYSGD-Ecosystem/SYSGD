@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { User, Shield, LogOut, Loader2, KeyRound } from "lucide-react";
 import useCurrentUser from "../hooks/connection/useCurrentUser";
 import { Link } from "react-router-dom";
+import api from "@/lib/api";
 
 interface UserProfileDialogProps {
 	trigger?: React.ReactNode;
@@ -53,10 +54,9 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
 
 	const handleLogout = async () => {
 		try {
-			await fetch(`${import.meta.env.VITE_SERVER_URL}/api/logout`, {
-				credentials: "include",
-			});
-			setOpen(false); // Cerrar el dialog
+			await api.post("/api/auth/logout");
+			localStorage.removeItem("token");
+			setOpen(false); 
 			location.reload();
 		} catch (error) {
 			console.error("Error al cerrar sesión:", error);

@@ -1,38 +1,27 @@
-// src/hooks/connection/useAuthSession.ts
 import { useEffect, useState } from "react";
-
-const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+import api from "@/lib/api";
+import type { User } from "@/types/user";
 
 export function useAuthSession() {
-	const [loading, setLoading] = useState(true);
-	const [user, setUser] = useState<null | {
-		id: string;
-		email: string;
-		name: string;
-		privileges: string;
-	}>(null);
-	const [error, setError] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState<User | null>(null);
+    const [error, setError] = useState("");
 
-	useEffect(() => {
-		const checkSession = async () => {
-			try {
-				const res = await fetch(`${serverUrl}/api/me`, {
-					method: "GET",
-					credentials: "include",
-				});
+    useEffect(() => {
+        const checkSession = async () => {
+            try {
+                const res = await api.get<User>("/api/auth/me");
+                setUser(res.data);
+            } catch {
+                setError("No autorizado");
+                setUser(null);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-				if (!res.ok) throw new Error("No logeado");
-				const data = await res.json();
-				setUser(data);
-			} catch (err) {
-				setError("No autorizado");
-			} finally {
-				setLoading(false);
-			}
-		};
+        checkSession();
+    }, []);
 
-		checkSession();
-	}, []);
-
-	return { user, loading, error };
+    return { user, loading, error };
 }

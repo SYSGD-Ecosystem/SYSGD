@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap");
 
 /* Configuración de temas usando CSS custom properties */
 @layer theme {
@@ -201,10 +202,6 @@
 * {
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
-
-/* Fuentes */
-/* biome-ignore lint/correctness/noInvalidPositionAtImportRule: <explanation> */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap");
 
 body {
   font-family: "Inter", sans-serif;

@@ -1,17 +1,17 @@
 import { useCallback, useRef, useState, type FC } from "react";
-import { TopNavigation } from "./top-navigation";
+import { TopNavigation } from "./top-navigation.tsx";
 import { useNavigate } from "react-router-dom";
 import { useSelectionStore } from "@/store/selection";
 import TaskManagement from "./task-management/TaskManagement.tsx";
 import useCurrentUser from "@/hooks/connection/useCurrentUser";
-import Loading from "../Loading";
-import { ProjectSidebar } from "./ProjectSidebar";
-import TeamManagement from "./TeamManagement";
-import IdeasBank from "./IdeasBank";
-import NotesSection from "./NotesSection";
+import Loading from "../Loading.tsx";
+import { ProjectSidebar } from "./ProjectSidebar.tsx";
+import TeamManagement from "./TeamManagement.tsx";
+import IdeasBank from "./IdeasBank.tsx";
+import NotesSection from "./NotesSection.tsx";
 import GitHubIntegration from "./GitHubIntegration.tsx";
-import ProjectSettings from "./ProjectSettings";
-import type { GitHubCacheEntry } from "./GitHubIntegration";
+import ProjectSettings from "./ProjectSettings.tsx";
+import type { GitHubCacheEntry } from "./GitHubIntegration.tsx";
 
 
 // type GitHubCacheEntry = {

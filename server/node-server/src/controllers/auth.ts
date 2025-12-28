@@ -13,6 +13,31 @@ if (!process.env.JWT_SECRET) {
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+interface UserPayload {
+	id: string;
+	email: string;
+	name: string;
+	privileges: string;
+}
+
+export function generateJWT(user: {
+	id: string;
+	email: string;
+	name: string;
+	privileges: string;
+}) {
+	return jwt.sign(
+		{
+			id: user.id,
+			email: user.email,
+			name: user.name,
+			privileges: user.privileges,
+		},
+		JWT_SECRET as string, 
+		{ expiresIn: "7d" },
+	);
+}
+
 export const login = async (req: Request, res: Response) => {
 	const { email, password } = req.body;
 	if (!email || !password) {
@@ -29,16 +54,16 @@ export const login = async (req: Request, res: Response) => {
 		}
 
 		// Verificar si es un usuario invitado sin contraseña
-		if (user.status === 'invited' && !user.password) {
-			 res.status(202).json({ 
+		if (user.status === "invited" && !user.password) {
+			res.status(202).json({
 				message: "Usuario invitado detectado",
-				status: 'invited',
+				status: "invited",
 				user: {
 					id: user.id,
 					email: user.email,
 					name: user.name,
-					status: user.status
-				}
+					status: user.status,
+				},
 			});
 			return;
 		}
@@ -50,17 +75,13 @@ export const login = async (req: Request, res: Response) => {
 			return;
 		}
 
-		// Genera el token JWT
-		const token = jwt.sign(
-			{
-				id: user.id,
-				email: user.email,
-				name: user.name,
-				privileges: user.privileges,
-			},
-			JWT_SECRET,
-			{ expiresIn: "24h" },
-		);
+		// Generamos el token usando el helper
+		const token = generateJWT({
+			id: user.id,
+			email: user.email,
+			name: user.name,
+			privileges: user.privileges,
+		});
 
 		// Opcional: registrar el login
 		await logUserLogin(
@@ -69,88 +90,94 @@ export const login = async (req: Request, res: Response) => {
 			req.headers["user-agent"] || "",
 		);
 
+		// 1. Establecemos Cookie (Respaldo / Compatibilidad Web)
 		res.cookie("token", token, {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === "production",
 			sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-			maxAge: 1000 * 60 * 60 * 24,
+			maxAge: 1000 * 60 * 60 * 24 * 7, // 7 días para coincidir con el token
 		});
 
-		res.status(201).send("Login correcto");
+		// 2. Enviamos Token en JSON (Para Axios, Mobile, Electron)
+		res.status(201).json({
+			message: "Login correcto",
+			token: token, 
+			user: {
+				id: user.id,
+				email: user.email,
+				name: user.name,
+				privileges: user.privileges,
+			},
+		});
 	} catch (err) {
 		console.error(err);
 		res.status(500).json({ message: "Error interno del servidor" });
 	}
 };
 
-// Nuevo: verificación por email para flujo en 2 pasos
+// Verificación por email para flujo en 2 pasos
 export const checkUser = async (req: Request, res: Response) => {
-  const { email } = req.body;
-  if (!email) {
-    res.status(400).json({ message: "Falta email" });
-    return;
-  }
+	const { email } = req.body;
+	if (!email) {
+		res.status(400).json({ message: "Falta email" });
+		return;
+	}
 
-  try {
-    const user = await findUserByemail(email);
-    if (!user) {
-      res.status(404).json({ exists: false });
-      return;
-    }
-    res.status(200).json({
-      exists: true,
-      id: user.id,
-      status: user.status,
-      hasPassword: !!user.password,
-      privileges: user.privileges,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error interno del servidor" });
-  }
+	try {
+		const user = await findUserByemail(email);
+		if (!user) {
+			res.status(404).json({ exists: false });
+			return;
+		}
+		res.status(200).json({
+			exists: true,
+			id: user.id,
+			status: user.status,
+			hasPassword: !!user.password,
+			privileges: user.privileges,
+		});
+	} catch (err) {
+		console.error(err);
+		res.status(500).json({ message: "Error interno del servidor" });
+	}
 };
 
 export const getCurrentUser = async (req: Request, res: Response) => {
-	const token = req.cookies.token;
+	// 1. Estrategia Híbrida: Header 'Authorization' O Cookie 'token'
+	const authHeader = req.headers.authorization;
+	const tokenFromHeader = authHeader?.startsWith("Bearer ")
+		? authHeader.split(" ")[1]
+		: null;
+
+	const token = tokenFromHeader || req.cookies?.token;
 
 	if (!token) {
 		res.status(401).json({ message: "No autorizado" });
 		return;
 	}
 
-	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-	jwt.verify(token, JWT_SECRET, (err: any, decoded: any) => {
-		if (err) {
-			res.status(401).json({ message: "No autorizado" });
-			return;
-		}
+	try {
+		// Verificación síncrona sin callback (más limpio y type-safe)
+		const decoded = jwt.verify(token, JWT_SECRET as string) as UserPayload;
 
-		const user = decoded;
-		res.json(user);
-	});
+		res.json({
+			id: decoded.id,
+			name: decoded.name,
+			email: decoded.email,
+			privileges: decoded.privileges,
+		});
+	} catch (err) {
+		// Token inválido o expirado
+		res.status(401).json({ message: "Sesión inválida o expirada" });
+	}
 };
 
-export function generateJWT(user: {
-	id: string;
-	email: string;
-	name: string;
-	privileges: string;
-}) {
-	return jwt.sign(
-		{
-			id: user.id,
-			email: user.email,
-			name: user.name,
-			privileges: user.privileges,
-		},
-		JWT_SECRET,
-		{ expiresIn: "7d" },
-	);
-}
-
-export const completeInvitedUserRegistration = async (req: Request, res: Response) => {
+export const completeInvitedUserRegistration = async (
+	req: Request,
+	res: Response,
+) => {
 	const { userId, name, password } = req.body;
-	
+
 	if (!userId || !name || !password) {
 		res.status(400).json({ message: "Faltan datos requeridos" });
 		return;
@@ -159,50 +186,48 @@ export const completeInvitedUserRegistration = async (req: Request, res: Respons
 	try {
 		// Verificar que el usuario existe y está en estado 'invited'
 		const userCheck = await findUserByemail(req.body.email);
-		if (!userCheck || userCheck.status !== 'invited') {
-			res.status(400).json({ message: "Usuario no válido o ya completó registro" });
+		if (!userCheck || userCheck.status !== "invited") {
+			res
+				.status(400)
+				.json({ message: "Usuario no válido o ya completó registro" });
 			return;
 		}
 
-		// Hashear la contraseña
 		const hashedPassword = await bcrypt.hash(password, 10);
 
-		// Actualizar el usuario
 		await pool.query(
 			`UPDATE users 
-			 SET name = $1, password = $2, status = 'active' 
-			 WHERE id = $3 AND status = 'invited'`,
-			[name, hashedPassword, userId]
+             SET name = $1, password = $2, status = 'active' 
+             WHERE id = $3 AND status = 'invited'`,
+			[name, hashedPassword, userId],
 		);
 
-		// Generar token JWT para el usuario
-		const token = jwt.sign(
-			{
-				id: userId,
-				email: req.body.email,
-				name: name,
-				privileges: userCheck.privileges,
-			},
-			JWT_SECRET,
-			{ expiresIn: "24h" },
-		);
+		// Generar token
+		const token = generateJWT({
+			id: userId,
+			email: req.body.email,
+			name: name,
+			privileges: userCheck.privileges,
+		});
 
-		// Establecer cookie
+		// Cookie de respaldo
 		res.cookie("token", token, {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === "production",
 			sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-			maxAge: 1000 * 60 * 60 * 24,
+			maxAge: 1000 * 60 * 60 * 24 * 7,
 		});
 
-		res.status(201).json({ 
+		// Respuesta JSON con Token
+		res.status(201).json({
 			message: "Registro completado exitosamente",
+			token: token, // <--- Importante devolverlo aquí también
 			user: {
 				id: userId,
 				email: req.body.email,
 				name: name,
-				status: 'active'
-			}
+				status: "active",
+			},
 		});
 	} catch (err) {
 		console.error(err);
@@ -211,10 +236,13 @@ export const completeInvitedUserRegistration = async (req: Request, res: Respons
 };
 
 export const logout = async (req: Request, res: Response) => {
+	// Limpiamos la cookie del servidor
 	res.clearCookie("token", {
 		httpOnly: true,
 		secure: process.env.NODE_ENV === "production",
 		sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
 	});
+
+	// El frontend se encargará de borrar el localStorage al recibir esta respuesta
 	res.status(200).json({ message: "Sesión cerrada" });
 };

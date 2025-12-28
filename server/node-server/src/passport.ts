@@ -33,7 +33,6 @@ passport.use(
 					if (!result.success) {
 						console.error("Error al crear usuario:", result.message);
 						return done(null, false);
-						// biome-ignore lint/style/noUselessElse: <explanation>
 					} else {
 						const token = generateJWT({
 							id: result.user.id,
@@ -44,6 +43,7 @@ passport.use(
 						return done(null, { token });
 					}
 				}
+				
 				const token = generateJWT({
 					id: user.id,
 					email: user.email,

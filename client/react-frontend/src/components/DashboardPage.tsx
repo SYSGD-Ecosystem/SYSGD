@@ -1,14 +1,20 @@
-import { TopNavigation } from "./TopNavigationDashboard";
-
-import { HomeDashboard } from "./home-dashboard";
-import { useAuthSession } from "@/hooks/connection/useAuthSession";
-import Loading from "./Loading";
+import { useEffect } from "react"; // 1. Importamos useEffect
 import { useNavigate } from "react-router-dom";
+import { useAuthSession } from "@/hooks/connection/useAuthSession";
+import { TopNavigation } from "./TopNavigationDashboard";
+import { HomeDashboard } from "./home-dashboard";
+import Loading from "./Loading";
 
 function MainPage() {
 	const navigate = useNavigate();
-
 	const { user, loading } = useAuthSession();
+
+	// 2. Manejamos la redirección como un efecto secundario
+	useEffect(() => {
+		if (!loading && !user) {
+			navigate("/login");
+		}
+	}, [user, loading, navigate]);
 
 	if (loading) {
 		return (
@@ -18,8 +24,8 @@ function MainPage() {
 		);
 	}
 
+	// 3. Si no hay usuario, retornamos null mientras el useEffect hace su trabajo
 	if (!user) {
-		navigate("/login");
 		return null;
 	}
 
@@ -36,9 +42,5 @@ function MainPage() {
 }
 
 export default function Page() {
-	return (
-		
-			<MainPage />
-		
-	);
+	return <MainPage />;
 }

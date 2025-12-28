@@ -39,26 +39,24 @@ const Auth: FC = () => {
 
 	checkServerStatus();
 
-	/* =======================
-	   EFECTOS (ORDEN FIJO)
-	======================= */
 
-	// useEffect(() => {
-	// 	checkServerStatus();
-		
-	// 	// Check for token in URL (Google OAuth callback)
-	// 	const urlParams = new URLSearchParams(window.location.search);
-	// 	const token = urlParams.get('token');
-		
-	// 	if (token) {
-	// 		// Set the token as a cookie
-	// 		// document.cookie = `token=${token}; path=/; max-age=86400; secure; samesite=none`;
-	// 		// Clean the URL
-	// 		// window.history.replaceState({}, document.title, window.location.pathname);
-	// 		// Redirect to dashboard
-	// 		router("/dashboard");
-	// 	}
-	// }, [checkServerStatus]);
+
+useEffect(() => {
+    // 1. Verificar si venimos de un redireccionamiento de Google
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    
+    if (token) {
+        // Guardamos en localStorage como respaldo (Fallback)
+        localStorage.setItem('token', token);
+        
+        // Limpiamos la URL por seguridad y estética
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // El hook useAuthSession detectará el token y validará la sesión
+        router("/dashboard");
+    }
+}, [router]);
 
 	useEffect(() => {
 		if (status === "offline") {

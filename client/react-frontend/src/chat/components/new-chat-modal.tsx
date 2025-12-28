@@ -77,12 +77,13 @@ export function NewChatModal({
 	const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 
 	// helper: obtener usuario actual desde backend
+	// TODO: implementar el hook useCurrenUser aqui
 	const fetchCurrentUser = async (): Promise<{
 		id: string;
 		email: string;
 	} | null> => {
 		try {
-			const res = await fetch(`${serverUrl}/api/me`, {
+			const res = await fetch(`${serverUrl}/api/auth/me`, {
 				credentials: "include",
 			});
 			if (!res.ok) return null;
