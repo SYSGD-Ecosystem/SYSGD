@@ -5,7 +5,7 @@ interface User {
     id: string;
     name: string;
     email: string;
-    privileges: string | null;
+    privileges: string;
 }
 
 const useCurrentUser = () => {
