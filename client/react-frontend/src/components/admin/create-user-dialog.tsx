@@ -62,20 +62,28 @@ export function CreateUserDialog({
 		try {
 			const newUser = await createUser(formData as CreateUserData);
 
-			onUserCreated(newUser);
-			onOpenChange(false);
-			setFormData({
-				name: "",
-				email: "",
-				password: "",
-				privileges: "user",
-			});
+			if (newUser as User) {
+				onUserCreated(newUser as User);
+				onOpenChange(false);
+				setFormData({
+					name: "",
+					email: "",
+					password: "",
+					privileges: "user",
+				});
 
-			toast({
-				title: "Usuario creado",
-				description: `El usuario ${formData.name} se creó correctamente.`,
-			});
-		} catch (error) {
+				toast({
+					title: "Usuario creado",
+					description: `El usuario ${formData.name} se creó correctamente.`,
+				});
+			} else {
+				toast({
+					variant: "destructive",
+					title: "Error",
+					description: "No se pudo crear el usuario. Inténtalo de nuevo.",
+				});
+			}
+		} catch {
 			toast({
 				variant: "destructive",
 				title: "Error",

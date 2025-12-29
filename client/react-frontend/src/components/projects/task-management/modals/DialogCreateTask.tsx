@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { Task } from "@/types/Task";
+import { useProjectContext } from "../../ProjectProvider";
 
 type ProjectMember = {
 	id: string;
@@ -59,7 +60,12 @@ type Props = {
 	// IA funcional
 	geminiIsLoading?: boolean;
 	improvedText?: string;
-	handleImprove?: (title: string, description: string, model?: string) => void;
+	handleImprove?: (
+		title: string,
+		description: string,
+		projectContext?: { name: string; description: string },
+		model?: string,
+	) => void;
 	showImprovedPreview?: boolean;
 	setShowImprovedPreview?: (show: boolean) => void;
 };
@@ -81,6 +87,9 @@ const DialogCreateTask: FC<Props> = ({
 	setShowImprovedPreview,
 }) => {
 	const { config } = useTaskConfig(projectId);
+	const { project, isLoading } = useProjectContext();
+
+	console.log("Task Config in DialogCreateTask:", project?.name, project?.description, {project});
 	const [selectedModel, setSelectedModel] =
 		useState<string>("gemini-2.5-flash");
 
@@ -113,6 +122,25 @@ const DialogCreateTask: FC<Props> = ({
 		"En Progreso",
 		"Completado",
 	];
+
+	if (isLoading) {
+		return (
+			<Dialog open={isOpen} onOpenChange={onOpenChange}>
+				<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+					<DialogHeader>
+						<DialogTitle>
+							<div className="w-32 h-6 bg-slate-300 dark:bg-slate-600 rounded-full animate-pulse" />
+						</DialogTitle>
+					</DialogHeader>
+					<div className="space-y-4">
+						<div className="w-full h-4 bg-slate-300 dark:bg-slate-600 rounded-full animate-pulse" />
+						<div className="w-full h-4 bg-slate-300 dark:bg-slate-600 rounded-full animate-pulse" />
+						<div className="w-full h-4 bg-slate-300 dark:bg-slate-600 rounded-full animate-pulse" />
+					</div>
+				</DialogContent>
+			</Dialog>
+		);
+	}
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -180,6 +208,10 @@ const DialogCreateTask: FC<Props> = ({
 												handleImprove(
 													editingTask.title ?? "",
 													editingTask.description ?? "",
+													{
+														name: project?.name || "",
+														description: project?.description || "",
+													},
 													selectedModel,
 												)
 											}

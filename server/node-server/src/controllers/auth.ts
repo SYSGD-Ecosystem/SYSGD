@@ -145,6 +145,7 @@ export const checkUser = async (req: Request, res: Response) => {
 export const getCurrentUser = async (req: Request, res: Response) => {
 	// 1. Estrategia Híbrida: Header 'Authorization' O Cookie 'token'
 	const authHeader = req.headers.authorization;
+	console.log("Auth Header:", {authHeader});
 	const tokenFromHeader = authHeader?.startsWith("Bearer ")
 		? authHeader.split(" ")[1]
 		: null;
@@ -152,6 +153,7 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 	const token = tokenFromHeader || req.cookies?.token;
 
 	if (!token) {
+		console.log("No token found");
 		res.status(401).json({ message: "No autorizado" });
 		return;
 	}
@@ -166,7 +168,9 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 			email: decoded.email,
 			privileges: decoded.privileges,
 		});
+		console.log("User decoded:", decoded);
 	} catch (err) {
+		console.error("JWT verification error:", err);
 		// Token inválido o expirado
 		res.status(401).json({ message: "Sesión inválida o expirada" });
 	}

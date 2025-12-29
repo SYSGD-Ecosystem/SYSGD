@@ -1,23 +1,22 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useState } from "react";
-import { SERVER_URL } from "@/utils/util";
+import api from "@/lib/api";
 
+// --- Interfaces se mantienen igual ---
 export interface TaskType {
 	name: string;
 	color: string;
 }
-
 export interface TaskPriority {
 	name: string;
 	level: number;
 	color: string;
 }
-
 export interface TaskState {
 	name: string;
 	color: string;
 	requires_context: boolean;
 }
-
 export interface TaskConfig {
 	types: TaskType[];
 	priorities: TaskPriority[];
@@ -29,64 +28,38 @@ export function useTaskConfig(projectId: string) {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	// GET: Obtener configuración
 	const fetchConfig = useCallback(async () => {
 		if (!projectId) return;
-
 		setLoading(true);
 		setError(null);
-
 		try {
-			const response = await fetch(
-				`${SERVER_URL}/api/projects/${projectId}/task-config`,
-				{
-					credentials: "include",
-				},
+			const res = await api.get<TaskConfig>(
+				`/api/projects/${projectId}/task-config`,
 			);
-
-			if (!response.ok) {
-				throw new Error("Error al obtener configuración de tareas");
-			}
-
-			const data = await response.json();
-			setConfig(data);
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Error desconocido");
-			console.error("Error fetching task config:", err);
+			setConfig(res.data);
+		} catch (err: any) {
+			setError(err.response?.data?.message || "Error al obtener configuración");
 		} finally {
 			setLoading(false);
 		}
 	}, [projectId]);
 
+	// PUT: Actualizar configuración completa
 	const updateConfig = useCallback(
 		async (newConfig: TaskConfig) => {
 			if (!projectId) return false;
-
 			setLoading(true);
-			setError(null);
-
 			try {
-				const response = await fetch(
-					`${SERVER_URL}/api/projects/${projectId}/task-config`,
+				const res = await api.put<TaskConfig>(
+					`/api/projects/${projectId}/task-config`,
 					{
-						method: "PUT",
-						headers: {
-							"Content-Type": "application/json",
-						},
-						credentials: "include",
-						body: JSON.stringify({ task_config: newConfig }),
+						task_config: newConfig,
 					},
 				);
-
-				if (!response.ok) {
-					throw new Error("Error al actualizar configuración de tareas");
-				}
-
-				const data = await response.json();
-				setConfig(data);
+				setConfig(res.data);
 				return true;
-			} catch (err) {
-				setError(err instanceof Error ? err.message : "Error desconocido");
-				console.error("Error updating task config:", err);
+			} catch {
 				return false;
 			} finally {
 				setLoading(false);
@@ -95,192 +68,43 @@ export function useTaskConfig(projectId: string) {
 		[projectId],
 	);
 
-	const addType = useCallback(
-		async (type: Omit<TaskType, "name"> & { name: string }) => {
-			if (!projectId) return false;
-
-			try {
-				const response = await fetch(
-					`${SERVER_URL}/api/projects/${projectId}/task-config/types`,
-					{
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-						},
-						credentials: "include",
-						body: JSON.stringify(type),
-					},
-				);
-
-				if (!response.ok) {
-					throw new Error("Error al agregar tipo de tarea");
-				}
-
-				const data = await response.json();
-				setConfig(data);
-				return true;
-			} catch (err) {
-				setError(err instanceof Error ? err.message : "Error desconocido");
-				return false;
-			}
-		},
-		[projectId],
-	);
-
-	const removeType = useCallback(
-		async (typeName: string) => {
-			if (!projectId) return false;
-
-			try {
-				const response = await fetch(
-					`${SERVER_URL}/api/projects/${projectId}/task-config/types/${typeName}`,
-					{
-						method: "DELETE",
-						credentials: "include",
-					},
-				);
-
-				if (!response.ok) {
-					throw new Error("Error al eliminar tipo de tarea");
-				}
-
-				const data = await response.json();
-				setConfig(data);
-				return true;
-			} catch (err) {
-				setError(err instanceof Error ? err.message : "Error desconocido");
-				return false;
-			}
-		},
-		[projectId],
-	);
-
-	const addState = useCallback(
-		async (state: Omit<TaskState, "name"> & { name: string }) => {
-			if (!projectId) return false;
-
-			try {
-				const response = await fetch(
-					`${SERVER_URL}/api/projects/${projectId}/task-config/states`,
-					{
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-						},
-						credentials: "include",
-						body: JSON.stringify(state),
-					},
-				);
-
-				if (!response.ok) {
-					throw new Error("Error al agregar estado de tarea");
-				}
-
-				const data = await response.json();
-				setConfig(data);
-				return true;
-			} catch (err) {
-				setError(err instanceof Error ? err.message : "Error desconocido");
-				return false;
-			}
-		},
-		[projectId],
-	);
-
-	const removeState = useCallback(
-		async (stateName: string) => {
-			if (!projectId) return false;
-
-			try {
-				const response = await fetch(
-					`${SERVER_URL}/api/projects/${projectId}/task-config/states/${stateName}`,
-					{
-						method: "DELETE",
-						credentials: "include",
-					},
-				);
-
-				if (!response.ok) {
-					throw new Error("Error al eliminar estado de tarea");
-				}
-
-				const data = await response.json();
-				setConfig(data);
-				return true;
-			} catch (err) {
-				setError(err instanceof Error ? err.message : "Error desconocido");
-				return false;
-			}
-		},
-		[projectId],
-	);
-
-	const addPriority = useCallback(
-		async (priority: Omit<TaskPriority, "name"> & { name: string }) => {
-			if (!projectId) return false;
-
-			try {
-				const response = await fetch(
-					`${SERVER_URL}/api/projects/${projectId}/task-config/priorities`,
-					{
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-						},
-						credentials: "include",
-						body: JSON.stringify(priority),
-					},
-				);
-
-				if (!response.ok) {
-					throw new Error("Error al agregar prioridad de tarea");
-				}
-
-				const data = await response.json();
-				setConfig(data);
-				return true;
-			} catch (err) {
-				setError(err instanceof Error ? err.message : "Error desconocido");
-				return false;
-			}
-		},
-		[projectId],
-	);
-
-	const removePriority = useCallback(
-		async (priorityName: string) => {
-			if (!projectId) return false;
-
-			try {
-				const response = await fetch(
-					`${SERVER_URL}/api/projects/${projectId}/task-config/priorities/${priorityName}`,
-					{
-						method: "DELETE",
-						credentials: "include",
-					},
-				);
-
-				if (!response.ok) {
-					throw new Error("Error al eliminar prioridad de tarea");
-				}
-
-				const data = await response.json();
-				setConfig(data);
-				return true;
-			} catch (err) {
-				setError(err instanceof Error ? err.message : "Error desconocido");
-				return false;
-			}
-		},
-		[projectId],
-	);
-
-	// Auto-fetch config when projectId changes
-	useEffect(() => {
-		if (projectId) {
-			fetchConfig();
+	// --- Helper genérico para POST/DELETE (Abstracción interna para reducir código) ---
+	const modifySubConfig = async (
+		path: string,
+		method: "post" | "delete",
+		data?: any,
+	) => {
+		if (!projectId) return false;
+		try {
+			const res = await api[method]<TaskConfig>(
+				`/api/projects/${projectId}/task-config/${path}`,
+				data,
+			);
+			setConfig(res.data);
+			return true;
+		} catch {
+			return false;
 		}
-	}, [projectId, fetchConfig]);
+	};
+
+	// Métodos específicos utilizando el helper
+	const addType = (type: TaskType) => modifySubConfig("types", "post", type);
+	const removeType = (typeName: string) =>
+		modifySubConfig(`types/${typeName}`, "delete");
+
+	const addState = (state: TaskState) =>
+		modifySubConfig("states", "post", state);
+	const removeState = (stateName: string) =>
+		modifySubConfig(`states/${stateName}`, "delete");
+
+	const addPriority = (priority: TaskPriority) =>
+		modifySubConfig("priorities", "post", priority);
+	const removePriority = (priorityName: string) =>
+		modifySubConfig(`priorities/${priorityName}`, "delete");
+
+	useEffect(() => {
+		fetchConfig();
+	}, [fetchConfig]);
 
 	return {
 		config,

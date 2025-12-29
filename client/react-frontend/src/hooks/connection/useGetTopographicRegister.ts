@@ -1,51 +1,58 @@
 import { useEffect, useState } from "react";
+import api from "@/lib/api"; // Tu instancia centralizada
 import type { TopographicRegisterData } from "../../types/TopographicRegister";
 
+interface TopographicResponse {
+	topographic_register: TopographicRegisterData[];
+	[key: string]: any;
+}
+
 const useGetTopographicRegister = (entryId: string) => {
-	const [topographic, setTopographic] = useState<
-		TopographicRegisterData[] | null
-	>(null);
+	// Inicializamos con array vacío para que el .map() de la tabla no falle
+	const [topographic, setTopographic] = useState<TopographicRegisterData[]>([]);
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(true);
 
-	const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
-
-	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	useEffect(() => {
-		const fetchEntry = async () => {
-			try {
-				if (!entryId) {
-					throw new Error("El ID no puede estar vacío.");
-				}
+		if (!entryId) {
+			setTopographic([]);
+			setLoading(false);
+			return;
+		}
 
-				const response = await fetch(
-					`${serverUrl}/api/get-document-topographic?id=${encodeURIComponent(entryId)}`,
-					{ credentials: "include" },
+		const fetchTopographic = async () => {
+			setLoading(true);
+			setError(null);
+			try {
+				const response = await api.get<TopographicResponse[]>(
+					"/api/get-document-topographic",
+					{
+						params: { id: entryId },
+					},
 				);
 
-				if (!response.ok) {
-					throw new Error("Error al obtener el registro topográfico");
-				}
-
-				const data = await response.json();
-				// La API regresa [{ topographic_register: [...] }]
-				const flat: TopographicRegisterData[] = Array.isArray(data)
-					? data
+				// Mantenemos tu lógica de flatMap para extraer los datos del JSONB
+				const flatData = Array.isArray(response.data)
+					? response.data
 							.filter((item) => Array.isArray(item.topographic_register))
 							.flatMap((item) => item.topographic_register)
 					: [];
-				setTopographic(flat);
-				setError(null);
+
+				setTopographic(flatData);
 			} catch (err: any) {
-				console.error(err);
-				setError(err.message || "Error desconocido");
+				console.error("Error cargando registro topográfico:", err);
+				setError(
+					err.response?.data?.message ||
+						"Error al obtener el registro topográfico",
+				);
+				setTopographic([]);
 			} finally {
 				setLoading(false);
 			}
 		};
 
-		fetchEntry();
-	}, [entryId, serverUrl]);
+		fetchTopographic();
+	}, [entryId]);
 
 	return { topographic, error, loading };
 };

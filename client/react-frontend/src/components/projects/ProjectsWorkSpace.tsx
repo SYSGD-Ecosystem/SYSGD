@@ -12,6 +12,7 @@ import { ProjectSidebar } from "./ProjectSidebar.tsx";
 import TeamManagement from "./TeamManagement.tsx";
 import TaskManagement from "./task-management/TaskManagement.tsx";
 import { TopNavigation } from "./top-navigation.tsx";
+import { ProjectProvider } from "./ProjectProvider.tsx";
 
 // type GitHubCacheEntry = {
 // 	cacheTime: number;
@@ -105,44 +106,46 @@ const ProjectWorkSpace: FC = () => {
 				}
 				isHomePage={false}
 			/>
-			<div className="flex flex-1 relative overflow-hidden">
-				<ProjectSidebar
-					activeSection={activeSection}
-					onSectionChange={handleSectionChange}
-					isMobileOpen={isMobileSidebarOpen}
-					onMobileClose={() => setIsMobileSidebarOpen(false)}
-				/>
-				<main className="flex-1 p-2 md:p-4 overflow-auto">
-					{activeSection === "tasks" && (
-						<TaskManagement project_id={selectedProject} />
-					)}
+			<ProjectProvider projectId={selectedProject}>
+				<div className="flex flex-1 relative overflow-hidden">
+					<ProjectSidebar
+						activeSection={activeSection}
+						onSectionChange={handleSectionChange}
+						isMobileOpen={isMobileSidebarOpen}
+						onMobileClose={() => setIsMobileSidebarOpen(false)}
+					/>
+					<main className="flex-1 p-2 md:p-4 overflow-auto">
+						{activeSection === "tasks" && (
+							<TaskManagement project_id={selectedProject} />
+						)}
 
-					{activeSection === "team" && (
-						<TeamManagement projectId={selectedProject} />
-					)}
+						{activeSection === "team" && (
+							<TeamManagement projectId={selectedProject} />
+						)}
 
-					{activeSection === "ideas" && (
-						<IdeasBank projectId={selectedProject} />
-					)}
+						{activeSection === "ideas" && (
+							<IdeasBank projectId={selectedProject} />
+						)}
 
-					{activeSection === "notes" && selectedProject && (
-						<NotesSection projectId={selectedProject} />
-					)}
+						{activeSection === "notes" && selectedProject && (
+							<NotesSection projectId={selectedProject} />
+						)}
 
-					{activeSection === "github" && selectedProject && (
-						<GitHubIntegration
-							projectId={selectedProject}
-							getGitHubCache={getGitHubCache}
-							setGitHubCache={setGitHubCache}
-							clearGitHubCache={clearGitHubCache}
-						/>
-					)}
+						{activeSection === "github" && selectedProject && (
+							<GitHubIntegration
+								projectId={selectedProject}
+								getGitHubCache={getGitHubCache}
+								setGitHubCache={setGitHubCache}
+								clearGitHubCache={clearGitHubCache}
+							/>
+						)}
 
-					{activeSection === "settings" && selectedProject && (
-						<ProjectSettings projectId={selectedProject} />
-					)}
-				</main>
-			</div>
+						{activeSection === "settings" && selectedProject && (
+							<ProjectSettings projectId={selectedProject} />
+						)}
+					</main>
+				</div>
+			</ProjectProvider>
 		</div>
 	);
 };

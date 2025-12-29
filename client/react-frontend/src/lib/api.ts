@@ -23,6 +23,8 @@ api.interceptors.response.use(
 		// Si el servidor responde 401 (No autorizado), limpiamos el token
 		if (error.response?.status === 401) {
 			localStorage.removeItem("token");
+			console.warn("No autorizado - quizás el token ha expirado", error);
+
 			// Opcional: podrías redirigir al login aquí si no estás ya en él
 			// window.location.href = "/auth";
 		}

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-
-const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+import api from "@/lib/api"; // Instancia centralizada
 
 export interface OrgNode {
 	name: string;
@@ -22,19 +21,25 @@ export function useOrganizationChart(fileId: string): UseOrgReturn {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
-	const fetchChart = useCallback(() => {
-		if (!fileId) return;
+	const fetchChart = useCallback(async () => {
+		if (!fileId) {
+			setLoading(false);
+			return;
+		}
+
 		setLoading(true);
-		fetch(`${serverUrl}/api/organization?id=${encodeURIComponent(fileId)}`, {
-			credentials: "include",
-		})
-			.then(async (res) => {
-				if (!res.ok) throw new Error("Error al obtener organigrama");
-				const json = await res.json();
-				setData(json);
-			})
-			.catch((e) => setError(e.message))
-			.finally(() => setLoading(false));
+		setError(null);
+		try {
+			const response = await api.get<OrgNode>("/api/organization", {
+				params: { id: fileId },
+			});
+			setData(response.data);
+		} catch (e: any) {
+			console.error("Error al obtener organigrama:", e);
+			setError(e.response?.data?.message || e.message);
+		} finally {
+			setLoading(false);
+		}
 	}, [fileId]);
 
 	useEffect(() => {
@@ -42,14 +47,18 @@ export function useOrganizationChart(fileId: string): UseOrgReturn {
 	}, [fetchChart]);
 
 	const save = async (tree: OrgNode) => {
-		const res = await fetch(`${serverUrl}/api/organization`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			credentials: "include",
-			body: JSON.stringify({ id: fileId, data: tree }),
-		});
-		if (!res.ok) throw new Error(await res.text());
-		setData(tree);
+		try {
+			await api.post("/api/organization", {
+				id: fileId,
+				data: tree,
+			});
+			setData(tree);
+		} catch (e: any) {
+			const errorMsg =
+				e.response?.data?.message || "Error al guardar el organigrama";
+			console.error(errorMsg);
+			throw new Error(errorMsg);
+		}
 	};
 
 	return { data, loading, error, save, refetch: fetchChart };
