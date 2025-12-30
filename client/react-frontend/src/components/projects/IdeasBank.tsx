@@ -32,6 +32,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "../ui/select";
+import ReactMarkdown from "react-markdown";
 
 const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 	const { ideas, createIdea, deleteIdea, updateIdea } = useIdeas(projectId);
@@ -244,7 +245,12 @@ const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 								</div>
 							</CardHeader>
 							<CardContent className="space-y-4">
-								<p className="text-sm text-gray-600">{idea.description}</p>
+								<div>
+									<div className="prose prose-lg dark:prose-invert max-w-none">
+										<ReactMarkdown>{idea.description}</ReactMarkdown>
+									</div>
+								</div>
+
 
 								<div className="grid grid-cols-2 gap-4 text-sm">
 									<div>
