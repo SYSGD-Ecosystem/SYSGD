@@ -46,7 +46,12 @@ type UserCurrentDataType = {
     email:string,
     privileges: "admin" | "user" | "moderator"
     name:string,
-
+    user_data?: {
+        billing?: {
+            tier?: string;
+            ai_task_credits?: number;
+        };
+    }
 }
 
 export const getCurrentUserData = (req: Request):UserCurrentDataType|null =>{

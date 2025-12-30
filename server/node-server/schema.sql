@@ -100,6 +100,24 @@ CREATE TABLE IF NOT EXISTS tasks (
   UNIQUE (project_id, project_task_number)
 );
 
+-- ==============================
+-- User Tokens
+-- ==============================
+CREATE TABLE IF NOT EXISTS user_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_type TEXT NOT NULL CHECK (token_type IN ('github', 'gemini', 'replicate')),
+  encrypted_token BYTEA NOT NULL,
+  iv BYTEA NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(user_id, token_type)
+);
+
+-- Índice para búsquedas rápidas
+CREATE INDEX IF NOT EXISTS idx_user_tokens_user_id ON user_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_tokens_type ON user_tokens(token_type);
+
 CREATE TABLE IF NOT EXISTS task_assignees (
   task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
   user_id UUID REFERENCES users(id),
@@ -174,6 +192,21 @@ CREATE TABLE IF NOT EXISTS project_notes (
 
 CREATE INDEX IF NOT EXISTS idx_project_notes_project_user
 ON project_notes(project_id, user_id);
+
+-- ==============================
+-- Project Members View
+-- ==============================
+CREATE OR REPLACE VIEW project_member_counts AS
+SELECT 
+    ra.resource_id AS project_id,
+    COUNT(DISTINCT ra.user_id) AS member_count
+FROM 
+    resource_access ra
+WHERE 
+    ra.resource_type = 'project'
+    AND ra.role != 'pending'
+GROUP BY 
+    ra.resource_id;
 
 -- ==============================
 -- Chat module

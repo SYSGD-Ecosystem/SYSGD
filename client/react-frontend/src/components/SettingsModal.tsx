@@ -2,12 +2,13 @@ import {
 	Bell,
 	ChevronDown,
 	Globe,
+	KeyRound,
 	Monitor,
 	Palette,
 	Shield,
 	Smartphone,
 } from "lucide-react";
-import { type FC, useState } from "react";
+import { type FC, useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +35,10 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from "@/contexts/theme-context";
 import { useUsers } from "@/hooks/connection/useUsers";
+import { Input } from '@/components/ui/input';
+import { Loader2, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import api from "@/lib/api";
 
 interface SettingsModalProps {
 	isOpen: boolean;
@@ -52,6 +57,7 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 		{ id: "notifications", Label: "Notificaciones", icon: Bell },
 		{ id: "privacy", Label: "Privacidad", icon: Shield },
 		{ id: "general", Label: "General", icon: Globe },
+		{ id: "tokens", Label: "Tokens API", icon: KeyRound },
 	];
 
 	const themes = [
@@ -365,6 +371,166 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 			</div>
 		</div>
 	);
+interface Token {
+  id: string;
+  token_type: string;
+  created_at: string;
+  updated_at: string;
+}
+
+const TokensSettings: FC = () => {
+  const [tokens, setTokens] = useState<Token[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [tokenType, setTokenType] = useState('github');
+  const [tokenValue, setTokenValue] = useState('');
+
+
+  useEffect(() => {
+    fetchTokens();
+  }, []);
+
+  const fetchTokens = async () => {
+    try {
+      const response = await api.get('/api/tokens');
+      const data = response.data;
+      setTokens(data);
+    } catch (error) {
+      toast.error('Error al cargar los tokens');
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveToken = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tokenValue) return;
+
+    setIsSaving(true);
+    try {
+      await api.post('/api/tokens', {
+        token: tokenValue,
+        tokenType
+      });
+
+      toast.success('Token guardado correctamente');
+      setTokenValue('');
+      fetchTokens();
+    } catch (error) {
+      toast.error('Error al guardar el token');
+      console.error(error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteToken = async (id: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este token?')) return;
+
+    try {
+      await api.delete(`/api/tokens/${id}`);
+
+      toast.success('Token eliminado correctamente');
+      fetchTokens();
+    } catch (error) {
+      toast.error('Error al eliminar el token');
+      console.error(error);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium">Administrar Tokens API</h3>
+        <p className="text-sm text-muted-foreground">
+          Gestiona tus tokens de integración con servicios externos
+        </p>
+      </div>
+
+      <form onSubmit={handleSaveToken} className="space-y-4">
+        <div className="grid gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="token-type">Tipo de Token</Label>
+            <Select value={tokenType} onValueChange={setTokenType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un tipo de token" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="github">GitHub</SelectItem>
+                <SelectItem value="gemini">Gemini AI</SelectItem>
+                <SelectItem value="replicate">Replicate</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="token">Token</Label>
+            <div className="flex space-x-2">
+              <Input
+                id="token"
+                type="password"
+                placeholder="Ingresa tu token"
+                value={tokenValue}
+                onChange={(e) => setTokenValue(e.target.value)}
+                className="flex-1"
+              />
+              <Button type="submit" disabled={!tokenValue || isSaving}>
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : null}
+                Guardar
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              El token se almacenará de forma segura y encriptada
+            </p>
+          </div>
+        </div>
+      </form>
+
+      <div className="mt-8">
+        <h4 className="mb-4 font-medium">Tus Tokens</h4>
+        {tokens.length === 0 ? (
+          <div className="p-4 text-sm text-center text-muted-foreground">
+            No hay tokens guardados
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {tokens.map((token) => (
+              <div
+                key={token.id}
+                className="flex items-center justify-between p-3 border rounded-lg"
+              >
+                <div>
+                  <p className="font-medium capitalize">{token.token_type}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Creado: {new Date(token.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDeleteToken(token.id)}
+                >
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 	const renderCategoryContent = () => {
 		switch (activeCategory) {
@@ -376,6 +542,8 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 				return renderPrivacySettings();
 			case "general":
 				return renderGeneralSettings();
+			case "tokens":
+				return <TokensSettings />;
 			default:
 				return renderAppearanceSettings();
 		}

@@ -1,7 +1,7 @@
 import { pool } from "./db";
 
 export async function initDatabase() {
-	await pool.query(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       name TEXT,
@@ -20,7 +20,7 @@ export async function initDatabase() {
 
   `);
 
-	await pool.query(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS users_logins (
       id SERIAL PRIMARY KEY,
       user_id UUID REFERENCES users(id),
@@ -30,7 +30,43 @@ export async function initDatabase() {
     );
   `);
 
-	await pool.query(`
+  await pool.query(`
+-- ==============================
+-- User Tokens
+-- ==============================
+CREATE TABLE IF NOT EXISTS user_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_type TEXT NOT NULL CHECK (token_type IN ('github', 'gemini', 'replicate')),
+  encrypted_token BYTEA NOT NULL,
+  iv BYTEA NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(user_id, token_type)
+);
+
+-- Índice para búsquedas rápidas
+CREATE INDEX IF NOT EXISTS idx_user_tokens_user_id ON user_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_tokens_type ON user_tokens(token_type);
+    
+-- ==============================
+-- Project Members View
+-- ==============================
+CREATE OR REPLACE VIEW project_member_counts AS
+SELECT 
+    ra.resource_id AS project_id,
+    COUNT(DISTINCT ra.user_id) AS member_count
+FROM 
+    resource_access ra
+WHERE 
+    ra.resource_type = 'project'
+    AND ra.role != 'pending'
+GROUP BY 
+    ra.resource_id;
+
+`)
+
+  await pool.query(`
   CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
   CREATE TABLE IF NOT EXISTS document_management_file (
@@ -52,7 +88,7 @@ export async function initDatabase() {
   );
 `);
 
-	await pool.query(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS projects (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       name TEXT NOT NULL,
@@ -91,7 +127,7 @@ export async function initDatabase() {
     );
   `);
 
-	await pool.query(`
+  await pool.query(`
   CREATE TABLE IF NOT EXISTS tasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMP DEFAULT NOW(),
@@ -107,7 +143,7 @@ export async function initDatabase() {
   );
 `);
 
-	await pool.query(`
+  await pool.query(`
   CREATE TABLE IF NOT EXISTS task_assignees (
     task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(id),
@@ -115,7 +151,7 @@ export async function initDatabase() {
   );
 `);
 
-	await pool.query(`
+  await pool.query(`
 CREATE TABLE IF NOT EXISTS invitations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -129,7 +165,7 @@ CREATE TABLE IF NOT EXISTS invitations (
 );
 `);
 
-	await pool.query(`
+  await pool.query(`
 CREATE TABLE IF NOT EXISTS resource_access (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -140,7 +176,7 @@ CREATE TABLE IF NOT EXISTS resource_access (
 );
 `);
 
-	await pool.query(`
+  await pool.query(`
   CREATE TABLE IF NOT EXISTS ideas (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
@@ -159,7 +195,7 @@ CREATE TABLE IF NOT EXISTS resource_access (
   );
 `);
 
-	await pool.query(`
+  await pool.query(`
   CREATE TABLE IF NOT EXISTS idea_votes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     idea_id UUID REFERENCES ideas(id) ON DELETE CASCADE,
@@ -170,7 +206,7 @@ CREATE TABLE IF NOT EXISTS resource_access (
   );
 `);
 
-	await pool.query(`
+  await pool.query(`
   CREATE TABLE IF NOT EXISTS project_notes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
@@ -182,15 +218,15 @@ CREATE TABLE IF NOT EXISTS resource_access (
   );
 `);
 
-	await pool.query(`
+  await pool.query(`
   CREATE INDEX IF NOT EXISTS idx_project_notes_project_user
   ON project_notes(project_id, user_id);
 `);
 
-	// ==============================
-	// Chat module
-	// ==============================
-	await pool.query(`
+  // ==============================
+  // Chat module
+  // ==============================
+  await pool.query(`
   CREATE TABLE IF NOT EXISTS conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   type TEXT CHECK (type IN ('private', 'group', 'channel', 'bot')) NOT NULL DEFAULT 'private',
@@ -200,7 +236,7 @@ CREATE TABLE IF NOT EXISTS resource_access (
 );
 `);
 
-	await pool.query(`
+  await pool.query(`
   CREATE TABLE IF NOT EXISTS conversation_members (
   conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -210,7 +246,7 @@ CREATE TABLE IF NOT EXISTS resource_access (
 );
 `);
 
-	await pool.query(`
+  await pool.query(`
  CREATE TABLE IF NOT EXISTS messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
@@ -223,7 +259,7 @@ CREATE TABLE IF NOT EXISTS resource_access (
 );
 `);
 
-	await pool.query(`
+  await pool.query(`
 CREATE TABLE IF NOT EXISTS message_reads (
   conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -232,7 +268,7 @@ CREATE TABLE IF NOT EXISTS message_reads (
   PRIMARY KEY (conversation_id, user_id)
 );`);
 
-	await pool.query(`
+  await pool.query(`
 CREATE TABLE IF NOT EXISTS conversation_invitations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
@@ -243,10 +279,10 @@ CREATE TABLE IF NOT EXISTS conversation_invitations (
 );
 `);
 
-	// ==============================
-	// Agents module
-	// ==============================
-	await pool.query(`
+  // ==============================
+  // Agents module
+  // ==============================
+  await pool.query(`
 CREATE TABLE IF NOT EXISTS agents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
@@ -260,7 +296,7 @@ CREATE TABLE IF NOT EXISTS agents (
 );
 `);
 
-	await pool.query(`
+  await pool.query(`
 CREATE TABLE IF NOT EXISTS agent_conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
@@ -270,18 +306,18 @@ CREATE TABLE IF NOT EXISTS agent_conversations (
 );
 `);
 
-	// Índices opcionales para optimización de consultas
-	await pool.query(`
+  // Índices opcionales para optimización de consultas
+  await pool.query(`
   CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
 `);
-	await pool.query(`
+  await pool.query(`
   CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at DESC);
 `);
-	await pool.query(`
+  await pool.query(`
   CREATE INDEX IF NOT EXISTS idx_message_reads_user_conversation ON message_reads(user_id, conversation_id);
 `);
 
-	await pool.query(`
+  await pool.query(`
   CREATE TABLE IF NOT EXISTS github_project_config (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
@@ -294,12 +330,12 @@ CREATE TABLE IF NOT EXISTS agent_conversations (
   );
 `);
 
-	await pool.query(`
+  await pool.query(`
   CREATE INDEX IF NOT EXISTS idx_github_project_config_project_id
   ON github_project_config(project_id);
 `);
 
-	await pool.query(`
+  await pool.query(`
   CREATE TABLE IF NOT EXISTS github_project_user_token (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
@@ -311,10 +347,10 @@ CREATE TABLE IF NOT EXISTS agent_conversations (
   );
 `);
 
-	await pool.query(`
+  await pool.query(`
   CREATE INDEX IF NOT EXISTS idx_github_project_user_token_project_user
   ON github_project_user_token(project_id, user_id);
 `);
 
-	console.log("✅ Tablas verificadas o creadas correctamente.");
+  console.log("✅ Tablas verificadas o creadas correctamente.");
 }
