@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Chat } from "../components/chat-interface";
 
 export function useConversations(userId: string) {

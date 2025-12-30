@@ -1,32 +1,39 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import api from "@/lib/api";
 
-const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+interface User {
+	id: string;
+	name: string;
+	email: string;
+	privileges: string;
+}
 
 const useCurrentUser = () => {
-	const [user, setUser] = useState<null | {
-		id: number;
-		name: string;
-		email: string;
-		privileges: string;
-	}>(null);
+	const [user, setUser] = useState<User | null>(null);
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
-		fetch(`${serverUrl}/api/me`, {
-			credentials: "include",
-		})
-			.then(async (res) => {
-				if (!res.ok) throw new Error("No autenticado");
-				const data = await res.json();
-				setUser(data);
-			})
-			.catch(() => setUser(null))
-			.finally(() => setLoading(false));
+		const fetchUser = async () => {
+			try {
+				const res = await api.get<User>("/api/auth/me");
+
+				const userData = res.data;
+
+				if (userData && userData.privileges === null) {
+					userData.privileges = "user";
+				}
+
+				setUser(userData);
+			} catch {
+				setUser(null);
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		fetchUser();
 	}, []);
 
-	if (user?.privileges === null) {
-		user.privileges = "user";
-	}
 	return { user, loading };
 };
 

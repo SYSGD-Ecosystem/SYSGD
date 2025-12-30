@@ -1,10 +1,16 @@
+import { Plus, Trash2, X } from "lucide-react";
 import { type FC, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Trash2, Plus, X } from "lucide-react";
 import { useTaskConfig } from "./hooks/useTaskConfig";
 
 const TaskConfigManager: FC<{ projectId: string }> = ({ projectId }) => {
@@ -15,50 +21,64 @@ const TaskConfigManager: FC<{ projectId: string }> = ({ projectId }) => {
 
 	const handleAddType = () => {
 		if (!newType.trim()) return;
-		const updatedTypes = [...(config?.types || []), { 
-			name: newType.trim(),
-			color: "#3B82F6" // Color por defecto
-		}];
+		const updatedTypes = [
+			...(config?.types || []),
+			{
+				name: newType.trim(),
+				color: "#3B82F6", // Color por defecto
+			},
+		];
 		updateConfig({ ...config!, types: updatedTypes });
 		setNewType("");
 	};
 
 	const handleAddPriority = () => {
 		if (!newPriority.trim()) return;
-		const maxLevel = Math.max(...(config?.priorities?.map(p => p.level) || [0]));
-		const updatedPriorities = [...(config?.priorities || []), { 
-			name: newPriority.trim(), 
-			level: maxLevel + 1,
-			color: "#F59E0B" // Color por defecto
-		}];
-		updateConfig({...config!, priorities: updatedPriorities });
+		const maxLevel = Math.max(
+			...(config?.priorities?.map((p) => p.level) || [0]),
+		);
+		const updatedPriorities = [
+			...(config?.priorities || []),
+			{
+				name: newPriority.trim(),
+				level: maxLevel + 1,
+				color: "#F59E0B", // Color por defecto
+			},
+		];
+		updateConfig({ ...config!, priorities: updatedPriorities });
 		setNewPriority("");
 	};
 
 	const handleAddState = () => {
 		if (!newState.trim()) return;
-		const updatedStates = [...(config?.states || []), { 
-			name: newState.trim(),
-			color: "#6B7280", // Color por defecto
-			requires_context: false // Valor por defecto
-		}];
-		updateConfig({...config!, states: updatedStates });
+		const updatedStates = [
+			...(config?.states || []),
+			{
+				name: newState.trim(),
+				color: "#6B7280", // Color por defecto
+				requires_context: false, // Valor por defecto
+			},
+		];
+		updateConfig({ ...config!, states: updatedStates });
 		setNewState("");
 	};
 
 	const handleDeleteType = (typeName: string) => {
-		const updatedTypes = config?.types?.filter(t => t.name !== typeName) || [];
-		updateConfig({...config!, types: updatedTypes });
+		const updatedTypes =
+			config?.types?.filter((t) => t.name !== typeName) || [];
+		updateConfig({ ...config!, types: updatedTypes });
 	};
 
 	const handleDeletePriority = (priorityName: string) => {
-		const updatedPriorities = config?.priorities?.filter(p => p.name !== priorityName) || [];
-		updateConfig({...config!, priorities: updatedPriorities });
+		const updatedPriorities =
+			config?.priorities?.filter((p) => p.name !== priorityName) || [];
+		updateConfig({ ...config!, priorities: updatedPriorities });
 	};
 
 	const handleDeleteState = (stateName: string) => {
-		const updatedStates = config?.states?.filter(s => s.name !== stateName) || [];
-		updateConfig({...config!, states: updatedStates });
+		const updatedStates =
+			config?.states?.filter((s) => s.name !== stateName) || [];
+		updateConfig({ ...config!, states: updatedStates });
 	};
 
 	if (loading) {
@@ -99,7 +119,11 @@ const TaskConfigManager: FC<{ projectId: string }> = ({ projectId }) => {
 						</div>
 						<div className="flex flex-wrap gap-2">
 							{config?.types?.map((type) => (
-								<Badge key={type.name} variant="secondary" className="flex items-center gap-1">
+								<Badge
+									key={type.name}
+									variant="secondary"
+									className="flex items-center gap-1"
+								>
 									{type.name}
 									<Button
 										variant="ghost"
@@ -140,7 +164,10 @@ const TaskConfigManager: FC<{ projectId: string }> = ({ projectId }) => {
 							{config?.priorities
 								?.sort((a, b) => a.level - b.level)
 								.map((priority) => (
-									<div key={priority.name} className="flex items-center justify-between p-2 border rounded">
+									<div
+										key={priority.name}
+										className="flex items-center justify-between p-2 border rounded"
+									>
 										<div className="flex items-center gap-2">
 											<Badge variant="outline">Nivel {priority.level}</Badge>
 											<span>{priority.name}</span>
@@ -182,7 +209,11 @@ const TaskConfigManager: FC<{ projectId: string }> = ({ projectId }) => {
 						</div>
 						<div className="flex flex-wrap gap-2">
 							{config?.states?.map((state) => (
-								<Badge key={state.name} variant="outline" className="flex items-center gap-1">
+								<Badge
+									key={state.name}
+									variant="outline"
+									className="flex items-center gap-1"
+								>
 									{state.name}
 									<Button
 										variant="ghost"

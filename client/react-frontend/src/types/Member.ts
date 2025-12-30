@@ -10,4 +10,4 @@ export type Member = {
 	sender_name?: string; // Para invitaciones
 	sender_email?: string; // Para invitaciones
 	created_at?: string; // Para invitaciones
-}
+};

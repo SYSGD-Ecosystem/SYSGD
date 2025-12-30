@@ -1,20 +1,20 @@
-import { type FC, useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
-	Settings,
 	Bot,
-	Home,
-	Plus,
-	MessageSquare,
-	HelpCircle,
 	ChevronLeft,
 	ChevronRight,
+	HelpCircle,
+	Home,
+	MessageSquare,
+	Plus,
+	Settings,
 } from "lucide-react";
+import { type FC, useState } from "react";
+import { Button } from "@/components/ui/button";
 import type { Agent } from "../../types/Agent";
-import { CreateAgentModal } from "./create-agent-modal";
-import { AgentsListModal } from "./agents-list-modal";
-import { NewChatModal } from "./new-chat-modal";
 import type { Conversation } from "../hooks/useChat";
+import { AgentsListModal } from "./agents-list-modal";
+import { CreateAgentModal } from "./create-agent-modal";
+import { NewChatModal } from "./new-chat-modal";
 
 interface ChatToolbarProps {
 	selectedChat?: Conversation;
@@ -192,7 +192,7 @@ export const ChatToolbar: FC<ChatToolbarProps> = ({
 				open={isNewChatModalOpen}
 				onOpenChange={setIsNewChatModalOpen}
 				onSelectContact={(c) => {
-					console.log(c)
+					console.log(c);
 				}}
 			/>
 		</>

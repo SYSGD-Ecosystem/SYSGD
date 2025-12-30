@@ -1,18 +1,18 @@
-import { useCallback, useRef, useState, type FC } from "react";
-import { TopNavigation } from "./top-navigation";
+import { type FC, useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSelectionStore } from "@/store/selection";
-import TaskManagement from "./task-management/TaskManagement.tsx";
 import useCurrentUser from "@/hooks/connection/useCurrentUser";
-import Loading from "../Loading";
-import { ProjectSidebar } from "./ProjectSidebar";
-import TeamManagement from "./TeamManagement";
-import IdeasBank from "./IdeasBank";
-import NotesSection from "./NotesSection";
+import { useSelectionStore } from "@/store/selection";
+import Loading from "../Loading.tsx";
+import type { GitHubCacheEntry } from "./GitHubIntegration.tsx";
 import GitHubIntegration from "./GitHubIntegration.tsx";
-import ProjectSettings from "./ProjectSettings";
-import type { GitHubCacheEntry } from "./GitHubIntegration";
-
+import IdeasBank from "./IdeasBank.tsx";
+import NotesSection from "./NotesSection.tsx";
+import ProjectSettings from "./ProjectSettings.tsx";
+import { ProjectSidebar } from "./ProjectSidebar.tsx";
+import TeamManagement from "./TeamManagement.tsx";
+import TaskManagement from "./task-management/TaskManagement.tsx";
+import { TopNavigation } from "./top-navigation.tsx";
+import { ProjectProvider } from "./ProjectProvider.tsx";
 
 // type GitHubCacheEntry = {
 // 	cacheTime: number;
@@ -23,8 +23,6 @@ import type { GitHubCacheEntry } from "./GitHubIntegration";
 // 	pullRequestsPage?: number;
 // 	pagination?: { currentPage: number; totalPages: number; totalCount: number };
 // };
-
-
 
 const ProjectWorkSpace: FC = () => {
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -41,7 +39,6 @@ const ProjectWorkSpace: FC = () => {
 	const githubCacheRef = useRef<Map<string, GitHubCacheEntry>>(new Map());
 	// const githubCacheTtlMs = 5 * 60 * 1000;
 
-
 	const getGitHubCache = useCallback(
 		(projectId: string): GitHubCacheEntry | null => {
 			return githubCacheRef.current.get(projectId) ?? null;
@@ -50,7 +47,10 @@ const ProjectWorkSpace: FC = () => {
 	);
 
 	const setGitHubCache = useCallback(
-		(projectId: string, patch: Partial<Omit<GitHubCacheEntry, "cacheTime">>) => {
+		(
+			projectId: string,
+			patch: Partial<Omit<GitHubCacheEntry, "cacheTime">>,
+		) => {
 			const prev = githubCacheRef.current.get(projectId);
 			githubCacheRef.current.set(projectId, {
 				repository: prev?.repository ?? null,
@@ -93,8 +93,7 @@ const ProjectWorkSpace: FC = () => {
 		setActiveSection(section);
 		setIsMobileSidebarOpen(false);
 	};
-// TODO: Realizar comprobacion de proyecto seleccionado por aqui antes de mostrar cualquier cosa
-
+	// TODO: Realizar comprobacion de proyecto seleccionado por aqui antes de mostrar cualquier cosa
 
 	return (
 		<div className="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
@@ -107,44 +106,46 @@ const ProjectWorkSpace: FC = () => {
 				}
 				isHomePage={false}
 			/>
-			<div className="flex flex-1 relative overflow-hidden">
-				<ProjectSidebar
-					activeSection={activeSection}
-					onSectionChange={handleSectionChange}
-					isMobileOpen={isMobileSidebarOpen}
-					onMobileClose={() => setIsMobileSidebarOpen(false)}
-				/>
-				<main className="flex-1 p-2 md:p-4 overflow-auto">
-					{activeSection === "tasks" && (
-						<TaskManagement project_id={selectedProject} />
-					)}
+			<ProjectProvider projectId={selectedProject}>
+				<div className="flex flex-1 relative overflow-hidden">
+					<ProjectSidebar
+						activeSection={activeSection}
+						onSectionChange={handleSectionChange}
+						isMobileOpen={isMobileSidebarOpen}
+						onMobileClose={() => setIsMobileSidebarOpen(false)}
+					/>
+					<main className="flex-1 p-2 md:p-4 overflow-auto">
+						{activeSection === "tasks" && (
+							<TaskManagement project_id={selectedProject} />
+						)}
 
-					{activeSection === "team" && (
-						<TeamManagement projectId={selectedProject} />
-					)}
+						{activeSection === "team" && (
+							<TeamManagement projectId={selectedProject} />
+						)}
 
-					{activeSection === "ideas" && (
-						<IdeasBank projectId={selectedProject} />
-					)}
+						{activeSection === "ideas" && (
+							<IdeasBank projectId={selectedProject} />
+						)}
 
-					{activeSection === "notes" && selectedProject && (
-						<NotesSection projectId={selectedProject} />
-					)}
+						{activeSection === "notes" && selectedProject && (
+							<NotesSection projectId={selectedProject} />
+						)}
 
-					{activeSection === "github" && selectedProject && (
-						<GitHubIntegration
-							projectId={selectedProject}
-							getGitHubCache={getGitHubCache}
-							setGitHubCache={setGitHubCache}
-							clearGitHubCache={clearGitHubCache}
-						/>
-					)}
+						{activeSection === "github" && selectedProject && (
+							<GitHubIntegration
+								projectId={selectedProject}
+								getGitHubCache={getGitHubCache}
+								setGitHubCache={setGitHubCache}
+								clearGitHubCache={clearGitHubCache}
+							/>
+						)}
 
-					{activeSection === "settings" && selectedProject && (
-						<ProjectSettings projectId={selectedProject} />
-					)}
-				</main>
-			</div>
+						{activeSection === "settings" && selectedProject && (
+							<ProjectSettings projectId={selectedProject} />
+						)}
+					</main>
+				</div>
+			</ProjectProvider>
 		</div>
 	);
 };

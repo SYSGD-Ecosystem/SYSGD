@@ -1,17 +1,29 @@
 "use client";
 
+import {
+	Activity,
+	Calendar,
+	Edit,
+	Eye,
+	File,
+	FileText,
+	Folder,
+	FolderPlus,
+	MoreVertical,
+	Search,
+	Users,
+} from "lucide-react";
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
 	Select,
 	SelectContent,
@@ -19,19 +31,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import {
-	Search,
-	FolderPlus,
-	FileText,
-	Users,
-	Calendar,
-	Activity,
-	MoreVertical,
-	Edit,
-	Eye,
-	Folder,
-	File,
-} from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Project {
 	id: string;
@@ -65,7 +65,9 @@ type DashboardItem = Project | DocumentFile;
 
 export function HomeDashboard({
 	onProjectSelect,
-}: { onProjectSelect: (projectId: string) => void }) {
+}: {
+	onProjectSelect: (projectId: string) => void;
+}) {
 	const [projects] = useState<Project[]>([
 		{
 			id: "sysgd",

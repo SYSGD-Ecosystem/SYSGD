@@ -1,12 +1,12 @@
-import { useEffect, useState, type FC } from "react";
+import { Moon, Sun } from "lucide-react";
+import { type FC, useEffect, useState } from "react";
+import { Button } from "./ui/button";
 import {
-	TooltipProvider,
-	TooltipTrigger,
 	Tooltip,
 	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
 } from "./ui/tooltip";
-import { Button } from "./ui/button";
-import { Moon, Sun } from "lucide-react";
 
 const ButtonSwitchTheme: FC = () => {
 	const [darkMode, setDarkMode] = useState(true);

@@ -1,14 +1,14 @@
-import { useEffect, useState, type FC } from "react";
-import { Dialog, DialogContent } from "../../../ui/dialog";
-import { Button } from "../../../ui/button";
-import type { Task } from "@/types/Task";
-import { Badge } from "../../../ui/badge";
-import { getPriorityColor } from "@/utils/util";
-import { getStatusIcon } from "@/utils/util-components";
+import { AlertCircle, Calendar, Tag, User } from "lucide-react";
+import { type FC, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Calendar, User, Tag, AlertCircle } from "lucide-react";
 import { useTaskConfig } from "@/components/projects/task-management/hooks/useTaskConfig";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type { Task } from "@/types/Task";
+import { getPriorityColor } from "@/utils/util";
+import { getStatusIcon } from "@/utils/util-components";
+import { Badge } from "../../../ui/badge";
+import { Button } from "../../../ui/button";
+import { Dialog, DialogContent } from "../../../ui/dialog";
 
 const DialogViewTask: FC<{
 	selectedTask: Task;
@@ -45,15 +45,20 @@ const DialogViewTask: FC<{
 								</div>
 								<div className="flex items-center gap-1">
 									<Calendar className="w-4 h-4" />
-									<span>{new Date(selectedTask.created_at).toLocaleDateString()}</span>
+									<span>
+										{new Date(selectedTask.created_at).toLocaleDateString()}
+									</span>
 								</div>
 							</div>
 
 							<div className="flex w-full justify-end items-center gap-2">
 								<Badge
 									style={{
-										backgroundColor: getPriorityColor(selectedTask.priority, taskConfig),
-										color: 'white'
+										backgroundColor: getPriorityColor(
+											selectedTask.priority,
+											taskConfig,
+										),
+										color: "white",
 									}}
 									className="shrink-0"
 								>
@@ -61,10 +66,11 @@ const DialogViewTask: FC<{
 								</Badge>
 								<div className="flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md shrink-0">
 									{getStatusIcon(selectedTask.status, taskConfig)}
-									<span className="text-sm font-medium">{selectedTask.status}</span>
+									<span className="text-sm font-medium">
+										{selectedTask.status}
+									</span>
 								</div>
 							</div>
-
 						</div>
 					</div>
 				</div>
@@ -76,9 +82,7 @@ const DialogViewTask: FC<{
 						{selectedTask.description && (
 							<div>
 								<div className="prose prose-lg dark:prose-invert max-w-none">
-									<ReactMarkdown>
-										{selectedTask.description}
-									</ReactMarkdown>
+									<ReactMarkdown>{selectedTask.description}</ReactMarkdown>
 								</div>
 							</div>
 						)}
@@ -89,8 +93,12 @@ const DialogViewTask: FC<{
 							<div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
 								<Tag className="w-5 h-5 text-gray-500" />
 								<div>
-									<p className="text-xs text-gray-500 dark:text-gray-400">Tipo</p>
-									<p className="font-medium text-gray-900 dark:text-white">{selectedTask.type}</p>
+									<p className="text-xs text-gray-500 dark:text-gray-400">
+										Tipo
+									</p>
+									<p className="font-medium text-gray-900 dark:text-white">
+										{selectedTask.type}
+									</p>
 								</div>
 							</div>
 
@@ -98,22 +106,32 @@ const DialogViewTask: FC<{
 							<div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
 								<User className="w-5 h-5 text-gray-500" />
 								<div className="flex-1 min-w-0">
-									<p className="text-xs text-gray-500 dark:text-gray-400">Asignado a</p>
+									<p className="text-xs text-gray-500 dark:text-gray-400">
+										Asignado a
+									</p>
 									<div className="flex flex-wrap gap-1 mt-1">
-										{selectedTask.assignees && selectedTask.assignees.length > 0 ? (
+										{selectedTask.assignees &&
+										selectedTask.assignees.length > 0 ? (
 											selectedTask.assignees.slice(0, 2).map((assignee) => (
-												<Badge key={assignee.id} variant="outline" className="text-xs">
-													{assignee?.name || assignee?.email || 'Usuario sin nombre'}
+												<Badge
+													key={assignee.id}
+													variant="outline"
+													className="text-xs"
+												>
+													{assignee?.name ||
+														assignee?.email ||
+														"Usuario sin nombre"}
 												</Badge>
 											))
 										) : (
 											<span className="text-sm text-gray-500">Sin asignar</span>
 										)}
-										{selectedTask.assignees && selectedTask.assignees.length > 2 && (
-											<Badge variant="outline" className="text-xs">
-												+{selectedTask.assignees.length - 2}
-											</Badge>
-										)}
+										{selectedTask.assignees &&
+											selectedTask.assignees.length > 2 && (
+												<Badge variant="outline" className="text-xs">
+													+{selectedTask.assignees.length - 2}
+												</Badge>
+											)}
 									</div>
 								</div>
 							</div>
@@ -123,7 +141,9 @@ const DialogViewTask: FC<{
 								<AlertCircle className="w-5 h-5 text-gray-500" />
 								<div>
 									<p className="text-xs text-gray-500 dark:text-gray-400">ID</p>
-									<p className="font-mono text-sm text-gray-900 dark:text-white">{selectedTask.id}</p>
+									<p className="font-mono text-sm text-gray-900 dark:text-white">
+										{selectedTask.id}
+									</p>
 								</div>
 							</div>
 						</div>

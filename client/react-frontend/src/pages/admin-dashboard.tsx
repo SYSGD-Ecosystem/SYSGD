@@ -1,25 +1,17 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useUsers } from "@/hooks/connection/useUsers";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
+	Crown,
+	Edit,
+	Search,
+	Shield,
+	Trash2,
+	User,
+	UserPlus,
+	Users,
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import Loading from "@/components/Loading";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -31,21 +23,29 @@ import {
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useToast } from "@/hooks/use-toast";
-import { EditUserDialog } from "../components/admin/edit-user-dialog";
-import { CreateUserDialog } from "../components/admin/create-user-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-	Users,
-	UserPlus,
-	Search,
-	Edit,
-	Trash2,
-	Shield,
-	User,
-	Crown,
-} from "lucide-react";
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
+import { useUsers } from "@/hooks/connection/useUsers";
+import { useToast } from "@/hooks/use-toast";
+import { CreateUserDialog } from "../components/admin/create-user-dialog";
+import { EditUserDialog } from "../components/admin/edit-user-dialog";
 import type { User as UserType } from "../types/user";
-import Loading from "@/components/Loading";
 
 export default function AdminDashboard() {
 	const { users: fetchedUsers, deleteUser, loading, refetch } = useUsers();
@@ -60,8 +60,8 @@ export default function AdminDashboard() {
 	const filteredUsers = useMemo(() => {
 		return users.filter(
 			(user) =>
-				(user?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-				(user?.email || '').toLowerCase().includes(searchTerm.toLowerCase()),
+				(user?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+				(user?.email || "").toLowerCase().includes(searchTerm.toLowerCase()),
 		);
 	}, [users, searchTerm]);
 
@@ -88,12 +88,12 @@ export default function AdminDashboard() {
 
 	const handleUserUpdated = (_updatedUser: UserType) => {
 		// listado se refrescará vía hook
-    refetch()
+		refetch();
 	};
 
 	const handleUserCreated = (_newUser: UserType) => {
 		// listado se refrescará vía hook
-    refetch()
+		refetch();
 	};
 
 	const handleDeleteUser = async () => {
@@ -116,7 +116,6 @@ export default function AdminDashboard() {
 			});
 		}
 	};
-
 
 	if (loading)
 		return (
@@ -229,10 +228,10 @@ export default function AdminDashboard() {
 											<div className="flex items-center space-x-3">
 												<Avatar className="h-8 w-8">
 													<AvatarFallback className="bg-primary/10 text-primary text-xs">
-														{getInitials(user.name || 'Sin nombre')}
+														{getInitials(user.name || "Sin nombre")}
 													</AvatarFallback>
 												</Avatar>
-												<span>{user.name || 'Sin nombre'}</span>
+												<span>{user.name || "Sin nombre"}</span>
 											</div>
 										</TableCell>
 										<TableCell>{user.email}</TableCell>
@@ -256,17 +255,27 @@ export default function AdminDashboard() {
 										<TableCell>
 											<Badge
 												variant={
-													user.status === 'active' ? 'default' :
-													user.status === 'invited' ? 'secondary' :
-													user.status === 'suspended' ? 'destructive' :
-													user.status === 'banned' ? 'destructive' : 'secondary'
+													user.status === "active"
+														? "default"
+														: user.status === "invited"
+															? "secondary"
+															: user.status === "suspended"
+																? "destructive"
+																: user.status === "banned"
+																	? "destructive"
+																	: "secondary"
 												}
 												className="gap-1"
 											>
-												{user.status === 'active' ? 'Activo' :
-												 user.status === 'invited' ? 'Invitado' :
-												 user.status === 'suspended' ? 'Suspendido' :
-												 user.status === 'banned' ? 'Baneado' : 'Desconocido'}
+												{user.status === "active"
+													? "Activo"
+													: user.status === "invited"
+														? "Invitado"
+														: user.status === "suspended"
+															? "Suspendido"
+															: user.status === "banned"
+																? "Baneado"
+																: "Desconocido"}
 											</Badge>
 										</TableCell>
 										<TableCell className="text-right">

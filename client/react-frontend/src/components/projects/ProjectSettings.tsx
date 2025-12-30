@@ -1,8 +1,21 @@
-import { type FC } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Settings, Palette, GitBranch, Users, Bell, Shield } from "lucide-react";
+import {
+	Bell,
+	GitBranch,
+	Palette,
+	Settings,
+	Shield,
+	Users,
+} from "lucide-react";
+import type { FC } from "react";
 import TaskConfigManager from "@/components/projects/task-management/TaskConfigManager";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 interface ProjectSettingsProps {
 	projectId: string;
@@ -24,7 +37,8 @@ const ProjectSettings: FC<ProjectSettingsProps> = ({ projectId }) => {
 						Configuración de Tareas
 					</CardTitle>
 					<CardDescription>
-						Define los tipos, estados y prioridades para las tareas de este proyecto
+						Define los tipos, estados y prioridades para las tareas de este
+						proyecto
 					</CardDescription>
 				</CardHeader>
 				<CardContent>

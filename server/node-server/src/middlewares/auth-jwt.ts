@@ -15,7 +15,14 @@ export const isAuthenticated = (
 	res: Response,
 	next: NextFunction,
 ) => {
-	const token = req.cookies?.token;
+	// const token = req.cookies?.token;
+	const authHeader = req.headers.authorization;
+	console.log("Auth Header:", {authHeader});
+	const tokenFromHeader = authHeader?.startsWith("Bearer ")
+		? authHeader.split(" ")[1]
+		: null;
+
+	const token = tokenFromHeader || req.cookies?.token;
 
 	if (!token) {
 		res.status(401).json({ message: "Token no proporcionado" });

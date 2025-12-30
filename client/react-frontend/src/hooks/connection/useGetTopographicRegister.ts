@@ -1,52 +1,60 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import api from "@/lib/api"; // Tu instancia centralizada
 import type { TopographicRegisterData } from "../../types/TopographicRegister";
 
+interface TopographicResponse {
+	topographic_register: TopographicRegisterData[];
+	[key: string]: any;
+}
+
 const useGetTopographicRegister = (entryId: string) => {
+	// Inicializamos con array vacío para que el .map() de la tabla no falle
+	const [topographic, setTopographic] = useState<TopographicRegisterData[]>([]);
+	const [error, setError] = useState<string | null>(null);
+	const [loading, setLoading] = useState(true);
 
-  const [topographic, setTopographic] = useState<TopographicRegisterData[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+	useEffect(() => {
+		if (!entryId) {
+			setTopographic([]);
+			setLoading(false);
+			return;
+		}
 
-  const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+		const fetchTopographic = async () => {
+			setLoading(true);
+			setError(null);
+			try {
+				const response = await api.get<TopographicResponse[]>(
+					"/api/get-document-topographic",
+					{
+						params: { id: entryId },
+					},
+				);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
-  useEffect(() => {
-    const fetchEntry = async () => {
-      try {
-        if (!entryId) {
-          throw new Error("El ID no puede estar vacío.");
-        }
+				// Mantenemos tu lógica de flatMap para extraer los datos del JSONB
+				const flatData = Array.isArray(response.data)
+					? response.data
+							.filter((item) => Array.isArray(item.topographic_register))
+							.flatMap((item) => item.topographic_register)
+					: [];
 
-        const response = await fetch(
-          `${serverUrl}/api/get-document-topographic?id=${encodeURIComponent(entryId)}`,
-          { credentials: "include" },
-        );
+				setTopographic(flatData);
+			} catch (err: any) {
+				console.error("Error cargando registro topográfico:", err);
+				setError(
+					err.response?.data?.message ||
+						"Error al obtener el registro topográfico",
+				);
+				setTopographic([]);
+			} finally {
+				setLoading(false);
+			}
+		};
 
-        if (!response.ok) {
-          throw new Error("Error al obtener el registro topográfico");
-        }
+		fetchTopographic();
+	}, [entryId]);
 
-        const data = await response.json();
-        // La API regresa [{ topographic_register: [...] }]
-        const flat: TopographicRegisterData[] = Array.isArray(data)
-          ? data
-              .filter((item) => Array.isArray(item.topographic_register))
-              .flatMap((item) => item.topographic_register)
-          : [];
-        setTopographic(flat);
-        setError(null);
-      } catch (err: any) {
-        console.error(err);
-        setError(err.message || "Error desconocido");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchEntry();
-  }, [entryId, serverUrl]);
-
-  return { topographic, error, loading };
+	return { topographic, error, loading };
 };
 
 export default useGetTopographicRegister;

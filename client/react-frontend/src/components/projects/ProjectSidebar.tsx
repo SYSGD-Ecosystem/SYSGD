@@ -1,4 +1,11 @@
-import { CheckSquare, Lightbulb, Users, FileText, Github, Settings } from "lucide-react";
+import {
+	CheckSquare,
+	FileText,
+	Github,
+	Lightbulb,
+	Settings,
+	Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SidebarProps {

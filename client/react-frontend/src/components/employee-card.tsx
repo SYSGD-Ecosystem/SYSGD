@@ -1,8 +1,8 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "./ui/badge";
 import { Mail } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Card, CardContent } from "@/components/ui/card";
 import type { Employee } from "../types/organigrama";
+import { Badge } from "./ui/badge";
 
 interface EmployeeCardProps {
 	employee: Employee;

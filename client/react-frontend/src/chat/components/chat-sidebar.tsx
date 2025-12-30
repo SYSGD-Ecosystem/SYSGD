@@ -76,7 +76,9 @@ interface ChatSidebarProps {
 export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 	const navigate = useNavigate();
 	const [searchQuery, setSearchQuery] = useState("");
-	const [filter, setFilter] = useState<"all" | "user" | "agent" | "private" | "bot">("all");
+	const [filter, setFilter] = useState<
+		"all" | "user" | "agent" | "private" | "bot"
+	>("all");
 	const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
 
 	const { conversations, fetchConversations } = useChat();
@@ -100,7 +102,10 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 		const conversation: Conversation = {
 			id: contact.id.toString(),
 			title: contact.name,
-			type: contact.type === "agent" || contact.type === "bot" ? "private" : "private",
+			type:
+				contact.type === "agent" || contact.type === "bot"
+					? "private"
+					: "private",
 			created_by: null,
 			created_at: new Date().toISOString(),
 		};
@@ -237,9 +242,11 @@ const ChatConversationItem: FC<{
 				<div className="flex-1 flex flex-col">
 					<div className="flex items-baseline justify-between gap-2 mb-1 min-w-0">
 						<h3 className="font-semibold text-sm text-sidebar-foreground truncate flex-1">
-							{chat.title ? chat.title : chat.members && chat.members.length > 1
-								? chat.members[1].name
-								: chat.members && chat.members[0].name}
+							{chat.title
+								? chat.title
+								: chat.members && chat.members.length > 1
+									? chat.members[1].name
+									: chat.members && chat.members[0].name}
 						</h3>
 						<span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
 							{chat.last_message && chat.last_message.created_at

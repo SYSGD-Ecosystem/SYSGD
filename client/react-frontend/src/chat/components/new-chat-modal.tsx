@@ -1,30 +1,32 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
 "use client";
 
+import {
+	Bot,
+	Check,
+	Copy,
+	Link2,
+	Mail,
+	Search,
+	User,
+	UserPlus,
+} from "lucide-react";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
+	DialogDescription,
 	DialogHeader,
 	DialogTitle,
-	DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-	Search,
-	User,
-	Bot,
-	Link2,
-	Copy,
-	Check,
-	UserPlus,
-	Mail,
-} from "lucide-react";
-import { Label } from "@/components/ui/label";
-import { PublicUser } from "@/types/user";
 import { usePublicUsers } from "@/hooks/connection/usePublicUsers";
+import type { PublicUser } from "@/types/user";
 import { useChat } from "../hooks/useChat";
 
 interface NewChatModalProps {
@@ -34,7 +36,7 @@ interface NewChatModalProps {
 }
 
 export interface Contact {
-	id: number;
+	id: string | number;
 	name: string;
 	email: string;
 	type: "user" | "agent" | "bot";
@@ -75,12 +77,13 @@ export function NewChatModal({
 	const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 
 	// helper: obtener usuario actual desde backend
+	// TODO: implementar el hook useCurrenUser aqui
 	const fetchCurrentUser = async (): Promise<{
-		id: number;
+		id: string;
 		email: string;
 	} | null> => {
 		try {
-			const res = await fetch(`${serverUrl}/api/me`, {
+			const res = await fetch(`${serverUrl}/api/auth/me`, {
 				credentials: "include",
 			});
 			if (!res.ok) return null;
@@ -134,7 +137,7 @@ export function NewChatModal({
 				// si no hay query y la ruta tiene /invite/<email> intentamos extraer
 				if (!emailFromLink) {
 					const path = url.pathname;
-					const m = path.match(/\/invite\/([^\/\?]+)/);
+					const m = path.match(/\/invite\/([^/?]+)/);
 					if (m) emailFromLink = decodeURIComponent(m[1]);
 				}
 			} catch {
@@ -324,7 +327,7 @@ export function NewChatModal({
 			return (
 				url.searchParams.get("t") ||
 				(() => {
-					const m = url.pathname.match(/\/invite\/([^\/\?]+)/);
+					const m = url.pathname.match(/\/invite\/([^/?]+)/);
 					return m ? m[1] : null;
 				})()
 			);

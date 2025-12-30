@@ -1,47 +1,51 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import api from "@/lib/api";
+import type { LoanRegisterData } from "@/types/LoanRegister";
 
-// Hook para obtener los registros de préstamo de documentos
+
+interface LoanResponse {
+    loan_register: LoanRegisterData[];
+    [key: string]: any;
+}
+
 const useGetLoanRegister = (entryId: string) => {
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  const [loan, setLoan] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+    // Inicializamos como array vacío para mantener compatibilidad con la UI
+    const [loan, setLoan] = useState<LoanResponse[]>([]);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
 
-  const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
-  useEffect(() => {
-    const fetchEntry = async () => {
-      try {
+    useEffect(() => {
         if (!entryId) {
-          throw new Error("El ID de la entrada no puede estar vacío.");
+            setLoan([]);
+            setLoading(false);
+            return;
         }
 
-        const response = await fetch(
-          `${serverUrl}/api/get-document-loan?id=${encodeURIComponent(entryId)}`,
-          { credentials: "include" },
-        );
+        const fetchLoan = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const response = await api.get<LoanResponse[]>("/api/get-document-loan", {
+                    params: { id: entryId }
+                });
 
-        if (!response.ok) {
-          throw new Error("Error al obtener el registro de préstamo");
-        }
+                setLoan(response.data || []);
+            } catch (err: any) {
+                console.error("Error en useGetLoanRegister:", err);
+                setError(
+                    err.response?.data?.message || 
+                    "Error al obtener el registro de préstamo"
+                );
+                setLoan([]); // Seguridad ante fallos de red
+            } finally {
+                setLoading(false);
+            }
+        };
 
-        const data = await response.json();
-        setLoan(data);
-        setError(null);
-        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      } catch (err: any) {
-        console.error(err);
-        setError(err.message || "Error desconocido");
-      } finally {
-        setLoading(false);
-      }
-    };
+        fetchLoan();
+    }, [entryId]);
 
-    fetchEntry();
-  }, [entryId, serverUrl]);
-
-  return { loan, error, loading };
+    return { loan, error, loading };
 };
 
 export default useGetLoanRegister;

@@ -1,12 +1,15 @@
 // components/RichTextEditor.tsx
-import { useEditor, EditorContent } from "@tiptap/react";
+import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Button } from "@/components/ui/button";
 
 export default function RichTextEditor({
 	content,
 	onChange,
-}: { content?: string; onChange?: (val: string) => void }) {
+}: {
+	content?: string;
+	onChange?: (val: string) => void;
+}) {
 	const editor = useEditor({
 		extensions: [StarterKit],
 		content: content || "",

@@ -1,28 +1,28 @@
+import {
+	Calendar,
+	Edit,
+	Lightbulb,
+	Plus,
+	Star,
+	ThumbsDown,
+	ThumbsUp,
+	Trash2,
+	User,
+} from "lucide-react";
 import { type FC, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import {
-	Plus,
-	Edit,
-	Trash2,
-	ThumbsUp,
-	ThumbsDown,
-	Lightbulb,
-	Calendar,
-	User,
-	Star,
-} from "lucide-react";
-import type { Idea } from "@/types/ProjectTypes";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useIdeas } from "@/hooks/connection/useIdeas";
+import type { Idea } from "@/types/ProjectTypes";
 import { timeAgo } from "@/utils/util";
 import { Label } from "../ui/label";
 import {
@@ -32,6 +32,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "../ui/select";
+import ReactMarkdown from "react-markdown";
 
 const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 	const { ideas, createIdea, deleteIdea, updateIdea } = useIdeas(projectId);
@@ -244,7 +245,12 @@ const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 								</div>
 							</CardHeader>
 							<CardContent className="space-y-4">
-								<p className="text-sm text-gray-600">{idea.description}</p>
+								<div>
+									<div className="prose prose-lg dark:prose-invert max-w-none">
+										<ReactMarkdown>{idea.description}</ReactMarkdown>
+									</div>
+								</div>
+
 
 								<div className="grid grid-cols-2 gap-4 text-sm">
 									<div>

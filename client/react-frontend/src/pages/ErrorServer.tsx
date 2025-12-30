@@ -1,22 +1,21 @@
-import type React from "react";
-
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import {
 	AlertTriangle,
-	RefreshCw,
-	Home,
 	ArrowLeft,
-	Wifi,
-	Server,
 	Clock,
 	HelpCircle,
+	Home,
+	RefreshCw,
+	Server,
+	Wifi,
 } from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import useServerStatus from "@/hooks/connection/useServerStatus";
 
 interface ErrorServerProps {

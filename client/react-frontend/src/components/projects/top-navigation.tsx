@@ -1,4 +1,6 @@
 "use client";
+//import useTheme from "@/hooks/useTheme";
+import { ChevronRight, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
 	Select,
@@ -8,8 +10,6 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import useProjects from "@/hooks/connection/useProjects";
-//import useTheme from "@/hooks/useTheme";
-import { Home, ChevronRight } from "lucide-react";
 import UserProfileTrigger from "../UserProfileTrigger";
 
 interface TopNavigationProps {

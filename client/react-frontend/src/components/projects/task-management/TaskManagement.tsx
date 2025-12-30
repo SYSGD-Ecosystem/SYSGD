@@ -1,14 +1,9 @@
-import { type FC, useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
+import { Filter, Plus, Search, X } from "lucide-react";
+import { type FC, useEffect, useState } from "react";
+import { useTasks } from "@/components/projects/task-management/hooks/useTask";
+import { useTaskConfig } from "@/components/projects/task-management/hooks/useTaskConfig";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -18,24 +13,29 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Filter, Plus, Search, X } from "lucide-react";
-import { useTasks } from "@/components/projects/task-management/hooks/useTask";
-import { useTaskConfig } from "@/components/projects/task-management/hooks/useTaskConfig";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
+import { useGemini } from "@/hooks/connection/useGemini";
+import { useProjectMembers } from "@/hooks/connection/useProjectMembers";
 import type { Task } from "@/types/Task";
-import DialogViewTask from "./modals/DialogViewTask";
-import DialogCreateTask from "./modals/DialogCreateTask";
 import { getPriorityColor } from "@/utils/util";
 import { getStatusIcon } from "@/utils/util-components";
-import { useProjectMembers } from "@/hooks/connection/useProjectMembers";
-import { useGemini } from "@/hooks/connection/useGemini";
+import DialogCreateTask from "./modals/DialogCreateTask";
+import DialogViewTask from "./modals/DialogViewTask";
 
 const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 	const { tasks, loading, createTask, updateTask, deleteTask } =
 		useTasks(project_id);
 	const { config } = useTaskConfig(project_id);
-	console.log("configuracion de tareas", config)
+	console.log("configuracion de tareas", config);
 	// 1. Obtenemos los miembros del proyecto para el dropdown
-	// TODO: Actualizar para que salgan miembros invitados aunque todavia no formen parte del proyecto. 
+	// TODO: Actualizar para que salgan miembros invitados aunque todavia no formen parte del proyecto.
 	const { members } = useProjectMembers(project_id);
 	const { handleImprove, improvedText, loading: geminiIsLoading } = useGemini();
 
@@ -63,7 +63,7 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 	const handleSaveTask = async () => {
 		if (!editingTask) return;
 		setIsEditing(true);
-		
+
 		let success = false;
 		if (editingTask.id && editingTask.id !== "new-task") {
 			// Es una tarea existente, la actualizamos
@@ -400,9 +400,15 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 												<div
 													key={assignee.id}
 													className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center text-xs font-bold text-gray-600 border-2 border-white"
-													title={assignee?.name || assignee?.email || 'Usuario sin nombre'}
+													title={
+														assignee?.name ||
+														assignee?.email ||
+														"Usuario sin nombre"
+													}
 												>
-													{assignee?.name?.charAt(0) || assignee?.email?.charAt(0) || '?'}
+													{assignee?.name?.charAt(0) ||
+														assignee?.email?.charAt(0) ||
+														"?"}
 												</div>
 											))}
 										</div>

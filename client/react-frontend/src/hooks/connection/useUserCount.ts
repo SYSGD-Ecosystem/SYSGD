@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-
-const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+import api from "@/lib/api";
 
 export default function useUserCount() {
 	const [count, setCount] = useState<number | null>(null);
@@ -10,13 +9,11 @@ export default function useUserCount() {
 	useEffect(() => {
 		const fetchCount = async () => {
 			try {
-				const res = await fetch(`${serverUrl}/api/user-count`);
-				if (!res.ok) throw new Error("Error al obtener la cantidad de usuarios");
-				const data = await res.json();
-				setCount(data.count);
-			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-			} catch (err: any) {
-				setError(err.message);
+				const res = await api.get<{ count: number }>("/api/user-count");
+				setCount(res.data.count);
+			} catch (err: unknown) {
+				// Axios guarda el mensaje en err.message o err.response.data
+				setError((err as Error).message || "Error al obtener la cantidad");
 			} finally {
 				setLoading(false);
 			}

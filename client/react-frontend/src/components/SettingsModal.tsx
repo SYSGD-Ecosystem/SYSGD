@@ -1,22 +1,27 @@
-import { type FC, useState } from "react";
 import {
-	Palette,
 	Bell,
-	Shield,
+	ChevronDown,
 	Globe,
 	Monitor,
+	Palette,
+	Shield,
 	Smartphone,
 } from "lucide-react";
+import { type FC, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
 	Select,
 	SelectContent,
@@ -24,15 +29,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { useTheme } from "@/contexts/theme-context";
-import {
-	Collapsible,
-	CollapsibleContent,
-	CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
-import { Label } from "@/components/ui/label";
 import { useUsers } from "@/hooks/connection/useUsers";
 
 interface SettingsModalProps {
@@ -254,14 +254,16 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 								<p className="font-medium">{item.Label}</p>
 								<p className="text-sm text-gray-500">{item.desc}</p>
 							</div>
-							<Switch id={item.id} 
-							// funcion para hacer publico o privado el usuario
-							onCheckedChange={(checked) => {
-								if (item.id === "public-profile") {
-									toggleUserPublic(checked as boolean);
-								}
-							}}
-							defaultChecked={index !== 1} />
+							<Switch
+								id={item.id}
+								// funcion para hacer publico o privado el usuario
+								onCheckedChange={(checked) => {
+									if (item.id === "public-profile") {
+										toggleUserPublic(checked as boolean);
+									}
+								}}
+								defaultChecked={index !== 1}
+							/>
 						</div>
 					))}
 				</div>

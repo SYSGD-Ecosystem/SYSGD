@@ -1,15 +1,19 @@
+import { Bot, File, Mic, Paperclip, Send, Smile, Video, X } from "lucide-react";
 import type React from "react";
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Paperclip, Smile, X, File, Mic, Video, Bot } from "lucide-react";
-import type { Message } from "./chat-interface";
-import { ChatSettings } from "./chat-settings";
-import { type Conversation, useChat, type Message as BackendMessage } from "../hooks/useChat";
-import { useAgents } from "../hooks/useAgents";
 import type { Agent } from "../../types/Agent";
+import { useAgents } from "../hooks/useAgents";
+import {
+	type Message as BackendMessage,
+	type Conversation,
+	useChat,
+} from "../hooks/useChat";
+import type { Message } from "./chat-interface";
 import { ChatMessage } from "./chat-message";
+import { ChatSettings } from "./chat-settings";
 
 interface ChatConversationProps {
 	chat: Conversation;
@@ -99,13 +103,13 @@ export function ChatConversation({
 				m.sender_id === undefined || m.sender_id === null
 					? ("other" as const)
 					: m.sender_id === userId
-					? ("me" as const)
-					: ("other" as const),
+						? ("me" as const)
+						: ("other" as const),
 			timestamp: m.created_at
 				? new Date(m.created_at).toLocaleTimeString("es-ES", {
 						hour: "2-digit",
 						minute: "2-digit",
-				  })
+					})
 				: "",
 			senderName:
 				m.sender_id === userId
@@ -118,14 +122,14 @@ export function ChatConversation({
 						url: m.attachment_url,
 						name: undefined,
 						size: undefined,
-				  }
+					}
 				: undefined,
 			replyTo: m.reply_to
 				? {
 						id: String(m.reply_to),
 						content: "", // Backend doesn't have reply_to content
 						senderName: undefined,
-				  }
+					}
 				: undefined,
 		}));
 	}, [messagesMap, chat.id]);

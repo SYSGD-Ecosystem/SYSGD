@@ -1,31 +1,31 @@
+import {
+	ArrowRight,
+	BarChart3,
+	Building2,
+	CheckCircle,
+	Cpu,
+	FileText,
+	FolderKanban,
+	Github,
+	Globe,
+	Mail,
+	MapPin,
+	Menu,
+	Phone,
+	Rocket,
+	ShoppingCart,
+	Sparkles,
+	Target,
+	Twitter,
+	Users,
+	X,
+	Zap,
+} from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-	FileText,
-	Users,
-	BarChart3,
-	CheckCircle,
-	ArrowRight,
-	Menu,
-	X,
-	Github,
-	Mail,
-	Phone,
-	MapPin,
-	Zap,
-	Twitter,
-	FolderKanban,
-	Target,
-	Rocket,
-	Globe,
-	Cpu,
-	ShoppingCart,
-	Building2,
-	Sparkles,
-} from "lucide-react";
-import { Link } from "react-router-dom";
 import useUserCount from "@/hooks/connection/useUserCount";
 
 export default function LandingPage() {

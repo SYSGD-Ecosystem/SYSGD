@@ -1,12 +1,12 @@
-import { useEffect, type FC } from "react";
-import { Button } from "../ui/button";
 import { AlertCircle, FileIcon, Plus, SaveAll } from "lucide-react";
-import useEditableTable from "@/hooks/useEditableTable";
-import Table, { Td } from "../BasicTableComponents";
+import { type FC, useEffect } from "react";
 import useConnection from "@/hooks/connection/useConnection";
 import useGetEntryRegister from "@/hooks/connection/useGetEntryRegister";
 import { useToast } from "@/hooks/use-toast";
+import useEditableTable from "@/hooks/useEditableTable";
+import Table, { Td } from "../BasicTableComponents";
 import Loading from "../Loading";
+import { Button } from "../ui/button";
 
 export type RegistroDeEntradaData = {
 	numero_registro: string;

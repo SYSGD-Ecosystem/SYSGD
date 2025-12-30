@@ -1,32 +1,34 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+/** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
 import {
-	FileText,
-	Users,
-	BarChart3,
-	CheckCircle,
 	ArrowRight,
-	Menu,
-	X,
+	BarChart3,
+	Building2,
+	CheckCircle,
+	Cpu,
+	FileText,
+	FolderKanban,
 	Github,
+	Globe,
+	LogIn,
 	Mail,
 	MapPin,
-	Zap,
-	Twitter,
-	FolderKanban,
-	Target,
+	Menu,
 	Rocket,
-	Globe,
-	Cpu,
 	ShoppingCart,
-	Building2,
 	Sparkles,
+	Target,
+	Twitter,
+	Users,
+	X,
+	Zap,
 } from "lucide-react";
-import { Link } from "react-router-dom";
-import useUserCount from "@/hooks/connection/useUserCount";
+import { useState } from "react";
 import { IoLogoWhatsapp } from "react-icons/io5";
+import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import useUserCount from "@/hooks/connection/useUserCount";
 
 export default function LandingPage() {
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -95,42 +97,105 @@ export default function LandingPage() {
 		},
 	];
 
-	const sponsors = [
+	// const sponsors = [
+	// 	{
+	// 		name: "TechCorp Solutions",
+	// 		logo: "TC",
+	// 		description: "Líder en soluciones tecnológicas empresariales",
+	// 		tier: "Platinum",
+	// 	},
+	// 	{
+	// 		name: "InnovateLab",
+	// 		logo: "IL",
+	// 		description: "Laboratorio de innovación y desarrollo",
+	// 		tier: "Gold",
+	// 	},
+	// 	{
+	// 		name: "DataFlow Systems",
+	// 		logo: "DF",
+	// 		description: "Especialistas en flujo de datos",
+	// 		tier: "Gold",
+	// 	},
+	// 	{
+	// 		name: "CloudTech",
+	// 		logo: "CT",
+	// 		description: "Infraestructura en la nube",
+	// 		tier: "Silver",
+	// 	},
+	// 	{
+	// 		name: "DevOps Pro",
+	// 		logo: "DP",
+	// 		description: "Automatización y despliegue",
+	// 		tier: "Silver",
+	// 	},
+	// 	{
+	// 		name: "SecureNet",
+	// 		logo: "SN",
+	// 		description: "Ciberseguridad avanzada",
+	// 		tier: "Silver",
+	// 	},
+	// ];
+
+	const infrastructure = [
 		{
-			name: "TechCorp Solutions",
-			logo: "TC",
-			description: "Líder en soluciones tecnológicas empresariales",
-			tier: "Platinum",
+			name: "Supabase",
+			logo: "SB",
+			description: "PostgreSQL & Cloud Storage",
+			tier: "Data Core",
 		},
 		{
-			name: "InnovateLab",
-			logo: "IL",
-			description: "Laboratorio de innovación y desarrollo",
-			tier: "Gold",
+			name: "Replicate",
+			logo: "RP",
+			description: "Generación de Imágenes y Multimedia con IA",
+			tier: "Creative AI",
 		},
 		{
-			name: "DataFlow Systems",
-			logo: "DF",
-			description: "Especialistas en flujo de datos",
-			tier: "Gold",
+			name: "Railway",
+			logo: "RY",
+			description: "Backend Engine & API Services",
+			tier: "Cloud Compute",
 		},
 		{
-			name: "CloudTech",
-			logo: "CT",
-			description: "Infraestructura en la nube",
-			tier: "Silver",
+			name: "Google Gemini",
+			logo: "G",
+			description: "Modelos de Lenguaje Avanzados",
+			tier: "Cognitive AI",
 		},
 		{
-			name: "DevOps Pro",
-			logo: "DP",
-			description: "Automatización y despliegue",
-			tier: "Silver",
+			name: "Cloudflare",
+			logo: "CF",
+			description: "Seguridad y Redireccionamiento Edge",
+			tier: "Network",
 		},
 		{
-			name: "SecureNet",
-			logo: "SN",
-			description: "Ciberseguridad avanzada",
-			tier: "Silver",
+			name: "Netlify",
+			logo: "NF",
+			description: "Frontend & Edge Delivery",
+			tier: "Production Host",
+		},
+		{
+			name: "Vercel",
+			logo: "VC",
+			description: "Frontend Redundancy Layer",
+			tier: "Backup Host",
+		},
+		{
+			name: "MinIO",
+			logo: "MO",
+			description: "Local Object Storage Simulation",
+			tier: "Development",
+		},
+		{
+			name: "Arch Linux",
+			logo: "AL",
+			description: "Entorno de desarrollo base para máxima eficiencia",
+			tier: "Core OS",
+		},
+		{
+			name: "Ollama",
+			logo: "🦙",
+			description: "Inferencia de LLMs locales para privacidad total",
+			tier: "Local AI",
 		},
 	];
 
@@ -212,7 +277,7 @@ export default function LandingPage() {
 								href="#sponsors"
 								className="text-gray-300 hover:text-cyan-400 transition-colors"
 							>
-								Sponsors
+								Powered By
 							</a>
 							<a
 								href="#contact"
@@ -221,10 +286,12 @@ export default function LandingPage() {
 								Contacto
 							</a>
 							<Button
-								className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
+								className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white"
 								asChild
 							>
-								<Link to="/login">Acceder al Ecosistema</Link>
+								<Link to="/login">
+									<LogIn className="w-4 h-4 mr-2" /> Acceder al Ecosistema
+								</Link>
 							</Button>
 						</div>
 
@@ -264,7 +331,7 @@ export default function LandingPage() {
 									href="#sponsors"
 									className="text-gray-300 hover:text-cyan-400 transition-colors"
 								>
-									Sponsors
+									Powered By
 								</a>
 								<a
 									href="#contact"
@@ -274,7 +341,7 @@ export default function LandingPage() {
 								</a>
 								<div className="flex gap-2 pt-4">
 									<Button
-										className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
+										className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white"
 										asChild
 									>
 										<Link to="/login">Acceder</Link>
@@ -428,19 +495,20 @@ export default function LandingPage() {
 					<div className="text-center mb-16">
 						<Badge className="mb-4 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-yellow-400/30 text-yellow-300">
 							<Target className="w-4 h-4 mr-2" />
-							Nuestros Sponsors
+							Powered By
 						</Badge>
 						<h2 className="text-3xl sm:text-4xl font-bold mb-4 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-							Empresas que Confían en SYSGD
+							Infraestructura y Tecnología
 						</h2>
 						<p className="text-xl text-gray-300 max-w-2xl mx-auto">
-							Organizaciones líderes que apoyan el desarrollo del ecosistema
-							tecnológico más avanzado
+							SYSGD se construye sobre una arquitectura distribuida y
+							resiliente, utilizando las plataformas líderes que garantizan alta
+							disponibilidad y potencia de IA.
 						</p>
 					</div>
 
 					<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-12">
-						{sponsors.map((sponsor, index) => (
+						{infrastructure.map((sponsor, index) => (
 							<Card
 								// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
 								key={index}
@@ -477,7 +545,7 @@ export default function LandingPage() {
 					<div className="text-center">
 						<Button
 							variant="outline"
-							className="border-cyan-400/50 text-cyan-300 hover:bg-cyan-400/10 bg-transparent"
+							className="border-cyan-400/50 hidden text-cyan-300 hover:bg-cyan-400/10 bg-transparent"
 							size="lg"
 						>
 							<Building2 className="w-5 h-5 mr-2" />
@@ -710,7 +778,8 @@ export default function LandingPage() {
 									<Mail className="w-4 h-4" />
 									lazaroyunier96@gmail.com
 								</Link>
-								<Link target="_blank"
+								<Link
+									target="_blank"
 									className="flex items-center gap-2"
 									to="https://wa.me/+5353935724"
 								>

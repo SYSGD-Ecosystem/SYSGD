@@ -759,9 +759,6 @@ router.post("/register", async (req: Request, res: Response) => {
 	}
 });
 
-router.post("/login", login);
-
-router.get("/logout", logout);
 
 // GET /api/users - Devuelve todos los usuarios (solo admin)
 router.get(

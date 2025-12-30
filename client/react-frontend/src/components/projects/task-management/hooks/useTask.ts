@@ -1,61 +1,48 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
+import { useCallback, useEffect, useState } from "react";
+import api from "@/lib/api"; // Instancia centralizada de Axios
 import type { Task } from "@/types/Task";
-import { useEffect, useState, useCallback } from "react";
 
-const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
-
-export const useTasks = (project_id: string) => {
+export const useTasks = (projectId: string) => {
 	const [tasks, setTasks] = useState<Task[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
+	// Obtener tareas
 	const fetchData = useCallback(async () => {
+		if (!projectId) return;
+
 		try {
-			if (!project_id) {
-				throw new Error("El id no puede estar vacío.");
-			}
-
 			setLoading(true);
-			const res = await fetch(`${serverUrl}/api/tasks/${project_id}`, {
-				credentials: "include",
-			});
-
-			if (!res.ok) throw new Error("No se pudieron obtener las tareas");
-
-			const data = await res.json();
-			setTasks(data);
-			console.log(data);
-			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+			const res = await api.get<Task[]>(`/api/tasks/${projectId}`);
+			setTasks(res.data);
+			setError(null);
 		} catch (err: any) {
 			console.error("Error al cargar tareas:", err);
-			setError(err.message);
+			setError(err.response?.data?.message || err.message);
 		} finally {
 			setLoading(false);
 		}
-	}, [project_id]);
+	}, [projectId]);
 
 	useEffect(() => {
 		fetchData();
 	}, [fetchData]);
 
+	// Crear tarea
 	const createTask = async (task: Partial<Task>) => {
 		try {
-			// Extraemos los IDs de los asignados para el backend
 			const taskPayload = {
 				...task,
+				project_id: projectId, // Inyectamos el ID del proyecto directamente
 				assignees: task.assignees?.map((a) => a.id) || [],
 			};
-			
-			const res = await fetch(`${serverUrl}/api/tasks`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify({ ...taskPayload, project_id: project_id }),
-			});
 
-			if (!res.ok) throw new Error("Error al crear tarea");
+			const res = await api.post<Task>("/api/tasks", taskPayload);
 
-			const newTask = await res.json();
-			setTasks((prev) => [...prev, newTask]);
+			// Optimistic update: Agregamos la tarea al estado local
+			setTasks((prev) => [...prev, res.data]);
 			return true;
 		} catch (err) {
 			console.error("Error creando tarea:", err);
@@ -63,24 +50,20 @@ export const useTasks = (project_id: string) => {
 		}
 	};
 
+	// Actualizar tarea
 	const updateTask = async (taskId: string, taskData: Partial<Task>) => {
 		try {
-			// Extraemos los IDs de los asignados para el backend
 			const taskPayload = {
 				...taskData,
 				assignees: taskData.assignees?.map((a) => a.id) || [],
 			};
-			
-			const res = await fetch(`${serverUrl}/api/tasks/${taskId}`, {
-				method: "PUT",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify(taskPayload),
-			});
-			if (!res.ok) throw new Error("Error al actualizar la tarea");
 
-			// Para ver el cambio reflejado, volvemos a cargar los datos
-			await fetchData();
+			await api.put(`/api/tasks/${taskId}`, taskPayload);
+
+			// En lugar de refrescar todo, podrías actualizar solo la tarea en el estado
+			setTasks((prev) =>
+				prev.map((t) => (t.id === taskId ? { ...t, ...taskData } : t)),
+			);
 			return true;
 		} catch (err) {
 			console.error("Error actualizando tarea:", err);
@@ -88,15 +71,12 @@ export const useTasks = (project_id: string) => {
 		}
 	};
 
+	// Eliminar tarea
 	const deleteTask = async (taskId: string) => {
 		try {
-			const res = await fetch(`${serverUrl}/api/tasks/${taskId}`, {
-				method: "DELETE",
-				credentials: "include",
-			});
-			if (!res.ok) throw new Error("Error al eliminar la tarea");
+			await api.delete(`/api/tasks/${taskId}`);
 
-			// Actualizamos el estado local para reflejar la eliminación instantáneamente
+			// Filtrado local instantáneo
 			setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
 			return true;
 		} catch (err) {

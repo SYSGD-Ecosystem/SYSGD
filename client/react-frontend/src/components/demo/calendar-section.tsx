@@ -1,9 +1,17 @@
 "use client";
 
+import {
+	ChevronLeft,
+	ChevronRight,
+	Clock,
+	MapPin,
+	Plus,
+	User,
+} from "lucide-react";
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
@@ -11,7 +19,6 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
 	Select,
 	SelectContent,
@@ -19,14 +26,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import {
-	ChevronLeft,
-	ChevronRight,
-	Plus,
-	Clock,
-	User,
-	MapPin,
-} from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 interface CalendarEvent {
 	id: number;

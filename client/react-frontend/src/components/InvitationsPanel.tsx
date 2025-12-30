@@ -1,6 +1,6 @@
+import { useEffect } from "react";
 import { useGetInvitations } from "@/hooks/connection/useGetInvitations";
 import { useInvitations } from "@/hooks/connection/useProjectMembers";
-import { useEffect } from "react";
 
 export default function InvitationsPanel() {
 	const { invitations, loading, error, fetchInvitations } = useGetInvitations();
@@ -15,11 +15,15 @@ export default function InvitationsPanel() {
 		id: string,
 		_action: "accepted" | "rejected",
 	) => {
-		acceptInvitation(id, () => {
-			alert("exito")},
-				() => {
-					alert("Fallo");
-		});
+		acceptInvitation(
+			id,
+			() => {
+				alert("exito");
+			},
+			() => {
+				alert("Fallo");
+			},
+		);
 	};
 
 	if (loading) return <p className="p-4">Cargando invitaciones...</p>;

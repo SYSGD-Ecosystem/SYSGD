@@ -1,12 +1,12 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Building2, Download, Maximize2, Pencil, Users } from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Building2, Users, Download, Maximize2, Pencil } from "lucide-react";
-import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { Employee } from "@/types/organigrama";
+import { OrganigramaTree } from "../components/organigrama-tree";
 import { OrganizationEditorDialog } from "../components/organization-editor-dialog";
 import { useOrganizationChart } from "../hooks/connection/useOrganizationChart";
-import { OrganigramaTree } from "../components/organigrama-tree";
-import type { Employee } from "@/types/organigrama";
 // Remove static data, will fetch from backend
 
 export default function OrganigramaPage() {

@@ -1,13 +1,13 @@
-import { type FC, useEffect } from "react";
-import Table, { Td } from "../BasicTableComponents";
-import useEditableTable from "../../hooks/useEditableTable";
-import useConnection from "../../hooks/connection/useConnection";
-import { useToast } from "../../hooks/use-toast";
-import useGetTopographicRegister from "../../hooks/connection/useGetTopographicRegister";
-import type { TopographicRegisterData } from "../../types/TopographicRegister";
-import { Button } from "../ui/button";
 import { AlertCircle, FileIcon, Plus, SaveAll } from "lucide-react";
+import { type FC, useEffect } from "react";
+import useConnection from "../../hooks/connection/useConnection";
+import useGetTopographicRegister from "../../hooks/connection/useGetTopographicRegister";
+import { useToast } from "../../hooks/use-toast";
+import useEditableTable from "../../hooks/useEditableTable";
+import type { TopographicRegisterData } from "../../types/TopographicRegister";
+import Table, { Td } from "../BasicTableComponents";
 import Loading from "../Loading";
+import { Button } from "../ui/button";
 
 export type TopographicRegisterProps = {
 	archiveId: string;
