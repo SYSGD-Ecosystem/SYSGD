@@ -25,6 +25,7 @@ import PrivacyPolicy from "./pages/Privacy.tsx";
 import EditableSpreadsheet from "./pages/Sheet.tsx";
 import TermsAndConditions from "./pages/Terms.tsx";
 import TokenManagement from "./components/TokenManagement.tsx";
+import Purchase from "./pages/Purchase.tsx";
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(
@@ -52,6 +53,7 @@ createRoot(document.getElementById("root")!).render(
 						<Route path="/chat" element={<HomeChat />} />
 						<Route path="/help" element={<Help />} />
 						<Route path="/settings/tokens" element={<TokenManagement />} />
+						<Route path="/billing/purchase" element={<Purchase />} />
 					</Routes>
 				</AppRouter>
 			</ElectronWrapper>

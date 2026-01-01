@@ -21,13 +21,14 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { useGemini } from "@/hooks/connection/useGemini";
+import { useGemini } from "./hooks/useTaskAIAgent";
 import { useProjectMembers } from "@/hooks/connection/useProjectMembers";
 import type { Task } from "@/types/Task";
 import { getPriorityColor } from "@/utils/util";
 import { getStatusIcon } from "@/utils/util-components";
 import DialogCreateTask from "./modals/DialogCreateTask";
 import DialogViewTask from "./modals/DialogViewTask";
+import { CreditsErrorDialog } from "./modals/CreditErrorsDialog";
 
 const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 	const { tasks, loading, createTask, updateTask, deleteTask } =
@@ -37,7 +38,33 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 	// 1. Obtenemos los miembros del proyecto para el dropdown
 	// TODO: Actualizar para que salgan miembros invitados aunque todavia no formen parte del proyecto.
 	const { members } = useProjectMembers(project_id);
-	const { handleImprove, improvedText, loading: geminiIsLoading } = useGemini();
+	const [showErrorDialog, setShowErrorDialog] = useState(false);
+	const {
+		handleImprove,
+		improvedText,
+		error,
+		loading: geminiIsLoading,
+		retry,
+	} = useGemini();
+
+	useEffect(() => {
+		if (error) {
+			setShowErrorDialog(true);
+		}
+	}, [error]);
+
+	const handleCloseErrorDialog = () => {
+		setShowErrorDialog(false);
+	};
+
+	const handleRetry = async () => {
+		setShowErrorDialog(false);
+		const success = await retry();
+
+		if (!success && error) {
+			setShowErrorDialog(true);
+		}
+	};
 
 	// Mostrar vista previa cuando la IA genera una respuesta
 	useEffect(() => {
@@ -447,6 +474,13 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 					}
 				/>
 			)}
+
+			<CreditsErrorDialog
+				open={showErrorDialog}
+				onClose={handleCloseErrorDialog}
+				error={error}
+				onRetry={error?.canRetry ? handleRetry : undefined}
+			/>
 		</div>
 	);
 };

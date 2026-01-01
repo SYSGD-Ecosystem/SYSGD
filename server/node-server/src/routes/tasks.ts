@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { pool } from "../db";
 import { isAuthenticated } from "../middlewares/auth-jwt";
 import { getCurrentUserData } from "../controllers/users";
+import { checkTaskLimit } from "../middlewares/usageLimits.middleware";
 //import { isAuthenticated } from "../middlewares/authjwt";
 
 const router = Router();
@@ -45,7 +46,7 @@ router.get(
 );
 
 // crea tareas
-router.post("/", isAuthenticated, async (req: Request, res: Response) => {
+router.post("/", isAuthenticated, checkTaskLimit , async (req: Request, res: Response) => {
 	const {
 		title,
 		project_id,
