@@ -17,7 +17,7 @@ export const isAuthenticated = (
 ) => {
 	// const token = req.cookies?.token;
 	const authHeader = req.headers.authorization;
-	console.log("Auth Header:", {authHeader});
+	
 	const tokenFromHeader = authHeader?.startsWith("Bearer ")
 		? authHeader.split(" ")[1]
 		: null;

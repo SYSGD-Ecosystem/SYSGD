@@ -17,6 +17,8 @@ const useCurrentUser = () => {
 			try {
 				const res = await api.get<User>("/api/auth/me");
 
+				console.log("Respuesta de /api/auth/me:", res);
+
 				const userData = res.data;
 
 				if (userData && userData.privileges === null) {
