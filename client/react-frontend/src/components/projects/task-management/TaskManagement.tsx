@@ -1,4 +1,4 @@
-import { Filter, Plus, Search, X } from "lucide-react";
+import { Filter, Plus, Search, X, User, Tag, AlertCircle } from "lucide-react";
 import { type FC, useEffect, useState } from "react";
 import { useTasks } from "@/components/projects/task-management/hooks/useTask";
 import { useTaskConfig } from "@/components/projects/task-management/hooks/useTaskConfig";
@@ -34,9 +34,6 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 	const { tasks, loading, createTask, updateTask, deleteTask } =
 		useTasks(project_id);
 	const { config } = useTaskConfig(project_id);
-	console.log("configuracion de tareas", config);
-	// 1. Obtenemos los miembros del proyecto para el dropdown
-	// TODO: Actualizar para que salgan miembros invitados aunque todavia no formen parte del proyecto.
 	const { members } = useProjectMembers(project_id);
 	const [showErrorDialog, setShowErrorDialog] = useState(false);
 	const {
@@ -66,7 +63,6 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 		}
 	};
 
-	// Mostrar vista previa cuando la IA genera una respuesta
 	useEffect(() => {
 		if (improvedText && !geminiIsLoading) {
 			setShowImprovedPreview(true);
@@ -93,10 +89,8 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 
 		let success = false;
 		if (editingTask.id && editingTask.id !== "new-task") {
-			// Es una tarea existente, la actualizamos
 			success = await updateTask(editingTask.id, editingTask);
 		} else {
-			// Es una nueva tarea, la creamos
 			success = await createTask(editingTask);
 		}
 
@@ -115,7 +109,7 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 
 	const handleDeleteConfirmed = async (taskId: string) => {
 		await deleteTask(taskId);
-		setisDialogOpenDialog(false); // Cierra el diálogo de vista
+		setisDialogOpenDialog(false);
 	};
 
 	const handleAddNewTask = () => {
@@ -127,7 +121,7 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 		const defaultStatus = config?.states?.[0]?.name ?? "Pendiente";
 
 		const newTask: Task = {
-			id: "new-task", // Usar un ID temporal para nuevas tareas
+			id: "new-task",
 			type: defaultType,
 			priority: defaultPriority,
 			title: "",
@@ -141,7 +135,6 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 		setIsDialogOpen(true);
 	};
 
-	// Función para filtrar tareas
 	const getFilteredTasks = () => {
 		return tasks.filter((task) => {
 			const matchesSearch = task.title
@@ -149,18 +142,24 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 				.includes(searchTerm.toLowerCase());
 			const matchesAssignee =
 				filterAssignee === "todos" ||
-				// biome-ignore lint/complexity/useOptionalChain: <explanation>
 				(task.assignees &&
 					task.assignees.some((a) => a.name === filterAssignee));
 			const matchesType = filterType === "todos" || task.type === filterType;
 			const matchesStatus =
 				filterStatus === "todos" || task.status === filterStatus;
+			const matchesPriority =
+				filterPriority === "todos" || task.priority === filterPriority;
 
-			return matchesSearch && matchesAssignee && matchesType && matchesStatus;
+			return (
+				matchesSearch &&
+				matchesAssignee &&
+				matchesType &&
+				matchesStatus &&
+				matchesPriority
+			);
 		});
 	};
 
-	// Función para limpiar filtros
 	const clearFilters = () => {
 		setSearchTerm("");
 		setFilterAssignee("todos");
@@ -169,7 +168,6 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 		setFilterStatus("todos");
 	};
 
-	// Verificar si hay filtros activos
 	const hasActiveFilters = () => {
 		return (
 			searchTerm !== "" ||
@@ -186,10 +184,6 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 		return uniqueNames;
 	};
 
-	// const getUniqueTypes = () => {
-	// 	return [...new Set(tasks.map((task) => task.type))];
-	// };
-
 	const getUniquePriorities = () => {
 		return [...new Set(tasks.map((task) => task.priority))];
 	};
@@ -200,80 +194,95 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 
 	return (
 		<div className="bg-white h-full flex flex-col rounded-lg dark:border shadow-sm dark:bg-gray-800 dark:border-gray-700">
-			<div className="p-6 border-b border-gray-200 dark:border-gray-700 flex-none">
+			{/* Header */}
+			<div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex-none">
 				<div className="flex justify-between items-start mb-4">
 					<div>
-						<h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+						<h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
 							GESTIÓN DE TAREAS
 						</h1>
-						<h2 className="text-lg font-semibold text-gray-700 dark:text-gray-400 mb-4">
-							REGISTRO DE TAREAS Y ACTIVIDADES
+						<h2 className="text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-400">
+							{tasks.length} {tasks.length === 1 ? "tarea" : "tareas"}
 						</h2>
 					</div>
-					<div className="text-right">
-						<div className="text-sm font-medium">GT1</div>
-					</div>
+					<Button
+						onClick={handleAddNewTask}
+						size="sm"
+						className="sm:size-default"
+					>
+						<Plus className="w-4 h-4 sm:mr-2" />
+						<span className="hidden sm:inline">Nueva Tarea</span>
+					</Button>
 				</div>
-				<div className="space-y-4">
-					<div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-						{/* Búsqueda */}
-						<div className="relative flex-1 max-w-md">
+
+				<div className="space-y-3">
+					{/* Búsqueda y Filtros */}
+					<div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+						<div className="relative flex-1">
 							<Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
 							<Input
-								placeholder="Buscar por título..."
+								placeholder="Buscar tareas..."
 								value={searchTerm}
 								onChange={(e) => setSearchTerm(e.target.value)}
 								className="pl-10"
 							/>
 						</div>
 
-						{/* Botones de acción */}
 						<div className="flex gap-2">
 							<Button
 								variant="outline"
 								size="sm"
 								onClick={() => setShowFilters(!showFilters)}
-								className={`${hasActiveFilters() ? "border-blue-500 text-blue-600 dark:text-blue-400" : ""}`}
+								className={`flex-1 sm:flex-none ${hasActiveFilters() ? "border-blue-500 text-blue-600 dark:text-blue-400" : ""}`}
 							>
-								<Filter className="w-4 h-4 mr-2" />
-								Filtros
+								<Filter className="w-4 h-4 sm:mr-2" />
+								<span className="hidden sm:inline">Filtros</span>
 								{hasActiveFilters() && (
-									<span className="ml-1 bg-blue-500 text-white rounded-full w-2 h-2" />
+									<span className="ml-1 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+										{
+											[
+												searchTerm,
+												filterAssignee !== "todos",
+												filterType !== "todos",
+												filterPriority !== "todos",
+												filterStatus !== "todos",
+											].filter(Boolean).length
+										}
+									</span>
 								)}
 							</Button>
 
 							{hasActiveFilters() && (
-								<Button variant="ghost" size="sm" onClick={clearFilters}>
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={clearFilters}
+									className="hidden sm:flex"
+								>
 									<X className="w-4 h-4 mr-2" />
 									Limpiar
 								</Button>
 							)}
-
-							<Button onClick={handleAddNewTask}>
-								<Plus className="w-4 h-4 mr-2" />
-								Nueva Tarea
-							</Button>
 						</div>
 					</div>
 
-					{/* Panel de filtros expandible */}
+					{/* Panel de filtros */}
 					{showFilters && (
-						<div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-							<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-								{/* Filtro por usuario asignado */}
+						<div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700 space-y-3">
+							<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
 								<div>
-									<Label className="text-sm font-medium mb-2 block">
-										Usuario Asignado
+									<Label className="text-xs sm:text-sm font-medium mb-1.5 block">
+										Usuario
 									</Label>
 									<Select
 										value={filterAssignee}
 										onValueChange={setFilterAssignee}
 									>
-										<SelectTrigger>
+										<SelectTrigger className="h-9">
 											<SelectValue />
 										</SelectTrigger>
 										<SelectContent>
-											<SelectItem value="todos">Todos los usuarios</SelectItem>
+											<SelectItem value="todos">Todos</SelectItem>
 											{getUniqueAssignees().map((assignee) => (
 												<SelectItem key={assignee} value={assignee}>
 													{assignee}
@@ -283,22 +292,38 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 									</Select>
 								</div>
 
-								{/* Filtro por prioridad */}
 								<div>
-									<Label className="text-sm font-medium mb-2 block">
+									<Label className="text-xs sm:text-sm font-medium mb-1.5 block">
+										Tipo
+									</Label>
+									<Select value={filterType} onValueChange={setFilterType}>
+										<SelectTrigger className="h-9">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="todos">Todos</SelectItem>
+											{config?.types?.map((type) => (
+												<SelectItem key={type.name} value={type.name}>
+													{type.name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+
+								<div>
+									<Label className="text-xs sm:text-sm font-medium mb-1.5 block">
 										Prioridad
 									</Label>
 									<Select
 										value={filterPriority}
 										onValueChange={setFilterPriority}
 									>
-										<SelectTrigger>
+										<SelectTrigger className="h-9">
 											<SelectValue />
 										</SelectTrigger>
 										<SelectContent>
-											<SelectItem value="todos">
-												Todas las prioridades
-											</SelectItem>
+											<SelectItem value="todos">Todas</SelectItem>
 											{getUniquePriorities().map((priority) => (
 												<SelectItem key={priority} value={priority}>
 													{priority}
@@ -308,17 +333,16 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 									</Select>
 								</div>
 
-								{/* Filtro por estado */}
 								<div>
-									<Label className="text-sm font-medium mb-2 block">
+									<Label className="text-xs sm:text-sm font-medium mb-1.5 block">
 										Estado
 									</Label>
 									<Select value={filterStatus} onValueChange={setFilterStatus}>
-										<SelectTrigger>
+										<SelectTrigger className="h-9">
 											<SelectValue />
 										</SelectTrigger>
 										<SelectContent>
-											<SelectItem value="todos">Todos los estados</SelectItem>
+											<SelectItem value="todos">Todos</SelectItem>
 											{getUniqueStatuses().map((status) => (
 												<SelectItem key={status} value={status}>
 													{status}
@@ -329,115 +353,240 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 								</div>
 							</div>
 
-							{/* Resumen de filtros activos */}
-							{hasActiveFilters() && (
-								<div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-									<div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-										<span>
-											Mostrando {getFilteredTasks().length} de {tasks.length}{" "}
-											tareas
-										</span>
-										{searchTerm && (
-											<Badge variant="secondary" className="text-xs">
-												Título: "{searchTerm}"
-											</Badge>
-										)}
-										{filterAssignee !== "todos" && (
-											<Badge variant="secondary" className="text-xs">
-												Usuario: {filterAssignee}
-											</Badge>
-										)}
-										{filterType !== "todos" && (
-											<Badge variant="secondary" className="text-xs">
-												Tipo: {filterType}
-											</Badge>
-										)}
-										{filterPriority !== "todos" && (
-											<Badge variant="secondary" className="text-xs">
-												Prioridad: {filterPriority}
-											</Badge>
-										)}
-										{filterStatus !== "todos" && (
-											<Badge variant="secondary" className="text-xs">
-												Estado: {filterStatus}
-											</Badge>
-										)}
-									</div>
-								</div>
-							)}
+							{/* Resumen y botón limpiar en móvil */}
+							<div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
+								<span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+									{getFilteredTasks().length} de {tasks.length} tareas
+								</span>
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={clearFilters}
+									className="sm:hidden h-8"
+								>
+									<X className="w-3 h-3 mr-1" />
+									Limpiar
+								</Button>
+							</div>
 						</div>
 					)}
 				</div>
 			</div>
 
-			<div className="flex-grow overflow-y-auto p-6">
+			{/* Table */}
+			<div className="flex-grow overflow-auto">
 				<Table>
 					<TableHeader className="sticky top-0 bg-white dark:bg-gray-800 z-10">
 						<TableRow>
-							<TableHead className="text-center">ESTADO</TableHead>
+							{/* Versión Desktop */}
+							<TableHead className="hidden md:table-cell text-center w-20">
+								ESTADO
+							</TableHead>
+							<TableHead className="hidden md:table-cell">TÍTULO</TableHead>
+							<TableHead className="hidden md:table-cell text-center w-28">
+								TIPO
+							</TableHead>
+							<TableHead className="hidden md:table-cell text-center w-28">
+								PRIORIDAD
+							</TableHead>
+							<TableHead className="hidden md:table-cell text-center w-24">
+								ASIGNADO
+							</TableHead>
 
-							<TableHead className="text-left">TÍTULO</TableHead>
-							<TableHead className="text-center">TIPO</TableHead>
-							<TableHead className="text-center">PRIORIDAD</TableHead>
-							<TableHead className="text-center">ASIGNADO</TableHead>
+							{/* Versión Mobile - Solo iconos */}
+
+							<TableHead className="md:hidden text-center w-12 p-2">
+								<div
+									className="flex items-center justify-center"
+									title="Estado"
+								>
+									<AlertCircle className="w-4 h-4" />
+								</div>
+							</TableHead>
+							<TableHead className="md:hidden p-2">TAREA</TableHead>
+							<TableHead className="md:hidden text-center w-12 p-2">
+								<div className="flex items-center justify-center" title="Tipo">
+									<Tag className="w-4 h-4" />
+								</div>
+							</TableHead>
+							<TableHead className="md:hidden text-center w-12 p-2">
+								<div
+									className="flex items-center justify-center"
+									title="Asignado"
+								>
+									<User className="w-4 h-4" />
+								</div>
+							</TableHead>
 						</TableRow>
 					</TableHeader>
+
 					{loading ? (
 						<TableBody>
 							{[...Array(10)].map((_, index) => (
-								// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
 								<SkeletonTableRows key={index} />
 							))}
+						</TableBody>
+					) : getFilteredTasks().length === 0 ? (
+						<TableBody>
+							<TableRow>
+								<TableCell
+									colSpan={5}
+									className="text-center py-8 text-muted-foreground"
+								>
+									{hasActiveFilters()
+										? "No se encontraron tareas con los filtros aplicados"
+										: "No hay tareas creadas. ¡Crea tu primera tarea!"}
+								</TableCell>
+							</TableRow>
 						</TableBody>
 					) : (
 						<TableBody>
 							{getFilteredTasks().map((task) => (
 								<TableRow
 									key={task.id}
-									className="cursor-pointer"
+									className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50"
 									onClick={() => {
 										setselectedTask(task);
 										setEditingTask(task);
 										setisDialogOpenDialog(true);
 									}}
 								>
-									<TableCell className="text-center flex items-center justify-center">
-										<div className="flex items-start justify-start gap-2">
+									{/* Desktop Version */}
+									<TableCell className="hidden md:table-cell">
+										<div className="flex items-center justify-center">
 											{getStatusIcon(task.status)}
 										</div>
 									</TableCell>
-
-									<TableCell className="text-left">{task.title}</TableCell>
-									<TableCell className="text-center">
-										<Badge variant="outline" className="text-center">
-											{task.type}
-										</Badge>
+									<TableCell className="hidden md:table-cell font-medium">
+										{task.title}
 									</TableCell>
-									<TableCell className="text-center flex items-center justify-center">
-										<Badge
-											className="w-16 text-center flex items-center justify-center"
-											variant={getPriorityColor(task.priority)}
-										>
-											{task.priority}
-										</Badge>
+									<TableCell className="hidden md:table-cell">
+										<div className="flex justify-center">
+											<Badge
+												variant="outline"
+												style={{
+													backgroundColor:
+														config?.types?.find((t) => t.name === task.type)
+															?.color + "20",
+													borderColor: config?.types?.find(
+														(t) => t.name === task.type,
+													)?.color,
+												}}
+											>
+												{task.type}
+											</Badge>
+										</div>
 									</TableCell>
-									<TableCell className="text-center">
-										<div className="text-center flex items-center justify-center">
-											{task.assignees?.map((assignee) => (
+									<TableCell className="hidden md:table-cell">
+										<div className="flex justify-center">
+											<Badge
+												variant={getPriorityColor(task.priority)}
+												style={{
+													backgroundColor:
+														config?.priorities?.find(
+															(p) => p.name === task.priority,
+														)?.color + "20",
+													borderColor: config?.priorities?.find(
+														(p) => p.name === task.priority,
+													)?.color,
+													color: config?.priorities?.find(
+														(p) => p.name === task.priority,
+													)?.color,
+												}}
+											>
+												{task.priority}
+											</Badge>
+										</div>
+									</TableCell>
+									<TableCell className="hidden md:table-cell">
+										<div className="flex items-center justify-center gap-1">
+											{task.assignees?.slice(0, 3).map((assignee) => (
 												<div
 													key={assignee.id}
-													className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center text-xs font-bold text-gray-600 border-2 border-white"
-													title={
-														assignee?.name ||
-														assignee?.email ||
-														"Usuario sin nombre"
-													}
+													className="w-7 h-7 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-xs font-bold text-white border-2 border-white dark:border-gray-800 shadow-sm"
+													title={assignee?.name || assignee?.email || "Usuario"}
 												>
-													{assignee?.name?.charAt(0) ||
+													{(
+														assignee?.name?.charAt(0) ||
 														assignee?.email?.charAt(0) ||
-														"?"}
+														"?"
+													).toUpperCase()}
 												</div>
 											))}
+											{task.assignees && task.assignees.length > 3 && (
+												<div className="w-7 h-7 bg-gray-400 rounded-full flex items-center justify-center text-xs font-bold text-white">
+													+{task.assignees.length - 3}
+												</div>
+											)}
+										</div>
+									</TableCell>
+
+									{/* Mobile Version */}
+									<TableCell className="md:hidden p-2">
+										<div className="flex items-center justify-center">
+											{getStatusIcon(task.status)}
+										</div>
+									</TableCell>
+									<TableCell className="md:hidden p-2">
+										<div className="flex flex-col gap-1">
+											<span className="font-medium text-sm line-clamp-2">
+												{task.title}
+											</span>
+											<div className="flex items-center gap-1">
+												<Badge
+													variant={getPriorityColor(task.priority)}
+													className="text-xs px-1.5 py-0"
+													style={{
+														backgroundColor:
+															config?.priorities?.find(
+																(p) => p.name === task.priority,
+															)?.color + "20",
+														borderColor: config?.priorities?.find(
+															(p) => p.name === task.priority,
+														)?.color,
+														color: config?.priorities?.find(
+															(p) => p.name === task.priority,
+														)?.color,
+													}}
+												>
+													{task.priority}
+												</Badge>
+											</div>
+										</div>
+									</TableCell>
+									<TableCell className="md:hidden p-2">
+										<div className="flex justify-center">
+											<div
+												className="w-2 h-2 rounded-full"
+												style={{
+													backgroundColor: config?.types?.find(
+														(t) => t.name === task.type,
+													)?.color,
+												}}
+												title={task.type}
+											/>
+										</div>
+									</TableCell>
+									<TableCell className="md:hidden p-2">
+										<div className="flex items-center justify-center -space-x-1">
+											{task.assignees?.slice(0, 2).map((assignee) => (
+												<div
+													key={assignee.id}
+													className="w-6 h-6 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-xs font-bold text-white border-2 border-white dark:border-gray-800"
+													title={assignee?.name || assignee?.email}
+												>
+													{(
+														assignee?.name?.charAt(0) ||
+														assignee?.email?.charAt(0) ||
+														"?"
+													).toUpperCase()}
+												</div>
+											))}
+											{task.assignees && task.assignees.length > 2 && (
+												<div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-white dark:border-gray-800">
+													+{task.assignees.length - 2}
+												</div>
+											)}
 										</div>
 									</TableCell>
 								</TableRow>
@@ -463,6 +612,7 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 				showImprovedPreview={showImprovedPreview}
 				setShowImprovedPreview={setShowImprovedPreview}
 			/>
+
 			{selectedTask && (
 				<DialogViewTask
 					isOpen={isDialogViewOpen}
@@ -487,22 +637,38 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 
 const SkeletonTableRows: FC = () => {
 	return (
-		<TableRow className="cursor-pointer">
-			<TableCell className="text-center">
+		<TableRow>
+			<TableCell className="hidden md:table-cell">
 				<Skeleton />
 			</TableCell>
-			<TableCell className="text-left">
+			<TableCell className="hidden md:table-cell">
 				<Skeleton />
 			</TableCell>
-			<TableCell className="text-left">
+			<TableCell className="hidden md:table-cell">
 				<Skeleton />
 			</TableCell>
-			<TableCell className="text-center">
+			<TableCell className="hidden md:table-cell">
+				<Skeleton />
+			</TableCell>
+			<TableCell className="hidden md:table-cell">
+				<Skeleton />
+			</TableCell>
+			<TableCell className="md:hidden p-2">
+				<Skeleton />
+			</TableCell>
+			<TableCell className="md:hidden p-2">
+				<Skeleton />
+			</TableCell>
+			<TableCell className="md:hidden p-2">
+				<Skeleton />
+			</TableCell>
+			<TableCell className="md:hidden p-2">
 				<Skeleton />
 			</TableCell>
 		</TableRow>
 	);
 };
+
 export const Skeleton: FC = () => {
 	return (
 		<div className="w-full h-4 bg-slate-300 dark:bg-slate-600 rounded-full animate-pulse" />
