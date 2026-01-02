@@ -26,6 +26,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import api from '@/lib/api';
+import { useWeb3 } from './hooks/useWeb3';
 
 // Tipos
 interface Product {
@@ -77,7 +78,11 @@ const CryptoPurchase: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   
-  const { address, isConnected, balance, connect, disconnect } = useWeb3Mock();
+  // const { address, isConnected, balance, connect, disconnect } = useWeb3Mock();
+const usdtAddress = "0xbf1d573d4ce347b7ba0f198028cca36df7aeaf9b";
+const paymentGatewayAddress = "0x484cad0b7237dfda563f976ce54a53af1b515a5c";
+
+  const { address, isConnected, balance, usdtBalance, connect, disconnect, approveUSDT } = useWeb3(usdtAddress, paymentGatewayAddress);
 
   useEffect(() => {
     loadProducts();
@@ -120,7 +125,8 @@ const CryptoPurchase: React.FC = () => {
     setProcessing(true);
     try {
       // Simular aprobación de USDT
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      //await new Promise(resolve => setTimeout(resolve, 2000));
+      await approveUSDT(selectedProduct.price);
       
       toast({
         title: 'Aprobación exitosa',
@@ -314,7 +320,7 @@ const CryptoPurchase: React.FC = () => {
           <div className="flex items-center gap-4">
             <div className="text-right">
               <div className="text-sm text-muted-foreground">Balance USDT</div>
-              <div className="text-xl font-bold">${balance}</div>
+              <div className="text-xl font-bold">${usdtBalance}</div>
             </div>
             <Button variant="outline" onClick={disconnect}>
               {address.slice(0, 6)}...{address.slice(-4)}
@@ -381,8 +387,8 @@ const CryptoPurchase: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Tu balance</span>
-                <span className={parseFloat(balance) >= parseFloat(selectedProduct.price) ? 'text-green-600' : 'text-red-600'}>
-                  ${balance} USDT
+                <span className={parseFloat(usdtBalance) >= parseFloat(selectedProduct.price) ? 'text-green-600' : 'text-red-600'}>
+                  ${usdtBalance} USDT
                 </span>
               </div>
             </div>
@@ -400,7 +406,7 @@ const CryptoPurchase: React.FC = () => {
                   onClick={handleApprove} 
                   className="w-full" 
                   size="lg"
-                  disabled={processing || parseFloat(balance) < parseFloat(selectedProduct.price)}
+                  disabled={processing || parseFloat(usdtBalance) < parseFloat(selectedProduct.price)}
                 >
                   {processing ? (
                     <>

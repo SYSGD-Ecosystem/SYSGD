@@ -311,3 +311,78 @@ CREATE TABLE IF NOT EXISTS github_project_user_token (
 
 CREATE INDEX IF NOT EXISTS idx_github_project_user_token_project_user
 ON github_project_user_token(project_id, user_id);
+
+-- ==============================
+-- Crypto Payment Orders
+-- ==============================
+
+CREATE TABLE IF NOT EXISTS crypto_payment_orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id TEXT UNIQUE NOT NULL,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  wallet_address TEXT NOT NULL,
+  product_id TEXT NOT NULL,
+  amount DECIMAL(18, 6) NOT NULL,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'expired')),
+  tx_hash TEXT,
+  network TEXT DEFAULT 'sepolia',
+  created_at TIMESTAMP DEFAULT NOW(),
+  completed_at TIMESTAMP,
+  expires_at TIMESTAMP DEFAULT (NOW() + INTERVAL '30 minutes')
+);
+
+CREATE INDEX IF NOT EXISTS idx_crypto_orders_user_id ON crypto_payment_orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_crypto_orders_status ON crypto_payment_orders(status);
+CREATE INDEX IF NOT EXISTS idx_crypto_orders_order_id ON crypto_payment_orders(order_id);
+CREATE INDEX IF NOT EXISTS idx_crypto_orders_created_at ON crypto_payment_orders(created_at DESC);
+
+-- ==============================
+-- Crypto Payment Webhooks Log
+-- ==============================
+
+CREATE TABLE IF NOT EXISTS crypto_payment_webhooks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  tx_hash TEXT,
+  block_number BIGINT,
+  payload JSONB,
+  processed BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_crypto_webhooks_order_id ON crypto_payment_webhooks(order_id);
+CREATE INDEX IF NOT EXISTS idx_crypto_webhooks_processed ON crypto_payment_webhooks(processed);
+CREATE INDEX IF NOT EXISTS idx_crypto_webhooks_created_at ON crypto_payment_webhooks(created_at DESC);
+
+-- ==============================
+-- Función para limpiar órdenes expiradas
+-- ==============================
+
+CREATE OR REPLACE FUNCTION cleanup_expired_orders()
+RETURNS void AS $$
+BEGIN
+  UPDATE crypto_payment_orders
+  SET status = 'expired'
+  WHERE status = 'pending' 
+    AND expires_at < NOW();
+END;
+$$ LANGUAGE plpgsql;
+
+-- ==============================
+-- Vista de estadísticas de pagos
+-- ==============================
+
+CREATE OR REPLACE VIEW crypto_payment_stats AS
+SELECT
+  u.id as user_id,
+  u.email,
+  COUNT(*) as total_orders,
+  COUNT(*) FILTER (WHERE cpo.status = 'completed') as completed_orders,
+  COUNT(*) FILTER (WHERE cpo.status = 'pending') as pending_orders,
+  COUNT(*) FILTER (WHERE cpo.status = 'failed') as failed_orders,
+  SUM(cpo.amount) FILTER (WHERE cpo.status = 'completed') as total_spent,
+  MAX(cpo.completed_at) as last_payment_date
+FROM users u
+LEFT JOIN crypto_payment_orders cpo ON u.id = cpo.user_id
+GROUP BY u.id, u.email;

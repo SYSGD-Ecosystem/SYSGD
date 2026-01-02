@@ -54,6 +54,7 @@ createRoot(document.getElementById("root")!).render(
 						<Route path="/help" element={<Help />} />
 						<Route path="/settings/tokens" element={<TokenManagement />} />
 						<Route path="/billing/purchase" element={<Purchase />} />
+						<Route path="/billing/upgrade" element={<Purchase />} />
 					</Routes>
 				</AppRouter>
 			</ElectronWrapper>
