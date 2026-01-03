@@ -78,6 +78,8 @@ const CryptoPurchase: React.FC = () => {
 	const [txHash, setTxHash] = useState("");
 	const [processing, setProcessing] = useState(false);
 	const [copied, setCopied] = useState(false);
+	const [orders, setOrders] = useState<any[]>([]);
+	const [isVerifying, setIsVerifying] = useState(false);
 	const { toast } = useToast();
 
 	// const { address, isConnected, balance, connect, disconnect } = useWeb3Mock();
@@ -91,11 +93,13 @@ const CryptoPurchase: React.FC = () => {
 		connect,
 		disconnect,
 		approveUSDT,
+		processPayment,
 	} = useWeb3(usdtAddress, paymentGatewayAddress);
 
 	useEffect(() => {
 		loadProducts();
 		loadNetworkInfo();
+		loadOrders();
 	}, []);
 
 	const loadProducts = async () => {
@@ -124,6 +128,24 @@ const CryptoPurchase: React.FC = () => {
 			setNetworkInfo(response.data);
 		} catch (error) {
 			console.error("Error loading network:", error);
+		}
+	};
+
+	const loadOrders = async () => {
+		try {
+			// const check = await api.post("/api/crypto-payments/webhook/payment", {
+			// 	params: { walletAddress: address },
+			// });
+
+			// console.log(check);
+
+			const response = await api.get("/api/crypto-payments/orders", {
+				params: { walletAddress: address },
+			});
+			setOrders(response.data);
+		} catch (error) {
+			console.error("Error loading orders:", error);
+			return [];
 		}
 	};
 
@@ -158,48 +180,45 @@ const CryptoPurchase: React.FC = () => {
 		}
 	};
 
-	const handlePay = async () => {
-		if (!selectedProduct || !address) return;
+	// const handlePay = async () => {
+	// 	if (!selectedProduct || !address) return;
 
-		setProcessing(true);
-		try {
-			// 1. Crear orden en backend
-			const orderResponse = await api.post("/api/crypto-payments/orders", {
-				productId: selectedProduct.productId,
-				walletAddress: address,
-			});
+	// 	setProcessing(true);
+	// 	try {
+	// 		// 1. Crear orden en backend
+	// 		const orderResponse = await api.post("/api/crypto-payments/orders", {
+	// 			productId: selectedProduct.productId,
+	// 			walletAddress: address,
+	// 		});
 
-			const order = orderResponse.data;
+	// 		const order = orderResponse.data;
 
-      console.log(order);
+	// 		console.log(order);
 
-			// 2. Simular pago en blockchain
-			await new Promise((resolve) => setTimeout(resolve, 3000));
+	// 		const txHash = await processPayment(
+	// 			selectedProduct.productId,
+	// 			order.order_id,
+	// 		);
 
-			// Simular hash de transacción
-			const mockTxHash =
-				"0x" +
-				Math.random().toString(16).slice(2) +
-				Math.random().toString(16).slice(2);
-			setTxHash(mockTxHash);
+	// 		setTxHash(txHash);
 
-			toast({
-				title: "Pago procesado",
-				description: "Tu compra se ha completado exitosamente",
-			});
+	// 		toast({
+	// 			title: "Pago procesado",
+	// 			description: "Tu compra se ha completado exitosamente",
+	// 		});
 
-			setPurchaseStep("complete");
-		} catch (error: any) {
-			toast({
-				variant: "destructive",
-				title: "Error",
-				description:
-					error.response?.data?.error || "No se pudo procesar el pago",
-			});
-		} finally {
-			setProcessing(false);
-		}
-	};
+	// 		setPurchaseStep("complete");
+	// 	} catch (error: any) {
+	// 		toast({
+	// 			variant: "destructive",
+	// 			title: "Error",
+	// 			description:
+	// 				error.response?.data?.error || "No se pudo procesar el pago",
+	// 		});
+	// 	} finally {
+	// 		setProcessing(false);
+	// 	}
+	// };
 
 	const copyToClipboard = (text: string) => {
 		navigator.clipboard.writeText(text);
@@ -211,6 +230,152 @@ const CryptoPurchase: React.FC = () => {
 		setSelectedProduct(null);
 		setPurchaseStep("select");
 		setTxHash("");
+	};
+
+	/**
+	 * Verifica el estado de una orden después del pago
+	 */
+	const verifyOrderCompletion = async (orderId: string): Promise<boolean> => {
+		const maxAttempts = 20; // 20 intentos
+		const interval = 3000; // cada 3 segundos
+
+		for (let i = 0; i < maxAttempts; i++) {
+			try {
+				const response = await api.get(
+					`/api/crypto-payments/orders/${orderId}`,
+				);
+				const order = response.data;
+
+				if (order.status === "completed") {
+					console.log("✅ Pago confirmado en blockchain!");
+					return true;
+				}
+
+				if (order.status === "failed" || order.status === "expired") {
+					console.log("❌ Pago falló o expiró");
+					return false;
+				}
+
+				// Esperar antes del siguiente intento
+				await new Promise((resolve) => setTimeout(resolve, interval));
+			} catch (error) {
+				console.error("Error verificando orden:", error);
+			}
+		}
+
+		return false; // Timeout
+	};
+
+	// Actualizar la función handlePay
+	const handlePay = async () => {
+		if (!selectedProduct || !address) return;
+
+		setProcessing(true);
+		setIsVerifying(false);
+
+		try {
+			// 1. Crear orden en backend
+			const orderResponse = await api.post("/api/crypto-payments/orders", {
+				productId: selectedProduct.productId,
+				walletAddress: address,
+			});
+
+			const order = orderResponse.data;
+
+			// 2. Procesar pago en blockchain
+			const txHash = await processPayment(
+				selectedProduct.productId,
+				order.order_id,
+			);
+
+			setTxHash(txHash);
+			setProcessing(false);
+			setIsVerifying(true);
+
+			toast({
+				title: "Transacción enviada",
+				description: "Verificando confirmación en blockchain...",
+			});
+
+			// 3. Verificar que el pago se complete
+			const completed = await verifyOrderCompletion(order.order_id);
+
+			setIsVerifying(false);
+
+			if (completed) {
+				toast({
+					title: "¡Pago completado!",
+					description: "Tus créditos han sido agregados a tu cuenta",
+				});
+				setPurchaseStep("complete");
+
+				// Recargar órdenes y balance
+				await loadOrders();
+			} else {
+				toast({
+					variant: "destructive",
+					title: "Verificación timeout",
+					description: "El pago puede demorar unos minutos en confirmarse",
+				});
+			}
+		} catch (error: any) {
+			setIsVerifying(false);
+			toast({
+				variant: "destructive",
+				title: "Error",
+				description:
+					error.response?.data?.error || "No se pudo procesar el pago",
+			});
+		} finally {
+			setProcessing(false);
+		}
+	};
+
+	const OrderCard: React.FC<{ order: any }> = ({ order }) => {
+		return (
+			<Card>
+				<CardHeader>
+					<CardTitle>Orden ID: {order.order_id}</CardTitle>
+					<CardDescription>
+						Producto: {order.product_id} • Estado: {order.status}
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<div className="flex flex-col space-y-2">
+						<div>Monto: ${order.amount} USDT</div>
+						<div>Fecha: {new Date(order.created_at).toLocaleString()}</div>
+						<Button
+							size="sm"
+							onClick={() =>
+								window.open(
+									`https://sepolia.etherscan.io/address/${order.wallet_address}`,
+									"_blank",
+								)
+							}
+						>
+							Ver Dirección en Etherscan
+						</Button>
+						{order.tx_hash && (
+							<div className="flex items-center gap-2">
+								Hash TX: <code className="break-all">{order.tx_hash}</code>
+								<Button
+									size="sm"
+									variant="ghost"
+									onClick={() =>
+										window.open(
+											`https://sepolia.etherscan.io/tx/${order.tx_hash}`,
+											"_blank",
+										)
+									}
+								>
+									<ExternalLink className="h-3 w-3" />
+								</Button>
+							</div>
+						)}
+					</div>
+				</CardContent>
+			</Card>
+		);
 	};
 
 	// Agrupar productos por tipo
@@ -483,7 +648,7 @@ const CryptoPurchase: React.FC = () => {
 							</div>
 						)}
 
-						{purchaseStep === "pay" && (
+						{/* {purchaseStep === "pay" && (
 							<div className="space-y-4">
 								<Alert>
 									<CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -509,6 +674,49 @@ const CryptoPurchase: React.FC = () => {
 										</>
 									)}
 								</Button>
+							</div>
+						)} */}
+
+						{purchaseStep === "pay" && (
+							<div className="space-y-4">
+								<Alert>
+									<CheckCircle2 className="h-4 w-4 text-green-600" />
+									<AlertDescription>
+										¡USDT aprobado! Ahora puedes proceder con el pago final.
+									</AlertDescription>
+								</Alert>
+								<Button
+									onClick={handlePay}
+									className="w-full"
+									size="lg"
+									disabled={processing || isVerifying}
+								>
+									{isVerifying ? (
+										<>
+											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+											Verificando en blockchain...
+										</>
+									) : processing ? (
+										<>
+											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+											Procesando pago...
+										</>
+									) : (
+										<>
+											<Wallet className="mr-2 h-4 w-4" />
+											Confirmar Pago
+										</>
+									)}
+								</Button>
+								{isVerifying && (
+									<Alert>
+										<AlertCircle className="h-4 w-4" />
+										<AlertDescription>
+											Esperando confirmación de la transacción en blockchain.
+											Esto puede tomar 1-2 minutos.
+										</AlertDescription>
+									</Alert>
+								)}
 							</div>
 						)}
 
@@ -579,7 +787,7 @@ const CryptoPurchase: React.FC = () => {
 					)}
 
 					<Tabs defaultValue="credits">
-						<TabsList className="grid w-full grid-cols-2 max-w-md">
+						<TabsList className="grid w-full grid-cols-3 max-w-md">
 							<TabsTrigger value="credits">
 								<Zap className="mr-2 h-4 w-4" />
 								Créditos AI
@@ -587,6 +795,10 @@ const CryptoPurchase: React.FC = () => {
 							<TabsTrigger value="plans">
 								<Star className="mr-2 h-4 w-4" />
 								Planes
+							</TabsTrigger>
+							<TabsTrigger value="orders">
+								<Wallet className="mr-2 h-4 w-4" />
+								Mis Órdenes
 							</TabsTrigger>
 						</TabsList>
 
@@ -610,6 +822,13 @@ const CryptoPurchase: React.FC = () => {
 										product={product}
 										featured={product.productId.includes("yearly")}
 									/>
+								))}
+							</div>
+						</TabsContent>
+						<TabsContent value="orders" className="space-y-4">
+							<div className="space-y-4">
+								{orders.map((order) => (
+									<OrderCard key={order.id} order={order} />
 								))}
 							</div>
 						</TabsContent>

@@ -3,6 +3,7 @@ import { pool } from "../db";
 import { isAuthenticated } from "../middlewares/auth-jwt";
 import { getCurrentUserData } from "../controllers/users";
 import { createCryptoPaymentService } from "../services/cryptoPayment.service";
+import { getBlockchainListener } from "../services/blockchainListener.service";
 
 const router = Router();
 
@@ -27,6 +28,25 @@ router.get("/network", async (req, res) => {
   } catch (error) {
     console.error("Error obteniendo info de red:", error);
     res.status(500).json({ error: "Error al obtener información de la red" });
+  }
+});
+
+/**
+ * Obtiene el estado del servicio de blockchain
+ */
+router.get("/service/status", async (req, res) => {
+  try {
+    const listener = getBlockchainListener();
+    if (!listener) {
+      res.status(503).json({ error: "Servicio no inicializado" });
+      return;
+    }
+
+    const status = listener.getStatus();
+    res.json(status);
+  } catch (error) {
+    console.error("Error obteniendo estado del servicio:", error);
+    res.status(500).json({ error: "Error al obtener estado del servicio" });
   }
 });
 
@@ -163,6 +183,13 @@ router.post("/orders", async (req, res) => {
       ]
     );
 
+    // ✨ ACTIVAR POLLING TEMPORAL
+    const listener = getBlockchainListener();
+    if (listener) {
+      listener.activateTemporaryPolling();
+      console.log("🔄 Polling temporal activado para nueva orden");
+    }
+
     res.status(201).json(rows[0]);
   } catch (error: any) {
     console.error("Error creando orden:", error);
@@ -239,52 +266,6 @@ router.get("/orders", async (req, res) => {
   } catch (error) {
     console.error("Error obteniendo órdenes:", error);
     res.status(500).json({ error: "Error al obtener órdenes" });
-  }
-});
-
-/**
- * Webhook para escuchar eventos de blockchain (interno)
- */
-router.post("/webhook/payment", async (req, res) => {
-  const { orderId, txHash } = req.body;
-
-  try {
-    // Verificar que el pago fue procesado
-    const isProcessed = await cryptoService.verifyPayment(orderId);
-    
-    if (!isProcessed) {
-      res.status(400).json({ error: "Pago no encontrado en blockchain" });
-      return;
-    }
-
-    // Obtener info del pago
-    const paymentInfo = await cryptoService.getPaymentInfo(orderId);
-
-    // Actualizar orden en BD
-    const { rows } = await pool.query(
-      `UPDATE crypto_payment_orders 
-       SET status = $1, tx_hash = $2, completed_at = NOW()
-       WHERE order_id = $3
-       RETURNING *`,
-      ["completed", txHash, orderId]
-    );
-
-    if (rows.length === 0) {
-      res.status(404).json({ error: "Orden no encontrada" });
-      return;
-    }
-
-    // Procesar el pago
-    await processCompletedPayment(rows[0]);
-
-    res.json({ 
-      success: true, 
-      order: rows[0],
-      paymentInfo 
-    });
-  } catch (error) {
-    console.error("Error procesando webhook:", error);
-    res.status(500).json({ error: "Error al procesar webhook" });
   }
 });
 
