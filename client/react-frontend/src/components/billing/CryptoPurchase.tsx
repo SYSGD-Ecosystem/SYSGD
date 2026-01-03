@@ -30,6 +30,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/lib/api";
 import { useWeb3 } from "./hooks/useWeb3";
+import LoadingLogo from "../LoadingLogo";
 
 // Tipos
 interface Product {
@@ -432,7 +433,7 @@ const CryptoPurchase: React.FC = () => {
 		const Icon = style.icon;
 
 		return (
-			<Badge variant={style.variant} >
+			<Badge variant={style.variant}>
 				<Icon className="h-3 w-3 mr-1" />
 				{style.text}
 			</Badge>
@@ -717,7 +718,7 @@ const CryptoPurchase: React.FC = () => {
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center min-h-screen">
-				<Loader2 className="h-8 w-8 animate-spin" />
+				<LoadingLogo />
 			</div>
 		);
 	}
@@ -729,6 +730,18 @@ const CryptoPurchase: React.FC = () => {
 					<AlertCircle className="h-4 w-4" />
 					<AlertTitle>Error</AlertTitle>
 					<AlertDescription>{error}</AlertDescription>
+					<Button
+						variant="outline"
+						className="ml-4"
+						onClick={() => {
+							setError(null);
+							setLoading(true);
+							loadProducts().finally(() => setLoading(false));
+						}}
+					>
+						<RefreshCw className="h-4 w-4 mr-2" />
+						Intentar de nuevo
+					</Button>
 				</Alert>
 			</div>
 		);
