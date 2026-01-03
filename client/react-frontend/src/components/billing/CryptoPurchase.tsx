@@ -10,6 +10,9 @@ import {
 	ExternalLink,
 	Copy,
 	CheckCircle2,
+	Clock,
+	XCircle,
+	RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +25,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/lib/api";
@@ -43,31 +46,21 @@ interface NetworkInfo {
 	paymentGatewayAddress: string;
 }
 
-// Simulación de conexión Web3 (reemplazar con wagmi/ethers real)
-// const useWeb3Mock = () => {
-//   const [address, setAddress] = useState<string>('');
-//   const [isConnected, setIsConnected] = useState(false);
-//   const [balance, setBalance] = useState('0');
-
-//   const connect = async () => {
-//     // Simular conexión
-//     setTimeout(() => {
-//       setAddress('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb');
-//       setIsConnected(true);
-//       setBalance('1000.00');
-//     }, 1000);
-//   };
-
-//   const disconnect = () => {
-//     setAddress('');
-//     setIsConnected(false);
-//     setBalance('0');
-//   };
-
-//   return { address, isConnected, balance, connect, disconnect };
-// };
+interface Order {
+	id: string;
+	order_id: string;
+	user_id: string;
+	wallet_address: string;
+	product_id: string;
+	amount: string;
+	status: "pending" | "processing" | "completed" | "failed" | "expired";
+	tx_hash?: string;
+	created_at: string;
+	completed_at?: string;
+}
 
 const CryptoPurchase: React.FC = () => {
+	const [error, setError] = useState<string | null>(null);
 	const [products, setProducts] = useState<Product[]>([]);
 	const [networkInfo, setNetworkInfo] = useState<NetworkInfo | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -78,8 +71,9 @@ const CryptoPurchase: React.FC = () => {
 	const [txHash, setTxHash] = useState("");
 	const [processing, setProcessing] = useState(false);
 	const [copied, setCopied] = useState(false);
-	const [orders, setOrders] = useState<any[]>([]);
+	const [orders, setOrders] = useState<Order[]>([]);
 	const [isVerifying, setIsVerifying] = useState(false);
+	const [verifyingOrderId, setVerifyingOrderId] = useState<string | null>(null);
 	const { toast } = useToast();
 
 	// const { address, isConnected, balance, connect, disconnect } = useWeb3Mock();
@@ -115,6 +109,7 @@ const CryptoPurchase: React.FC = () => {
 				title: "Error",
 				description: "No se pudieron cargar los productos",
 			});
+			setError("No se pudieron cargar los productos");
 		} finally {
 			setLoading(false);
 		}
@@ -133,7 +128,6 @@ const CryptoPurchase: React.FC = () => {
 
 	const loadOrders = async () => {
 		try {
-
 			const response = await api.get("/api/crypto-payments/orders", {
 				params: { walletAddress: address },
 			});
@@ -326,39 +320,199 @@ const CryptoPurchase: React.FC = () => {
 		}
 	};
 
-	const OrderCard: React.FC<{ order: any }> = ({ order }) => {
+	// const OrderCard: React.FC<{ order: any }> = ({ order }) => {
+	// 	return (
+	// 		<Card>
+	// 			<CardHeader>
+	// 				<CardTitle>Orden ID: {order.order_id}</CardTitle>
+	// 				<CardDescription>
+	// 					Producto: {order.product_id} • Estado: {order.status}
+	// 				</CardDescription>
+	// 			</CardHeader>
+	// 			<CardContent>
+	// 				<div className="flex flex-col space-y-2">
+	// 					<div>Monto: ${order.amount} USDT</div>
+	// 					<div>Fecha: {new Date(order.created_at).toLocaleString()}</div>
+	// 					<Button
+	// 						size="sm"
+	// 						onClick={() =>
+	// 							window.open(
+	// 								`https://sepolia.etherscan.io/address/${order.wallet_address}`,
+	// 								"_blank",
+	// 							)
+	// 						}
+	// 					>
+	// 						Ver Dirección en Etherscan
+	// 					</Button>
+	// 					{order.tx_hash && (
+	// 						<div className="flex items-center gap-2">
+	// 							Hash TX: <code className="break-all">{order.tx_hash}</code>
+	// 							<Button
+	// 								size="sm"
+	// 								variant="ghost"
+	// 								onClick={() =>
+	// 									window.open(
+	// 										`https://sepolia.etherscan.io/tx/${order.tx_hash}`,
+	// 										"_blank",
+	// 									)
+	// 								}
+	// 							>
+	// 								<ExternalLink className="h-3 w-3" />
+	// 							</Button>
+	// 						</div>
+	// 					)}
+	// 				</div>
+	// 			</CardContent>
+	// 		</Card>
+	// 	);
+	// };
+
+	const handleVerifyOrder = async (orderId: string) => {
+		setVerifyingOrderId(orderId);
+		try {
+			const response = await api.get<Order>(
+				`/api/crypto-payments/orders/${orderId}`,
+			);
+
+			await loadOrders();
+
+			if (response.data.status === "completed") {
+				toast({
+					title: "Orden completada",
+					description: "La transacción ha sido confirmada en blockchain",
+				});
+			} else if (response.data.status === "pending") {
+				toast({
+					title: "Orden pendiente",
+					description: "La transacción aún no ha sido confirmada",
+				});
+			}
+		} catch (error) {
+			toast({
+				variant: "destructive",
+				title: "Error",
+				description: "No se pudo verificar la orden",
+			});
+		} finally {
+			setVerifyingOrderId(null);
+		}
+	};
+
+	const getStatusBadge = (status: Order["status"]) => {
+		const styles = {
+			pending: {
+				variant: "secondary" as const,
+				icon: Clock,
+				text: "Pendiente",
+			},
+			processing: {
+				variant: "default" as const,
+				icon: Loader2,
+				text: "Procesando",
+			},
+			completed: {
+				variant: "default" as const,
+				icon: CheckCircle2,
+				text: "Completado",
+				className: "bg-green-600",
+			},
+			failed: {
+				variant: "destructive" as const,
+				icon: XCircle,
+				text: "Fallido",
+			},
+			expired: {
+				variant: "destructive" as const,
+				icon: XCircle,
+				text: "Expirado",
+			},
+		};
+
+		const style = styles[status];
+		const Icon = style.icon;
+
 		return (
-			<Card>
+			<Badge variant={style.variant} >
+				<Icon className="h-3 w-3 mr-1" />
+				{style.text}
+			</Badge>
+		);
+	};
+
+	const OrderCard: React.FC<{ order: Order }> = ({ order }) => {
+		const isVerifyingThis = verifyingOrderId === order.order_id;
+		const canVerify =
+			order.status === "pending" || order.status === "processing";
+
+		return (
+			<Card className="hover:shadow-md transition-shadow">
 				<CardHeader>
-					<CardTitle>Orden ID: {order.order_id}</CardTitle>
-					<CardDescription>
-						Producto: {order.product_id} • Estado: {order.status}
-					</CardDescription>
+					<div className="flex items-start justify-between">
+						<div className="space-y-1">
+							<CardTitle className="text-base">
+								Orden #{order.order_id.split("_")[1].slice(0, 8)}
+							</CardTitle>
+							<CardDescription className="text-xs">
+								{order.product_id}
+							</CardDescription>
+						</div>
+						{getStatusBadge(order.status)}
+					</div>
 				</CardHeader>
 				<CardContent>
-					<div className="flex flex-col space-y-2">
-						<div>Monto: ${order.amount} USDT</div>
-						<div>Fecha: {new Date(order.created_at).toLocaleString()}</div>
-						<Button
-							size="sm"
-							onClick={() =>
-								window.open(
-									`https://sepolia.etherscan.io/address/${order.wallet_address}`,
-									"_blank",
-								)
-							}
-						>
-							Ver Dirección en Etherscan
-						</Button>
-						{order.tx_hash && (
+					<div className="space-y-3">
+						{/* Monto */}
+						<div className="flex items-center justify-between py-2 border-b">
+							<span className="text-sm text-muted-foreground">Monto</span>
+							<span className="font-semibold">${order.amount} USDT</span>
+						</div>
+
+						{/* Fecha de creación */}
+						<div className="flex items-center justify-between py-2 border-b">
+							<span className="text-sm text-muted-foreground">Fecha</span>
+							<span className="text-sm">
+								{new Date(order.created_at).toLocaleString("es-ES", {
+									day: "2-digit",
+									month: "short",
+									year: "numeric",
+									hour: "2-digit",
+									minute: "2-digit",
+								})}
+							</span>
+						</div>
+
+						{/* Fecha de completado */}
+						{order.completed_at && (
+							<div className="flex items-center justify-between py-2 border-b">
+								<span className="text-sm text-muted-foreground">
+									Completado
+								</span>
+								<span className="text-sm">
+									{new Date(order.completed_at).toLocaleString("es-ES", {
+										day: "2-digit",
+										month: "short",
+										year: "numeric",
+										hour: "2-digit",
+										minute: "2-digit",
+									})}
+								</span>
+							</div>
+						)}
+						{/* Wallet Address */}
+						<div className="flex items-center justify-between py-2 border-b">
+							<span className="text-sm text-muted-foreground">Wallet</span>
 							<div className="flex items-center gap-2">
-								Hash TX: <code className="break-all">{order.tx_hash}</code>
+								<code className="text-xs bg-muted px-2 py-1 rounded">
+									{order.wallet_address.slice(0, 6)}...
+									{order.wallet_address.slice(-4)}
+								</code>
 								<Button
 									size="sm"
 									variant="ghost"
+									className="h-6 w-6 p-0"
 									onClick={() =>
 										window.open(
-											`https://sepolia.etherscan.io/tx/${order.tx_hash}`,
+											`https://sepolia.etherscan.io/address/${order.wallet_address}`,
 											"_blank",
 										)
 									}
@@ -366,9 +520,85 @@ const CryptoPurchase: React.FC = () => {
 									<ExternalLink className="h-3 w-3" />
 								</Button>
 							</div>
+						</div>
+
+						{/* Transaction Hash */}
+						{order.tx_hash && (
+							<div className="py-2">
+								<span className="text-sm text-muted-foreground block mb-2">
+									Hash de Transacción
+								</span>
+								<div className="flex items-center gap-2 bg-muted p-2 rounded">
+									<code className="text-xs flex-1 truncate">
+										{order.tx_hash}
+									</code>
+									<Button
+										size="sm"
+										variant="ghost"
+										className="h-6 w-6 p-0"
+										onClick={() => copyToClipboard(order.tx_hash!)}
+									>
+										{copied ? (
+											<Check className="h-3 w-3" />
+										) : (
+											<Copy className="h-3 w-3" />
+										)}
+									</Button>
+									<Button
+										size="sm"
+										variant="ghost"
+										className="h-6 w-6 p-0"
+										onClick={() =>
+											window.open(
+												`https://sepolia.etherscan.io/tx/${order.tx_hash}`,
+												"_blank",
+											)
+										}
+									>
+										<ExternalLink className="h-3 w-3" />
+									</Button>
+								</div>
+							</div>
 						)}
 					</div>
 				</CardContent>
+				<CardFooter className="flex gap-2">
+					<Button
+						size="sm"
+						variant="outline"
+						className="flex-1"
+						onClick={() =>
+							window.open(
+								`https://sepolia.etherscan.io/address/${order.wallet_address}`,
+								"_blank",
+							)
+						}
+					>
+						<ExternalLink className="h-3 w-3 mr-2" />
+						Ver en Etherscan
+					</Button>
+					{canVerify && (
+						<Button
+							size="sm"
+							variant="default"
+							className="flex-1"
+							onClick={() => handleVerifyOrder(order.order_id)}
+							disabled={isVerifyingThis}
+						>
+							{isVerifyingThis ? (
+								<>
+									<Loader2 className="h-3 w-3 mr-2 animate-spin" />
+									Verificando...
+								</>
+							) : (
+								<>
+									<RefreshCw className="h-3 w-3 mr-2" />
+									Verificar Estado
+								</>
+							)}
+						</Button>
+					)}
+				</CardFooter>
 			</Card>
 		);
 	};
@@ -488,6 +718,18 @@ const CryptoPurchase: React.FC = () => {
 		return (
 			<div className="flex items-center justify-center min-h-screen">
 				<Loader2 className="h-8 w-8 animate-spin" />
+			</div>
+		);
+	}
+
+	if (error) {
+		return (
+			<div className="container max-w-7xl mx-auto p-6 space-y-6">
+				<Alert variant="destructive">
+					<AlertCircle className="h-4 w-4" />
+					<AlertTitle>Error</AlertTitle>
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
 			</div>
 		);
 	}
