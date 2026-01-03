@@ -133,11 +133,6 @@ const CryptoPurchase: React.FC = () => {
 
 	const loadOrders = async () => {
 		try {
-			// const check = await api.post("/api/crypto-payments/webhook/payment", {
-			// 	params: { walletAddress: address },
-			// });
-
-			// console.log(check);
 
 			const response = await api.get("/api/crypto-payments/orders", {
 				params: { walletAddress: address },
@@ -826,7 +821,7 @@ const CryptoPurchase: React.FC = () => {
 							</div>
 						</TabsContent>
 						<TabsContent value="orders" className="space-y-4">
-							<div className="space-y-4">
+							<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 								{orders.map((order) => (
 									<OrderCard key={order.id} order={order} />
 								))}
