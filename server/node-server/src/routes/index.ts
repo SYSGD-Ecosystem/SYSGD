@@ -18,6 +18,7 @@ import github from "./github.routes";
 import taskConfig from "./task-config";
 import tokenRoutes from "./tokens";
 import cryptoPaymentRoutes from "./cryptoPayments.routes";
+import veri from "./verification.routes";
 
 const router = Router();
 
@@ -39,6 +40,7 @@ router.use("/upload", upload);
 router.use("/github", github);
 router.use('/tokens', tokenRoutes);
 router.use('/crypto-payments', cryptoPaymentRoutes);
+router.use("/verification", veri);
 router.use("/", taskConfig);
 
 

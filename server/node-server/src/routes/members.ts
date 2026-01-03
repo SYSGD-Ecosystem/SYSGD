@@ -3,6 +3,7 @@ import express, { type Request, type Response } from "express";
 import { pool } from "../db";
 import { isAuthenticated } from "../middlewares/auth-jwt";
 import { getCurrentUserData } from "../controllers/users";
+import { InvitationController } from "../controllers/invitationControler";
 const router = express.Router();
 
 router.get("/status", (_req, res) => {
@@ -44,7 +45,7 @@ router.get("/:projectId", isAuthenticated, async (req, res) => {
 				tareasCompletadas: 0
 			})),
 			...invitationsResult.rows.map(invitation => ({
-				id: invitation.receiver_id, // Usar receiver_id que ahora siempre es válido
+				id: invitation.receiver_id,
 				name: invitation.receiver_email,
 				email: invitation.receiver_email,
 				role: invitation.role,
@@ -99,14 +100,18 @@ router.post("/invite/:projectId", isAuthenticated, async (req, res) => {
 			[senderId, receiverId, email, projectId, role || "member"],
 		);
 
-		res.json({ 
-			message: "Invitación enviada",
-			userCreated: !userExists,
-			receiverId: receiverId
-		});
+		// CAMBIO IMPORTANTE: Llamar al controlador SIN enviar respuesta todavía
+		// El controlador ahora manejará la respuesta
+		await InvitationController.sendProjectInvitation(req, res);
+		
+		// NO enviamos respuesta aquí porque InvitationController.sendProjectInvitation ya lo hace
+		
 	} catch (error) {
 		console.error("Error creando la invitación:", error);
-		res.status(500).json({ error: "Error al invitar al usuario" });
+		// Solo enviar respuesta de error si no se ha enviado ya
+		if (!res.headersSent) {
+			res.status(500).json({ error: "Error al invitar al usuario" });
+		}
 	}
 });
 
