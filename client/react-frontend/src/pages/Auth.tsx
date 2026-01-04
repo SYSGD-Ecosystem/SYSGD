@@ -22,6 +22,8 @@ const Auth: FC = () => {
 	const [name, setName] = useState("");
 	const [user, setUser] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
+	const [invitationToken, setInvitationToken] = useState<string | null>(null);
+	const [invitationData, setInvitationData] = useState<any>(null);
 
 	const [loginStep, setLoginStep] = useState<
 		"email" | "password" | "complete" | "offer-register"
@@ -54,16 +56,44 @@ const Auth: FC = () => {
 		// 1. Verificar si venimos de un redireccionamiento de Google
 		const urlParams = new URLSearchParams(window.location.search);
 		const token = urlParams.get("token");
+		const invToken = urlParams.get("invitation_token");
 
 		if (token) {
-			// Guardamos en localStorage como respaldo (Fallback)
 			localStorage.setItem("token", token);
-
-			// Limpiamos la URL por seguridad y estética
 			window.history.replaceState({}, document.title, window.location.pathname);
-
-			// El hook useAuthSession detectará el token y validará la sesión
 			router("/dashboard");
+			return;
+		}
+
+		// Token de invitación por email
+		if (invToken) {
+			setInvitationToken(invToken);
+			// Verificar el token de invitación
+			fetch(`${serverUrl}/api/invitations/verify-token?token=${invToken}`)
+				.then((res) => res.json())
+				.then((data) => {
+					if (data.valid) {
+						setInvitationData(data.invitation);
+						setUser(data.invitation.email); // Pre-llenar el email
+						// Verificar si el usuario ya existe
+						checkUser(data.invitation.email);
+					} else {
+						alert(data.error || "Token de invitación inválido");
+						window.history.replaceState(
+							{},
+							document.title,
+							window.location.pathname,
+						);
+					}
+				})
+				.catch(() => {
+					alert("Error al verificar la invitación");
+					window.history.replaceState(
+						{},
+						document.title,
+						window.location.pathname,
+					);
+				});
 		}
 	}, [router]);
 
@@ -102,15 +132,58 @@ const Auth: FC = () => {
 	   HANDLERS
 	======================= */
 
-	const handleRegisterSubmit = (e: FormEvent) => {
-		e.preventDefault();
-		if (password !== repetPassword) {
-			alert("Las contraseñas no coinciden");
-			return;
-		}
-		register({ name, email: user, password });
-	};
+	// const handleRegisterSubmit = (e: FormEvent) => {
+	// 	e.preventDefault();
+	// 	if (password !== repetPassword) {
+	// 		alert("Las contraseñas no coinciden");
+	// 		return;
+	// 	}
+	// 	register({ name, email: user, password });
+	// };
 
+	// const handleLoginSubmit = async (e: FormEvent) => {
+	// 	e.preventDefault();
+
+	// 	if (loginStep === "email") {
+	// 		await checkUser(user);
+	// 		return;
+	// 	}
+
+	// 	if (loginStep === "password") {
+	// 		login({ email: user, password });
+	// 		return;
+	// 	}
+
+	// 	if (loginStep === "complete" && invitedUserId) {
+	// 		if (!name || !password || !confirmPassword) {
+	// 			alert("Por favor completa todos los campos");
+	// 			return;
+	// 		}
+	// 		if (password !== confirmPassword) {
+	// 			alert("Las contraseñas no coinciden");
+	// 			return;
+	// 		}
+	// 		try {
+	// 			const res = await fetch(`${serverUrl}/api/auth/complete-registration`, {
+	// 				method: "POST",
+	// 				headers: { "Content-Type": "application/json" },
+	// 				credentials: "include",
+	// 				body: JSON.stringify({
+	// 					userId: invitedUserId,
+	// 					name,
+	// 					password,
+	// 					email: user,
+	// 					confirmPassword,
+	// 				}),
+	// 			});
+	// 			if (res.ok) router("/dashboard");
+	// 		} catch {
+	// 			// feedback visual opcional
+	// 		}
+	// 	}
+	// };
+
+	// Actualiza el handleLoginSubmit para manejar invitaciones
 	const handleLoginSubmit = async (e: FormEvent) => {
 		e.preventDefault();
 
@@ -120,7 +193,24 @@ const Auth: FC = () => {
 		}
 
 		if (loginStep === "password") {
-			login({ email: user, password });
+			// Si hay token de invitación, aceptarla después del login
+			await login({ email: user, password });
+
+			if (invitationToken) {
+				try {
+					const token = localStorage.getItem("token");
+					await fetch(`${serverUrl}/api/invitations/accept`, {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+							Authorization: `Bearer ${token}`,
+						},
+						body: JSON.stringify({ token: invitationToken }),
+					});
+				} catch (err) {
+					console.error("Error aceptando invitación:", err);
+				}
+			}
 			return;
 		}
 
@@ -146,12 +236,68 @@ const Auth: FC = () => {
 						confirmPassword,
 					}),
 				});
-				if (res.ok) router("/dashboard");
-			} catch {
-				// feedback visual opcional
+
+				if (res.ok) {
+					const data = await res.json();
+					const token = data.token;
+
+					if (token) {
+						localStorage.setItem("token", token);
+					}
+
+					// Si hay token de invitación, aceptarla después de completar registro
+					if (invitationToken) {
+						try {
+							await fetch(`${serverUrl}/api/invitations/accept`, {
+								method: "POST",
+								headers: {
+									"Content-Type": "application/json",
+									Authorization: `Bearer ${token}`,
+								},
+								body: JSON.stringify({ token: invitationToken }),
+							});
+						} catch (err) {
+							console.error("Error aceptando invitación:", err);
+						}
+					}
+
+					router("/dashboard");
+				}
+			} catch (err) {
+				alert("Error al completar el registro");
 			}
 		}
 	};
+
+	// Actualiza el handleRegisterSubmit para manejar invitaciones
+	const handleRegisterSubmit = async (e: FormEvent) => {
+		e.preventDefault();
+		if (password !== repetPassword) {
+			alert("Las contraseñas no coinciden");
+			return;
+		}
+
+		await register({ name, email: user, password });
+
+		// Si el registro fue exitoso y hay token de invitación
+		if (success && invitationToken) {
+			try {
+				const token = localStorage.getItem("token");
+				await fetch(`${serverUrl}/api/invitations/accept`, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: `Bearer ${token}`,
+					},
+					body: JSON.stringify({ token: invitationToken }),
+				});
+			} catch (err) {
+				console.error("Error aceptando invitación:", err);
+			}
+		}
+	};
+
+	// Agrega un banner informativo cuando hay invitación
 
 	/* =======================
 	   RETURNS SOLO UI
@@ -303,6 +449,22 @@ const Auth: FC = () => {
 
 						{loginStep === "complete" && (
 							<>
+								{invitationData && (
+									<div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-4 flex items-start gap-3 mb-4">
+										<AlertCircle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+										<div>
+											<p className="text-sm text-blue-100 font-medium mb-1">
+												Invitación de proyecto
+											</p>
+											<p className="text-xs text-blue-200">
+												<strong>{invitationData.senderName}</strong> te invitó a
+												colaborar en{" "}
+												<strong>{invitationData.projectName}</strong>
+											</p>
+										</div>
+									</div>
+								)}
+
 								<div className="bg-green-500/20 border border-green-500/30 rounded-lg p-4 flex items-center gap-3">
 									<CheckCircle className="w-5 h-5 text-green-400" />
 									<p className="text-sm text-green-100">

@@ -322,7 +322,7 @@ Si no creaste una cuenta, puedes ignorar este email.
     invitationToken: string,
     recipientName?: string
   ): Promise<boolean> {
-    const invitationUrl = `${APP_URL}/accept-invitation?token=${invitationToken}`;
+    const invitationUrl = `${APP_URL}/login?invitation_token=${invitationToken}`;
 
     const html = `
       <!DOCTYPE html>

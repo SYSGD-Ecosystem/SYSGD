@@ -10,6 +10,7 @@ interface User {
 
 const useCurrentUser = () => {
 	const [user, setUser] = useState<User | null>(null);
+	const [isAuthenticated, setIsAuthenticated] = useState(false);
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
@@ -26,8 +27,10 @@ const useCurrentUser = () => {
 				}
 
 				setUser(userData);
+				setIsAuthenticated(true);
 			} catch {
 				setUser(null);
+				setIsAuthenticated(false);
 			} finally {
 				setLoading(false);
 			}
@@ -36,7 +39,7 @@ const useCurrentUser = () => {
 		fetchUser();
 	}, []);
 
-	return { user, loading };
+	return { user, isAuthenticated, loading };
 };
 
 export default useCurrentUser;

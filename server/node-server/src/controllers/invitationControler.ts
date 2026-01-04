@@ -142,4 +142,149 @@ export class InvitationController {
   }
 
   // ... resto de los métodos sin cambios
+   /**
+   * Acepta una invitación usando el token
+   */
+  static async acceptInvitation(req: Request, res: Response) {
+    const userId = (req as any).user?.id;
+    const { token } = req.body;
+
+    if (!userId || !token) {
+      res.status(400).json({ error: 'Token requerido' });
+      return;
+    }
+
+    try {
+      await pool.query('BEGIN');
+
+      // Buscar token
+      const { rows: tokenRows } = await pool.query(
+        `SELECT id, user_id, expires_at, used 
+         FROM email_verification_tokens 
+         WHERE token = $1 AND type = 'invitation'`,
+        [token]
+      );
+
+      if (tokenRows.length === 0) {
+        await pool.query('ROLLBACK');
+        res.status(400).json({ error: 'Token inválido' });
+        return;
+      }
+
+      const tokenData = tokenRows[0];
+
+      if (tokenData.used) {
+        await pool.query('ROLLBACK');
+        res.status(400).json({ error: 'Esta invitación ya fue usada' });
+        return;
+      }
+
+      if (new Date(tokenData.expires_at) < new Date()) {
+        await pool.query('ROLLBACK');
+        res.status(400).json({ error: 'La invitación ha expirado' });
+        return;
+      }
+
+      // Buscar invitación pendiente
+      const { rows: invitationRows } = await pool.query(
+        `SELECT id, resource_type, resource_id, role
+         FROM invitations
+         WHERE (receiver_id = $1 OR receiver_email = (
+           SELECT email FROM users WHERE id = $1
+         ))
+         AND status = 'pending'
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [userId]
+      );
+
+      if (invitationRows.length === 0) {
+        await pool.query('ROLLBACK');
+        res.status(404).json({ error: 'Invitación no encontrada' });
+        return;
+      }
+
+      const invitation = invitationRows[0];
+
+      // Marcar invitación como aceptada
+      await pool.query(
+        `UPDATE invitations 
+         SET status = 'accepted', receiver_id = $1
+         WHERE id = $2`,
+        [userId, invitation.id]
+      );
+
+      // Agregar acceso al recurso
+      await pool.query(
+        `INSERT INTO resource_access (user_id, resource_type, resource_id, role)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (user_id, resource_type, resource_id) 
+         DO UPDATE SET role = $4`,
+        [userId, invitation.resource_type, invitation.resource_id, invitation.role]
+      );
+
+      // Marcar token como usado
+      await pool.query(
+        `UPDATE email_verification_tokens 
+         SET used = true, used_at = NOW()
+         WHERE id = $1`,
+        [tokenData.id]
+      );
+
+      await pool.query('COMMIT');
+
+      res.json({
+        message: 'Invitación aceptada correctamente',
+        resourceType: invitation.resource_type,
+        resourceId: invitation.resource_id
+      });
+    } catch (error) {
+      await pool.query('ROLLBACK');
+      console.error('Error accepting invitation:', error);
+      res.status(500).json({ error: 'Error al aceptar invitación' });
+    }
+  }
+
+  /**
+   * Envía notificación de tarea asignada
+   */
+  static async notifyTaskAssignment(
+    recipientEmail: string,
+    recipientName: string,
+    taskTitle: string,
+    projectName: string,
+    assignedBy: string,
+    taskUrl: string
+  ): Promise<boolean> {
+    try {
+      const emailSent = await EmailService.sendTaskAssignedEmail(
+        recipientEmail,
+        recipientName,
+        taskTitle,
+        projectName,
+        assignedBy,
+        taskUrl
+      );
+
+      // Registrar en log
+      if (emailSent) {
+        await pool.query(
+          `INSERT INTO email_notifications (
+            recipient_email,
+            subject,
+            type,
+            status,
+            sent_at
+          )
+          VALUES ($1, $2, 'task_assigned', 'sent', NOW())`,
+          [recipientEmail, `Nueva tarea: ${taskTitle}`]
+        );
+      }
+
+      return emailSent;
+    } catch (error) {
+      console.error('Error sending task notification:', error);
+      return false;
+    }
+  }
 }
