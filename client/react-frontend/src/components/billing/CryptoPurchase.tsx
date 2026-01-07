@@ -10,8 +10,6 @@ import {
 	ExternalLink,
 	Copy,
 	CheckCircle2,
-	Clock,
-	XCircle,
 	RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,23 +29,24 @@ import { useToast } from "@/hooks/use-toast";
 import api from "@/lib/api";
 import { useWeb3 } from "./hooks/useWeb3";
 import LoadingLogo from "../LoadingLogo";
+import PurchaseOrders from "./PurchaseOrders";
 
 // Tipos
-interface Product {
+export interface Product {
 	productId: string;
 	price: string;
 	active: boolean;
 	description: string;
 }
 
-interface NetworkInfo {
+export interface NetworkInfo {
 	chainId: number;
 	name: string;
 	testUsdtAddress: string;
 	paymentGatewayAddress: string;
 }
 
-interface Order {
+export interface Order {
 	id: string;
 	order_id: string;
 	user_id: string;
@@ -74,7 +73,7 @@ const CryptoPurchase: React.FC = () => {
 	const [copied, setCopied] = useState(false);
 	const [orders, setOrders] = useState<Order[]>([]);
 	const [isVerifying, setIsVerifying] = useState(false);
-	const [verifyingOrderId, setVerifyingOrderId] = useState<string | null>(null);
+	// const [verifyingOrderId, setVerifyingOrderId] = useState<string | null>(null);
 	const { toast } = useToast();
 
 	// const { address, isConnected, balance, connect, disconnect } = useWeb3Mock();
@@ -139,6 +138,10 @@ const CryptoPurchase: React.FC = () => {
 		}
 	};
 
+	const reloadOrders = async () => {
+		await loadOrders();
+	};
+
 	const handleSelectProduct = (product: Product) => {
 		setSelectedProduct(product);
 		setPurchaseStep("approve");
@@ -170,45 +173,6 @@ const CryptoPurchase: React.FC = () => {
 		}
 	};
 
-	// const handlePay = async () => {
-	// 	if (!selectedProduct || !address) return;
-
-	// 	setProcessing(true);
-	// 	try {
-	// 		// 1. Crear orden en backend
-	// 		const orderResponse = await api.post("/api/crypto-payments/orders", {
-	// 			productId: selectedProduct.productId,
-	// 			walletAddress: address,
-	// 		});
-
-	// 		const order = orderResponse.data;
-
-	// 		console.log(order);
-
-	// 		const txHash = await processPayment(
-	// 			selectedProduct.productId,
-	// 			order.order_id,
-	// 		);
-
-	// 		setTxHash(txHash);
-
-	// 		toast({
-	// 			title: "Pago procesado",
-	// 			description: "Tu compra se ha completado exitosamente",
-	// 		});
-
-	// 		setPurchaseStep("complete");
-	// 	} catch (error: any) {
-	// 		toast({
-	// 			variant: "destructive",
-	// 			title: "Error",
-	// 			description:
-	// 				error.response?.data?.error || "No se pudo procesar el pago",
-	// 		});
-	// 	} finally {
-	// 		setProcessing(false);
-	// 	}
-	// };
 
 	const copyToClipboard = (text: string) => {
 		navigator.clipboard.writeText(text);
@@ -321,288 +285,6 @@ const CryptoPurchase: React.FC = () => {
 		}
 	};
 
-	// const OrderCard: React.FC<{ order: any }> = ({ order }) => {
-	// 	return (
-	// 		<Card>
-	// 			<CardHeader>
-	// 				<CardTitle>Orden ID: {order.order_id}</CardTitle>
-	// 				<CardDescription>
-	// 					Producto: {order.product_id} • Estado: {order.status}
-	// 				</CardDescription>
-	// 			</CardHeader>
-	// 			<CardContent>
-	// 				<div className="flex flex-col space-y-2">
-	// 					<div>Monto: ${order.amount} USDT</div>
-	// 					<div>Fecha: {new Date(order.created_at).toLocaleString()}</div>
-	// 					<Button
-	// 						size="sm"
-	// 						onClick={() =>
-	// 							window.open(
-	// 								`https://sepolia.etherscan.io/address/${order.wallet_address}`,
-	// 								"_blank",
-	// 							)
-	// 						}
-	// 					>
-	// 						Ver Dirección en Etherscan
-	// 					</Button>
-	// 					{order.tx_hash && (
-	// 						<div className="flex items-center gap-2">
-	// 							Hash TX: <code className="break-all">{order.tx_hash}</code>
-	// 							<Button
-	// 								size="sm"
-	// 								variant="ghost"
-	// 								onClick={() =>
-	// 									window.open(
-	// 										`https://sepolia.etherscan.io/tx/${order.tx_hash}`,
-	// 										"_blank",
-	// 									)
-	// 								}
-	// 							>
-	// 								<ExternalLink className="h-3 w-3" />
-	// 							</Button>
-	// 						</div>
-	// 					)}
-	// 				</div>
-	// 			</CardContent>
-	// 		</Card>
-	// 	);
-	// };
-
-	const handleVerifyOrder = async (orderId: string) => {
-		setVerifyingOrderId(orderId);
-		try {
-			const response = await api.get<Order>(
-				`/api/crypto-payments/orders/${orderId}`,
-			);
-
-			await loadOrders();
-
-			if (response.data.status === "completed") {
-				toast({
-					title: "Orden completada",
-					description: "La transacción ha sido confirmada en blockchain",
-				});
-			} else if (response.data.status === "pending") {
-				toast({
-					title: "Orden pendiente",
-					description: "La transacción aún no ha sido confirmada",
-				});
-			}
-		} catch (error) {
-			toast({
-				variant: "destructive",
-				title: "Error",
-				description: "No se pudo verificar la orden",
-			});
-		} finally {
-			setVerifyingOrderId(null);
-		}
-	};
-
-	const getStatusBadge = (status: Order["status"]) => {
-		const styles = {
-			pending: {
-				variant: "secondary" as const,
-				icon: Clock,
-				text: "Pendiente",
-			},
-			processing: {
-				variant: "default" as const,
-				icon: Loader2,
-				text: "Procesando",
-			},
-			completed: {
-				variant: "default" as const,
-				icon: CheckCircle2,
-				text: "Completado",
-				className: "bg-green-600",
-			},
-			failed: {
-				variant: "destructive" as const,
-				icon: XCircle,
-				text: "Fallido",
-			},
-			expired: {
-				variant: "destructive" as const,
-				icon: XCircle,
-				text: "Expirado",
-			},
-		};
-
-		const style = styles[status];
-		const Icon = style.icon;
-
-		return (
-			<Badge variant={style.variant}>
-				<Icon className="h-3 w-3 mr-1" />
-				{style.text}
-			</Badge>
-		);
-	};
-
-	const OrderCard: React.FC<{ order: Order }> = ({ order }) => {
-		const isVerifyingThis = verifyingOrderId === order.order_id;
-		const canVerify =
-			order.status === "pending" || order.status === "processing";
-
-		return (
-			<Card className="hover:shadow-md transition-shadow">
-				<CardHeader>
-					<div className="flex items-start justify-between">
-						<div className="space-y-1">
-							<CardTitle className="text-base">
-								Orden #{order.order_id.split("_")[1].slice(0, 8)}
-							</CardTitle>
-							<CardDescription className="text-xs">
-								{order.product_id}
-							</CardDescription>
-						</div>
-						{getStatusBadge(order.status)}
-					</div>
-				</CardHeader>
-				<CardContent>
-					<div className="space-y-3">
-						{/* Monto */}
-						<div className="flex items-center justify-between py-2 border-b">
-							<span className="text-sm text-muted-foreground">Monto</span>
-							<span className="font-semibold">${order.amount} USDT</span>
-						</div>
-
-						{/* Fecha de creación */}
-						<div className="flex items-center justify-between py-2 border-b">
-							<span className="text-sm text-muted-foreground">Fecha</span>
-							<span className="text-sm">
-								{new Date(order.created_at).toLocaleString("es-ES", {
-									day: "2-digit",
-									month: "short",
-									year: "numeric",
-									hour: "2-digit",
-									minute: "2-digit",
-								})}
-							</span>
-						</div>
-
-						{/* Fecha de completado */}
-						{order.completed_at && (
-							<div className="flex items-center justify-between py-2 border-b">
-								<span className="text-sm text-muted-foreground">
-									Completado
-								</span>
-								<span className="text-sm">
-									{new Date(order.completed_at).toLocaleString("es-ES", {
-										day: "2-digit",
-										month: "short",
-										year: "numeric",
-										hour: "2-digit",
-										minute: "2-digit",
-									})}
-								</span>
-							</div>
-						)}
-						{/* Wallet Address */}
-						<div className="flex items-center justify-between py-2 border-b">
-							<span className="text-sm text-muted-foreground">Wallet</span>
-							<div className="flex items-center gap-2">
-								<code className="text-xs bg-muted px-2 py-1 rounded">
-									{order.wallet_address.slice(0, 6)}...
-									{order.wallet_address.slice(-4)}
-								</code>
-								<Button
-									size="sm"
-									variant="ghost"
-									className="h-6 w-6 p-0"
-									onClick={() =>
-										window.open(
-											`https://sepolia.etherscan.io/address/${order.wallet_address}`,
-											"_blank",
-										)
-									}
-								>
-									<ExternalLink className="h-3 w-3" />
-								</Button>
-							</div>
-						</div>
-
-						{/* Transaction Hash */}
-						{order.tx_hash && (
-							<div className="py-2">
-								<span className="text-sm text-muted-foreground block mb-2">
-									Hash de Transacción
-								</span>
-								<div className="flex items-center gap-2 bg-muted p-2 rounded">
-									<code className="text-xs flex-1 truncate">
-										{order.tx_hash}
-									</code>
-									<Button
-										size="sm"
-										variant="ghost"
-										className="h-6 w-6 p-0"
-										onClick={() => copyToClipboard(order.tx_hash!)}
-									>
-										{copied ? (
-											<Check className="h-3 w-3" />
-										) : (
-											<Copy className="h-3 w-3" />
-										)}
-									</Button>
-									<Button
-										size="sm"
-										variant="ghost"
-										className="h-6 w-6 p-0"
-										onClick={() =>
-											window.open(
-												`https://sepolia.etherscan.io/tx/${order.tx_hash}`,
-												"_blank",
-											)
-										}
-									>
-										<ExternalLink className="h-3 w-3" />
-									</Button>
-								</div>
-							</div>
-						)}
-					</div>
-				</CardContent>
-				<CardFooter className="flex gap-2">
-					<Button
-						size="sm"
-						variant="outline"
-						className="flex-1"
-						onClick={() =>
-							window.open(
-								`https://sepolia.etherscan.io/address/${order.wallet_address}`,
-								"_blank",
-							)
-						}
-					>
-						<ExternalLink className="h-3 w-3 mr-2" />
-						Ver en Etherscan
-					</Button>
-					{canVerify && (
-						<Button
-							size="sm"
-							variant="default"
-							className="flex-1"
-							onClick={() => handleVerifyOrder(order.order_id)}
-							disabled={isVerifyingThis}
-						>
-							{isVerifyingThis ? (
-								<>
-									<Loader2 className="h-3 w-3 mr-2 animate-spin" />
-									Verificando...
-								</>
-							) : (
-								<>
-									<RefreshCw className="h-3 w-3 mr-2" />
-									Verificar Estado
-								</>
-							)}
-						</Button>
-					)}
-				</CardFooter>
-			</Card>
-		);
-	};
 
 	// Agrupar productos por tipo
 	const creditProducts = products.filter((p) =>
@@ -1077,9 +759,7 @@ const CryptoPurchase: React.FC = () => {
 						</TabsContent>
 						<TabsContent value="orders" className="space-y-4">
 							<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-								{orders.map((order) => (
-									<OrderCard key={order.id} order={order} />
-								))}
+								<PurchaseOrders orders={orders} loadOrders={reloadOrders} />
 							</div>
 						</TabsContent>
 					</Tabs>

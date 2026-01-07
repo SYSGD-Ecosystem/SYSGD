@@ -26,6 +26,7 @@ import EditableSpreadsheet from "./pages/Sheet.tsx";
 import TermsAndConditions from "./pages/Terms.tsx";
 import TokenManagement from "./components/TokenManagement.tsx";
 import Purchase from "./pages/Purchase.tsx";
+import SettingsPage from "./pages/SettingPage.tsx";
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(
@@ -52,6 +53,7 @@ createRoot(document.getElementById("root")!).render(
 						<Route path="/landpage" element={<LandingPage />} />
 						<Route path="/chat" element={<HomeChat />} />
 						<Route path="/help" element={<Help />} />
+						<Route path="/settings" element={<SettingsPage />} />
 						<Route path="/settings/tokens" element={<TokenManagement />} />
 						<Route path="/billing/purchase" element={<Purchase />} />
 						<Route path="/billing/upgrade" element={<Purchase />} />
