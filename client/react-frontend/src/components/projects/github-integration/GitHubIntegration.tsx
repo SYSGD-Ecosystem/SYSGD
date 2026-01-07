@@ -7,8 +7,6 @@ import {
 	RefreshCw,
 	Settings,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,14 +42,12 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import useExportTable from "@/hooks/useExportTable";
+import useGitHubIntegration from "@/components/projects/github-integration/hooks/useGitHubIntegration";
 import type {
 	GitHubMetrics,
 	GitHubPullRequest,
 	GitHubRepository,
-	PullRequestFilters,
 } from "@/types/GitHubTypes";
-
-const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 
 export type GitHubCacheEntry = {
 	repository: GitHubRepository | null;
@@ -101,389 +97,43 @@ export default function GitHubIntegration({
 	setGitHubCache,
 	clearGitHubCache,
 }: GitHubIntegrationProps) {
-	const [isConfigured, setIsConfigured] = useState(false);
-	const [isLoading, setIsLoading] = useState(false);
-	const [isValidating, setIsValidating] = useState(false);
-	const [showConfig, setShowConfig] = useState(false);
-	const [hasUserToken, setHasUserToken] = useState(false);
-	const [showTokenForm, setShowTokenForm] = useState(false);
-	const [isCheckingConfig, setIsCheckingConfig] = useState(true);
-
-	// Configuration state (from project)
-	const [repoUrl, setRepoUrl] = useState("");
-	const [owner, setOwner] = useState("");
-	const [repo, setRepo] = useState("");
-	const [token, setToken] = useState("");
-
-	// Data state
-	const [repository, setRepository] = useState<GitHubRepository | null>(null);
-	const [pullRequests, setPullRequests] = useState<GitHubPullRequest[]>([]);
-	const [metrics, setMetrics] = useState<GitHubMetrics | null>(null);
-
-	// Pagination state
-	const [currentPage, setCurrentPage] = useState(1);
-	const [totalPages, setTotalPages] = useState(1);
-	const [totalCount, setTotalCount] = useState(0);
-
-	// Filters state
-	const [filters, setFilters] = useState<PullRequestFilters>({
-		state: "all",
-		sort: "created",
-		direction: "desc",
-		dateFrom: "",
-		dateTo: "",
+	const {
+		isConfigured,
+		isLoading,
+		isValidating,
+		showConfig,
+		hasUserToken,
+		showTokenForm,
+		isCheckingConfig,
+		repoUrl,
+		owner,
+		repo,
+		token,
+		repository,
+		pullRequests,
+		metrics,
+		currentPage,
+		totalPages,
+		totalCount,
+		filters,
+		setShowConfig,
+		setToken,
+		setOwner,
+		setRepo,
+		saveProjectConfig,
+		fetchPullRequests,
+		saveUserToken,
+		handleFilterChange,
+		handleRefresh,
+		parseAndSetRepoFromUrl,
+	} = useGitHubIntegration({
+		projectId,
+		getGitHubCache,
+		setGitHubCache,
+		clearGitHubCache,
 	});
 
 	const { exportToXlsx } = useExportTable();
-
-	// Load project config and user token status on mount
-	useEffect(() => {
-		const loadProjectConfig = async () => {
-			try {
-				const res = await fetch(
-					`${serverUrl}/api/github/project-config/${projectId}`,
-					{
-						credentials: "include",
-					},
-				);
-				if (res.ok) {
-					const data = await res.json();
-					if (data.configured) {
-						const cfg = data.configuration;
-						setOwner(cfg.owner);
-						setRepo(cfg.repo);
-						setRepoUrl(`https://github.com/${cfg.owner}/${cfg.repo}`);
-						setIsConfigured(true);
-
-						// Load cached data from parent (survives mount/unmount between sidebar sections)
-						const cached = getGitHubCache(projectId);
-						if (cached?.repository) {
-							setRepository(cached.repository);
-						} else {
-							fetchRepositoryInfo();
-						}
-
-						if (cached?.pullRequests) {
-							setPullRequests(cached.pullRequests);
-							if (cached.pagination) {
-								setCurrentPage(cached.pagination.currentPage);
-								setTotalPages(cached.pagination.totalPages);
-								setTotalCount(cached.pagination.totalCount);
-							}
-						} else {
-							fetchPullRequests();
-						}
-
-						if (cached?.metrics) {
-							setMetrics(cached.metrics);
-						} else {
-							fetchMetrics();
-						}
-					} else {
-						setShowConfig(true);
-					}
-				}
-			} catch (e) {
-				console.error("Error loading project config", e);
-			} finally {
-				setIsCheckingConfig(false);
-			}
-		};
-
-		const loadUserTokenStatus = async () => {
-			try {
-				const res = await fetch(
-					`${serverUrl}/api/github/user-token/${projectId}/status`,
-					{
-						credentials: "include",
-					},
-				);
-				if (res.ok) {
-					const data = await res.json();
-					setHasUserToken(data.configured);
-					if (!data.configured && isConfigured) {
-						setShowTokenForm(true);
-					}
-				}
-			} catch (e) {
-				console.error("Error loading user token status", e);
-			}
-		};
-
-		loadProjectConfig();
-		loadUserTokenStatus();
-	}, [projectId]);
-
-	const saveProjectConfig = async () => {
-		if (!owner || !repo) {
-			toast.error("Por favor completa owner y repo");
-			return;
-		}
-
-		const toastId = toast.loading("Guardando configuración del repositorio...");
-		try {
-			const response = await fetch(`${serverUrl}/api/github/project-config`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify({ projectId, owner, repo }),
-			});
-
-			const data = await response.json().catch(() => null);
-			if (!response.ok) {
-				toast.error(data?.message || "Error al guardar configuración", {
-					id: toastId,
-				});
-				return;
-			}
-
-			setIsConfigured(true);
-			setShowConfig(false);
-			setRepoUrl(`https://github.com/${owner}/${repo}`);
-			toast.success("Configuración guardada. Ahora configura tu token.", {
-				id: toastId,
-			});
-			setShowTokenForm(true);
-			clearGitHubCache(projectId);
-		} catch (e) {
-			toast.error("Error al guardar configuración", { id: toastId });
-		}
-	};
-
-	const validateRepository = async () => {
-		if (!isConfigured) {
-			toast.error("Primero guarda la configuración del repositorio");
-			return;
-		}
-
-		if (!hasUserToken) {
-			toast.error("Necesitas configurar tu token de GitHub para continuar");
-			setShowTokenForm(true);
-			return;
-		}
-
-		setIsValidating(true);
-		const toastId = toast.loading("Validando repositorio...");
-		try {
-			const response = await fetch(`${serverUrl}/api/github/validate`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify({ projectId }),
-			});
-
-			const raw = await response.text();
-			let data: any = null;
-			try {
-				data = raw ? JSON.parse(raw) : null;
-			} catch {
-				data = null;
-			}
-
-			if (!response.ok) {
-				const messageFromApi = data?.message || data?.error;
-				const message = messageFromApi
-					? String(messageFromApi)
-					: raw
-						? String(raw).slice(0, 200)
-						: `Error HTTP ${response.status}`;
-				toast.error(`Error al validar: ${message}`, { id: toastId });
-				return;
-			}
-
-			if (data?.valid) {
-				setIsConfigured(true);
-				setShowConfig(false);
-				setShowTokenForm(false);
-				toast.success("Repositorio validado correctamente", { id: toastId });
-				clearGitHubCache(projectId);
-				fetchRepositoryInfo();
-				fetchPullRequests();
-				fetchMetrics();
-			} else {
-				toast.error(data?.message || "No se pudo validar el repositorio", {
-					id: toastId,
-				});
-			}
-		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : "Error desconocido";
-			toast.error(`Error al validar el repositorio: ${message}`, {
-				id: toastId,
-			});
-		} finally {
-			setIsValidating(false);
-		}
-	};
-
-	const fetchRepositoryInfo = async () => {
-		const cached = getGitHubCache(projectId);
-		if (cached?.repository) {
-			setRepository(cached.repository);
-			return;
-		}
-
-		try {
-			const response = await fetch(`${serverUrl}/api/github/repository`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify({ projectId }),
-			});
-
-			if (response.ok) {
-				const data = await response.json();
-				setRepository(data);
-				setGitHubCache(projectId, { repository: data });
-			}
-		} catch (error) {
-			console.error("Error fetching repository info:", error);
-		}
-	};
-
-	const fetchPullRequests = async (page: number = 1) => {
-		const pullRequestsKey = `${filters.state}|${filters.sort}|${filters.direction}|${page}`;
-		const cached = getGitHubCache(projectId);
-		if (cached?.pullRequests && cached.pullRequestsKey === pullRequestsKey) {
-			setPullRequests(cached.pullRequests);
-			if (cached.pagination) {
-				setCurrentPage(cached.pagination.currentPage);
-				setTotalPages(cached.pagination.totalPages);
-				setTotalCount(cached.pagination.totalCount);
-			}
-			return;
-		}
-
-		setIsLoading(true);
-		try {
-			const queryParams = new URLSearchParams({
-				page: page.toString(),
-				perPage: "50",
-				...(filters.state && { state: filters.state }),
-				...(filters.sort && { sort: filters.sort }),
-				...(filters.direction && { direction: filters.direction }),
-				...(filters.dateFrom && { dateFrom: filters.dateFrom }),
-				...(filters.dateTo && { dateTo: filters.dateTo }),
-			});
-
-			const response = await fetch(
-				`${serverUrl}/api/github/pull-requests?${queryParams}`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					credentials: "include",
-					body: JSON.stringify({ projectId }),
-				},
-			);
-
-			if (response.ok) {
-				const data = await response.json();
-				setPullRequests(data.pullRequests);
-				setCurrentPage(data.currentPage);
-				setTotalPages(data.totalPages);
-				setTotalCount(data.totalCount);
-				setGitHubCache(projectId, {
-					pullRequests: data.pullRequests,
-					pullRequestsKey,
-					pagination: {
-						currentPage: data.currentPage,
-						totalPages: data.totalPages,
-						totalCount: data.totalCount,
-					},
-				});
-			}
-		} catch (error) {
-			toast.error("Error al cargar los Pull Requests");
-		} finally {
-			setIsLoading(false);
-		}
-	};
-
-	const fetchMetrics = async () => {
-		const cached = getGitHubCache(projectId);
-		if (cached?.metrics) {
-			setMetrics(cached.metrics);
-			return;
-		}
-
-		try {
-			const response = await fetch(`${serverUrl}/api/github/metrics`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify({ projectId }),
-			});
-
-			if (response.ok) {
-				const data = await response.json();
-				setMetrics(data);
-				setGitHubCache(projectId, { metrics: data });
-			}
-		} catch (error) {
-			console.error("Error fetching metrics:", error);
-		}
-	};
-
-	const saveUserToken = async () => {
-		if (!token) {
-			toast.error("Por favor ingresa tu token de GitHub");
-			return;
-		}
-		const toastId = toast.loading("Guardando token...");
-		try {
-			const res = await fetch(`${serverUrl}/api/github/user-token`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify({ projectId, token }),
-			});
-			if (res.ok) {
-				toast.success("Token guardado correctamente", { id: toastId });
-				setHasUserToken(true);
-				setShowTokenForm(false);
-				setToken("");
-				validateRepository();
-				// Now we can fetch data
-				fetchRepositoryInfo();
-				fetchPullRequests();
-				fetchMetrics();
-			} else {
-				const err = await res.json();
-				toast.error(err.message || "Error al guardar token", { id: toastId });
-			}
-		} catch (e) {
-			toast.error("Error al guardar token", { id: toastId });
-		}
-	};
-
-	const handleFilterChange = (key: keyof PullRequestFilters, value: string) => {
-		setFilters((prev) => ({ ...prev, [key]: value }));
-	};
-
-	const handleRefresh = () => {
-		// clearGitHubCache(projectId);
-		fetchPullRequests(1); // Reset to page 1 when applying filters
-		fetchMetrics();
-	};
-
-	// Apply filters when they change
-	useEffect(() => {
-		if (
-			filters.state ||
-			filters.sort ||
-			filters.direction ||
-			filters.dateFrom ||
-			filters.dateTo
-		) {
-			handleRefresh();
-		}
-	}, [
-		filters.state,
-		filters.sort,
-		filters.direction,
-		filters.dateFrom,
-		filters.dateTo,
-	]);
 
 	const getStateBadge = (state: string) => {
 		switch (state) {
@@ -518,28 +168,6 @@ export default function GitHubIntegration({
 			hour: "2-digit",
 			minute: "2-digit",
 		});
-	};
-
-	const parseAndSetRepoFromUrl = (value: string) => {
-		setRepoUrl(value);
-
-		const trimmed = value.trim();
-		if (!trimmed) return;
-
-		// Soporta:
-		// - https://github.com/OWNER/REPO
-		// - git@github.com:OWNER/REPO.git
-		// - OWNER/REPO
-		const match = trimmed.match(
-			/^(?:https?:\/\/github\.com\/|git@github\.com:)?([^\s/]+)\/([^\s/]+?)(?:\.git)?\/?$/i,
-		);
-		if (!match) return;
-
-		const parsedOwner = match[1];
-		const parsedRepo = match[2];
-
-		if (parsedOwner) setOwner(parsedOwner);
-		if (parsedRepo) setRepo(parsedRepo);
 	};
 
 	if (isCheckingConfig) {

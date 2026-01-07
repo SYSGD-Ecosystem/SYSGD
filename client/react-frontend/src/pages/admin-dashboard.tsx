@@ -1,5 +1,3 @@
-"use client";
-
 import {
 	Crown,
 	Edit,
@@ -215,8 +213,9 @@ export default function AdminDashboard() {
 							<TableHeader>
 								<TableRow>
 									<TableHead>Usuario</TableHead>
-									<TableHead>Nombre de Usuario</TableHead>
+									<TableHead>Email</TableHead>
 									<TableHead>Privilegios</TableHead>
+									<TableHead>Tier</TableHead>
 									<TableHead>Estado</TableHead>
 									<TableHead className="text-right">Acciones</TableHead>
 								</TableRow>
@@ -250,6 +249,28 @@ export default function AdminDashboard() {
 												{user.privileges === "admin"
 													? "Administrador"
 													: "Usuario"}
+											</Badge>
+										</TableCell>
+										<TableCell>
+											<Badge
+												variant={
+													user.user_data.billing.tier === "free"
+														? "destructive"
+														: user.user_data.billing.tier === "pro"
+															? "secondary"
+															: user.user_data.billing.tier === "vip"
+																? "default"
+																: "secondary"
+												}
+												className="gap-1"
+											>
+												{user.user_data.billing.tier === "free"
+													? "Free"
+													: user.user_data.billing.tier === "pro"
+														? "Pro"
+														: user.user_data.billing.tier === "vip"
+															? "VIP"
+															: "Desconocido"}
 											</Badge>
 										</TableCell>
 										<TableCell>

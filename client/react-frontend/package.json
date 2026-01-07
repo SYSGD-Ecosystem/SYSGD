@@ -40,6 +40,7 @@
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"docx": "^9.5.1",
+		"ethers": "^6.16.0",
 		"file-saver": "^2.0.5",
 		"framer-motion": "^12.23.12",
 		"lucide-react": "^0.525.0",

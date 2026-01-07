@@ -10,12 +10,15 @@ interface User {
 
 const useCurrentUser = () => {
 	const [user, setUser] = useState<User | null>(null);
+	const [isAuthenticated, setIsAuthenticated] = useState(false);
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
 		const fetchUser = async () => {
 			try {
 				const res = await api.get<User>("/api/auth/me");
+
+				console.log("Respuesta de /api/auth/me:", res);
 
 				const userData = res.data;
 
@@ -24,8 +27,10 @@ const useCurrentUser = () => {
 				}
 
 				setUser(userData);
+				setIsAuthenticated(true);
 			} catch {
 				setUser(null);
+				setIsAuthenticated(false);
 			} finally {
 				setLoading(false);
 			}
@@ -34,7 +39,7 @@ const useCurrentUser = () => {
 		fetchUser();
 	}, []);
 
-	return { user, loading };
+	return { user, isAuthenticated, loading };
 };
 
 export default useCurrentUser;

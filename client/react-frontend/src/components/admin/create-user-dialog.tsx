@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
 "use client";
 
 import type React from "react";
@@ -42,7 +43,9 @@ export function CreateUserDialog({
 		email: "",
 		password: "",
 		privileges: "user",
-	});
+		status: "active",
+		
+		},);
 	const [loading, setLoading] = useState(false);
 	const { toast } = useToast();
 
@@ -70,6 +73,7 @@ export function CreateUserDialog({
 					email: "",
 					password: "",
 					privileges: "user",
+					status: "active",
 				});
 
 				toast({

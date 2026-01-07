@@ -138,13 +138,23 @@ const SYSTEM_PROMPTS = {
 };
 
 // Interface para las peticiones del agente
+// export interface AgentRequest {
+//     prompt: string;
+//     image?: string;
+//     audio?: string;
+//     video?: string;
+//     file?: string;
+//     model?: string;
+// }
+
 export interface AgentRequest {
-    prompt: string;
-    image?: string;
-    audio?: string;
-    video?: string;
-    file?: string;
-    model?: string;
+  prompt: string;
+  image?: string;
+  audio?: string;
+  video?: string;
+  file?: string;
+  model?: string;
+  customToken?: string; // ← Agregar esta línea
 }
 
 // Interface para las respuestas del agente

@@ -164,7 +164,7 @@
 }
 
 /* Ocean */
-:root[data-theme="ocean"] {
+/* :root[data-theme="ocean"] {
 	--primary: rgb(14 165 233);
 	--primary-foreground: rgb(255 255 255);
 	--accent: rgb(240 249 255);
@@ -177,7 +177,7 @@
 	--accent: rgb(12 74 110);
 	--accent-foreground: rgb(240 249 255);
 	--ring: rgb(56 189 248);
-}
+} */
 
 /* Purple */
 :root[data-theme="purple"] {
@@ -210,6 +210,102 @@
 	--accent: rgb(131 24 67); /* pink-900 */
 	--accent-foreground: rgb(253 242 248); /* pink-50 */
 	--ring: rgb(219 39 119); /* pink-600 */
+}
+
+/* Ocean - Ya lo tenías, pero lo mejoro un poco */
+:root[data-theme="ocean"] {
+	--primary: rgb(14 165 233); /* sky-500 */
+	--primary-foreground: rgb(255 255 255);
+	--accent: rgb(240 249 255); /* sky-50 */
+	--accent-foreground: rgb(7 89 133); /* sky-900 */
+	--ring: rgb(14 165 233);
+}
+.dark[data-theme="ocean"] {
+	--primary: rgb(56 189 248); /* sky-400 */
+	--primary-foreground: rgb(7 89 133);
+	--accent: rgb(7 89 133);
+	--accent-foreground: rgb(240 249 255);
+	--ring: rgb(56 189 248);
+}
+
+/* Emerald */
+:root[data-theme="emerald"] {
+	--primary: rgb(16 185 129); /* emerald-500 */
+	--primary-foreground: rgb(255 255 255);
+	--accent: rgb(236 253 245); /* emerald-50 */
+	--accent-foreground: rgb(6 78 59); /* emerald-900 */
+	--ring: rgb(16 185 129);
+}
+.dark[data-theme="emerald"] {
+	--primary: rgb(52 211 153); /* emerald-400 */
+	--primary-foreground: rgb(6 78 59);
+	--accent: rgb(6 78 59);
+	--accent-foreground: rgb(236 253 245);
+	--ring: rgb(52 211 153);
+}
+
+/* Amber */
+:root[data-theme="amber"] {
+	--primary: rgb(245 158 11); /* amber-500 */
+	--primary-foreground: rgb(255 255 255);
+	--accent: rgb(255 251 235); /* amber-50 */
+	--accent-foreground: rgb(120 53 15); /* amber-900 */
+	--ring: rgb(245 158 11);
+}
+.dark[data-theme="amber"] {
+	--primary: rgb(251 191 36); /* amber-400 */
+	--primary-foreground: rgb(120 53 15);
+	--accent: rgb(120 53 15);
+	--accent-foreground: rgb(255 251 235);
+	--ring: rgb(251 191 36);
+}
+
+/* Violet */
+:root[data-theme="violet"] {
+	--primary: rgb(139 92 246); /* violet-500 */
+	--primary-foreground: rgb(255 255 255);
+	--accent: rgb(245 243 255); /* violet-50 */
+	--accent-foreground: rgb(91 33 182); /* violet-900 */
+	--ring: rgb(139 92 246);
+}
+.dark[data-theme="violet"] {
+	--primary: rgb(167 139 250); /* violet-400 */
+	--primary-foreground: rgb(91 33 182);
+	--accent: rgb(91 33 182);
+	--accent-foreground: rgb(245 243 255);
+	--ring: rgb(167 139 250);
+}
+
+/* Teal */
+:root[data-theme="teal"] {
+	--primary: rgb(20 184 166); /* teal-500 */
+	--primary-foreground: rgb(255 255 255);
+	--accent: rgb(240 253 250); /* teal-50 */
+	--accent-foreground: rgb(17 94 89); /* teal-900 */
+	--ring: rgb(20 184 166);
+}
+.dark[data-theme="teal"] {
+	--primary: rgb(45 212 191); /* teal-400 */
+	--primary-foreground: rgb(17 94 89);
+	--accent: rgb(17 94 89);
+	--accent-foreground: rgb(240 253 250);
+	--ring: rgb(45 212 191);
+}
+
+/* Cyan (más intenso que ocean, perfecto para SYSGD) */
+:root[data-theme="cyan"] {
+	--primary: rgb(6 182 212); /* cyan-500 */
+	--primary-foreground: rgb(255 255 255);
+	--accent: rgb(236 254 255); /* cyan-50 */
+	--accent-foreground: rgb(21 94 117); /* cyan-900 */
+	--ring: rgb(6 182 212);
+}
+.dark[data-theme="cyan"] {
+	--primary: rgb(34 211 238); /* cyan-400 */
+	--primary-foreground: rgb(21 94 117);
+	--accent: rgb(21 94 117);
+	--accent-foreground: rgb(236 254 255);
+	--ring: rgb(34 211 238);
 }
 
 * {
