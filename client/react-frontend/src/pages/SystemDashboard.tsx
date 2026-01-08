@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/a11y/useKeyWithClickEvents: <explanation> */
+/** biome-ignore-all lint/a11y/noStaticElementInteractions: <explanation> */
 import { type FC, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -47,6 +49,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import SettingsModal from "@/components/SettingsModal";
 import Loading from "@/components/Loading";
+import { Separator } from "@/components/ui/separator";
 
 type ViewMode = "home" | "projects" | "documents";
 
@@ -319,7 +322,7 @@ const SystemDashboard: FC = () => {
 							<Users className="w-5 h-5 text-purple-600" />
 							<div>
 								<p className="text-2xl font-bold text-gray-900 dark:text-white">
-									{projects.reduce((acc, p) => acc + p.members_count, 0)}
+									0
 								</p>
 								<p className="text-sm text-gray-600 dark:text-gray-400">
 									Colaboradores
@@ -338,12 +341,17 @@ const SystemDashboard: FC = () => {
 							Proyectos Recientes
 						</CardTitle>
 					</CardHeader>
+					<Separator />
 					<CardContent>
 						<div className="space-y-3">
-							{projects.slice(0, 5).map((project) => (
+							{projects.slice(0, 3).map((project) => (
 								<div
 									key={project.id}
-									className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+									onClick={() => {
+										setProjectId(project.id);
+										navigate("/projects");
+									}}
+									className="flex w-full cursor-pointer items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
 								>
 									<div className="flex-1">
 										<p className="font-medium text-gray-900 dark:text-white">
@@ -374,12 +382,21 @@ const SystemDashboard: FC = () => {
 							Documentos Recientes
 						</CardTitle>
 					</CardHeader>
+					<Separator />
 					<CardContent>
 						<div className="space-y-3">
-							{documents.slice(0, 5).map((doc) => (
+							{documents.slice(0, 3).map((doc) => (
 								<div
 									key={doc.id}
-									className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+									onClick={() => {
+										setArchive(doc.id, {
+											name: doc.name,
+											company: doc.company,
+											code: doc.code,
+										});
+										navigate("/archives");
+									}}
+									className="flex items-center cursor-pointer justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
 								>
 									<div className="flex-1">
 										<p className="font-medium text-gray-900 dark:text-white">
