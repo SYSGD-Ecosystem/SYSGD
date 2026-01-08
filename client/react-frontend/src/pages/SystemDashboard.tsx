@@ -1,7 +1,10 @@
+import { type FC, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
 	Activity,
 	Bell,
 	Calendar,
+	CreditCard,
 	Edit,
 	Eye,
 	File,
@@ -15,11 +18,24 @@ import {
 	Settings,
 	Users,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
+import useArchives from "@/hooks/connection/useArchives";
+import useProjects from "@/hooks/connection/useProjects";
+import useCurrentUser from "@/hooks/connection/useCurrentUser";
+import { useSelectionStore } from "@/store/selection";
+import { useArchiveStore } from "@/store/useArchiveStore";
+import { IoChatboxOutline } from "react-icons/io5";
+import { useGetInvitations } from "@/hooks/connection/useGetInvitations";
+import UserProfileTrigger from "@/components/UserProfileTrigger";
+import { NotificationsPopup } from "@/components/NotificationsPopup";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { formatDate } from "@/utils/util";
+import useConnection from "@/hooks/connection/useConnection";
+import useProjectConnection from "@/hooks/connection/useProjectConnection";
+import { Progress } from "@/components/ui/progress";
 import {
 	Dialog,
 	DialogContent,
@@ -27,24 +43,12 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import useArchives from "@/hooks/connection/useArchives";
-import useConnection from "@/hooks/connection/useConnection";
-import useCurrentUser from "@/hooks/connection/useCurrentUser";
-import useProjectConnection from "@/hooks/connection/useProjectConnection";
-import useProjects from "@/hooks/connection/useProjects";
-import { useToast } from "@/hooks/use-toast";
-import { useSelectionStore } from "@/store/selection";
-import { useArchiveStore } from "@/store/useArchiveStore";
-import { formatDate } from "@/utils/util";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { IoChatboxOutline } from "react-icons/io5";
-import { useGetInvitations } from "@/hooks/connection/useGetInvitations";
-import UserProfileTrigger from "@/components/UserProfileTrigger";
-import { NotificationsPopup } from "@/components/NotificationsPopup";
+import { Textarea } from "@/components/ui/textarea";
 import SettingsModal from "@/components/SettingsModal";
+import Loading from "@/components/Loading";
+
+type ViewMode = "home" | "projects" | "documents";
 
 interface DocumentFile {
 	id: string;
@@ -70,63 +74,27 @@ interface Project {
 	completed_tasks: number;
 }
 
-type ViewMode = "home" | "projects" | "documents";
-
-export default function EcosystemDashboard() {
-	const [projects, setProjects] = useState<Project[]>([]);
-	const { projects: mProjects } = useProjects();
-	const { handleCreateProject } = useProjectConnection();
-	const navigate = useNavigate();
-	const { user, loading: loadingUser } = useCurrentUser();
-	const { toast } = useToast();
-
-	const setProjectId = useSelectionStore((state) => state.setProjectId);
-	const setArchive = useArchiveStore((state) => state.selectArchive);
-
+const SystemDashboard: FC = () => {
 	const [viewMode, setViewMode] = useState<ViewMode>("home");
+
+	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+	const [unreadCount, setUnreadCount] = useState(0);
 	const [searchTerm, setSearchTerm] = useState("");
-
-	useEffect(() => {
-		const projt: Project[] = mProjects.map((item) => ({
-			id: item.id,
-			name: item.name,
-			description: item.description,
-			create_by: item.created_by,
-			create_at: item.created_at,
-			status: item.status,
-			visibility: "private",
-			tipo: "project",
-			members_count: item.members_count,
-			total_tasks: item.total_tasks,
-			completed_tasks: item.completed_tasks,
-		}));
-
-		if (projt !== null) {
-			setProjects(projt);
-		}
-	}, [mProjects]);
-
-	const { archives } = useArchives();
+	const [showNotifications, setShowNotifications] = useState(false);
 	const [documents, setDocument] = useState<DocumentFile[]>([]);
-
-	useEffect(() => {
-		const docs: DocumentFile[] = archives.map((archive) => ({
-			id: archive.id,
-			name: archive.name,
-			company: archive.company,
-			code: archive.code,
-			creator_name: archive.creator_name,
-			created_at: archive.created_at,
-			tipo: "document",
-		}));
-
-		if (docs !== null) {
-			setDocument(docs);
-		}
-	}, [archives]);
-
+	const [projects, setProjects] = useState<Project[]>([]);
+	const { handleCreateProject } = useProjectConnection();
 	const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
 	const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
+	const { toast } = useToast();
+
+	const navigate = useNavigate();
+	const { user, loading: loadingUser } = useCurrentUser();
+	const { projects: mProjects = [] } = useProjects();
+	const { archives = [] } = useArchives();
+	const setProjectId = useSelectionStore((state) => state.setProjectId);
+	const setArchive = useArchiveStore((state) => state.selectArchive);
+	const { invitations } = useGetInvitations();
 
 	const [newProject, setNewProject] = useState({
 		name: "",
@@ -138,6 +106,33 @@ export default function EcosystemDashboard() {
 		company: "",
 		code: "",
 	});
+
+	// const unreadCount =
+	// 	invitations?.filter((inv) => inv.status === "pending").length || 0;
+
+	const filteredProjects = projects.filter((p) =>
+		p.name.toLowerCase().includes(searchTerm.toLowerCase()),
+	);
+	const filteredDocuments = archives.filter((d) =>
+		d.name.toLowerCase().includes(searchTerm.toLowerCase()),
+	);
+
+	const sidebarItems = [
+		{ id: "home", label: "Inicio", icon: Home },
+		{
+			id: "projects",
+			label: "Proyectos",
+			icon: Folder,
+			count: projects.length,
+		},
+		{
+			id: "documents",
+			label: "Documentos",
+			icon: FileText,
+			count: archives.length,
+		},
+		{ id: "purchase", label: "Tienda", icon: CreditCard },
+	];
 
 	const getStatusColor = (status: string) => {
 		switch (status) {
@@ -209,13 +204,57 @@ export default function EcosystemDashboard() {
 		return Math.round((completed / total) * 100);
 	};
 
-	const filteredProjects = projects.filter((project) =>
-		project.name.toLowerCase().includes(searchTerm.toLowerCase()),
-	);
+	useEffect(() => {
+		const projt: Project[] = mProjects.map((item) => ({
+			id: item.id,
+			name: item.name,
+			description: item.description,
+			create_by: item.created_by,
+			create_at: item.created_at,
+			status: item.status,
+			visibility: "private",
+			tipo: "project",
+			members_count: item.members_count,
+			total_tasks: item.total_tasks,
+			completed_tasks: item.completed_tasks,
+		}));
 
-	const filteredDocuments = documents.filter((doc) =>
-		doc.name.toLowerCase().includes(searchTerm.toLowerCase()),
-	);
+		if (projt !== null) {
+			setProjects(projt);
+		}
+	}, [mProjects]);
+
+	useEffect(() => {
+		const docs: DocumentFile[] = archives.map((archive) => ({
+			id: archive.id,
+			name: archive.name,
+			company: archive.company,
+			code: archive.code,
+			creator_name: archive.creator_name,
+			created_at: archive.created_at,
+			tipo: "document",
+		}));
+
+		if (docs !== null) {
+			setDocument(docs);
+		}
+	}, [archives]);
+
+	useEffect(() => {
+		if (invitations) {
+			// Contar invitaciones pendientes (no aceptadas ni rechazadas)
+			const pendingInvitations = invitations.filter(
+				(inv) => inv.status === "pending",
+			);
+			console.log("Invitaciones:", invitations);
+			console.log("Invitaciones pendientes:", pendingInvitations);
+			setUnreadCount(pendingInvitations.length);
+		} else {
+			setUnreadCount(0);
+		}
+	}, [invitations]);
+
+	// ... (mantén tus funciones renderHome, renderProjects, renderDocuments, diálogos, etc. tal cual)
 
 	const renderHome = () => (
 		<>
@@ -384,7 +423,7 @@ export default function EcosystemDashboard() {
 				</Button>
 			</div>
 
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+			<div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
 				{filteredProjects.map((project) => (
 					<Card
 						key={project.id}
@@ -624,199 +663,247 @@ export default function EcosystemDashboard() {
 		</>
 	);
 
-	const [showNotifications, setShowNotifications] = useState(false);
-	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-	const [unreadCount, setUnreadCount] = useState(0);
+	if (loadingUser) {
+		return (
+			<div className="flex flex-col h-screen bg-slate-950 items-center justify-center">
+				<Loading textLoading="Verificando sesión..." />
+			</div>
+		);
+	}
 
-	const { invitations } = useGetInvitations();
-
-	useEffect(() => {
-		if (invitations) {
-			// Contar invitaciones pendientes (no aceptadas ni rechazadas)
-			const pendingInvitations = invitations.filter(
-				(inv) => inv.status === "pending",
-			);
-			console.log("Invitaciones:", invitations);
-			console.log("Invitaciones pendientes:", pendingInvitations);
-			setUnreadCount(pendingInvitations.length);
-		} else {
-			setUnreadCount(0);
-		}
-	}, [invitations]);
-
-
-
-
-
-
-
-const sidebarItems = [
-    { id: "home", label: "Inicio", icon: Home },
-    { id: "projects", label: "Proyectos", icon: Folder, count: projects.length },
-    { id: "documents", label: "Documentos", icon: FileText, count: archives.length },
-    { id: "purchase", label: "Tienda", icon: CreditCard }];
-
+	if (!user) {
+		navigate("/login");
+		return null;
+	}
 
 	return (
-		<div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900">
-			<header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 sticky top-0 z-50">
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-2 md:gap-4">
-						{/* Breadcrumb */}
-						<div className="flex items-center gap-2">
-							<Sheet>
-								<SheetTrigger asChild>
-									<Button variant="ghost" size="icon" className="md:hidden">
-										<Menu className="h-5 w-5" />
-									</Button>
-								</SheetTrigger>
-								<SheetContent side="left" className="w-64 p-0">
-									<div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4">
-										<nav className="flex-1 space-y-1">
-											<Button
-												variant={viewMode === "home" ? "default" : "ghost"}
-												className="w-full justify-start"
-												onClick={() => setViewMode("home")}
-											>
-												<Home className="w-4 h-4 mr-2" />
-												Inicio
-											</Button>
-											<Button
-												variant={viewMode === "projects" ? "default" : "ghost"}
-												className="w-full justify-start"
-												onClick={() => setViewMode("projects")}
-											>
-												<Folder className="w-4 h-4 mr-2" />
-												Proyectos
-											</Button>
-											<Button
-												variant={viewMode === "documents" ? "default" : "ghost"}
-												className="w-full justify-start"
-												onClick={() => setViewMode("documents")}
-											>
-												<FileText className="w-4 h-4 mr-2" />
-												Documentos
-											</Button>
-										</nav>
-									</div>
-								</SheetContent>
-							</Sheet>
+		<>
+			<div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900">
+				{/* Topbar */}
+				<header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 sticky top-0 z-50">
+					<div className="flex items-center justify-between">
+						<div className="flex items-center gap-2 md:gap-4">
+							{/* Breadcrumb */}
+							<div className="flex items-center gap-2">
+								<Sheet>
+									<SheetTrigger asChild>
+										<Button variant="ghost" size="icon" className="md:hidden">
+											<Menu className="h-5 w-5" />
+										</Button>
+									</SheetTrigger>
+									<SheetContent side="left" className="w-64 p-0">
+										<aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+											{/* Header Sidebar */}
+											<div className="p-6 border-b border-gray-200 dark:border-gray-700">
+												<div className="flex items-center gap-3">
+													<div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center">
+														<span className="text-white font-bold text-xl">
+															S
+														</span>
+													</div>
+													<div>
+														<h1 className="text-xl font-bold">SYSGD</h1>
+														<p className="text-xs text-gray-500">Ecosystem</p>
+													</div>
+												</div>
+											</div>
+
+											{/* Navegación */}
+											<nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+												{sidebarItems.map((item) => {
+													const Icon = item.icon;
+													const isActive =
+														viewMode === item.id ||
+														(item.id === "purchase" && false); // ajusta si quieres active en purchase
+													return (
+														<Button
+															key={item.id}
+															variant={isActive ? "secondary" : "ghost"}
+															className="w-full justify-start"
+															onClick={() => {
+																if (item.id === "purchase")
+																	navigate("/billing/purchase");
+																else setViewMode(item.id as ViewMode);
+															}}
+														>
+															<Icon className="w-5 h-5 mr-3" />
+															<span className="flex-1 text-left">
+																{item.label}
+															</span>
+															{item.count !== undefined && (
+																<Badge variant="secondary">{item.count}</Badge>
+															)}
+														</Button>
+													);
+												})}
+											</nav>
+
+											{/* Footer Sidebar */}
+											<div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+												<Button
+													variant="ghost"
+													className="w-full justify-start"
+													onClick={() => navigate("/settings")}
+												>
+													<Settings className="w-5 h-5 mr-3" />
+													Configuración
+												</Button>
+											</div>
+										</aside>
+									</SheetContent>
+								</Sheet>
+							</div>
+
+							<div className="flex items-center gap-2">
+								<div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
+									<span className="text-white text-xs font-bold">S</span>
+								</div>
+								<span className="font-bold text-lg text-gray-900 dark:text-white hidden sm:inline">
+									SYSGD
+								</span>
+							</div>
 						</div>
 
-						
+						<div className="flex items-center gap-1 md:gap-2">
+							<Button
+								onClick={() => navigate("/chat")}
+								variant="ghost"
+								size="sm"
+								className="flex"
+							>
+								<IoChatboxOutline className="w-4 h-4" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => setShowNotifications(!showNotifications)}
+								className="relative"
+							>
+								<Bell className="w-4 h-4" />
+								{unreadCount > 0 && (
+									<div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-pulse">
+										{unreadCount > 9 ? "9+" : unreadCount}
+									</div>
+								)}
+							</Button>
 
-						<div className="flex items-center gap-2">
-							<div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
-								<span className="text-white text-xs font-bold">S</span>
+							<Button
+								onClick={() => setIsSettingsOpen(true)}
+								variant="ghost"
+								size="sm"
+								className="flex"
+							>
+								<Settings className="w-4 h-4" />
+							</Button>
+							<div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-300 dark:border-gray-600">
+								<UserProfileTrigger />
 							</div>
-							<span className="font-bold text-lg text-gray-900 dark:text-white hidden sm:inline">
-								SYSGD
-							</span>
 						</div>
 					</div>
+					<NotificationsPopup
+						isOpen={showNotifications}
+						onClose={() => setShowNotifications(false)}
+					/>
+					<SettingsModal
+						isOpen={isSettingsOpen}
+						onClose={() => setIsSettingsOpen(false)}
+					/>
+				</header>
 
-					<div className="flex items-center gap-1 md:gap-2">
-						<Button
-							onClick={() => navigate("/chat")}
-							variant="ghost"
-							size="sm"
-							className="flex"
-						>
-							<IoChatboxOutline className="w-4 h-4" />
-						</Button>
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => setShowNotifications(!showNotifications)}
-							className="relative"
-						>
-							<Bell className="w-4 h-4" />
-							{unreadCount > 0 && (
-								<div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-pulse">
-									{unreadCount > 9 ? "9+" : unreadCount}
+				<div className="flex flex-1 overflow-hidden">
+					{/* Sidebar Desktop */}
+					<aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 hidden md:flex flex-col">
+						{/* Header Sidebar */}
+						<div className="p-6 border-b border-gray-200 dark:border-gray-700">
+							<div className="flex items-center gap-3">
+								<div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center">
+									<span className="text-white font-bold text-xl">S</span>
+								</div>
+								<div>
+									<h1 className="text-xl font-bold">SYSGD</h1>
+									<p className="text-xs text-gray-500">Ecosystem</p>
+								</div>
+							</div>
+						</div>
+
+						{/* Navegación */}
+						<nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+							{sidebarItems.map((item) => {
+								const Icon = item.icon;
+								const isActive =
+									viewMode === item.id || (item.id === "purchase" && false); // ajusta si quieres active en purchase
+								return (
+									<Button
+										key={item.id}
+										variant={isActive ? "secondary" : "ghost"}
+										className="w-full justify-start"
+										onClick={() => {
+											if (item.id === "purchase") navigate("/billing/purchase");
+											else setViewMode(item.id as ViewMode);
+										}}
+									>
+										<Icon className="w-5 h-5 mr-3" />
+										<span className="flex-1 text-left">{item.label}</span>
+										{item.count !== undefined && (
+											<Badge variant="secondary">{item.count}</Badge>
+										)}
+									</Button>
+								);
+							})}
+						</nav>
+
+						{/* Footer Sidebar */}
+						<div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+							<Button
+								variant="ghost"
+								className="w-full justify-start"
+								onClick={() => navigate("/settings")}
+							>
+								<Settings className="w-5 h-5 mr-3" />
+								Configuración
+							</Button>
+						</div>
+					</aside>
+
+					{/* Main Content (scroll independiente) */}
+					<main className="flex-1 overflow-y-auto">
+						<div className="p-6 md:p-8 max-w-7xl mx-auto">
+							{viewMode !== "home" && (
+								<div className="mb-6">
+									<div className="relative max-w-md">
+										<Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+										<Input
+											placeholder={`Buscar ${viewMode === "projects" ? "proyectos" : "documentos"}...`}
+											value={searchTerm}
+											onChange={(e) => setSearchTerm(e.target.value)}
+											className="pl-10"
+										/>
+									</div>
 								</div>
 							)}
-						</Button>
-
-						<Button
-							onClick={() => setIsSettingsOpen(true)}
-							variant="ghost"
-							size="sm"
-							className="flex"
-						>
-							<Settings className="w-4 h-4" />
-						</Button>
-						<div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-300 dark:border-gray-600">
-							<UserProfileTrigger />
-						</div>
-					</div>
-				</div>
-				<NotificationsPopup
-					isOpen={showNotifications}
-					onClose={() => setShowNotifications(false)}
-				/>
-				<SettingsModal
-					isOpen={isSettingsOpen}
-					onClose={() => setIsSettingsOpen(false)}
-				/>
-			</header>
-			{/* Sidebar */}
-			<div className="h-full bg-gray-100 dark:bg-gray-900 flex">
-				<div className="w-64 hidden md:flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4">
-					<div className="space-y-2">
-						<Button
-							variant={viewMode === "home" ? "default" : "ghost"}
-							className="w-full justify-start"
-							onClick={() => setViewMode("home")}
-						>
-							<Home className="w-4 h-4 mr-2" />
-							Inicio
-						</Button>
-						<Button
-							variant={viewMode === "projects" ? "default" : "ghost"}
-							className="w-full justify-start"
-							onClick={() => setViewMode("projects")}
-						>
-							<Folder className="w-4 h-4 mr-2" />
-							Proyectos
-						</Button>
-						<Button
-							variant={viewMode === "documents" ? "default" : "ghost"}
-							className="w-full justify-start"
-							onClick={() => setViewMode("documents")}
-						>
-							<FileText className="w-4 h-4 mr-2" />
-							Documentos
-						</Button>
-					</div>
-				</div>
-
-				{/* Main Content */}
-				<div className="flex-1 p-4 md:p-6 overflow-hidden">
-					<div className="max-w-7xl mx-auto">
-						{/* Search Bar - Solo visible en proyectos y documentos */}
-						{viewMode !== "home" && (
-							<div className="mb-6">
-								<div className="relative max-w-md">
-									<Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-									<Input
-										placeholder={`Buscar ${viewMode === "projects" ? "proyectos" : "documentos"}...`}
-										value={searchTerm}
-										onChange={(e) => setSearchTerm(e.target.value)}
-										className="pl-10"
-									/>
-								</div>
-							</div>
-						)}
-
-						{/* Content */}
-						<div>
 							{viewMode === "home" && renderHome()}
 							{viewMode === "projects" && renderProjects()}
 							{viewMode === "documents" && renderDocuments()}
 						</div>
-					</div>
+					</main>
 				</div>
+
+				{/* Footer Global */}
+				<footer className="h-6 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-center justify-center text-xs text-gray-500 dark:text-gray-400">
+					<div className="flex gap-4">
+						<button type="button" onClick={() => navigate("/privacy")}>
+							Política de Privacidad
+						</button>
+						<span>•</span>
+						<button type="button" onClick={() => navigate("/terms")}>
+							Términos de Uso
+						</button>
+						<span>•</span>
+						<button type="button" onClick={() => navigate("/about")}>
+							Acerca de
+						</button>
+					</div>
+				</footer>
 			</div>
 
 			{/* Dialog para crear proyecto */}
@@ -931,193 +1018,8 @@ const sidebarItems = [
 					</div>
 				</DialogContent>
 			</Dialog>
-		</div>
+		</>
 	);
-}
-
-
-
-
-
-/*
-
-// src/pages/EcosystemDashboard.tsx
-import { FC, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  Home,
-  Folder,
-  FileText,
-  CreditCard,
-  Settings,
-  Menu,
-  Search,
-  Bell,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { useArchives } from "@/hooks/connection/useArchives";
-import { useProjects } from "@/hooks/connection/useProjects";
-import { useCurrentUser } from "@/hooks/connection/useCurrentUser";
-import { useSelectionStore } from "@/store/selection";
-import { useArchiveStore } from "@/store/useArchiveStore";
-import { IoChatboxOutline } from "react-icons/io5";
-import { useGetInvitations } from "@/hooks/connection/useGetInvitations";
-import UserProfileTrigger from "@/components/UserProfileTrigger";
-import { NotificationsPopup } from "@/components/NotificationsPopup";
-
-type ViewMode = "home" | "projects" | "documents";
-
-const EcosystemDashboard: FC = () => {
-  const [viewMode, setViewMode] = useState<ViewMode>("home");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const navigate = useNavigate();
-  const { user } = useCurrentUser();
-  const { projects = [] } = useProjects();
-  const { archives = [] } = useArchives();
-  const setProjectId = useSelectionStore((state) => state.setProjectId);
-  const setArchive = useArchiveStore((state) => state.selectArchive);
-  const { invitations } = useGetInvitations();
-
-  const unreadCount = invitations?.filter(inv => inv.status === "pending").length || 0;
-
-  const filteredProjects = projects.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  const filteredDocuments = archives.filter(d => d.name.toLowerCase().includes(searchTerm.toLowerCase()));
-
-  const sidebarItems = [
-    { id: "home", label: "Inicio", icon: Home },
-    { id: "projects", label: "Proyectos", icon: Folder, count: projects.length },
-    { id: "documents", label: "Documentos", icon: FileText, count: archives.length },
-    { id: "purchase", label: "Tienda", icon: CreditCard },
-  ];
-
-  // ... (mantén tus funciones renderHome, renderProjects, renderDocuments, diálogos, etc. tal cual)
-
-  return (
-    <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900">
-     
-      <header className="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-4">
-          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            {/* Mobile sidebar - copia del desktop sidebar 
-            <SheetContent side="left" className="w-64 p-0">
-              {/* ... mismo contenido que sidebar desktop
-            </SheetContent>
-          </Sheet>
-
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">S</span>
-            </div>
-            <span className="font-bold text-lg hidden sm:inline">SYSGD</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button onClick={() => navigate("/chat")} variant="ghost" size="icon">
-            <IoChatboxOutline className="w-5 h-5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="relative" onClick={() => setShowNotifications(!showNotifications)}>
-            <Bell className="w-5 h-5" />
-            {unreadCount > 0 && (
-              <Badge className="absolute -top-1 -right-1 text-xs">{unreadCount > 9 ? "9+" : unreadCount}</Badge>
-            )}
-          </Button>
-          <Button variant="default" size="sm" onClick={() => navigate("/purchase")}>
-            Mejorar Plan
-          </Button>
-          <UserProfileTrigger />
-        </div>
-
-        <NotificationsPopup isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
-      </header>
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar Desktop 
-        <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
-          {/* Header Sidebar 
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">S</span>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold">SYSGD</h1>
-                <p className="text-xs text-gray-500">Ecosystem</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Navegación 
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {sidebarItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = viewMode === item.id || (item.id === "purchase" && false); // ajusta si quieres active en purchase
-              return (
-                <Button
-                  key={item.id}
-                  variant={isActive ? "secondary" : "ghost"}
-                  className="w-full justify-start"
-                  onClick={() => {
-                    if (item.id === "purchase") navigate("/purchase");
-                    else setViewMode(item.id as ViewMode);
-                  }}
-                >
-                  <Icon className="w-5 h-5 mr-3" />
-                  <span className="flex-1 text-left">{item.label}</span>
-                  {item.count !== undefined && <Badge variant="secondary">{item.count}</Badge>}
-                </Button>
-              );
-            })}
-          </nav>
-
-          {/* Footer Sidebar
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => navigate("/settings")}
-            >
-              <Settings className="w-5 h-5 mr-3" />
-              Configuración
-            </Button>
-            <p className="text-xs text-center text-gray-500 dark:text-gray-400">
-              © 2024-2026 SYSGD Ecosystem. Todos los derechos reservados.
-            </p>
-          </div>
-        </aside>
-
-        {/* Main Content (scroll independiente)
-        <main className="flex-1 overflow-y-auto">
-          <div className="p-6 md:p-8 max-w-7xl mx-auto">
-            {/* ... tu contenido actual: search, renderHome/proyectos/documentos, diálogos 
-          </div>
-        </main>
-      </div>
-
-      {/* Footer Global 
-      <footer className="h-12 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-center justify-center text-xs text-gray-500 dark:text-gray-400">
-        <div className="flex gap-4">
-          <button onClick={() => navigate("/privacy")}>Política de Privacidad</button>
-          <span>•</span>
-          <button onClick={() => navigate("/terms")}>Términos de Uso</button>
-          <span>•</span>
-          <button onClick={() => navigate("/about")}>Acerca de</button>
-        </div>
-      </footer>
-    </div>
-  );
 };
 
-export default EcosystemDashboard;
-*/
+export default SystemDashboard;

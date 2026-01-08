@@ -1,33 +1,142 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/logo.png" />
-    <link href="/src/styles/global.css" rel="stylesheet">
-   <!-- Meta general -->
-    <title>SYSGD Ecosystem - Un ecosistema que se adapta a tus necesidades</title>
-    <meta name="description" content="Un ecosistema que se adapta a tus necesidades. Gestión documental, IA generativa, pagos con criptomonedas y más en una sola plataforma.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Open Graph (Facebook, LinkedIn, etc.) -->
-    <meta property="og:title" content="SYSGD Ecosystem">
-    <meta property="og:description" content="Un ecosistema que se adapta a tus necesidades">
-    <meta property="og:image" content="/og-image.png">
-    <meta property="og:url" content="https://sysgd.netlify.app">
-    <meta property="og:type" content="website">
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+
+    <!-- Preconnect a dominios críticos (si usas fonts externas, CDN, etc.) -->
+    <!-- <link rel="preconnect" href="https://fonts.googleapis.com"> -->
+    <!-- <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> -->
+
+    <!-- CSS global inmediato (Tailwind + tus estilos) -->
+    <link href="/src/styles/global.css" rel="stylesheet" />
+
+    <!-- ====================== -->
+    <!-- SEO & Meta Tags -->
+    <!-- ====================== -->
+    <title>SYSGD Ecosystem - Gestión documental, IA y cripto en un solo lugar</title>
+    <meta
+      name="description"
+      content="Ecosistema integral con gestión documental inteligente, IA generativa, pagos en criptomonedas, proyectos colaborativos y más. Todo lo que necesitas en una sola plataforma segura y moderna."
+    />
+    <meta name="keywords" content="SYSGD, gestión documental, IA generativa, criptomonedas, productividad, dashboard, proyectos colaborativos, cloud, blockchain" />
+    <meta name="author" content="SYSGD Team" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:title" content="SYSGD Ecosystem" />
+    <meta property="og:description" content="Un ecosistema que se adapta a tus necesidades: gestión documental, IA, cripto y productividad." />
+    <meta property="og:image" content="https://sysgd.netlify.app/og-image.png" />
+    <meta property="og:url" content="https://sysgd.netlify.app" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_ES" />
 
     <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="SYSGD Ecosystem">
-    <meta name="twitter:description" content="Un ecosistema que se adapta a tus necesidades">
-    <meta name="twitter:image" content="/og-image.png">
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SYSGD Ecosystem" />
+    <meta name="twitter:description" content="Un ecosistema que se adapta a tus necesidades: gestión documental, IA, cripto y productividad." />
+    <meta name="twitter:image" content="https://sysgd.netlify.app/og-image.png" />
+    <meta name="twitter:site" content="@sysgd" /> <!-- Cambia si tienes cuenta -->
 
-    <!-- Keywords para SEO -->
-    <meta name="keywords" content="ecosistema servicios, gestión documental, AI, criptomonedas, productividad, cloud">
+    <!-- ====================== -->
+    <!-- ELIMINAR FLASH BLANCO -->
+    <!-- ====================== -->
+    <style>
+      /* Fondo inmediato que coincide con tu tema oscuro */
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        background: linear-gradient(to bottom right, #0f172a, #1e293b); /* slate-900 → slate-800 */
+        color-scheme: dark; /* Ayuda al navegador a usar scrollbars oscuros desde el inicio */
+      }
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      /* Ocultar contenido hasta que React monte (evita FOUC) */
+      #root {
+        opacity: 0;
+        transition: opacity 0.4s ease-out;
+      }
+
+      #root.loaded {
+        opacity: 1;
+      }
+
+      /* Skeleton básico opcional mientras carga (puedes mejorarlo con uno personalizado) */
+      .initial-loader {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        background: linear-gradient(to bottom right, #0f172a, #1e293b);
+      }
+
+      .initial-loader header {
+        height: 64px;
+        background: rgba(15, 23, 42, 0.8);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+      }
+
+      .initial-loader main {
+        flex: 1;
+        padding: 2rem;
+      }
+    </style>
+
+    <!-- ====================== -->
+    <!-- Dark mode inmediato (respeta preferencia del usuario) -->
+    <!-- ====================== -->
+    <script>
+      ;(function () {
+        const theme = localStorage.getItem('theme')
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
+      })()
+    </script>
   </head>
-  <body>
+
+  <body class="antialiased">
+    <!-- Loader inicial sutil (opcional, puedes quitarlo si prefieres solo el fondo) -->
+    <div id="initial-loader" class="initial-loader">
+      <header></header>
+      <main></main>
+    </div>
+
+    <!-- Root de React -->
     <div id="root"></div>
+
+    <!-- Script principal -->
     <script type="module" src="/src/main.tsx"></script>
+
+    <!-- Activar transición suave cuando React monte -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const root = document.getElementById('root')
+        const loader = document.getElementById('initial-loader')
+
+        // Cuando React monte, eliminar loader y mostrar app
+        const observer = new MutationObserver((mutations, obs) => {
+          if (root.children.length > 0 && root.children[0].tagName) {
+            root.classList.add('loaded')
+            if (loader) loader.style.display = 'none'
+            obs.disconnect()
+          }
+        })
+
+        observer.observe(root, { childList: true, subtree: true })
+
+        // Fallback por si algo falla
+        setTimeout(() => {
+          root.classList.add('loaded')
+          if (loader) loader.style.display = 'none'
+        }, 3000)
+      })
+    </script>
   </body>
 </html>

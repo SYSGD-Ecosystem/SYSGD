@@ -20,6 +20,7 @@
     "@google/genai": "^1.26.0",
     "@google/generative-ai": "^0.24.1",
     "@octokit/rest": "^18.12.0",
+    "@openrouter/sdk": "^0.3.11",
     "@types/multer": "^2.0.0",
     "aws-sdk": "^2.1692.0",
     "bcrypt": "^6.0.0",

@@ -27,7 +27,8 @@ import TermsAndConditions from "./pages/Terms.tsx";
 import TokenManagement from "./components/TokenManagement.tsx";
 import Purchase from "./pages/Purchase.tsx";
 import SettingsPage from "./pages/SettingPage.tsx";
-import EcosystemDashboard from "./pages/EcosystemDashboard.tsx";
+import SystemDashboard from "./pages/SystemDashboard.tsx";
+import PageNotFound from "./pages/PageNotFound.tsx";
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(
@@ -58,7 +59,8 @@ createRoot(document.getElementById("root")!).render(
 						<Route path="/settings/tokens" element={<TokenManagement />} />
 						<Route path="/billing/purchase" element={<Purchase />} />
 						<Route path="/billing/upgrade" element={<Purchase />} />
-						<Route path="/dashboard" element={<EcosystemDashboard />} />
+						<Route path="/dashboard" element={<SystemDashboard />} />
+						<Route path="/*" element={<PageNotFound/>} />
 					</Routes>
 				</AppRouter>
 			</ElectronWrapper>
