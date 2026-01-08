@@ -29,6 +29,7 @@ import Purchase from "./pages/Purchase.tsx";
 import SettingsPage from "./pages/SettingPage.tsx";
 import SystemDashboard from "./pages/SystemDashboard.tsx";
 import PageNotFound from "./pages/PageNotFound.tsx";
+import AboutPage from "./pages/AboutPage.tsx";
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(
@@ -60,6 +61,7 @@ createRoot(document.getElementById("root")!).render(
 						<Route path="/billing/purchase" element={<Purchase />} />
 						<Route path="/billing/upgrade" element={<Purchase />} />
 						<Route path="/dashboard" element={<SystemDashboard />} />
+						<Route path="/about" element={<AboutPage/>} />
 						<Route path="/*" element={<PageNotFound/>} />
 					</Routes>
 				</AppRouter>
