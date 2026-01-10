@@ -792,7 +792,7 @@ router.delete(
 			res.status(400).json({ error: "ID inválido" });
 			return;
 		}
-		
+
 		try {
 			await pool.query(
 				"DELETE FROM document_management_file WHERE user_id = $1",
@@ -819,9 +819,10 @@ router.put(
 	isAuthenticated,
 	isAdmin,
 	async (req: Request, res: Response) => {
-		const userId = Number.parseInt(req.params.id, 10);
+		const userId = req.params.id;
+
 		const { password } = req.body;
-		if (Number.isNaN(userId) || !password) {
+		if (!userId || !password) {
 			res.status(400).json({ error: "Datos inválidos" });
 			return;
 		}
@@ -848,9 +849,10 @@ router.put(
 	isAuthenticated,
 	isAdmin,
 	async (req: Request, res: Response) => {
-		const userId = Number.parseInt(req.params.id, 10);
+		const userId = req.params.id;
+
 		const { name, email } = req.body;
-		if (Number.isNaN(userId) || (!name && !email)) {
+		if (!userId || (!name && !email)) {
 			res.status(400).json({ error: "Datos inválidos" });
 			return;
 		}
