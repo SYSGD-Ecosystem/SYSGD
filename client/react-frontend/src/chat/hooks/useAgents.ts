@@ -5,8 +5,12 @@ import type {
 	CreateAgentRequest,
 	UpdateAgentRequest,
 } from "../../types/Agent";
+import api from "@/lib/api";
 
-const API_BASE_URL = "http://localhost:3000/api/agents";
+const serverUrl =
+	(import.meta.env.VITE_SERVER_URL as string) || "http://localhost:3000";
+
+const API_BASE_URL = `${serverUrl}/api/agents`;
 
 export const useAgents = () => {
 	const [agents, setAgents] = useState<Agent[]>([]);
@@ -17,19 +21,20 @@ export const useAgents = () => {
 		setLoading(true);
 		setError(null);
 		try {
-			const response = await fetch(API_BASE_URL, {
-				method: "GET",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				credentials: "include",
-			});
+			const { data } = await api.get("/api/agents");
 
-			if (!response.ok) {
-				throw new Error("Error al obtener los agentes");
-			}
+			// const response = await fetch(API_BASE_URL, {
+			// 	method: "GET",
+			// 	headers: {
+			// 		"Content-Type": "application/json",
+			// 	},
+			// 	credentials: "include",
+			// });
 
-			const data = await response.json();
+			// if (!response.ok) {
+			// 	throw new Error("Error al obtener los agentes");
+			// }
+
 			console.log("📊 Agentes cargados:", data); // Debug info
 			setAgents(data);
 		} catch (err) {
@@ -45,21 +50,23 @@ export const useAgents = () => {
 		setLoading(true);
 		setError(null);
 		try {
-			const response = await fetch(API_BASE_URL, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				credentials: "include",
-				body: JSON.stringify(agentData),
-			});
 
-			if (!response.ok) {
-				const errorData = await response.json();
-				throw new Error(errorData.error || "Error al crear el agente");
-			}
+			const {data} = await api.post("/api/agents", agentData);
+			// const response = await fetch(API_BASE_URL, {
+			// 	method: "POST",
+			// 	headers: {
+			// 		"Content-Type": "application/json",
+			// 	},
+			// 	credentials: "include",
+			// 	body: JSON.stringify(agentData),
+			// });
 
-			const newAgent = await response.json();
+			// if (!response.ok) {
+			// 	const errorData = await response.json();
+			// 	throw new Error(errorData.error || "Error al crear el agente");
+			// }
+
+			const newAgent = data;
 			setAgents((prev) => [newAgent, ...prev]);
 			return newAgent;
 		} catch (err) {
@@ -165,20 +172,22 @@ export const useAgents = () => {
 			console.log("Enviando petición al agente:", agentRequest);
 
 			// Enviar petición directamente al agente desde el cliente
-			const agentResponse = await fetch(agent.url, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify(agentRequest),
-				credentials: "include",
-			});
+			const {data} = await api.post(agent.url, agentRequest);
+			//
+			// const agentResponse = await fetch(agent.url, {
+			// 	method: "POST",
+			// 	headers: {
+			// 		"Content-Type": "application/json",
+			// 	},
+			// 	body: JSON.stringify(agentRequest),
+			// 	credentials: "include",
+			// });
 
-			if (!agentResponse.ok) {
-				throw new Error(`Agente respondió con error: ${agentResponse.status}`);
-			}
+			// if (!agentResponse.ok) {
+			// 	throw new Error(`Agente respondió con error: ${agentResponse.status}`);
+			// }
 
-			const agentData = await agentResponse.json();
+			const agentData = data; //await agentResponse.json();
 			console.log("Respuesta del agente:", agentData);
 			const agentResponseContent =
 				agentData.respuesta ||
