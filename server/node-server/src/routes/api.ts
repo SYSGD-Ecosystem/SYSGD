@@ -787,11 +787,12 @@ router.delete(
 	isAuthenticated,
 	isAdmin,
 	async (req: Request, res: Response) => {
-		const userId = Number.parseInt(req.params.id, 10);
-		if (Number.isNaN(userId)) {
+		const userId = req.params.id;
+		if (!userId) {
 			res.status(400).json({ error: "ID inválido" });
 			return;
 		}
+		
 		try {
 			await pool.query(
 				"DELETE FROM document_management_file WHERE user_id = $1",
