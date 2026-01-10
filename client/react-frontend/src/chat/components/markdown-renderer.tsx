@@ -43,7 +43,7 @@ const MarkdownRendererComponent: React.FC<MarkdownRendererProps> = ({
 						);
 					},
 					pre: ({ children }) => (
-						<pre className="bg-muted p-3 rounded-lg overflow-x-auto my-2">
+						<pre className="bg-muted dark:bg-black p-3 rounded-lg max-w-prose overflow-x-auto my-2">
 							{children}
 						</pre>
 					),

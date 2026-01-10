@@ -31,6 +31,7 @@ export interface UseGeminiReturn {
     description: string,
     projectContext?: { name: string; description: string },
     model?: string,
+    provider?: string,
   ) => Promise<boolean>;
   clearError: () => void;
   retry: () => Promise<boolean>;
@@ -45,6 +46,7 @@ export const useGemini = (): UseGeminiReturn => {
     description: string;
     projectContext?: { name: string; description: string };
     model?: string;
+    provider?: string;
   } | null>(null);
 
   const { toast } = useToast();
@@ -198,6 +200,7 @@ export const useGemini = (): UseGeminiReturn => {
     description: string,
     projectContext?: { name: string; description: string },
     model?: string,
+    provider: string = 'gemini',
   ): Promise<boolean> => {
     setLoading(true);
     setImprovedText("");
@@ -220,9 +223,10 @@ export const useGemini = (): UseGeminiReturn => {
           used_custom_token: boolean;
           credits_consumed: number;
         };
-      }>("/api/generate", {
+      }>("/api/tasks/generate", {
         prompt: finalPrompt,
         model: model || "gemini-2.5-flash",
+        provider,
       });
 
       const improvedContent = response.data.respuesta || "No se recibió texto.";
