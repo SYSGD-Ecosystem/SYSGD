@@ -1,5 +1,5 @@
 import { Check, Cpu, Loader2, Sparkles, X } from "lucide-react";
-import { type FC, useState } from "react";
+import { type FC, useMemo, useState } from "react";
 import { useTaskConfig } from "@/components/projects/task-management/hooks/useTaskConfig";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,7 @@ type Props = {
 		description: string,
 		projectContext?: { name: string; description: string },
 		model?: string,
+		provider?: string,
 	) => void;
 	showImprovedPreview?: boolean;
 	setShowImprovedPreview?: (show: boolean) => void;
@@ -89,27 +90,52 @@ const DialogCreateTask: FC<Props> = ({
 	const { config } = useTaskConfig(projectId);
 	const { project, isLoading } = useProjectContext();
 
-	console.log("Task Config in DialogCreateTask:", project?.name, project?.description, {project});
+	console.log(
+		"Task Config in DialogCreateTask:",
+		project?.name,
+		project?.description,
+		{ project },
+	);
 	const [selectedModel, setSelectedModel] =
 		useState<string>("gemini-2.5-flash");
 
-	const geminiModels = [
+	
+
+	const aiModels = [
 		{
 			id: "gemini-2.5-flash",
 			name: "Gemini 2.5 Flash",
-			description: "Rápido y eficiente",
+			provider: "Google",
+			provider_id: "gemini",
+			cost: "1",
 		},
 		{
 			id: "gemini-2.5-flash-lite",
 			name: "Gemini 2.5 Flash Lite",
-			description: "Más ligero y rápido",
+			provider: "Google",
+			provider_id: "gemini",
+			cost: "1",
 		},
 		{
 			id: "gemini-3-flash",
 			name: "Gemini 3 Flash",
-			description: "Última generación",
+			provider: "Google",
+			provider_id: "gemini",
+			cost: "1",
+		},
+		{
+			id: "openai/gpt-oss-120b:free",
+			name: "GPT‑120B",
+			provider: "OpenRouter",
+			provider_id: "openrouter",
+			cost: "1",
 		},
 	];
+
+	const selectedModelObj = useMemo(
+		() => aiModels.find((m) => m.id === selectedModel),
+		[selectedModel],
+	);
 
 	const typeOptions = config?.types?.map((t) => t.name) ?? ["Tarea"];
 	const priorityOptions = config?.priorities?.map((p) => p.name) ?? [
@@ -172,16 +198,16 @@ const DialogCreateTask: FC<Props> = ({
 								<Label htmlFor="descripcion">Descripción</Label>
 								{handleImprove && (
 									<div className="flex w-full justify-end gap-2">
-										<Select
+										{/* <Select
 											value={selectedModel}
 											onValueChange={setSelectedModel}
 										>
-											<SelectTrigger className="w-[160px] h-8 text-xs">
+											<SelectTrigger className="w-40 h-8 text-xs">
 												<Cpu className="h-3 w-3 mr-1" />
 												<SelectValue />
 											</SelectTrigger>
 											<SelectContent className="text-xs">
-												{geminiModels.map((model) => (
+												{aiModels.map((model) => (
 													<SelectItem
 														key={model.id}
 														value={model.id}
@@ -192,7 +218,48 @@ const DialogCreateTask: FC<Props> = ({
 																{model.name}
 															</span>
 															<span className="text-[10px] text-muted-foreground">
-																{model.description}
+																{model.provider}
+															</span>
+														</div>
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select> */}
+
+										<Select
+											value={selectedModel}
+											onValueChange={setSelectedModel}
+										>
+											{/* ---- Trigger (lo que se ve cuando está cerrado) ---- */}
+											<SelectTrigger className="w-56 h-8 text-xs flex items-center gap-2">
+												{/* Icono opcional (puedes usar el icono del proveedor o uno genérico) */}
+												<Cpu className="h-3 w-3" />
+
+												{/* Texto principal */}
+												<span className="font-medium">
+													{selectedModelObj?.name ?? "Seleccionar modelo"}
+												</span>
+
+												{/* Texto secundario (proveedor) */}
+												{selectedModelObj && (
+													<span className="ml-1 text-[10px] text-muted-foreground">
+														({selectedModelObj.provider})
+													</span>
+												)}
+											</SelectTrigger>
+
+											{/* ---- Lista de opciones ---- */}
+											<SelectContent className="text-xs">
+												{aiModels.map((model) => (
+													<SelectItem
+														key={model.id}
+														value={model.id}
+														className="text-xs"
+													>
+														<div className="flex flex-col">
+															<span className="font-medium">{model.name}</span>
+															<span className="text-[10px] text-muted-foreground">
+																{model.provider}
 															</span>
 														</div>
 													</SelectItem>
@@ -213,6 +280,7 @@ const DialogCreateTask: FC<Props> = ({
 														description: project?.description || "",
 													},
 													selectedModel,
+													selectedModelObj?.provider_id
 												)
 											}
 											className="h-8 px-3"

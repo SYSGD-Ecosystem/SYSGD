@@ -15,6 +15,10 @@ const SYSTEM_PROMPTS = {
 // Interface para las peticiones del agente
 export interface AgentRequest {
 	prompt: string;
+	model?: string;
+	customToken?: string;
+	systemPrompt?: string;
+	force_text_response?: boolean;
 }
 
 // Interface para las respuestas del agente

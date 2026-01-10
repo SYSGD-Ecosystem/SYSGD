@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
 "use client";
 
 import { Loader2 } from "lucide-react";
@@ -38,6 +39,7 @@ export const CreateAgentModal: FC<CreateAgentModalProps> = ({
 		url: "",
 		support: [],
 		description: "",
+		systemPrompt: "",
 	});
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const { createAgent, loading } = useAgents();
@@ -169,6 +171,30 @@ export const CreateAgentModal: FC<CreateAgentModalProps> = ({
 						<p className="text-xs text-muted-foreground">
 							La URL debe ser un endpoint que acepte peticiones POST con el
 							formato estándar.
+						</p>
+					</div>
+
+					<div className="space-y-2">
+						<Label htmlFor="systemPrompt">Instrucciones (System Prompt)</Label>
+						<Textarea
+							id="systemPrompt"
+							value={formData.systemPrompt}
+							onChange={(e) =>
+								setFormData((prev) => ({
+									...prev,
+									systemPrompt: e.target.value,
+								}))
+							}
+							placeholder="Ej: Actúa como un asistente de ventas que solo responde con datos numéricos..."
+							rows={4}
+							className={errors.systemPrompt ? "border-red-500" : ""}
+						/>
+						{errors.systemPrompt && (
+							<p className="text-sm text-red-500">{errors.systemPrompt}</p>
+						)}
+						<p className="text-xs text-muted-foreground">
+							Estas instrucciones se enviarán como *system‑prompt* al agente y
+							definirán su comportamiento.
 						</p>
 					</div>
 

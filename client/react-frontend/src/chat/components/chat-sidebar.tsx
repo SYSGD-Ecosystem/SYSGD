@@ -1,77 +1,18 @@
-"use client";
-
 // biome-ignore assist/source/organizeImports: <explanation>
 import { type FC, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-// import { Badge } from "@/components/ui/badge";
-import { Search, Users, Bot, Plus, Home } from "lucide-react";
-// import type { Chat } from "./chat-interface"
-import { NewChatModal } from "./new-chat-modal";
-// // import type { ChatSidebarProps } from "./chat-sidebar-props" // Declare the variable here
-
+import { Search, Users, Bot, Home } from "lucide-react";
 import { type Conversation, useChat } from "../hooks/useChat";
-import { getRandomEmoji } from "@/utils/util";
+import { getEmojiFromName } from "@/utils/util";
 import { useNavigate } from "react-router-dom";
 import { IoChatboxOutline } from "react-icons/io5";
-import type { Contact } from "./new-chat-modal";
+
 
 interface ChatSidebarProps {
 	selectedChat?: Conversation;
 	onSelectChat: (chat: Conversation) => void;
 }
-
-// Mock data
-// const mockChats: Chat[] = [
-//   {
-//     id: "1",
-//     name: "María González",
-//     type: "user",
-//     lastMessage: "Perfecto, nos vemos mañana",
-//     timestamp: "10:30",
-//     unread: 2,
-//     avatar: "MG",
-//     online: true,
-//   },
-//   {
-//     id: "2",
-//     name: "Agente Soporte Técnico",
-//     type: "agent",
-//     lastMessage: "¿En qué puedo ayudarte hoy?",
-//     timestamp: "09:15",
-//     avatar: "🤖",
-//     online: true,
-//   },
-//   {
-//     id: "3",
-//     name: "Carlos Ramírez",
-//     type: "user",
-//     lastMessage: "Gracias por la información",
-//     timestamp: "Ayer",
-//     avatar: "CR",
-//     online: false,
-//   },
-//   {
-//     id: "4",
-//     name: "Agente Ventas",
-//     type: "agent",
-//     lastMessage: "Tenemos una oferta especial para ti",
-//     timestamp: "Ayer",
-//     unread: 1,
-//     avatar: "💼",
-//     online: true,
-//   },
-//   {
-//     id: "5",
-//     name: "Ana Martínez",
-//     type: "user",
-//     lastMessage: "Claro, sin problema",
-//     timestamp: "15/10",
-//     avatar: "AM",
-//     online: false,
-//   },
-// ]
 
 export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 	const navigate = useNavigate();
@@ -79,9 +20,8 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 	const [filter, setFilter] = useState<
 		"all" | "user" | "agent" | "private" | "bot"
 	>("all");
-	const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
 
-	const { conversations, fetchConversations } = useChat();
+	const { conversations } = useChat();
 
 	console.log("Conversations in Sidebar:", conversations);
 
@@ -96,24 +36,8 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 		return matchesSearch && matchesFilter;
 	});
 
-	const handleNewChat = (contact: Contact) => {
-		fetchConversations();
-		// Convert Contact to Conversation format
-		const conversation: Conversation = {
-			id: contact.id.toString(),
-			title: contact.name,
-			type:
-				contact.type === "agent" || contact.type === "bot"
-					? "private"
-					: "private",
-			created_by: null,
-			created_at: new Date().toISOString(),
-		};
-		onSelectChat(conversation);
-	};
-
 	return (
-		<div className="h-full flex flex-col bg-sidebar">
+		<div className="h-full flex flex-col bg-sidebar min-w-0">
 			{/* Header */}
 			<div className="p-4 border-b border-sidebar-border">
 				<div className="flex items-center justify-between mb-4">
@@ -139,16 +63,6 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 							SYSGD-CHAT
 						</h1>
 					</div>
-
-					<Button
-						size="icon"
-						variant="default"
-						className="hidden"
-						onClick={() => setIsNewChatModalOpen(true)}
-						title="Nueva conversación"
-					>
-						<Plus className="h-5 w-5" />
-					</Button>
 				</div>
 
 				{/* Search */}
@@ -194,8 +108,8 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 			</div>
 
 			{/* Chat List */}
-			<ScrollArea className="flex-1 overflow-y-auto">
-				<div className="p-2 w-full">
+			<div className="flex-1 overflow-y-auto min-w-0 overflow-x-hidden">
+				<div className="p-2 w-full min-w-0">
 					{filteredChats.map((chat) => (
 						<ChatConversationItem
 							key={chat.id}
@@ -205,13 +119,7 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 						/>
 					))}
 				</div>
-			</ScrollArea>
-
-			<NewChatModal
-				open={isNewChatModalOpen}
-				onOpenChange={setIsNewChatModalOpen}
-				onSelectContact={handleNewChat}
-			/>
+			</div>
 		</div>
 	);
 }
@@ -224,32 +132,28 @@ const ChatConversationItem: FC<{
 	return (
 		<button
 			type="button"
-			key={chat.id}
 			onClick={() => onSelectChat(chat)}
-			className={`w-full p-3 rounded-lg mb-1 text-left transition-colors ${
-				isSelected ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/50"
-			}`}
+			className={`
+    w-full min-w-0 flex p-3 rounded-lg mb-1 text-left transition-colors
+    ${isSelected ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/50"}
+  `}
 		>
-			<div className="flex items-start gap-3 max-w-60">
-				<div className="relative flex-shrink-0">
-					<div className="w-12 h-12 rounded-full bg-sidebar-primary/10 flex items-center justify-center text-sidebar-primary font-semibold">
-						{getRandomEmoji()}
+			<div className="flex items-start gap-3 w-full min-w-0">
+				<div className="flex-shrink-0 min-w-0">
+					<div className="w-12 h-12 rounded-full bg-sidebar-primary/10 flex items-center justify-center">
+						{getEmojiFromName(
+							chat.title || chat.members?.[0]?.name || "Usuario",
+						)}
 					</div>
-					{/* {chat.online && (
-						<div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-sidebar" />
-					)} */}
 				</div>
-				<div className="flex-1 flex flex-col">
+
+				<div className="flex-1 flex flex-col min-w-0">
 					<div className="flex items-baseline justify-between gap-2 mb-1 min-w-0">
-						<h3 className="font-semibold text-sm text-sidebar-foreground truncate flex-1">
-							{chat.title
-								? chat.title
-								: chat.members && chat.members.length > 1
-									? chat.members[1].name
-									: chat.members && chat.members[0].name}
+						<h3 className="font-semibold text-sm truncate flex-1 min-w-0">
+							{chat.title ?? chat.members?.[0]?.name}
 						</h3>
-						<span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
-							{chat.last_message && chat.last_message.created_at
+						<span className="text-xs whitespace-nowrap flex-shrink-0">
+							{chat.last_message?.created_at
 								? new Date(chat.last_message.created_at).toLocaleTimeString(
 										[],
 										{
@@ -260,18 +164,11 @@ const ChatConversationItem: FC<{
 								: ""}
 						</span>
 					</div>
-					<div className="flex items-center gap-2">
-						<p className="text-sm text-muted-foreground truncate flex-1">
+
+					<div className="flex items-center gap-2 min-w-0">
+						<p className="text-sm truncate flex-1 min-w-0">
 							{chat.last_message?.content || "Sin mensajes aún"}
 						</p>
-						{/* {chat.unread && (
-							<Badge
-								variant="default"
-								className="flex-shrink-0 h-5 min-w-5 px-1.5"
-							>
-								{chat.unread}
-							</Badge>
-						)} */}
 					</div>
 				</div>
 			</div>

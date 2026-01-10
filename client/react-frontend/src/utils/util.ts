@@ -115,3 +115,23 @@ export function getRandomEmoji() {
 	const randomIndex = Math.floor(Math.random() * emojis.length);
 	return emojis[randomIndex];
 }
+
+export function getEmojiFromName(name:string) {
+	const emojis = [
+		"😀","😎","🤖","👽","🐱","🐶","🐵","🦊","🐸","🐼",
+		"🐧","🐙","🐢","🐝","🐳","🌵","🌈","🔥","⚡","🍕",
+		"🍔","🍩","🍉","🍒","🥑","🚀","🎮","🎨","🎧","💡",
+		"💎","🧠","👾","🤡","🦄","🐉","🦕","🦖","🥷","🦸‍♂️",
+	];
+
+	let hash = 0;
+
+	for (let i = 0; i < name.length; i++) {
+		hash = (hash << 5) - hash + name.charCodeAt(i);
+		hash |= 0; // fuerza int32
+	}
+
+	const index = Math.abs(hash) % emojis.length;
+	return emojis[index];
+}
+

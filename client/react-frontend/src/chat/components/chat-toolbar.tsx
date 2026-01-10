@@ -73,8 +73,8 @@ export const ChatToolbar: FC<ChatToolbarProps> = ({
 	return (
 		<>
 			<div
-				className={`h-full bg-card border-l border-border transition-all duration-300 ${
-					isCollapsed ? "w-12" : "w-64"
+				className={`h-full bg-card border-l justify-center border-border overflow-hidden transition-all duration-300 ${
+					isCollapsed ? "w-16" : "w-64"
 				}`}
 			>
 				{/* Header */}
@@ -112,8 +112,8 @@ export const ChatToolbar: FC<ChatToolbarProps> = ({
 								variant={item.variant}
 								size={isCollapsed ? "icon" : "sm"}
 								onClick={item.onClick}
-								className={`w-full justify-start ${
-									isCollapsed ? "h-10 w-10" : "h-10"
+								className={`w-full  ${
+									isCollapsed ? "justify-center h-10 w-10" : "justify-start h-10"
 								}`}
 								title={isCollapsed ? item.label : undefined}
 							>

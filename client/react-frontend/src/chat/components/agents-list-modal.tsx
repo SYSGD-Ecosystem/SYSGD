@@ -34,6 +34,7 @@ import useCurrentUser from "@/hooks/connection/useCurrentUser";
 import type { Agent, AgentSupport } from "../../types/Agent";
 import { useAgents } from "../hooks/useAgents";
 import { useChat } from "../hooks/useChat";
+import { useToast } from "@/hooks/use-toast";
 
 interface AgentsListModalProps {
 	open: boolean;
@@ -51,6 +52,25 @@ export const AgentsListModal: FC<AgentsListModalProps> = ({
 	const [isDeleting, setIsDeleting] = useState(false);
 	const { createConversation } = useChat();
 	const { user } = useCurrentUser();
+	const { toast } = useToast();
+
+	// crear conversacion con agente
+	const handleCreateConversationWithAgent = async (agent: Agent) => {
+		const conversation = await createConversation({
+			type: "bot",
+			contactemail: user?.email || "",
+			members: [user?.email || ""],
+			title: agent.name,
+		});
+
+		if (conversation) {
+			toast({
+				title: "Conversación creada",
+				description: `Se ha creado una nueva conversación con el agente ${agent.name}.`,
+			});
+		}
+		onOpenChange(false);
+	};
 
 	const getSupportBadgeColor = (support: AgentSupport) => {
 		switch (support) {
@@ -210,12 +230,7 @@ export const AgentsListModal: FC<AgentsListModalProps> = ({
 															variant="ghost"
 															size="sm"
 															onClick={() =>
-																createConversation({
-																	type: "bot",
-																	contactemail: user?.email || "",
-																	members: [user?.email || ""],
-																	title: agent.name,
-																})
+																handleCreateConversationWithAgent(agent)
 															}
 															title="Nuevo chat"
 															className="text-red-600 hover:text-red-700"
