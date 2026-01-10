@@ -7,7 +7,6 @@ import { Router, type Request, type Response } from "express";
 import { pool } from "../db";
 import bcrypt from "bcrypt";
 import { isAuthenticated } from "../middlewares/auth-jwt";
-import { login, logout } from "../controllers/auth";
 import { getCurrentUser } from "../controllers/auth";
 import { getCurrentUserData } from "../controllers/users";
 import { getArchives } from "../controllers/archives.controller";
@@ -436,6 +435,12 @@ router.get("/get-organization-chart", isAuthenticated, async (req, res) => {
 		res.status(400).json({ error: "Falta id" });
 		return;
 	}
+
+	if (typeof id !== "string") {
+		res.status(400).json({ error: "Id inválido" });
+		return;
+	}
+
 	try {
 		const result = await pool.query(
 			"SELECT data FROM organization_chart WHERE file_id = $1",
@@ -758,7 +763,6 @@ router.post("/register", async (req: Request, res: Response) => {
 		res.status(500).send("Error interno del servidor");
 	}
 });
-
 
 // GET /api/users - Devuelve todos los usuarios (solo admin)
 router.get(
