@@ -1,7 +1,9 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
 /** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
 import { useCallback, useEffect, useRef, useState } from "react";
+import api from "@/lib/api";
 
 type UUID = string;
 
@@ -54,6 +56,15 @@ export interface Invitation {
 	sender_email?: string | null;
 }
 
+function getErrorMessage(err: any, fallback: string) {
+	return (
+		err?.response?.data?.message ||
+		err?.response?.data?.error ||
+		err?.message ||
+		fallback
+	);
+}
+
 /**
  * useChat - Hook TypeScript para gestionar conversaciones, mensajes e invitaciones
  *
@@ -63,9 +74,6 @@ export interface Invitation {
  */
 
 export function useChat() {
-	const serverUrl =
-		(import.meta.env.VITE_SERVER_URL as string) || "http://localhost:3000";
-
 	const [conversations, setConversations] = useState<Conversation[]>([]);
 	const [messagesMap, setMessagesMap] = useState<Record<string, Message[]>>({});
 	const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -74,128 +82,84 @@ export function useChat() {
 
 	const abortControllers = useRef<Record<string, AbortController>>({});
 
-	/**
-	 * safeFetch - wrapper que aplica credentials: "include" por defecto y parsea JSON/texto.
-	 * Acepta init.signal para abort.
-	 */
-	const safeFetch = useCallback(
-		async (input: RequestInfo, init?: RequestInit) => {
-			const mergedInit: RequestInit = {
-				credentials: "include",
-				...init,
-			};
-			try {
-				const res = await fetch(input, mergedInit);
-				const text = await res.text();
-				let data: any = null;
-				try {
-					data = text ? JSON.parse(text) : null;
-				} catch {
-					data = text;
-				}
-				if (!res.ok) {
-					const msg =
-						data?.error || data?.message || data || `HTTP ${res.status}`;
-					throw new Error(msg);
-				}
-				return data;
-			} catch (err: any) {
-				// pasamos el error hacia arriba con un formato consistente
-				throw new Error(err?.message || "Network error");
-			}
-		},
-		[],
-	);
-
 	// -----------------------
 	// Conversaciones
 	// -----------------------
+
 	const fetchConversations = useCallback(async () => {
 		setLoading(true);
 		setError(null);
 		try {
-			const data = await safeFetch(`${serverUrl}/api/chat/conversations`);
+			const { data } = await api.get<Conversation[]>("/api/chat/conversations");
 			setConversations(Array.isArray(data) ? data : []);
 			return data;
 		} catch (err: any) {
-			setError(err.message || "Error al obtener conversaciones");
+			const msg = getErrorMessage(err, "Error al obtener conversaciones");
+			setError(msg);
 			throw err;
 		} finally {
 			setLoading(false);
 		}
-	}, [serverUrl, safeFetch]);
+	}, []);
 
 	// -----------------------
 	// Mensajes
 	// -----------------------
-	const fetchMessages = useCallback(
-		async (conversationId: string) => {
-			if (!conversationId) return;
-			setLoading(true);
-			setError(null);
 
-			// abort previo si existe
-			if (abortControllers.current[conversationId]) {
-				abortControllers.current[conversationId].abort();
-			}
-			const ac = new AbortController();
-			abortControllers.current[conversationId] = ac;
+	const fetchMessages = useCallback(async (conversationId: string) => {
+		if (!conversationId) return;
 
-			try {
-				const data = await safeFetch(
-					`${serverUrl}/api/chat/messages/${conversationId}`,
-					{
-						signal: ac.signal,
-					} as RequestInit,
-				);
-				setMessagesMap((prev) => ({
-					...prev,
-					[conversationId]: Array.isArray(data) ? data : [],
-				}));
-				return data;
-			} catch (err: any) {
-				if (err.name === "AbortError") {
-					// petición cancelada, no actualizar estado de error
-				} else {
-					setError(err.message || "Error al obtener mensajes");
-					throw err;
-				}
-			} finally {
-				setLoading(false);
-				delete abortControllers.current[conversationId];
+		setLoading(true);
+		setError(null);
+
+		if (abortControllers.current[conversationId]) {
+			abortControllers.current[conversationId].abort();
+		}
+
+		const ac = new AbortController();
+		abortControllers.current[conversationId] = ac;
+
+		try {
+			const { data } = await api.get<Message[]>(
+				`/api/chat/messages/${conversationId}`,
+				{ signal: ac.signal },
+			);
+
+			setMessagesMap((prev) => ({
+				...prev,
+				[conversationId]: Array.isArray(data) ? data : [],
+			}));
+
+			return data;
+		} catch (err: any) {
+			if (err.name !== "CanceledError") {
+				const msg = getErrorMessage(err, "Error al obtener mensajes");
+				setError(msg);
+				throw err;
 			}
-		},
-		[serverUrl, safeFetch],
-	);
+		} finally {
+			setLoading(false);
+			delete abortControllers.current[conversationId];
+		}
+	}, []);
 
 	const sendMessage = useCallback(
-		async (
-			conversationId: string,
-			message: {
-				content?: string;
-				attachment_type?: string;
-				attachment_url?: string;
-				reply_to?: string | null;
-			},
-		) => {
+		async (conversationId: string, message: any) => {
 			if (!conversationId) throw new Error("conversationId requerido");
 			setError(null);
 
 			try {
 				const payload = { conversation_id: conversationId, ...message };
-				const newMessage = await safeFetch(
-					`${serverUrl}/api/chat/messages/send`,
-					{
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify(payload),
-					},
+
+				const { data: newMessage } = await api.post<Message>(
+					"/api/chat/messages/send",
+					payload,
 				);
 
-				setMessagesMap((prev) => {
-					const existing = prev[conversationId] ?? [];
-					return { ...prev, [conversationId]: [...existing, newMessage] };
-				});
+				setMessagesMap((prev) => ({
+					...prev,
+					[conversationId]: [...(prev[conversationId] ?? []), newMessage],
+				}));
 
 				setConversations((prev) =>
 					prev.map((c) =>
@@ -203,13 +167,14 @@ export function useChat() {
 					),
 				);
 
-				return newMessage as Message;
+				return newMessage;
 			} catch (err: any) {
-				setError(err.message || "Error al enviar mensaje");
+				const msg = getErrorMessage(err, "Error al enviar mensaje");
+				setError(msg);
 				throw err;
 			}
 		},
-		[serverUrl, safeFetch],
+		[],
 	);
 
 	// -----------------------
@@ -224,100 +189,89 @@ export function useChat() {
 		  }
 		| string;
 
-	const createConversation = useCallback(
-		async (opts?: CreateOpts) => {
-			setError(null);
-			try {
-				const body: any = {};
-				if (typeof opts === "string") {
-					body.contactemail = opts;
-				} else if (opts && typeof opts === "object") {
-					if (opts.contactemail) body.contactemail = opts.contactemail;
-					if (opts.members) body.members = opts.members;
-					if (opts.title) body.title = opts.title;
-					if (opts.type) body.type = opts.type;
-				}
+	const createConversation = useCallback(async (opts?: CreateOpts) => {
+		setError(null);
+		try {
+			const body: any =
+				typeof opts === "string" ? { contactemail: opts } : (opts ?? {});
 
-				console.log("Creating conversation with body:", body);
+			const { data: newConv } = await api.post<Conversation>(
+				"/api/chat/conversations/create",
+				body,
+			);
 
-				const newConv: Conversation = await safeFetch(
-					`${serverUrl}/api/chat/conversations/create`,
-					{
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify(body),
-					},
-				);
+			setConversations((prev) =>
+				prev.some((c) => c.id === newConv.id) ? prev : [newConv, ...prev],
+			);
 
-				setConversations((prev) => {
-					if (prev.find((p) => p.id === newConv.id)) return prev;
-					return [newConv, ...prev];
-				});
-
-				return newConv;
-			} catch (err: any) {
-				setError(err.message || "Error al crear conversación");
-				throw err;
-			}
-		},
-		[serverUrl, safeFetch],
-	);
+			return newConv;
+		} catch (err: any) {
+			const msg = getErrorMessage(err, "Error al crear conversación");
+			setError(msg);
+			throw err;
+		}
+	}, []);
 
 	// -----------------------
 	// Invitaciones
 	// -----------------------
+
 	const sendInvitation = useCallback(
 		async (conversation_id: string, receiver_email: string) => {
 			setError(null);
-			if (!conversation_id || !receiver_email)
+
+			if (!conversation_id || !receiver_email) {
 				throw new Error("conversation_id y receiver_email requeridos");
+			}
+
 			try {
-				const inv: Invitation = await safeFetch(
-					`${serverUrl}/api/chat/conversations/invite`,
-					{
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({ conversation_id, receiver_email }),
-					},
+				const { data } = await api.post<Invitation>(
+					"/api/chat/conversations/invite",
+					{ conversation_id, receiver_email },
 				);
-				setInvitations((prev) => [inv, ...prev]);
-				return inv;
+
+				setInvitations((prev) => [data, ...prev]);
+				return data;
 			} catch (err: any) {
-				setError(err.message || "Error al enviar invitación");
+				const msg =
+					err?.response?.data?.message || "Error al enviar invitación";
+				setError(msg);
 				throw err;
 			}
 		},
-		[serverUrl, safeFetch],
+		[],
 	);
 
 	const getInvitations = useCallback(async () => {
-		setError(null);
 		setLoading(true);
+		setError(null);
 		try {
-			const data = await safeFetch(
-				`${serverUrl}/api/chat/conversations/invitations`,
+			const { data } = await api.get<Invitation[]>(
+				"/api/chat/conversations/invitations",
 			);
 			setInvitations(Array.isArray(data) ? data : []);
 			return data;
 		} catch (err: any) {
-			setError(err.message || "Error al obtener invitaciones");
+			const msg = getErrorMessage(err, "Error al obtener invitaciones");
+			setError(msg);
 			throw err;
 		} finally {
 			setLoading(false);
 		}
-	}, [serverUrl, safeFetch]);
+	}, []);
 
 	const acceptInvitation = useCallback(
 		async (invitation_id: string) => {
 			setError(null);
+
+			if (!invitation_id) {
+				throw new Error("invitation_id requerido");
+			}
+
 			try {
-				const res = await safeFetch(
-					`${serverUrl}/api/chat/conversations/invite/accept`,
-					{
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({ invitation_id }),
-					},
+				const { data } = await api.post(
+					"/api/chat/conversations/invite/accept",
+					{ invitation_id },
 				);
 
 				setInvitations((prev) =>
@@ -325,32 +279,35 @@ export function useChat() {
 						i.id === invitation_id ? { ...i, status: "accepted" } : i,
 					),
 				);
+
 				await fetchConversations();
-				return res;
+				return data;
 			} catch (err: any) {
-				setError(err.message || "Error al aceptar invitación");
+				const msg =
+					err?.response?.data?.message || "Error al aceptar invitación";
+				setError(msg);
 				throw err;
 			}
 		},
-		[serverUrl, safeFetch, fetchConversations],
+		[fetchConversations],
 	);
 
 	// -----------------------
 	// Lectura de mensajes (mark as read)
 	// -----------------------
+
 	const markAsRead = useCallback(
 		async (conversationId: string, last_read_message_id: string) => {
 			setError(null);
-			if (!conversationId || !last_read_message_id)
+
+			if (!conversationId || !last_read_message_id) {
 				throw new Error("conversationId y last_read_message_id requeridos");
+			}
+
 			try {
-				const res = await safeFetch(
-					`${serverUrl}/api/chat/conversations/${conversationId}/read`,
-					{
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({ last_read_message_id }),
-					},
+				const { data } = await api.post(
+					`/api/chat/conversations/${conversationId}/read`,
+					{ last_read_message_id },
 				);
 
 				setConversations((prev) =>
@@ -358,45 +315,47 @@ export function useChat() {
 						c.id === conversationId ? { ...c, last_read_message_id } : c,
 					),
 				);
-				return res;
+
+				return data;
 			} catch (err: any) {
-				setError(err.message || "Error al marcar como leído");
+				const msg =
+					err?.response?.data?.message || "Error al marcar como leído";
+				setError(msg);
 				throw err;
 			}
 		},
-		[serverUrl, safeFetch],
+		[],
 	);
 
 	// -----------------------
 	// Eliminar conversación
 	// -----------------------
-	const deleteConversation = useCallback(
-		async (conversationId: string) => {
-			setError(null);
-			if (!conversationId) throw new Error("conversationId requerido");
-			try {
-				await safeFetch(
-					`${serverUrl}/api/chat/conversations/${conversationId}`,
-					{
-						method: "DELETE",
-					},
-				);
+	const deleteConversation = useCallback(async (conversationId: string) => {
+		setError(null);
 
-				setConversations((prev) => prev.filter((c) => c.id !== conversationId));
-				setMessagesMap((prev) => {
-					const copy = { ...prev };
-					delete copy[conversationId];
-					return copy;
-				});
+		if (!conversationId) {
+			throw new Error("conversationId requerido");
+		}
 
-				return true;
-			} catch (err: any) {
-				setError(err.message || "Error al eliminar conversación");
-				throw err;
-			}
-		},
-		[serverUrl, safeFetch],
-	);
+		try {
+			await api.delete(`/api/chat/conversations/${conversationId}`);
+
+			setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+
+			setMessagesMap((prev) => {
+				const copy = { ...prev };
+				delete copy[conversationId];
+				return copy;
+			});
+
+			return true;
+		} catch (err: any) {
+			const msg =
+				err?.response?.data?.message || "Error al eliminar conversación";
+			setError(msg);
+			throw err;
+		}
+	}, []);
 
 	// -----------------------
 	// Utilidades y helpers
@@ -408,21 +367,14 @@ export function useChat() {
 		[],
 	);
 
-	/**
-	 * fetchCurrentUser - obtiene info del usuario autenticado (usa credentials include)
-	 * endpoint backend esperado: `${serverUrl}/api/auth/me`
-	 */
-	const fetchCurrentUser = useCallback(async (): Promise<{
-		id: string;
-		email: string;
-	} | null> => {
+	const fetchCurrentUser = useCallback(async () => {
 		try {
-			const data = await safeFetch(`${serverUrl}/api/auth/me`);
-			return data || null;
+			const { data } = await api.get("/api/auth/me");
+			return data ?? null;
 		} catch {
 			return null;
 		}
-	}, [serverUrl, safeFetch]);
+	}, []);
 
 	// cargar conversaciones al montar el hook
 	useEffect(() => {
@@ -432,7 +384,9 @@ export function useChat() {
 			Object.values(abortControllers.current).forEach((ac) => {
 				try {
 					ac.abort();
-				} catch {}
+				} catch {
+					console.log("Error al cargar conversaciones");
+				}
 			});
 		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
