@@ -15,7 +15,7 @@ const router = Router();
 const DEFAULT_USER_DATA = {
   billing: {
     tier: "free",
-    ai_task_credits: 5,
+    ai_task_credits: 10,
     purchased_credits: 0,
     limits: {
       max_projects: 3,
@@ -568,6 +568,17 @@ router.delete("/:id", async (req, res) => {
       "DELETE FROM document_management_file WHERE user_id = $1",
       [userId]
     );
+
+    await pool.query(
+      "DELETE FROM users_logins WHERE user_id = $1",
+      [userId]
+    );
+    
+    await pool.query(
+      "DELETE FROM task_assignees WHERE user_id = $1",
+      [userId]
+    );
+
 
     // Eliminar usuario
     const result = await pool.query(

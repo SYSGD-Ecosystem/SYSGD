@@ -12,7 +12,7 @@ import ProjectWorkSpace from "./components/projects/ProjectsWorkSpace.tsx";
 import { Toaster } from "./components/ui/toaster.tsx";
 import App from "./pages/App.tsx";
 import Auth from "./pages/Auth.tsx";
-import AdminDashboard from "./pages/admin-dashboard.tsx";
+import Admin from "./pages/Admin.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import DevPreview from "./pages/DevPreview.tsx";
 import ErrorServer from "./pages/ErrorServer.tsx";
@@ -48,7 +48,7 @@ createRoot(document.getElementById("root")!).render(
 						<Route path="/table" element={<EditableSpreadsheet />} />
 						<Route path="/demo" element={<ProjectPageDemo />} />
 						<Route path="/archives" element={<Dashboard />} />
-						<Route path="/admin" element={<AdminDashboard />} />
+						<Route path="/admin" element={<Admin />} />
 						<Route path="/terms" element={<TermsAndConditions />} />
 						<Route path="/privacy" element={<PrivacyPolicy />} />
 						<Route path="/old-dashboard" element={<ProjectsPage />} />
