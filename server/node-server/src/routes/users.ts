@@ -551,7 +551,6 @@ router.put("/:id/password", async (req, res) => {
   }
 });
 
-// Eliminar usuario (admin)
 router.delete("/:id", async (req, res) => {
   const userId = req.params.id;
 
@@ -560,45 +559,48 @@ router.delete("/:id", async (req, res) => {
     return;
   }
 
-  try {
-    await pool.query('BEGIN');
+  const client = await pool.connect();
 
-    // Eliminar archivos del usuario
-    await pool.query(
+  try {
+    await client.query("BEGIN");
+
+    await client.query(
       "DELETE FROM document_management_file WHERE user_id = $1",
       [userId]
     );
 
-    await pool.query(
+    await client.query(
       "DELETE FROM users_logins WHERE user_id = $1",
       [userId]
     );
-    
-    await pool.query(
+
+    await client.query(
       "DELETE FROM task_assignees WHERE user_id = $1",
       [userId]
     );
 
-
-    // Eliminar usuario
-    const result = await pool.query(
+    const result = await client.query(
       "DELETE FROM users WHERE id = $1 RETURNING id",
       [userId]
     );
 
     if (result.rowCount === 0) {
-      await pool.query('ROLLBACK');
+      await client.query("ROLLBACK");
       res.status(404).json({ error: "Usuario no encontrado" });
       return;
     }
 
-    await pool.query('COMMIT');
-    res.json({ message: "Usuario y documentos eliminados correctamente" });
+    await client.query("COMMIT");
+    res.json({ message: "Usuario eliminado correctamente" });
+
   } catch (error) {
-    await pool.query('ROLLBACK');
+    await client.query("ROLLBACK");
     console.error("Error al eliminar usuario:", error);
     res.status(500).json({ error: "Error al eliminar usuario" });
+  } finally {
+    client.release();
   }
 });
+
 
 export default router;
