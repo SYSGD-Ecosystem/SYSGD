@@ -267,7 +267,8 @@ CREATE TABLE IF NOT EXISTS agents (
   created_by UUID REFERENCES users(id) ON DELETE CASCADE,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
+  updated_at TIMESTAMP DEFAULT NOW(),
+  system_prompt TEXT NULL
 );
 
 CREATE TABLE IF NOT EXISTS agent_conversations (

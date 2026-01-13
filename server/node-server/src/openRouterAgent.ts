@@ -44,6 +44,20 @@ async function callOpenRouterChat(
 ): Promise<string> {
 	const token = customToken || OPENROUTER_API_KEY;
 
+	console.log("Using system:", systemPrompt);
+
+
+console.log("Enviando esto...",{
+			model,
+			messages: systemPrompt
+				? [
+						{ role: "system", content: systemPrompt },
+						{ role: "user", content: prompt },
+					]
+				: [{ role: "user", content: prompt }],
+			stream: false,
+		})
+
 	const response = await fetch(`${API_BASE}/chat/completions`, {
 		method: "POST",
 		headers: {

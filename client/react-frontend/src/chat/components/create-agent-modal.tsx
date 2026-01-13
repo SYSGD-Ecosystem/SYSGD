@@ -112,6 +112,7 @@ export const CreateAgentModal: FC<CreateAgentModalProps> = ({
 				url: "",
 				support: [],
 				description: "",
+				systemPrompt: "",
 			});
 			setErrors({});
 		}
@@ -123,6 +124,7 @@ export const CreateAgentModal: FC<CreateAgentModalProps> = ({
 			url: "",
 			support: [],
 			description: "",
+			systemPrompt: "",
 		});
 		setErrors({});
 		onOpenChange(false);
