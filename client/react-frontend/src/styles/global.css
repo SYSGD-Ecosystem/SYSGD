@@ -629,6 +629,20 @@ body,
 	}
 }
 
+/* Oculta la barra de scroll en todos los navegadores */
+.no-scrollbar {
+	/* Chrome, Safari, Edge (WebKit) */
+	&::-webkit-scrollbar {
+		display: none;
+	}
+
+	/* Firefox */
+	scrollbar-width: none; /* "none" | "thin" | "auto" */
+
+	/* IE 10+ */
+	-ms-overflow-style: none;
+}
+
 /* Estilos para Markdown */
 .prose {
 	color: var(--foreground);

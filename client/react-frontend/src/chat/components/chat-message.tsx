@@ -124,7 +124,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 							<Input
 								value={editingContent}
 								onChange={(e) => onEditingContentChange(e.target.value)}
-								className="min-w-[300px]"
+								className="min-w-75"
 								autoFocus
 							/>
 							<div className="flex gap-2">

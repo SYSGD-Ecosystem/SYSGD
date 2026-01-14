@@ -2,7 +2,6 @@ import { Bot, File, Mic, Paperclip, Send, Smile, Video, X } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Agent } from "../../types/Agent";
 import { useAgents } from "../hooks/useAgents";
@@ -14,6 +13,8 @@ import {
 import type { Message } from "./chat-interface";
 import { ChatMessage } from "./chat-message";
 import { ChatSettings } from "./chat-settings";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 
 interface ChatConversationProps {
 	chat: Conversation;
@@ -71,6 +72,8 @@ export function ChatConversation({
 	);
 	const [sending, setSending] = useState(false);
 	const [waitingForAgent, setWaitingForAgent] = useState(false);
+	const [anErrorOcurred, setAnErrorOcurred] = useState(false);
+	const { toast } = useToast();
 
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -220,6 +223,8 @@ export function ChatConversation({
 		if (!newMessage.trim() && !attachment) return;
 
 		setSending(true);
+
+		setAnErrorOcurred(false);
 
 		// optimistic message (temporary id)
 		const tempId = "tmp-" + Date.now().toString();
@@ -376,7 +381,11 @@ export function ChatConversation({
 				} else {
 					// Agent failed, remove optimistic message
 					setMessages((prev) => prev.filter((m) => m.id !== tempId));
-					alert("No se pudo conectar con el agente. Intenta de nuevo.");
+					toast({
+						title: "Error",
+						description: "No se pudo conectar con el agente. Intenta de nuevo.",
+					});
+					setAnErrorOcurred(true);
 				}
 			} else {
 				// Regular message sending (existing logic)
@@ -443,7 +452,11 @@ export function ChatConversation({
 		} catch (err) {
 			console.error("Error sending message:", err);
 			setMessages((prev) => prev.filter((m) => m.id !== tempId));
-			alert("No se pudo enviar el mensaje. Intenta de nuevo.");
+			toast({
+				title: "Error",
+				description: "No se pudo enviar el mensaje. Intenta de nuevo."
+			});
+			setAnErrorOcurred(true);
 		} finally {
 			setSending(false);
 			setWaitingForAgent(false);
@@ -451,7 +464,11 @@ export function ChatConversation({
 			setAttachment(null);
 			setAttachmentPreview(null);
 			setReplyingTo(null);
-			if (fileInputRef.current) fileInputRef.current.value = "";
+			if (fileInputRef.current) {
+				if (!anErrorOcurred) {
+					fileInputRef.current.value = "";
+				}
+			}
 		}
 	};
 
@@ -539,7 +556,7 @@ export function ChatConversation({
 					{waitingForAgent && selectedAgent && (
 						<div className="flex gap-3">
 							<div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
-								🤖
+								<Bot className="w-4 h-4" />
 							</div>
 							<div className="flex flex-col items-start max-w-[70%]">
 								<span className="text-xs text-muted-foreground mb-1 px-1">
@@ -672,12 +689,12 @@ export function ChatConversation({
 							<Paperclip className="h-5 w-5" />
 						</Button>
 						<div className="flex-1 relative">
-							<Input
+							<Textarea
 								placeholder="Escribe un mensaje..."
 								value={newMessage}
 								onChange={(e) => setNewMessage(e.target.value)}
 								onKeyPress={handleKeyPress}
-								className="pr-10 min-h-[44px]"
+								className="pr-10 min-h-11 resize-none font-sans text-base border-none no-scrollbar"
 							/>
 							<Button
 								variant="ghost"

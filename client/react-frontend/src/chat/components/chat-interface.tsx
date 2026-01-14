@@ -45,7 +45,7 @@ export function ChatInterface() {
 		<div className="flex h-screen bg-background">
 			{/* Sidebar */}
 			<div
-				className={`${sidebarOpen ? "w-80" : "w-0"} transition-all duration-300 border-r border-border overflow-hidden`}
+				className={`${sidebarOpen ? "w-80" : "w-0"} transition-[width] duration-300 border-r border-border overflow-hidden min-w-0 shrink-0`}
 			>
 				<ChatSidebar
 					selectedChat={selectedChat ?? undefined}

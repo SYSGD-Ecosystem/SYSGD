@@ -8,6 +8,7 @@ export interface Agent {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  system_prompt?: string;
 }
 
 export type AgentSupport = 'text' | 'image' | 'audio' | 'video';
@@ -17,6 +18,7 @@ export interface CreateAgentRequest {
   url: string;
   support: AgentSupport[];
   description?: string;
+  systemPrompt?: string;
 }
 
 export interface UpdateAgentRequest {
@@ -25,6 +27,7 @@ export interface UpdateAgentRequest {
   support?: AgentSupport[];
   description?: string;
   is_active?: boolean;
+  systemPrompt?: string;
 }
 
 export interface AgentConversation {

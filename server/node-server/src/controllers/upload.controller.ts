@@ -95,21 +95,53 @@ const formatFileSize = (bytes: number): string => {
 };
 
 // Endpoint para eliminar archivos
+// export const deleteFile = async (req: Request, res: Response) => {
+//   try {
+//     const { key } = req.params;
+//     const userId = (req as any).user?.id;
+
+//     if (!userId) {
+//       return res.status(401).json({ error: 'Usuario no autenticado' });
+//     }
+
+//     // Verificar que el archivo pertenece al usuario
+//     if (!key.startsWith(`${userId}/`)) {
+//       return res.status(403).json({ error: 'No tienes permisos para eliminar este archivo' });
+//     }
+
+//     // Eliminar archivo de S3
+//     await s3.deleteObject({
+//       Bucket: BUCKET_NAME,
+//       Key: key
+//     }).promise();
+
+//     res.json({ message: 'Archivo eliminado correctamente' });
+//   } catch (error) {
+//     console.error('Error deleting file from S3:', error);
+//     res.status(500).json({ error: 'Error interno del servidor al eliminar archivo' });
+//   }
+// };
+
 export const deleteFile = async (req: Request, res: Response) => {
   try {
-    const { key } = req.params;
+    const rawKey = req.params.key;
     const userId = (req as any).user?.id;
 
     if (!userId) {
       return res.status(401).json({ error: 'Usuario no autenticado' });
     }
 
+    if (!rawKey || typeof rawKey !== 'string') {
+      return res.status(400).json({ error: 'Parámetro key inválido' });
+    }
+
+    const key = rawKey;
+
     // Verificar que el archivo pertenece al usuario
     if (!key.startsWith(`${userId}/`)) {
       return res.status(403).json({ error: 'No tienes permisos para eliminar este archivo' });
     }
 
-    // Eliminar archivo de S3
     await s3.deleteObject({
       Bucket: BUCKET_NAME,
       Key: key
@@ -121,3 +153,4 @@ export const deleteFile = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Error interno del servidor al eliminar archivo' });
   }
 };
+

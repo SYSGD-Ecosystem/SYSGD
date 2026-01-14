@@ -4,7 +4,7 @@ import { CreateAgentRequest, UpdateAgentRequest } from '../types/Agent';
 
 export const createAgent = async (req: Request, res: Response) => {
   try {
-    const { name, url, support, description } = req.body as CreateAgentRequest;
+    const { name, url, support, description, systemPrompt } = req.body as CreateAgentRequest;
     const userId = (req as any).user?.id;
 
     if (!userId) {
@@ -18,10 +18,10 @@ export const createAgent = async (req: Request, res: Response) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO agents (name, url, support, description, created_by) 
-       VALUES ($1, $2, $3, $4, $5) 
+      `INSERT INTO agents (name, url, support, description, system_prompt, created_by) 
+       VALUES ($1, $2, $3, $4, $5, $6) 
        RETURNING *`,
-      [name, url, support, description || null, userId]
+      [name, url, support, description || null, systemPrompt || null, userId]
     );
 
     res.status(201).json(result.rows[0]);
@@ -124,6 +124,12 @@ export const updateAgent = async (req: Request, res: Response) => {
       updateFields.push(`description = $${paramCount++}`);
       values.push(updates.description);
     }
+    
+    if (updates.systemPrompt !== undefined) {
+      updateFields.push(`system_prompt = $${paramCount++}`);
+      values.push(updates.systemPrompt);
+    }
+
     if (updates.is_active !== undefined) {
       updateFields.push(`is_active = $${paramCount++}`);
       values.push(updates.is_active);

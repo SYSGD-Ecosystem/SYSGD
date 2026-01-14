@@ -7,7 +7,6 @@ import { Router, type Request, type Response } from "express";
 import { pool } from "../db";
 import bcrypt from "bcrypt";
 import { isAuthenticated } from "../middlewares/auth-jwt";
-import { login, logout } from "../controllers/auth";
 import { getCurrentUser } from "../controllers/auth";
 import { getCurrentUserData } from "../controllers/users";
 import { getArchives } from "../controllers/archives.controller";
@@ -436,6 +435,12 @@ router.get("/get-organization-chart", isAuthenticated, async (req, res) => {
 		res.status(400).json({ error: "Falta id" });
 		return;
 	}
+
+	if (typeof id !== "string") {
+		res.status(400).json({ error: "Id inválido" });
+		return;
+	}
+
 	try {
 		const result = await pool.query(
 			"SELECT data FROM organization_chart WHERE file_id = $1",
@@ -759,7 +764,6 @@ router.post("/register", async (req: Request, res: Response) => {
 	}
 });
 
-
 // GET /api/users - Devuelve todos los usuarios (solo admin)
 router.get(
 	"/users",
@@ -783,11 +787,12 @@ router.delete(
 	isAuthenticated,
 	isAdmin,
 	async (req: Request, res: Response) => {
-		const userId = Number.parseInt(req.params.id, 10);
-		if (Number.isNaN(userId)) {
+		const userId = req.params.id;
+		if (!userId) {
 			res.status(400).json({ error: "ID inválido" });
 			return;
 		}
+
 		try {
 			await pool.query(
 				"DELETE FROM document_management_file WHERE user_id = $1",
@@ -814,9 +819,10 @@ router.put(
 	isAuthenticated,
 	isAdmin,
 	async (req: Request, res: Response) => {
-		const userId = Number.parseInt(req.params.id, 10);
+		const userId = req.params.id;
+
 		const { password } = req.body;
-		if (Number.isNaN(userId) || !password) {
+		if (!userId || !password) {
 			res.status(400).json({ error: "Datos inválidos" });
 			return;
 		}
@@ -843,9 +849,10 @@ router.put(
 	isAuthenticated,
 	isAdmin,
 	async (req: Request, res: Response) => {
-		const userId = Number.parseInt(req.params.id, 10);
+		const userId = req.params.id;
+
 		const { name, email } = req.body;
-		if (Number.isNaN(userId) || (!name && !email)) {
+		if (!userId || (!name && !email)) {
 			res.status(400).json({ error: "Datos inválidos" });
 			return;
 		}

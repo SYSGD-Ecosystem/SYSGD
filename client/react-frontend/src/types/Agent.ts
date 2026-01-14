@@ -17,6 +17,7 @@ export interface CreateAgentRequest {
 	url: string;
 	support: AgentSupport[];
 	description?: string;
+	systemPrompt?: string;
 }
 
 export interface UpdateAgentRequest {
@@ -24,6 +25,7 @@ export interface UpdateAgentRequest {
 	url?: string;
 	support?: AgentSupport[];
 	description?: string;
+	systemPrompt?: string;
 	is_active?: boolean;
 }
 
