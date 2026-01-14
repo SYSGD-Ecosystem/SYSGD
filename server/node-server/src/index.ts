@@ -44,10 +44,16 @@ if (isAcceptAllOrigins) {
 	app.use(
 		cors({
 			origin: (origin, callback) => {
-				if (!origin) return callback(null, true); // allow non-browser requests
+
+				if (!origin){
+					 return callback(null, true);
+				 } // allow non-browser requests
+
+
 				if (allowedOrigins.includes(origin)) {
 					callback(null, true);
 				} else {
+					console.warn(`Bloqueando solicitud CORS desde origen no permitido: ${origin}`);
 					callback(new Error("CORS no permitido"));
 				}
 			},
