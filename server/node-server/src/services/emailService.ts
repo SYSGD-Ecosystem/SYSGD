@@ -30,6 +30,7 @@ export class EmailService {
     return '📬 Notificación General';
   }
 
+  
   /**
    * Envía un email genérico
    */
