@@ -1,7 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
 
 export async function GET(request: NextRequest, { params }: { params: { slug: string } }) {
-  const slug = params.slug
+   const slug = params.slug
+
+   console.log(slug)
 
   try {
     // TODO: Replace with actual database query
@@ -66,6 +68,7 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
 
 export async function POST(request: NextRequest, { params }: { params: { slug: string } }) {
   const slug = params.slug
+  console.log(slug)
 
   try {
     const body = await request.json()

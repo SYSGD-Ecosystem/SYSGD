@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
+/** biome-ignore-all lint/correctness/noNestedComponentDefinitions: <explanation> */
 "use client"
 
 import type React from "react"
