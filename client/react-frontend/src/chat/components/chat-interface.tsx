@@ -50,6 +50,7 @@ export function ChatInterface() {
 				<ChatSidebar
 					selectedChat={selectedChat ?? undefined}
 					onSelectChat={setSelectedChat}
+					onAgentSelect={setSelectedAgent}
 				/>
 			</div>
 

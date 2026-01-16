@@ -18,6 +18,8 @@
 	},
 	"workspaces": [
 		"client/react-frontend",
-		"server/node-server"
+		"server/node-server",
+		"web/sysgd-web"
+
 	]
 }

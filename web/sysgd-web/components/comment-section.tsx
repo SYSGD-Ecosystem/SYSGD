@@ -1,4 +1,5 @@
 /** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
+/** biome-ignore-all lint/correctness/noInvalidUseBeforeDeclaration: <explanation> */
 /** biome-ignore-all lint/correctness/noNestedComponentDefinitions: <explanation> */
 "use client"
 
@@ -42,7 +43,8 @@ export function CommentSection({ postSlug }: CommentSectionProps) {
 
   useEffect(() => {
     fetchComments()
-  }, [postSlug])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ postSlug])
 
   const fetchComments = async () => {
     try {

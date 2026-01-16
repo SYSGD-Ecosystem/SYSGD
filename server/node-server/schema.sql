@@ -216,6 +216,7 @@ CREATE TABLE IF NOT EXISTS conversations (
   type TEXT CHECK (type IN ('private', 'group', 'channel', 'bot')) NOT NULL DEFAULT 'private',
   title TEXT,
   created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  agent_id UUID REFERENCES agents(id) ON DELETE SET NULL,
   created_at TIMESTAMP DEFAULT NOW()
 );
 

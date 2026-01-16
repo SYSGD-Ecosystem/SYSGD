@@ -7,11 +7,14 @@ import { type Conversation, useChat } from "../hooks/useChat";
 import { getEmojiFromName } from "@/utils/util";
 import { useNavigate } from "react-router-dom";
 import { IoChatboxOutline } from "react-icons/io5";
+import { useAgents } from "../hooks/useAgents";
+import type { Agent } from "../../types/Agent";
 
 
 interface ChatSidebarProps {
 	selectedChat?: Conversation;
 	onSelectChat: (chat: Conversation) => void;
+	onAgentSelect?: (agent: Agent) => void;
 }
 
 export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
@@ -22,6 +25,9 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 	>("all");
 
 	const { conversations } = useChat();
+	const { agents } = useAgents();
+
+	console.log(agents)
 
 	console.log("Conversations in Sidebar:", conversations);
 
