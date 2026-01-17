@@ -40,7 +40,7 @@ export function Hero() {
 
             <Button size="lg" variant="outline">
               <ArrowRight className="ml-2 h-4 w-4" />
-              <Link to="/plans">Ver Planes</Link>
+              <Link to="/api">Ver Planes</Link>
             </Button>
 
             <Button size="lg" variant="outline">

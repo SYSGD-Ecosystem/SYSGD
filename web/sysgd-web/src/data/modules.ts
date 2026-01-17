@@ -6,11 +6,9 @@ export const modules = [
       "Sistema completo para la gestión de archivos documentales con entrada, salida y préstamo de documentos.",
     status: "completed" as const,
     features: [
-      "Entrada, salida y préstamo de documentos",
-      "Cuadro de Clasificación Documental configurable",
+      "Registros de Entrada, salida y préstamo de documentos",
+      "Cuadro de Clasificación Documental",
       "Tablas de Retención Documental",
-      "Búsqueda avanzada y filtros",
-      "Historial de movimientos documentales",
     ],
   },
   {
@@ -22,17 +20,20 @@ export const modules = [
       "Gestión de usuarios y roles",
       "Sistema de invitaciones",
       "Asignación dinámica de tareas con tipos y estados configurables",
-      "Control de acceso por permisos",
+      "Control de acceso a proyectos",
       "Seguimiento de progreso",
       "Editor de tareas con soporte Markdown",
+      "Soporte para mejora de creación de tareas con IA",
       "Carga de imágenes en tareas",
+      "Integración de Proyectos con GitHub",
+      "Banco de ideas y Notas"
     ],
   },
   {
     id: "3",
-    name: "Chat para Equipos",
+    name: "Modulo de Chat con soporte para agentes de IA",
     description:
-      "Sistema de comunicación en tiempo real integrado con la gestión de proyectos para colaboración del equipo.",
+      "Sistema de comunicación en tiempo real integrado con la gestión de proyectos para colaboración del equipo, con soporte para agentes de inteligencia artificial.",
     status: "in-progress" as const,
     features: [
       "Chat en tiempo real entre miembros del equipo",
