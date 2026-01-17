@@ -25,7 +25,7 @@ const CollaborationSection:FC = () => {
                   <h3 className="text-xl font-semibold mb-3">Para Colaboradores</h3>
                   <p className="text-muted-foreground leading-relaxed mb-4">
                     Si estás interesado en colaborar en el desarrollo de SYSGD, puedes contactar para solicitar acceso
-                    al repositorio privado. Actualmente en fase de desarrollo activo.
+                    al repositorio. Actualmente en fase de desarrollo activo.
                   </p>
                   <ul className="space-y-2 text-sm text-muted-foreground">
                     <li className="flex items-start gap-2">
@@ -77,11 +77,9 @@ const CollaborationSection:FC = () => {
 
           <Card className="p-8 md:p-10 bg-primary text-primary-foreground">
             <div className="text-center">
-              <h3 className="text-2xl font-bold mb-3">Estado del Proyecto</h3>
+              <h3 className="text-2xl font-bold mb-3">Acerca del Proyecto</h3>
               <p className="text-lg leading-relaxed opacity-90 mb-6 max-w-2xl mx-auto">
-                SYSGD es código abierto (GNU AGPL v3.0) y propiedad intelectual del equipo de desarrollo. Durante la
-                fase de desarrollo, el repositorio permanece privado y accesible solo para el equipo, colaboradores y
-                personas invitadas. El código será liberado públicamente cuando esté listo para producción.
+                SYSGD es un software de código abierto bajo la licencia GNU AGPL v3.0, propiedad intelectual de Lázaro Yunier Salazar Rodríguez.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button size="lg" variant="secondary" asChild>
