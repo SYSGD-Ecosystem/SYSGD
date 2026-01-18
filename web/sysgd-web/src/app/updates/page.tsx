@@ -1,7 +1,8 @@
 import { UpdateCard } from "@/components/update-card";
-import { updates } from "@/data/updates";
+import useUpdates from "@/hooks/useUpdates";
 
 export default function UpdatesPage() {
+  const { updates } = useUpdates();
   return (
     <div className="py-16 md:py-24">
       <div className="container mx-auto px-4 md:px-6">

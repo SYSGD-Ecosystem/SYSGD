@@ -52,6 +52,7 @@ import {
   Shield
 } from "lucide-react"
 import { Button } from "../../../components/ui/button"
+import { useUpdates } from "../../../hooks/connection/useUpdates"
 
 // Tipos basados en la estructura existente de SYSGD
 interface Update {
@@ -61,58 +62,6 @@ interface Update {
   description: string
   category: "Nueva Funcionalidad" | "Mejora" | "Anuncio" | "Documentación" | "Seguridad"
 }
-
-// Datos de ejemplo basados en la estructura real
-const initialUpdates: Update[] = [
-  {
-    id: "6",
-    date: "2025-12-22",
-    title: "Integración con GitHub para Rastreo de Actividad",
-    description:
-      "Nueva integración que permite conectar repositorios de GitHub para obtener información detallada de Pull Requests: usuario creador, líneas añadidas/eliminadas y archivos modificados. Ideal para empresas y pequeños equipos que necesitan rastrear el nivel de actividad real de cada desarrollador.",
-    category: "Nueva Funcionalidad",
-  },
-  {
-    id: "7",
-    date: "2025-12-22",
-    title: "Dinamización de Tareas y Editor Mejorado",
-    description:
-      "Estamos trabajando en hacer las tareas más flexibles permitiendo asignar tipos, estados y otros elementos de forma dinámica en lugar de fija. Para ello se habilitó una nueva página de ajustes. También implementamos mejoras sustanciales en el editor de tareas.",
-    category: "Mejora",
-  },
-  {
-    id: "1",
-    date: "2025-12-21",
-    title: "Lanzamiento de la Página Institucional",
-    description:
-      "Hemos lanzado la página institucional pública de SYSGD Ecosystem. Este espacio permitirá a la comunidad seguir el progreso del proyecto, conocer el roadmap y mantenerse actualizado con las últimas novedades del desarrollo.",
-    category: "Anuncio",
-  },
-  {
-    id: "2",
-    date: "2025-12-15",
-    title: "Sistema de Créditos SYSGD-COINS",
-    description:
-      "Implementamos el sistema de créditos SYSGD-COINS que permite a los usuarios utilizar funciones potenciadas con IA generativa. Cada usuario nuevo recibe 10 monedas para experimentar las mejoras automatizadas.",
-    category: "Nueva Funcionalidad",
-  },
-  {
-    id: "4",
-    date: "2025-11-20",
-    title: "Documentación de API Actualizada",
-    description:
-      "Hemos actualizado completamente la documentación de la API RESTful con Swagger. Ahora incluye ejemplos más detallados, códigos de error mejorados y guías de integración para desarrolladores.",
-    category: "Documentación",
-  },
-  {
-    id: "5",
-    date: "2025-11-05",
-    title: "Refactorización del Sistema de Autenticación",
-    description:
-      "Completamos una refactorización importante del sistema de autenticación para mejorar la seguridad y el rendimiento. Implementamos mejores prácticas con bcrypt para el cifrado de contraseñas.",
-    category: "Seguridad",
-  },
-]
 
 const categoryConfig = {
   "Nueva Funcionalidad": { 
@@ -138,7 +87,7 @@ const categoryConfig = {
 }
 
 export default function UpdatesPage() {
-  const [updates, setUpdates] = useState<Update[]>(initialUpdates)
+  const { updates, loading, createUpdate, updateUpdate, deleteUpdate } = useUpdates()
   const [searchTerm, setSearchTerm] = useState("")
   const [filterCategory, setFilterCategory] = useState<string>("all")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -192,21 +141,21 @@ export default function UpdatesPage() {
     setIsDialogOpen(true)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (editingUpdate) {
-      setUpdates(
-        updates.map((u) =>
-          u.id === editingUpdate.id
-            ? { ...u, ...formData }
-            : u
-        )
-      )
+      await updateUpdate(editingUpdate.id, {
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        date: formData.date,
+      })
     } else {
-      const newUpdate: Update = {
-        id: Date.now().toString(),
-        ...formData,
-      }
-      setUpdates([newUpdate, ...updates])
+      await createUpdate({
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        date: formData.date,
+      })
     }
     setIsDialogOpen(false)
   }
@@ -216,9 +165,9 @@ export default function UpdatesPage() {
     setDeleteDialogOpen(true)
   }
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (updateToDelete) {
-      setUpdates(updates.filter((u) => u.id !== updateToDelete.id))
+      await deleteUpdate(updateToDelete.id)
       setDeleteDialogOpen(false)
       setUpdateToDelete(null)
     }
@@ -241,7 +190,7 @@ export default function UpdatesPage() {
             Publica actualizaciones para la página institucional de SYSGD
           </p>
         </div>
-        <Button onClick={() => handleOpenDialog()}>
+        <Button onClick={() => handleOpenDialog()} disabled={loading}>
           <Plus className="w-4 h-4 mr-2" />
           Nueva Actualización
         </Button>
