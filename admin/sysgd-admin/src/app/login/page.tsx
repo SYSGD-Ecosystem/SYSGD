@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 
 import { Input } from "../../components/ui/input"
@@ -11,32 +11,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../..
 import { Shield, Loader2 } from "lucide-react"
 import { Button } from "../../components/ui/button"
 import { useNavigate } from "react-router-dom"
+import { useLogin } from "../../hooks/connection/useLogin"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
+  const { login, loading: isLoading, error, success } = useLogin()
 
   const navigate = useNavigate()
 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-    setError("")
-
-    // Simular autenticación con datos de ejemplo
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    if (email === "admin@sysgd.com" && password === "admin123") {
-      localStorage.setItem("sysgd_auth", "true")
-      navigate("/admin")
-    } else {
-      setError("Credenciales inválidas. Use admin@sysgd.com / admin123")
-    }
-    setIsLoading(false)
+    await login({ email, password })
   }
+
+  useEffect(() => {
+    if (success) navigate("/admin")
+  }, [success, navigate])
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -96,11 +88,6 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
-            <div className="mt-6 p-3 bg-muted rounded-md">
-              <p className="text-xs text-muted-foreground text-center">
-                <strong>Demo:</strong> admin@sysgd.com / admin123
-              </p>
-            </div>
           </CardContent>
         </Card>
       </div>

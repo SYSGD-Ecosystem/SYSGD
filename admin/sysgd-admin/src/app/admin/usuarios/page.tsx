@@ -55,6 +55,7 @@ import {
   Users 
 } from "lucide-react"
 import { Button } from "../../../components/ui/button"
+import { useUsers } from "../../../hooks/connection/useUsers"
 
 // Tipos basados en la estructura existente de SYSGD
 interface UserData {
@@ -72,60 +73,8 @@ interface UserType {
   user_data: UserData
 }
 
-// Datos de ejemplo basados en la estructura real
-const initialUsers: UserType[] = [
-  {
-    id: "1",
-    name: "Juan Pérez",
-    email: "juan.perez@sysgd.com",
-    privileges: "admin",
-    status: "active",
-    user_data: { billing: { tier: "vip" } },
-  },
-  {
-    id: "2",
-    name: "María García",
-    email: "maria.garcia@sysgd.com",
-    privileges: "user",
-    status: "active",
-    user_data: { billing: { tier: "pro" } },
-  },
-  {
-    id: "3",
-    name: "Carlos López",
-    email: "carlos.lopez@sysgd.com",
-    privileges: "user",
-    status: "active",
-    user_data: { billing: { tier: "free" } },
-  },
-  {
-    id: "4",
-    name: "Ana Martínez",
-    email: "ana.martinez@sysgd.com",
-    privileges: "user",
-    status: "invited",
-    user_data: { billing: { tier: "free" } },
-  },
-  {
-    id: "5",
-    name: "Roberto Sánchez",
-    email: "roberto.sanchez@sysgd.com",
-    privileges: "user",
-    status: "suspended",
-    user_data: { billing: { tier: "pro" } },
-  },
-  {
-    id: "6",
-    name: "Laura Torres",
-    email: "laura.torres@sysgd.com",
-    privileges: "admin",
-    status: "active",
-    user_data: { billing: { tier: "vip" } },
-  },
-]
-
 export default function UsersPage() {
-  const [users, setUsers] = useState<UserType[]>(initialUsers)
+  const { users, loading, createUser, updateUser, deleteUser } = useUsers()
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<UserType | null>(null)
@@ -186,32 +135,22 @@ export default function UsersPage() {
     setIsDialogOpen(true)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (editingUser) {
-      setUsers(
-        users.map((u) =>
-          u.id === editingUser.id
-            ? {
-                ...u,
-                name: formData.name,
-                email: formData.email,
-                privileges: formData.privileges,
-                status: formData.status,
-                user_data: { billing: { tier: formData.tier } },
-              }
-            : u
-        )
-      )
-    } else {
-      const newUser: UserType = {
-        id: Date.now().toString(),
+      await updateUser(editingUser.id, {
         name: formData.name,
         email: formData.email,
         privileges: formData.privileges,
         status: formData.status,
         user_data: { billing: { tier: formData.tier } },
-      }
-      setUsers([...users, newUser])
+      })
+    } else {
+      await createUser({
+        name: formData.name,
+        email: formData.email,
+        privileges: formData.privileges,
+        status: formData.status,
+      })
     }
     setIsDialogOpen(false)
   }
@@ -221,9 +160,9 @@ export default function UsersPage() {
     setDeleteDialogOpen(true)
   }
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (userToDelete) {
-      setUsers(users.filter((u) => u.id !== userToDelete.id))
+      await deleteUser(userToDelete.id)
       setDeleteDialogOpen(false)
       setUserToDelete(null)
     }
