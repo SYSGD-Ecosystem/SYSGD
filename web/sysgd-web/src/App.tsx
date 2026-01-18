@@ -1,9 +1,9 @@
 import { Hero } from "@/components/hero";
-import { ModulesSection } from "@/components/modules-section";
 import { FeaturesSection } from "@/components/features-section";
 import { TechStackSection } from "@/components/tech-stack-section";
 import CollaborationSection from "@/components/collaboration-section";
 import type { FC } from "react";
+import  Descubre from "./components/descubre";
 
 const App: FC = () => {
   return (
@@ -17,7 +17,7 @@ const Page: FC = () => {
   return (
     <>
       <Hero />
-      <ModulesSection />
+      <Descubre />
       <FeaturesSection />
       <TechStackSection />
       <CollaborationSection />
