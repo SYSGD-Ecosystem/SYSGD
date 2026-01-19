@@ -74,7 +74,7 @@ interface UserType {
 }
 
 export default function UsersPage() {
-  const { users, loading, createUser, updateUser, deleteUser } = useUsers()
+  const { users,  createUser, updateUser, deleteUser } = useUsers()
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<UserType | null>(null)

@@ -4,6 +4,12 @@ import { pool } from "../db";
 import { isAuthenticated } from "../middlewares/auth-jwt";
 import { isAdmin } from "../middlewares/auth";
 import { getCurrentUserData } from "../controllers/users";
+import {
+	checkAICredits,
+	consumeAICredits,
+} from "../middlewares/usageLimits.middleware";
+import { geminiAgent } from "../geminiAgent";
+import { openRouterAgent } from "../openRouterAgent";
 
 const router = Router();
 
@@ -42,7 +48,7 @@ router.get("/updates", async (_req: Request, res: Response) => {
 	try {
 		const result = await pool.query(
 			`
-			SELECT id, title, description, category, publish_date AS date
+			SELECT id, title, description, category, youtube_url, publish_date AS date
 			FROM updates
 			ORDER BY publish_date DESC, created_at DESC
 			LIMIT 200
@@ -60,7 +66,7 @@ router.get("/updates/:id", async (req: Request, res: Response) => {
 	const { id } = req.params;
 	try {
 		const result = await pool.query(
-			`SELECT id, title, description, category, publish_date AS date FROM updates WHERE id = $1`,
+			`SELECT id, title, description, category, youtube_url, publish_date AS date FROM updates WHERE id = $1`,
 			[id],
 		);
 		if (result.rows.length === 0) {
@@ -78,12 +84,83 @@ router.get("/updates/:id", async (req: Request, res: Response) => {
 // ADMIN ONLY
 // ==========================
 
+router.post(
+	"/updates/generate",
+	isAuthenticated,
+	isAdmin,
+	checkAICredits,
+	async (req, res) => {
+		const { prompt, provider, model } = req.body;
+
+		if (!prompt) {
+			res.status(400).json({ error: "Falta el prompt" });
+			return;
+		}
+
+		try {
+			const useCustomToken = (req as any).useCustomToken;
+			const customToken = (req as any).customToken;
+
+			const systemPrompt =
+				"Eres un asistente especializado en redacción de changelogs y actualizaciones de producto (SaaS). Tu objetivo es mejorar, clarificar y profesionalizar el texto sin inventar funcionalidades. Mantén un tono claro, confiable y orientado a usuario. Devuelve SOLO el texto mejorado en Markdown, sin explicaciones adicionales.";
+
+			const result =
+				provider === "gemini"
+					? await geminiAgent({
+							prompt,
+							image: undefined,
+							audio: undefined,
+							video: undefined,
+							file: undefined,
+							model: model || "gemini-2.5-flash",
+							customToken: useCustomToken ? customToken : undefined,
+							forse_text_response: true,
+					  })
+					: await openRouterAgent({
+							prompt,
+							model,
+							customToken,
+							systemPrompt,
+							force_text_response: true,
+					  });
+
+			if (!useCustomToken) {
+				await consumeAICredits(req, res, () => {
+					res.json({
+						...result,
+						billing: {
+							used_custom_token: false,
+							credits_consumed: 1,
+						},
+					});
+				});
+				return;
+			}
+
+			res.json({
+				...result,
+				billing: {
+					used_custom_token: true,
+					credits_consumed: 0,
+				},
+			});
+		} catch (err) {
+			console.error("❌ Error en Updates Agent:", err);
+			res.status(500).json({
+				error: "Error interno del agente",
+				details: err instanceof Error ? err.message : "Error desconocido",
+			});
+		}
+	},
+);
+
 // POST /api/updates
 router.post("/updates", isAuthenticated, isAdmin, async (req: Request, res: Response) => {
-	const { title, description, category, date } = req.body;
+	const { title, description, category, date, youtube_url } = req.body;
 	const normalizedCategory = normalizeCategory(category);
 	const publishDate = parseDateOnly(date);
 	const user = getCurrentUserData(req);
+	const youtubeUrlNormalized = youtube_url === null || youtube_url === undefined ? null : String(youtube_url);
 
 	if (!title || typeof title !== "string") {
 		res.status(400).json({ message: "title requerido" });
@@ -105,11 +182,11 @@ router.post("/updates", isAuthenticated, isAdmin, async (req: Request, res: Resp
 	try {
 		const result = await pool.query(
 			`
-			INSERT INTO updates (title, description, category, publish_date, created_by)
-			VALUES ($1, $2, $3, $4, $5)
-			RETURNING id, title, description, category, publish_date AS date
+			INSERT INTO updates (title, description, category, youtube_url, publish_date, created_by)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			RETURNING id, title, description, category, youtube_url, publish_date AS date
 			`,
-			[title, description, normalizedCategory, publishDate, user?.id || null],
+			[title, description, normalizedCategory, youtubeUrlNormalized, publishDate, user?.id || null],
 		);
 		res.status(201).json(result.rows[0]);
 	} catch (err) {
@@ -125,7 +202,7 @@ router.put(
 	isAdmin,
 	async (req: Request, res: Response) => {
 		const { id } = req.params;
-		const { title, description, category, date } = req.body;
+		const { title, description, category, date, youtube_url } = req.body;
 
 		const fields: string[] = [];
 		const values: any[] = [];
@@ -165,6 +242,11 @@ router.put(
 			fields.push(`publish_date = $${idx++}`);
 			values.push(publishDate);
 		}
+		if (youtube_url !== undefined) {
+			const youtubeUrlNormalized = youtube_url === null ? null : String(youtube_url);
+			fields.push(`youtube_url = $${idx++}`);
+			values.push(youtubeUrlNormalized);
+		}
 
 		if (fields.length === 0) {
 			res.status(400).json({ message: "No hay datos para actualizar" });
@@ -180,7 +262,7 @@ router.put(
 				UPDATE updates
 				SET ${fields.join(", ")}
 				WHERE id = $${idx}
-				RETURNING id, title, description, category, publish_date AS date
+				RETURNING id, title, description, category, youtube_url, publish_date AS date
 				`,
 				values,
 			);

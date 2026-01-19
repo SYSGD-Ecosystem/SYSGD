@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS updates (
   title TEXT NOT NULL,
   description TEXT NOT NULL,
   category TEXT NOT NULL,
+  youtube_url TEXT,
   publish_date DATE NOT NULL,
   created_by UUID REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMP DEFAULT NOW(),

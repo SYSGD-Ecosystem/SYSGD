@@ -134,7 +134,27 @@
       transform: translateX(0) translateY(0);
     }
     50% {
-      transform: translateX(-25px) translateY(-10px);
+      transform: translateX(-14px) translateY(-6px);
+    }
+  }
+
+  @keyframes net-drift-1 {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+    50% {
+      transform: translate3d(-18px, -10px, 0);
+    }
+  }
+
+  @keyframes net-drift-2 {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+    50% {
+      transform: translate3d(14px, -12px, 0);
     }
   }
 
@@ -144,7 +164,7 @@
       transform: translateX(0) translateY(0);
     }
     50% {
-      transform: translateX(30px) translateY(-15px);
+      transform: translateX(16px) translateY(-8px);
     }
   }
 
@@ -154,7 +174,7 @@
       transform: translateX(0) translateY(0);
     }
     50% {
-      transform: translateX(-20px) translateY(-8px);
+      transform: translateX(-12px) translateY(-5px);
     }
   }
 
@@ -183,25 +203,49 @@
   }
 
   .wave-path-1 {
-    animation: wave-1 20s ease-in-out infinite;
+    animation: wave-1 28s ease-in-out infinite;
     transform-origin: center;
   }
 
+  .net-layer-1 {
+    animation: net-drift-1 40s ease-in-out infinite;
+    transform-origin: center;
+    will-change: transform;
+  }
+
+  .net-layer-2 {
+    animation: net-drift-2 34s ease-in-out infinite;
+    transform-origin: center;
+    will-change: transform;
+  }
+
   .wave-path-2 {
-    animation: wave-2 15s ease-in-out infinite;
+    animation: wave-2 22s ease-in-out infinite;
     transform-origin: center;
   }
 
   .wave-path-3 {
-    animation: wave-3 25s ease-in-out infinite;
+    animation: wave-3 34s ease-in-out infinite;
     transform-origin: center;
   }
 
   .animate-pulse-slow {
-    animation: pulse-slow 8s ease-in-out infinite;
+    animation: pulse-slow 10s ease-in-out infinite;
   }
 
   .animate-pulse-slower {
-    animation: pulse-slower 12s ease-in-out infinite;
+    animation: pulse-slower 16s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wave-path-1,
+  .wave-path-2,
+  .wave-path-3,
+  .net-layer-1,
+  .net-layer-2,
+  .animate-pulse-slow,
+  .animate-pulse-slower {
+    animation: none !important;
   }
 }

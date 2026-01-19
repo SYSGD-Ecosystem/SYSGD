@@ -37,13 +37,14 @@ const Descubre: FC = () => {
 				Descubre cómo los agentes pueden optimizar tus procesos y mejorar la
 				eficiencia de tu equipo.
 			</p>
-			<div className="mb-8 mt-8 flex items-center justify-center">
-				<ReactPlayer
-					height={316}
-					width={560}
-					className="w-140 h-78.75 rounded-lg overflow-hidden"
-					src="https://youtu.be/8hz0w3CLY1A?si=vTojvIIeop9xfFNL"
-				/>
+			<div className="mb-8 mt-8 flex items-center justify-center px-4">
+				<div className="w-full max-w-3xl aspect-video rounded-lg overflow-hidden">
+					<ReactPlayer
+						width="100%"
+						height="100%"
+						src="https://youtu.be/8hz0w3CLY1A?si=vTojvIIeop9xfFNL"
+					/>
+				</div>
 			</div>
 		</section>
 	);

@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "lucide-react";
 import ReactMarkdown from "react-markdown"
+import ReactPlayer from "react-player"
 
 interface UpdateCardProps {
   update: {
@@ -10,6 +11,7 @@ interface UpdateCardProps {
     title: string;
     description: string;
     category: string;
+    youtube_url?: string | null;
     screenshots?: string[];
   };
 }
@@ -36,6 +38,12 @@ export function UpdateCard({ update }: UpdateCardProps) {
         <p className="text-muted-foreground leading-relaxed mb-6">
           <ReactMarkdown>{update.description}</ReactMarkdown>
         </p>
+
+        {update.youtube_url && (
+          <div className="w-full aspect-video rounded-lg overflow-hidden bg-muted mb-6">
+            <ReactPlayer width="100%" height="100%" src={update.youtube_url} />
+          </div>
+        )}
 
         {update.screenshots && update.screenshots.length > 0 && (
           <div className="grid gap-4 md:grid-cols-2">

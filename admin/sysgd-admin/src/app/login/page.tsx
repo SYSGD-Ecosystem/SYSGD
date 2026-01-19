@@ -12,22 +12,52 @@ import { Shield, Loader2 } from "lucide-react"
 import { Button } from "../../components/ui/button"
 import { useNavigate } from "react-router-dom"
 import { useLogin } from "../../hooks/connection/useLogin"
+import { apiFetch } from "../../lib/api"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const { login, loading: isLoading, error, success } = useLogin()
+  const [accessError, setAccessError] = useState("")
 
   const navigate = useNavigate()
 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setAccessError("")
     await login({ email, password })
   }
 
   useEffect(() => {
-    if (success) navigate("/admin")
+    if (!success) return
+
+    let cancelled = false
+
+    async function run() {
+      try {
+        const me = await apiFetch<{ privileges?: string }>("/api/auth/me")
+        if (cancelled) return
+
+        if (me?.privileges !== "admin") {
+          localStorage.removeItem("token")
+          localStorage.removeItem("sysgd_auth")
+          setAccessError("Acceso denegado: solo administradores pueden ingresar.")
+          return
+        }
+
+        navigate("/admin")
+      } catch {
+        localStorage.removeItem("token")
+        localStorage.removeItem("sysgd_auth")
+        if (!cancelled) setAccessError("No se pudo validar tu sesión.")
+      }
+    }
+
+    run()
+    return () => {
+      cancelled = true
+    }
   }, [success, navigate])
 
   return (
@@ -72,10 +102,13 @@ export default function LoginPage() {
                   required
                 />
               </div>
-              {error && (
-                <p className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-                  {error}
-                </p>
+              {(error || accessError) && (
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                  <p className="text-sm text-destructive">{error}</p>
+                  {accessError && (
+                    <p className="text-sm text-destructive">{accessError}</p>
+                  )}
+                </div>
               )}
               <Button type="submit" className="w-full mt-2" disabled={isLoading}>
                 {isLoading ? (

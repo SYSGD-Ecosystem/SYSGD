@@ -11,6 +11,7 @@ export type UpdateItem = {
 	title: string
 	description: string
 	category: UpdateCategory
+	youtube_url?: string | null
 }
 
 export type CreateUpdateData = {
@@ -18,6 +19,7 @@ export type CreateUpdateData = {
 	description: string
 	category: UpdateCategory
 	date: string
+	youtube_url?: string | null
 }
 
 export type UpdateUpdateData = Partial<CreateUpdateData>
