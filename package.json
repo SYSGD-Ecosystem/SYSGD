@@ -18,12 +18,6 @@
 	},
 	"workspaces": [
 		"client/react-frontend",
-		"server/node-server",
-		"web/sysgd-web",
-		"admin/sysgd-admin"
-	],
-	"dependencies": {
-		"@tailwindcss/vite": "^4.1.18",
-		"tailwindcss": "^4.1.18"
-	}
+		"server/node-server"
+	]
 }
