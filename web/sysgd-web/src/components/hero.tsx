@@ -9,9 +9,12 @@ export function Hero() {
 
 			<div className="container mx-auto px-4 md:px-6 relative">
 				<div className="max-w-3xl mx-auto text-center">
-					<div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
-						<span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-						Beta Pública · Código Abierto
+					<div className="mb-8">
+						<img
+							src="transparent.png"
+							alt="SYSGD Logo"
+							className="size-64 rounded overflow-hidden mx-auto mb-6 drop-shadow-2xl"
+						/>
 					</div>
 
 					<h1 className="text-4xl md:text-6xl font-bold mb-6 text-balance">
