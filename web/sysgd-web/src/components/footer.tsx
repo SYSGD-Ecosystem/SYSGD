@@ -43,11 +43,11 @@ export function Footer() {
                   Servicios
                 </Link>
               </li>
-              <li>
+              {/* <li>
                 <Link to="/api" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                   API y Precios
                 </Link>
-              </li>
+              </li> */}
               <li>
                 <Link
                   to="/philosophy"

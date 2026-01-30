@@ -9,7 +9,7 @@ const navigation = [
   { name: "Roadmap", href: "/roadmap" },
   { name: "Novedades", href: "/updates" },
   { name: "Servicios", href: "/services" },
-  { name: "API y Precios", href: "/api" },
+  // { name: "API y Precios", href: "/api" },
   { name: "Filosofía", href: "/philosophy" },
 ]
 
