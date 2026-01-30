@@ -32,9 +32,9 @@ export function Hero() {
 							</div>
 
 							<h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-balance leading-tight text-gray-900">
-								Sistema de Gestión{" "}
+								SYSGD{" "}
 								<span className="text-transparent bg-clip-text bg-linear-to-r from-blue-600 via-blue-500 to-blue-400">
-									Modular
+									Ecosystem
 								</span>
 							</h1>
 
@@ -49,30 +49,34 @@ export function Hero() {
 						<div className="space-y-6">
 							<div className="space-y-4">
 								<h2 className="text-2xl md:text-3xl font-semibold text-gray-900">
-									Una plataforma que piensa en ti
+									Una plataforma pensada para ti
 								</h2>
 								
 								<p className="text-gray-600 text-base md:text-lg leading-relaxed max-w-xl">
-									Adaptable, personalizable y fácil de configurar. Gestión de proyectos y agentes de IA dedicados a cada tarea. Sin distracciones, solo productividad.
+									Adaptable, personalizable, fácil de configurar.
 								</p>
 
 								<p className="text-gray-700 text-base font-medium max-w-xl">
-									Es hora de trabajar con tecnología que valora tu tiempo y te ayuda de verdad.
+									Todo lo que necesitas para gestionar tu empresa en un solo lugar.
 								</p>
 							</div>
 
 							<div className="flex flex-wrap gap-3 pt-2">
 								<div className="flex items-center gap-2 text-sm text-gray-700">
 									<div className="h-2 w-2 rounded-full bg-blue-500" />
-									<span>Adaptable</span>
+									<span>Para desarrolladores</span>
 								</div>
 								<div className="flex items-center gap-2 text-sm text-gray-700">
 									<div className="h-2 w-2 rounded-full bg-purple-500" />
-									<span>Agentes IA</span>
+									<span>Para empresas</span>
 								</div>
 								<div className="flex items-center gap-2 text-sm text-gray-700">
 									<div className="h-2 w-2 rounded-full bg-green-500" />
-									<span>Sin distracciones</span>
+									<span>Para usuarios</span>
+								</div>
+								<div className="flex items-center gap-2 text-sm text-gray-700">
+									<div className="h-2 w-2 rounded-full bg-yellow-500" />
+									<span>Para ti</span>
 								</div>
 							</div>
 						</div>

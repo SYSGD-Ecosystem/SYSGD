@@ -35,7 +35,12 @@ export function Footer() {
               </li>
               <li>
                 <Link to="/updates" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Actualizaciones
+                  Novedades
+                </Link>
+              </li>
+              <li>
+                <Link to="/services" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  Servicios
                 </Link>
               </li>
               <li>
