@@ -268,7 +268,7 @@ router.post("/conversations/create", isAuthenticated, async (req: Request, res: 
     return;
   }
 
-  const { contactemail, members, title, type } = req.body;
+  const { contactemail, members, title, type, agent_id } = req.body;
   const client = await pool.connect();
 
   try {
@@ -326,8 +326,8 @@ router.post("/conversations/create", isAuthenticated, async (req: Request, res: 
 
     // Crear conversación
     const convRes = await client.query(
-      `INSERT INTO conversations (title, type, created_by, created_at) VALUES ($1, $2, $3, NOW()) RETURNING *;`,
-      [title || null, type || (memberIds.length === 2 ? "private" : "group"), authUserId]
+      `INSERT INTO conversations (title, type, created_by, created_at, agent_id) VALUES ($1, $2, $3, NOW(), $4) RETURNING *;`,
+      [title || null, type || (memberIds.length === 2 ? "private" : "group"), authUserId, agent_id || null]
     );
     const conversationId = convRes.rows[0].id;
 

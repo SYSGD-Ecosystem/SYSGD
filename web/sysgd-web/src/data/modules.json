@@ -1,0 +1,80 @@
+[
+  {
+    "id": "1",
+    "name": "Gestión Documental",
+    "description": "Sistema completo para la gestión de archivos documentales con entrada, salida y préstamo de documentos.",
+    "status": "completed",
+    "features": [
+      "Entrada, salida y préstamo de documentos",
+      "Cuadro de Clasificación Documental configurable",
+      "Tablas de Retención Documental",
+      "Búsqueda avanzada y filtros",
+      "Historial de movimientos documentales"
+    ]
+  },
+  {
+    "id": "2",
+    "name": "Gestión de Proyectos",
+    "description": "Módulo para administrar proyectos, tareas, usuarios y roles dentro de la organización.",
+    "status": "completed",
+    "features": [
+      "Gestión de usuarios y roles",
+      "Sistema de invitaciones",
+      "Asignación de tareas",
+      "Control de acceso por permisos",
+      "Seguimiento de progreso"
+    ]
+  },
+  {
+    "id": "3",
+    "name": "Integración IA Generativa",
+    "description": "Sistema de créditos SYSGD-COINS para utilizar funciones potenciadas con IA generativa (Gemini).",
+    "status": "in-progress",
+    "features": [
+      "Sistema de créditos SYSGD-COINS",
+      "Integración con Gemini AI",
+      "Mejora automática de tareas",
+      "Generación de contenido asistida",
+      "10 monedas de prueba para nuevos usuarios"
+    ]
+  },
+  {
+    "id": "4",
+    "name": "Sistema de Notificaciones",
+    "description": "Sistema de notificaciones en tiempo real para mantener a los usuarios informados de eventos importantes.",
+    "status": "planned",
+    "features": [
+      "Notificaciones en tiempo real",
+      "Notificaciones por email",
+      "Centro de notificaciones",
+      "Configuración personalizada",
+      "Historial de notificaciones"
+    ]
+  },
+  {
+    "id": "5",
+    "name": "Panel de Analíticas",
+    "description": "Dashboard con métricas y análisis del uso del sistema para toma de decisiones informadas.",
+    "status": "planned",
+    "features": [
+      "Métricas de uso del sistema",
+      "Reportes personalizables",
+      "Gráficos interactivos",
+      "Exportación de datos",
+      "Análisis de tendencias"
+    ]
+  },
+  {
+    "id": "6",
+    "name": "Aplicación Móvil",
+    "description": "Aplicación móvil nativa para acceso al sistema desde dispositivos iOS y Android.",
+    "status": "planned",
+    "features": [
+      "Interfaz optimizada para móvil",
+      "Acceso offline",
+      "Notificaciones push",
+      "Sincronización automática",
+      "Escaneo de documentos"
+    ]
+  }
+]

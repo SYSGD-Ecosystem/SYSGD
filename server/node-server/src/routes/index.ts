@@ -21,6 +21,7 @@ import taskConfig from "./task-config";
 import tokenRoutes from "./tokens";
 import cryptoPaymentRoutes from "./cryptoPayments.routes";
 import veri from "./verification.routes";
+import updates from "./updates.routes";
 
 const router = Router();
 
@@ -46,6 +47,8 @@ router.use('/tokens', tokenRoutes);
 router.use('/crypto-payments', cryptoPaymentRoutes);
 router.use("/verification", veri);
 router.use("/", taskConfig);
+
+router.use(updates);
 
 
 // others (document registers, classification, etc.) remain in docApi
