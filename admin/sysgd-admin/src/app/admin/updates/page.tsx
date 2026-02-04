@@ -503,6 +503,7 @@ export default function UpdatesPage() {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Describe la actualización en detalle... (Markdown permitido)"
                 rows={6}
+                className="max-h-60"
               />
             </div>
 
