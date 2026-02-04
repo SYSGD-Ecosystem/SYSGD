@@ -36,8 +36,8 @@ export const CreateAgentModal: FC<CreateAgentModalProps> = ({
 }) => {
 	const [formData, setFormData] = useState<CreateAgentRequest>({
 		name: "",
-		url: "",
-		support: [],
+		url: "https://sysgd-production.up.railway.app/api/openrouter",
+		support: ["text"],
 		description: "",
 		systemPrompt: "",
 	});
