@@ -1,12 +1,18 @@
 // src/pages/SettingsPage.tsx
 import { FC, useState, useEffect } from "react";
 import {
-	Palette,
 	Bell,
-	Shield,
+	ChevronDown,
+	Copy,
+	Eye,
+	EyeOff,
 	Globe,
 	KeyRound,
+	Loader2,
 	Menu,
+	Palette,
+	Shield,
+	Trash2,
 	Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,7 +35,6 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, Trash2, ChevronDown } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { useUsers } from "@/hooks/connection/useUsers";
 import { useWeb3 } from "@/components/billing/hooks/useWeb3";
@@ -69,6 +74,9 @@ const TokensSection: FC = () => {
 	const [isSaving, setIsSaving] = useState(false);
 	const [tokenType, setTokenType] = useState("github");
 	const [tokenValue, setTokenValue] = useState("");
+	const [externalToken, setExternalToken] = useState("");
+	const [externalTokenLoading, setExternalTokenLoading] = useState(false);
+	const [showExternalToken, setShowExternalToken] = useState(false);
 
 	useEffect(() => {
 		fetchTokens();
@@ -110,6 +118,34 @@ const TokensSection: FC = () => {
 			fetchTokens();
 		} catch (error) {
 			toast.error("Error al eliminar");
+		}
+	};
+
+	const handleGenerateExternalToken = async () => {
+		setExternalTokenLoading(true);
+		try {
+			const response = await api.post<{ token: string }>(
+				"/api/auth/external-token",
+			);
+			setExternalToken(response.data.token);
+			setShowExternalToken(true);
+			toast.success("Token externo generado. Puedes copiarlo.");
+		} catch (error: any) {
+			toast.error(
+				error.response?.data?.message || "Error al generar el token externo",
+			);
+		} finally {
+			setExternalTokenLoading(false);
+		}
+	};
+
+	const handleCopyExternalToken = async () => {
+		if (!externalToken) return;
+		try {
+			await navigator.clipboard.writeText(externalToken);
+			toast.success("Token copiado al portapapeles");
+		} catch (error) {
+			toast.error("No se pudo copiar el token");
 		}
 	};
 
@@ -162,6 +198,71 @@ const TokensSection: FC = () => {
 					</div>
 				</div>
 			</form>
+
+			<div className="space-y-4 rounded-lg border p-4">
+				<div>
+					<h4 className="font-medium">Token para Apps Externas</h4>
+					<p className="text-sm text-muted-foreground">
+						Genera un token para autenticarte desde móvil, escritorio u otros
+						sistemas.
+					</p>
+				</div>
+				<div className="space-y-2">
+					<Label>Token de acceso</Label>
+					<div className="relative">
+						<Input
+							type={showExternalToken ? "text" : "password"}
+							value={externalToken}
+							readOnly
+							placeholder="Genera un token para copiarlo aquí"
+							className="pr-20"
+						/>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="absolute right-9 top-0 h-full px-2"
+							onClick={() => setShowExternalToken(!showExternalToken)}
+							disabled={!externalToken}
+						>
+							{showExternalToken ? (
+								<EyeOff className="w-4 h-4" />
+							) : (
+								<Eye className="w-4 h-4" />
+							)}
+						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="absolute right-0 top-0 h-full px-3"
+							onClick={handleCopyExternalToken}
+							disabled={!externalToken}
+						>
+							<Copy className="w-4 h-4" />
+						</Button>
+					</div>
+					<p className="text-xs text-muted-foreground">
+						Úsalo si te autenticas con Google en la web y necesitas acceso en
+						el teléfono.
+					</p>
+				</div>
+				<Button
+					type="button"
+					onClick={handleGenerateExternalToken}
+					disabled={externalTokenLoading}
+					className="w-full"
+				>
+					{externalTokenLoading ? (
+						<>
+							<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+							Generando...
+						</>
+					) : (
+						"Generar token externo"
+					)}
+				</Button>
+			</div>
 
 			<div>
 				<h4 className="font-medium mb-3">Tokens guardados</h4>

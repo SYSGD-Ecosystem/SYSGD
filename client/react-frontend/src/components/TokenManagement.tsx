@@ -1,4 +1,13 @@
-import { Key, Loader2, Plus, Save, Trash2, Eye, EyeOff } from "lucide-react";
+import {
+  Copy,
+  Eye,
+  EyeOff,
+  Key,
+  Loader2,
+  Plus,
+  Save,
+  Trash2,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,6 +57,9 @@ const TokenManagement = () => {
   const [tokenType, setTokenType] = useState<"github" | "gemini" | "replicate">("gemini");
   const [tokenValue, setTokenValue] = useState("");
   const [showToken, setShowToken] = useState(false);
+  const [externalToken, setExternalToken] = useState("");
+  const [externalTokenLoading, setExternalTokenLoading] = useState(false);
+  const [showExternalToken, setShowExternalToken] = useState(false);
 
   // Delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -111,6 +123,47 @@ const TokenManagement = () => {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleGenerateExternalToken = async () => {
+    setExternalTokenLoading(true);
+    try {
+      const response = await api.post<{ token: string }>("/api/auth/external-token");
+      setExternalToken(response.data.token);
+      setShowExternalToken(true);
+      toast({
+        title: "Token generado",
+        description: "Ya puedes copiarlo para usarlo en apps externas.",
+      });
+    } catch (error: any) {
+      console.error("Error generating external token:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description:
+          error.response?.data?.message || "No se pudo generar el token externo",
+      });
+    } finally {
+      setExternalTokenLoading(false);
+    }
+  };
+
+  const handleCopyExternalToken = async () => {
+    if (!externalToken) return;
+    try {
+      await navigator.clipboard.writeText(externalToken);
+      toast({
+        title: "Token copiado",
+        description: "Pégalo en tu app externa para autenticarte.",
+      });
+    } catch (error) {
+      console.error("Error copying token:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo copiar el token.",
+      });
     }
   };
 
@@ -255,6 +308,78 @@ const TokenManagement = () => {
                 <Save className="h-4 w-4 mr-2" />
                 Guardar Token
               </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* External Token */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Key className="h-5 w-5" />
+            Token para Apps Externas
+          </CardTitle>
+          <CardDescription>
+            Genera un token para autenticarte desde apps móviles, escritorio o
+            integraciones externas.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="external-token">Token de acceso</Label>
+            <div className="relative">
+              <Input
+                id="external-token"
+                type={showExternalToken ? "text" : "password"}
+                value={externalToken}
+                readOnly
+                placeholder="Genera tu token para copiarlo aquí"
+                className="pr-20"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-9 top-0 h-full px-2"
+                onClick={() => setShowExternalToken(!showExternalToken)}
+                disabled={!externalToken}
+              >
+                {showExternalToken ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3"
+                onClick={handleCopyExternalToken}
+                disabled={!externalToken}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Úsalo cuando te autenticas con Google en la web y necesitas acceso
+              en tu teléfono u otros sistemas.
+            </p>
+          </div>
+
+          <Button
+            onClick={handleGenerateExternalToken}
+            disabled={externalTokenLoading}
+            className="w-full"
+          >
+            {externalTokenLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Generando...
+              </>
+            ) : (
+              "Generar token externo"
             )}
           </Button>
         </CardContent>
