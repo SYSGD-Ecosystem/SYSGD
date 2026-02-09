@@ -1,7 +1,8 @@
-import { type FC, useCallback, useRef, useState } from "react";
+import { type FC, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useCurrentUser from "@/hooks/connection/useCurrentUser";
 import { useSelectionStore } from "@/store/selection";
+import { useTimeTrackingStore } from "@/store/time-tracking";
 import Loading from "../Loading.tsx";
 import type { GitHubCacheEntry } from "./github-integration/GitHubIntegration.tsx";
 import GitHubIntegration from "./github-integration/GitHubIntegration.tsx";
@@ -11,6 +12,8 @@ import ProjectSettings from "./ProjectSettings.tsx";
 import { ProjectSidebar } from "./ProjectSidebar.tsx";
 import TeamManagement from "./TeamManagement.tsx";
 import TaskManagement from "./task-management/TaskManagement.tsx";
+import TimeTrackingSection from "./time-tracking/TimeTrackingSection.tsx";
+import TimeTrackingTicker from "./time-tracking/TimeTrackingTicker.tsx";
 import { TopNavigation } from "./top-navigation.tsx";
 import { ProjectProvider } from "./ProjectProvider.tsx";
 
@@ -33,6 +36,9 @@ const ProjectWorkSpace: FC = () => {
 	);
 	const [selectedProject, setSelectedProject] = useState(selectedProjectId);
 	const { loading, user } = useCurrentUser();
+	const fetchActiveEntry = useTimeTrackingStore(
+		(state) => state.fetchActiveEntry,
+	);
 
 	// GitHub cache at parent level so it survives GitHubIntegration mount/unmount.
 	// TTL: 5 minutes
@@ -68,6 +74,10 @@ const ProjectWorkSpace: FC = () => {
 	const clearGitHubCache = useCallback((projectId: string) => {
 		githubCacheRef.current.delete(projectId);
 	}, []);
+
+	useEffect(() => {
+		void fetchActiveEntry();
+	}, [fetchActiveEntry]);
 
 	if (loading)
 		return (
@@ -105,8 +115,10 @@ const ProjectWorkSpace: FC = () => {
 					setIsMobileSidebarOpen(!isMobileSidebarOpen)
 				}
 				isHomePage={false}
+				onTimeTrackingClick={() => setActiveSection("time-tracking")}
 			/>
 			<ProjectProvider projectId={selectedProject}>
+				<TimeTrackingTicker />
 				<div className="flex flex-1 relative overflow-hidden">
 					<ProjectSidebar
 						activeSection={activeSection}
@@ -117,6 +129,10 @@ const ProjectWorkSpace: FC = () => {
 					<main className="flex-1 p-2 md:p-4 overflow-auto">
 						{activeSection === "tasks" && (
 							<TaskManagement project_id={selectedProject} />
+						)}
+
+						{activeSection === "time-tracking" && (
+							<TimeTrackingSection projectId={selectedProject} />
 						)}
 
 						{activeSection === "team" && (

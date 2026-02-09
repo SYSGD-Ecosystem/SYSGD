@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import useProjects from "@/hooks/connection/useProjects";
 import UserProfileTrigger from "../UserProfileTrigger";
+import TimeTrackingIndicator from "./time-tracking/TimeTrackingIndicator";
 
 interface TopNavigationProps {
 	selectedProject: string;
@@ -18,6 +19,7 @@ interface TopNavigationProps {
 	onHomeClick: () => void;
 	onMobileSidebarToggle: () => void;
 	isHomePage?: boolean;
+	onTimeTrackingClick?: () => void;
 }
 
 export function TopNavigation({
@@ -25,6 +27,7 @@ export function TopNavigation({
 	onProjectChange,
 	onHomeClick,
 	onMobileSidebarToggle,
+	onTimeTrackingClick,
 }: TopNavigationProps) {
 	const { projects } = useProjects();
 
@@ -102,6 +105,7 @@ export function TopNavigation({
 				</div>
 
 				<div className="flex items-center gap-1 md:gap-2">
+					<TimeTrackingIndicator onOpen={onTimeTrackingClick} />
 					{/* <Button variant="ghost" size="sm" className="hidden sm:flex">
 						<Bell className="w-4 h-4" />
 					</Button>
