@@ -1,12 +1,17 @@
 import {
 	Bell,
 	ChevronDown,
+	Copy,
+	Eye,
+	EyeOff,
 	Globe,
 	KeyRound,
+	Loader2,
 	Monitor,
 	Palette,
 	Shield,
 	Smartphone,
+	Trash2,
 } from "lucide-react";
 import { type FC, useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +41,6 @@ import { Switch } from "@/components/ui/switch";
 import { useTheme } from "@/contexts/theme-context";
 import { useUsers } from "@/hooks/connection/useUsers";
 import { Input } from '@/components/ui/input';
-import { Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from "@/lib/api";
 
@@ -384,6 +388,9 @@ const TokensSettings: FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [tokenType, setTokenType] = useState('github');
   const [tokenValue, setTokenValue] = useState('');
+	const [externalToken, setExternalToken] = useState('');
+	const [externalTokenLoading, setExternalTokenLoading] = useState(false);
+	const [showExternalToken, setShowExternalToken] = useState(false);
 
 
   useEffect(() => {
@@ -438,6 +445,34 @@ const TokensSettings: FC = () => {
       console.error(error);
     }
   };
+
+	const handleGenerateExternalToken = async () => {
+		setExternalTokenLoading(true);
+		try {
+			const response = await api.post<{ token: string }>('/api/auth/external-token');
+			setExternalToken(response.data.token);
+			setShowExternalToken(true);
+			toast.success('Token externo generado. Puedes copiarlo para otra app.');
+		} catch (error: any) {
+			toast.error(
+				error.response?.data?.message || 'Error al generar el token externo'
+			);
+			console.error(error);
+		} finally {
+			setExternalTokenLoading(false);
+		}
+	};
+
+	const handleCopyExternalToken = async () => {
+		if (!externalToken) return;
+		try {
+			await navigator.clipboard.writeText(externalToken);
+			toast.success('Token copiado al portapapeles');
+		} catch (error) {
+			toast.error('No se pudo copiar el token');
+			console.error(error);
+		}
+	};
 
   if (isLoading) {
     return (
@@ -496,6 +531,70 @@ const TokensSettings: FC = () => {
           </div>
         </div>
       </form>
+
+			<div className="rounded-lg border p-4 space-y-4">
+				<div>
+					<h4 className="font-medium">Token para Apps Externas</h4>
+					<p className="text-sm text-muted-foreground">
+						Genera un token para usar la API desde móvil, escritorio u otros sistemas.
+					</p>
+				</div>
+				<div className="space-y-2">
+					<Label htmlFor="external-token">Token de acceso</Label>
+					<div className="relative">
+						<Input
+							id="external-token"
+							type={showExternalToken ? 'text' : 'password'}
+							value={externalToken}
+							readOnly
+							placeholder="Genera un token para copiarlo aquí"
+							className="pr-20"
+						/>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="absolute right-9 top-0 h-full px-2"
+							onClick={() => setShowExternalToken(!showExternalToken)}
+							disabled={!externalToken}
+						>
+							{showExternalToken ? (
+								<EyeOff className="w-4 h-4" />
+							) : (
+								<Eye className="w-4 h-4" />
+							)}
+						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="absolute right-0 top-0 h-full px-3"
+							onClick={handleCopyExternalToken}
+							disabled={!externalToken}
+						>
+							<Copy className="w-4 h-4" />
+						</Button>
+					</div>
+					<p className="text-xs text-muted-foreground">
+						Útil si te autenticas con Google en la web y necesitas acceso en el teléfono.
+					</p>
+				</div>
+				<Button
+					type="button"
+					onClick={handleGenerateExternalToken}
+					disabled={externalTokenLoading}
+					className="w-full"
+				>
+					{externalTokenLoading ? (
+						<>
+							<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+							Generando...
+						</>
+					) : (
+						'Generar token externo'
+					)}
+				</Button>
+			</div>
 
       <div className="mt-8">
         <h4 className="mb-4 font-medium">Tus Tokens</h4>
