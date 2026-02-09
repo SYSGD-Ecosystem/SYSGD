@@ -4,7 +4,7 @@ import { AdminSidebar } from "../../components/Sidebar"
 
 export default function AdminLayout() {
 	return (
-		<div className="min-h-screen bg-background">
+		<div className="min-h-screen admin-animated-bg">
 			<AdminSidebar />
 			<main className="lg:pl-64">
 				<div className="p-6 pt-16 lg:pt-6">
