@@ -239,6 +239,29 @@ export const completeInvitedUserRegistration = async (
 	}
 };
 
+export const issueExternalToken = async (req: Request, res: Response) => {
+	const user = req.user;
+
+	if (!user) {
+		res.status(401).json({ message: "No autorizado" });
+		return;
+	}
+
+	const token = generateJWT({
+		id: user.id,
+		email: user.email,
+		name: user.name,
+		privileges: user.privileges,
+	});
+
+	res.status(200).json({
+		message: "Token generado para acceso externo",
+		token,
+		tokenType: "Bearer",
+		expiresIn: "7d",
+	});
+};
+
 export const logout = async (req: Request, res: Response) => {
 	// Limpiamos la cookie del servidor
 	res.clearCookie("token", {

@@ -627,7 +627,7 @@ const TokensSettings: FC = () => {
 				{/* Footer */}
 				{/* <div className="border-t p-4 flex justify-between items-center">
 					<p className="text-sm text-gray-500">
-						SYSGD v2.1.0 - Sistema de Gestión de Documentos
+						SYSGD v2.1.0 - Ecosistema de Gestión Modular
 					</p>
 					<div className="flex space-x-2">
 						<Button variant="outline" onClick={onClose}>
