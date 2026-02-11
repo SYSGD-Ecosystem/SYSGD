@@ -89,13 +89,22 @@ export function useRegisterUser(): RegisterResult {
 				body: JSON.stringify({ name, email, password }),
 			});
 
-			const data = await res.json();
+			const responseText = await res.text();
+			let data: Record<string, unknown> = {};
+
+			if (responseText) {
+				try {
+					data = JSON.parse(responseText) as Record<string, unknown>;
+				} catch {
+					data = { message: responseText };
+				}
+			}
 
 			if (res.status === 201) {
 				setSuccess(true);
 				
 				// Guardar el token si viene en la respuesta
-				if (data.token) {
+				if (typeof data.token === "string") {
 					localStorage.setItem("token", data.token);
 				}
 			} else if (res.status === 400) {
@@ -103,7 +112,13 @@ export function useRegisterUser(): RegisterResult {
 			} else if (res.status === 409) {
 				setError("El usuario ya existe.");
 			} else {
-				setError(data.error || "Error desconocido del servidor.");
+				setError(
+					typeof data.error === "string"
+						? data.error
+						: typeof data.message === "string"
+							? data.message
+							: "Error desconocido del servidor.",
+				);
 			}
 		} catch (err) {
 			setError("No se pudo conectar con el servidor.");

@@ -7,7 +7,7 @@ import { Router, type Request, type Response } from "express";
 import { pool } from "../db";
 import bcrypt from "bcrypt";
 import { isAuthenticated } from "../middlewares/auth-jwt";
-import { getCurrentUser } from "../controllers/auth";
+import { generateJWT, getCurrentUser } from "../controllers/auth";
 import { getCurrentUserData } from "../controllers/users";
 import { getArchives } from "../controllers/archives.controller";
 import { isAdmin } from "../middlewares/auth";
@@ -752,15 +752,34 @@ router.post("/register", async (req: Request, res: Response) => {
 		}
 
 		const hashedPassword = await bcrypt.hash(password, 10);
-		await pool.query(
-			"INSERT INTO users (name, email, password, privileges) VALUES ($1, $2, $3, $4)",
+		const createResult = await pool.query(
+			"INSERT INTO users (name, email, password, privileges) VALUES ($1, $2, $3, $4) RETURNING id, name, email, privileges",
 			[name, email, hashedPassword, privileges],
 		);
 
-		res.status(201).send("Usuario registrado");
+		const createdUser = createResult.rows[0];
+		const token = generateJWT({
+			id: createdUser.id,
+			email: createdUser.email,
+			name: createdUser.name,
+			privileges: createdUser.privileges,
+		});
+
+		res.cookie("token", token, {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+			maxAge: 1000 * 60 * 60 * 24 * 7,
+		});
+
+		res.status(201).json({
+			message: "Usuario registrado",
+			token,
+			user: createdUser,
+		});
 	} catch (err) {
 		console.error(err);
-		res.status(500).send("Error interno del servidor");
+		res.status(500).json({ error: "Error interno del servidor" });
 	}
 });
 
