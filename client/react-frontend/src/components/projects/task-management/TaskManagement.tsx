@@ -476,14 +476,17 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 									>
 										<SelectTrigger className="h-8 w-40">
 											<div className="flex items-center gap-2 truncate">
-												{getStatusIcon(task.status)}
+												{getStatusIcon(task.status, config)}
 												<SelectValue />
 											</div>
 										</SelectTrigger>
 										<SelectContent>
 											{statusOptions.map((status) => (
 												<SelectItem key={status} value={status}>
-													{status}
+													<div className="flex items-center gap-2">
+														{getStatusIcon(status, config)}
+														<span>{status}</span>
+													</div>
 												</SelectItem>
 											))}
 										</SelectContent>
@@ -567,12 +570,15 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 										}
 									>
 										<SelectTrigger className="h-8 w-10 p-0 justify-center">
-											{getStatusIcon(task.status)}
+											{getStatusIcon(task.status, config)}
 										</SelectTrigger>
 										<SelectContent>
 											{statusOptions.map((status) => (
 												<SelectItem key={status} value={status}>
-													{status}
+													<div className="flex items-center gap-2">
+														{getStatusIcon(status, config)}
+														<span>{status}</span>
+													</div>
 												</SelectItem>
 											))}
 										</SelectContent>
