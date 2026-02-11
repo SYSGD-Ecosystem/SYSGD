@@ -39,7 +39,9 @@ const DialogViewTask: FC<{
 	const { config: taskConfig } = useTaskConfig(selectedTask.project_id);
 	const activeEntry = useTimeTrackingStore((state) => state.activeEntry);
 	const now = useTimeTrackingStore((state) => state.now);
-	const fetchActiveEntry = useTimeTrackingStore((state) => state.fetchActiveEntry);
+	const fetchActiveEntry = useTimeTrackingStore(
+		(state) => state.fetchActiveEntry,
+	);
 	const startEntry = useTimeTrackingStore((state) => state.startEntry);
 	const pauseEntry = useTimeTrackingStore((state) => state.pauseEntry);
 	const resumeEntry = useTimeTrackingStore((state) => state.resumeEntry);
@@ -75,9 +77,7 @@ const DialogViewTask: FC<{
 	}, [isOpen, refreshEntries]);
 
 	const taskActiveEntry =
-		activeEntry && activeEntry.task_id === selectedTask.id
-			? activeEntry
-			: null;
+		activeEntry && activeEntry.task_id === selectedTask.id ? activeEntry : null;
 	const hasOtherActiveEntry =
 		activeEntry && activeEntry.task_id !== selectedTask.id;
 
@@ -158,10 +158,21 @@ const DialogViewTask: FC<{
 				{/* Contenido principal con scroll */}
 				<ScrollArea className="flex-1 p-6 overflow-y-auto">
 					<div className="space-y-6">
+						{/* Descripción - Sin label redundante */}
+						{selectedTask.description && (
+							<div>
+								<div className="prose prose-lg dark:prose-invert max-w-none">
+									<ReactMarkdown>{selectedTask.description}</ReactMarkdown>
+								</div>
+							</div>
+						)}
+
 						<div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800 space-y-4">
 							<div className="flex items-center justify-between flex-wrap gap-3">
 								<div>
-									<p className="text-xs uppercase text-gray-500">Time Tracking</p>
+									<p className="text-xs uppercase text-gray-500">
+										Time Tracking
+									</p>
 									<p className="text-lg font-semibold text-gray-900 dark:text-white">
 										{taskActiveEntry
 											? formatDuration(
@@ -193,7 +204,9 @@ const DialogViewTask: FC<{
 									onClick={() =>
 										taskActiveEntry && pauseEntry(taskActiveEntry.id)
 									}
-									disabled={!taskActiveEntry || taskActiveEntry.status !== "running"}
+									disabled={
+										!taskActiveEntry || taskActiveEntry.status !== "running"
+									}
 								>
 									<Pause className="w-4 h-4 mr-2" />
 									Pausar
@@ -204,7 +217,9 @@ const DialogViewTask: FC<{
 									onClick={() =>
 										taskActiveEntry && resumeEntry(taskActiveEntry.id)
 									}
-									disabled={!taskActiveEntry || taskActiveEntry.status !== "paused"}
+									disabled={
+										!taskActiveEntry || taskActiveEntry.status !== "paused"
+									}
 								>
 									<Play className="w-4 h-4 mr-2" />
 									Reanudar
@@ -212,7 +227,9 @@ const DialogViewTask: FC<{
 								<Button
 									size="sm"
 									variant="destructive"
-									onClick={() => taskActiveEntry && stopEntry(taskActiveEntry.id)}
+									onClick={() =>
+										taskActiveEntry && stopEntry(taskActiveEntry.id)
+									}
 									disabled={!taskActiveEntry}
 								>
 									<Square className="w-4 h-4 mr-2" />
@@ -240,15 +257,6 @@ const DialogViewTask: FC<{
 								</p>
 							)}
 						</div>
-
-						{/* Descripción - Sin label redundante */}
-						{selectedTask.description && (
-							<div>
-								<div className="prose prose-lg dark:prose-invert max-w-none">
-									<ReactMarkdown>{selectedTask.description}</ReactMarkdown>
-								</div>
-							</div>
-						)}
 
 						{/* Metadatos compactos */}
 						<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
