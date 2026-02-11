@@ -112,6 +112,14 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 		setisDialogOpenDialog(false);
 	};
 
+	const handleQuickStatusChange = async (taskId: string, status: string) => {
+		await updateTask(taskId, { status });
+
+		if (selectedTask?.id === taskId) {
+			setselectedTask((prev) => (prev ? { ...prev, status } : prev));
+		}
+	};
+
 	const handleAddNewTask = () => {
 		const defaultType = config?.types?.[0]?.name ?? "Tarea";
 		const defaultPriority =
@@ -191,6 +199,9 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 	const getUniqueStatuses = () => {
 		return [...new Set(tasks.map((task) => task.status))];
 	};
+
+	const statusOptions = config?.states?.map((state) => state.name) ??
+		getUniqueStatuses();
 
 	return (
 		<div className="bg-white h-full flex flex-col rounded-lg dark:border shadow-sm dark:bg-gray-800 dark:border-gray-700">
@@ -451,12 +462,34 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 										setisDialogOpenDialog(true);
 									}}
 								>
-									{/* Desktop Version */}
-									<TableCell className="hidden md:table-cell">
-										<div className="flex items-center justify-center">
-											{getStatusIcon(task.status)}
-										</div>
-									</TableCell>
+							{/* Desktop Version */}
+							<TableCell className="hidden md:table-cell">
+								<div
+									className="flex items-center justify-center"
+									onClick={(event) => event.stopPropagation()}
+								>
+									<Select
+										value={task.status}
+										onValueChange={(value) =>
+											handleQuickStatusChange(task.id as string, value)
+										}
+									>
+										<SelectTrigger className="h-8 w-40">
+											<div className="flex items-center gap-2 truncate">
+												{getStatusIcon(task.status)}
+												<SelectValue />
+											</div>
+										</SelectTrigger>
+										<SelectContent>
+											{statusOptions.map((status) => (
+												<SelectItem key={status} value={status}>
+													{status}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+							</TableCell>
 									<TableCell className="hidden md:table-cell font-medium">
 										{task.title}
 									</TableCell>
@@ -521,12 +554,31 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 										</div>
 									</TableCell>
 
-									{/* Mobile Version */}
-									<TableCell className="md:hidden p-2">
-										<div className="flex items-center justify-center">
+							{/* Mobile Version */}
+							<TableCell className="md:hidden p-2">
+								<div
+									className="flex items-center justify-center"
+									onClick={(event) => event.stopPropagation()}
+								>
+									<Select
+										value={task.status}
+										onValueChange={(value) =>
+											handleQuickStatusChange(task.id as string, value)
+										}
+									>
+										<SelectTrigger className="h-8 w-10 p-0 justify-center">
 											{getStatusIcon(task.status)}
-										</div>
-									</TableCell>
+										</SelectTrigger>
+										<SelectContent>
+											{statusOptions.map((status) => (
+												<SelectItem key={status} value={status}>
+													{status}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+							</TableCell>
 									<TableCell className="md:hidden p-2">
 										<div className="flex flex-col gap-1">
 											<span className="font-medium text-sm line-clamp-2">
