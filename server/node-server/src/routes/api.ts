@@ -11,6 +11,7 @@ import { generateJWT, getCurrentUser } from "../controllers/auth";
 import { getCurrentUserData } from "../controllers/users";
 import { getArchives } from "../controllers/archives.controller";
 import { isAdmin } from "../middlewares/auth";
+import { createDefaultUserData } from "../utils/billing";
 
 const router = Router();
 
@@ -752,9 +753,10 @@ router.post("/register", async (req: Request, res: Response) => {
 		}
 
 		const hashedPassword = await bcrypt.hash(password, 10);
+		const defaultUserData = createDefaultUserData();
 		const createResult = await pool.query(
-			"INSERT INTO users (name, email, password, privileges) VALUES ($1, $2, $3, $4) RETURNING id, name, email, privileges",
-			[name, email, hashedPassword, privileges],
+			"INSERT INTO users (name, email, password, privileges, user_data) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, privileges",
+			[name, email, hashedPassword, privileges, JSON.stringify(defaultUserData)],
 		);
 
 		const createdUser = createResult.rows[0];

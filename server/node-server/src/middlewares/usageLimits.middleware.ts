@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { pool } from "../db";
 import { getCurrentUserData } from "../controllers/users";
+import { createDefaultUserData } from "../utils/billing";
 
 // ============================================
 // INTERFACES
@@ -49,19 +50,30 @@ interface User {
 // ============================================
 
 async function getUserBillingData(userId: string): Promise<UserData | null> {
-  try {
-    const { rows } = await pool.query(
-      "SELECT user_data FROM users WHERE id = $1",
-      [userId]
-    );
+	try {
+		const { rows } = await pool.query(
+			"SELECT user_data FROM users WHERE id = $1",
+			[userId]
+		);
 
-    if (rows.length === 0) return null;
+		if (rows.length === 0) return null;
 
-    return rows[0].user_data as UserData;
-  } catch (error) {
-    console.error("Error obteniendo datos de billing:", error);
-    return null;
-  }
+		const userData = rows[0].user_data as UserData | null;
+
+		if (!userData || !userData.billing || !userData.billing.limits) {
+			const fallback = createDefaultUserData();
+			await pool.query(
+				"UPDATE users SET user_data = $1 WHERE id = $2",
+				[JSON.stringify(fallback), userId],
+			);
+			return fallback as UserData;
+		}
+
+		return userData;
+	} catch (error) {
+		console.error("Error obteniendo datos de billing:", error);
+		return null;
+	}
 }
 
 // ============================================
