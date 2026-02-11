@@ -142,3 +142,93 @@ export const getProjectById = async (req: Request, res: Response) => {
         res.status(500).json({ error: "Error al obtener proyecto" });
     }
 }
+
+export const updateProject = async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { name, description, visibility, status } = req.body;
+
+    const user: User = req.user as User;
+    if (!user || !user.id || !user.email || !user.privileges) {
+        res.status(401).json({ error: "Usuario no autenticado" });
+        return;
+    }
+
+    if (!id) {
+        res.status(400).json({ error: "Falta id" });
+        return;
+    }
+
+    if (!name || !description) {
+        res.status(400).json({ error: "Nombre y descripción son obligatorios" });
+        return;
+    }
+
+    try {
+        const result = await pool.query(
+            `UPDATE projects
+             SET name = $1, description = $2, visibility = COALESCE($3, visibility), status = COALESCE($4, status)
+             WHERE id = $5 AND (created_by = $6 OR $7 = 'admin')
+             RETURNING *`,
+            [name, description, visibility || null, status || null, id, user.id, user.privileges]
+        );
+
+        if (result.rows.length === 0) {
+            res.status(404).json({ error: "Proyecto no encontrado o sin permisos" });
+            return;
+        }
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error("Error al actualizar proyecto:", err);
+        res.status(500).json({ error: "Error al actualizar proyecto" });
+    }
+}
+
+export const deleteProject = async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    const user: User = req.user as User;
+    if (!user || !user.id || !user.email || !user.privileges) {
+        res.status(401).json({ error: "Usuario no autenticado" });
+        return;
+    }
+
+    if (!id) {
+        res.status(400).json({ error: "Falta id" });
+        return;
+    }
+
+    const client = await pool.connect();
+
+    try {
+        await client.query("BEGIN");
+
+        const projectResult = await client.query(
+            "SELECT id FROM projects WHERE id = $1 AND (created_by = $2 OR $3 = 'admin')",
+            [id, user.id, user.privileges],
+        );
+
+        if (projectResult.rows.length === 0) {
+            await client.query("ROLLBACK");
+            res.status(404).json({ error: "Proyecto no encontrado o sin permisos" });
+            return;
+        }
+
+        await client.query("DELETE FROM resource_access WHERE resource_type = 'project' AND resource_id = $1", [id]);
+        await client.query("DELETE FROM invitations WHERE resource_type = 'project' AND resource_id = $1", [id]);
+        await client.query("DELETE FROM task_assignees WHERE task_id IN (SELECT id FROM tasks WHERE project_id = $1)", [id]);
+        await client.query("DELETE FROM tasks WHERE project_id = $1", [id]);
+        await client.query("DELETE FROM projects_config WHERE project_id = $1", [id]);
+        await client.query("DELETE FROM projects WHERE id = $1", [id]);
+
+        await client.query("COMMIT");
+
+        res.json({ message: "Proyecto eliminado correctamente" });
+    } catch (err) {
+        await client.query("ROLLBACK");
+        console.error("Error al eliminar proyecto:", err);
+        res.status(500).json({ error: "Error al eliminar proyecto" });
+    } finally {
+        client.release();
+    }
+}

@@ -22,6 +22,7 @@ import tokenRoutes from "./tokens";
 import cryptoPaymentRoutes from "./cryptoPayments.routes";
 import veri from "./verification.routes";
 import updates from "./updates.routes";
+import timeEntries from "./time-entries";
 
 const router = Router();
 
@@ -47,6 +48,7 @@ router.use('/tokens', tokenRoutes);
 router.use('/crypto-payments', cryptoPaymentRoutes);
 router.use("/verification", veri);
 router.use("/", taskConfig);
+router.use("/time-entries", timeEntries);
 
 router.use(updates);
 

@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import dotenv from "dotenv";
 import { findUserByemail, logUserLogin } from "../services/authService";
 import { pool } from "../db";
+import { createDefaultUserData } from "../utils/billing";
 
 dotenv.config();
 
@@ -188,6 +189,7 @@ export const completeInvitedUserRegistration = async (
 	}
 
 	try {
+		const defaultUserData = createDefaultUserData();
 		// Verificar que el usuario existe y está en estado 'invited'
 		const userCheck = await findUserByemail(req.body.email);
 		if (!userCheck || userCheck.status !== "invited") {
@@ -201,9 +203,9 @@ export const completeInvitedUserRegistration = async (
 
 		await pool.query(
 			`UPDATE users 
-             SET name = $1, password = $2, status = 'active' 
-             WHERE id = $3 AND status = 'invited'`,
-			[name, hashedPassword, userId],
+				 SET name = $1, password = $2, status = 'active', user_data = COALESCE(user_data, $4::jsonb) 
+				 WHERE id = $3 AND status = 'invited'`,
+			[name, hashedPassword, userId, JSON.stringify(defaultUserData)],
 		);
 
 		// Generar token
@@ -240,7 +242,7 @@ export const completeInvitedUserRegistration = async (
 };
 
 export const issueExternalToken = async (req: Request, res: Response) => {
-	const user = req.user;
+	const user = req.user as UserPayload | undefined;
 
 	if (!user) {
 		res.status(401).json({ message: "No autorizado" });

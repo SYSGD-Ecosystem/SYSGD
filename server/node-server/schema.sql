@@ -119,6 +119,29 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 
 -- ==============================
+-- Time Entries
+-- ==============================
+CREATE TABLE IF NOT EXISTS time_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  project_id UUID REFERENCES projects(id) ON DELETE SET NULL,
+  task_id UUID REFERENCES tasks(id) ON DELETE SET NULL,
+  start_time TIMESTAMP NOT NULL,
+  end_time TIMESTAMP,
+  duration_seconds INTEGER,
+  status TEXT NOT NULL CHECK (status IN ('running', 'paused', 'completed')),
+  description TEXT,
+  last_started_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_time_entries_user_id ON time_entries(user_id);
+CREATE INDEX IF NOT EXISTS idx_time_entries_status ON time_entries(status);
+CREATE INDEX IF NOT EXISTS idx_time_entries_task_id ON time_entries(task_id);
+CREATE INDEX IF NOT EXISTS idx_time_entries_project_id ON time_entries(project_id);
+
+-- ==============================
 -- User Tokens
 -- ==============================
 CREATE TABLE IF NOT EXISTS user_tokens (

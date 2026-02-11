@@ -4,6 +4,7 @@ import { pool } from "../db";
 import { isAuthenticated } from "../middlewares/auth-jwt";
 import { getCurrentUserData } from "../controllers/users";
 import { InvitationController } from "../controllers/invitationControler";
+import { createDefaultUserData } from "../utils/billing";
 const router = express.Router();
 
 router.get("/status", (_req, res) => {
@@ -84,11 +85,12 @@ router.post("/invite/:projectId", isAuthenticated, async (req, res) => {
 		
 		// Si el usuario no existe, crearlo primero
 		if (!userExists) {
+			const defaultUserData = createDefaultUserData();
 			const newUserResult = await pool.query(
-				`INSERT INTO users (email, status, privileges) 
-				 VALUES ($1, 'invited', 'user') 
+				`INSERT INTO users (email, status, privileges, user_data) 
+				 VALUES ($1, 'invited', 'user', $2) 
 				 RETURNING id`,
-				[email]
+				[email, JSON.stringify(defaultUserData)]
 			);
 			receiverId = newUserResult.rows[0].id;
 		}
