@@ -193,7 +193,28 @@ const SystemDashboard: FC = () => {
 		handleCreateProject(
 			newProject.name,
 			newProject.desciption,
-			() => {
+			(project) => {
+				if (project?.id) {
+					const createdProject: Project = {
+						id: project.id,
+						name: project.name,
+						description: project.description,
+						created_by: project.created_by,
+						created_at: project.created_at,
+						status: project.status,
+						visibility: project.visibility,
+						tipo: "project",
+						members_count: 0,
+						total_tasks: 0,
+						completed_tasks: 0,
+					};
+
+					setProjects((prev) => [
+						createdProject,
+						...prev,
+					]);
+				}
+
 				toast({
 					title: "Exito",
 					description: "Proyecto creado correctamente",
