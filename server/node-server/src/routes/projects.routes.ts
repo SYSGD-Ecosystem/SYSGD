@@ -2,8 +2,10 @@ import { Router } from "express";
 import { isAuthenticated } from "../middlewares/auth-jwt";
 import {
 	createProject,
+	deleteProject,
 	getProjectById,
 	getProjects,
+	updateProject,
 } from "../controllers/project.controller";
 import { checkProjectLimit } from "../middlewares/usageLimits.middleware";
 
@@ -17,5 +19,11 @@ router.get("/", isAuthenticated, getProjects);
 
 // Obtener proyecto individual
 router.get("/:id", isAuthenticated, getProjectById);
+
+// Actualizar proyecto
+router.put("/:id", isAuthenticated, updateProject);
+
+// Eliminar proyecto
+router.delete("/:id", isAuthenticated, deleteProject);
 
 export default router;
