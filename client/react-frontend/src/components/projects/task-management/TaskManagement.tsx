@@ -200,8 +200,8 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 		return [...new Set(tasks.map((task) => task.status))];
 	};
 
-	const statusOptions =
-		config?.states?.map((state) => state.name) ?? getUniqueStatuses();
+	// const statusOptions =
+	// 	config?.states?.map((state) => state.name) ?? getUniqueStatuses();
 
 	return (
 		<div className="bg-white h-full flex flex-col rounded-lg dark:border shadow-sm dark:bg-gray-800 dark:border-gray-700">
