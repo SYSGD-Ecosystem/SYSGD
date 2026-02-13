@@ -107,7 +107,11 @@ export async function checkAICredits(
     const billing = userData.billing;
     const hasCredits = billing.ai_task_credits > 0;
 
-    const tokenType = req.baseUrl.includes("/openrouter")
+    const requestProvider = typeof req.body?.provider === "string"
+      ? req.body.provider.toLowerCase()
+      : undefined;
+
+    const tokenType = req.baseUrl.includes("/openrouter") || requestProvider === "openrouter"
       ? "openrouter"
       : "gemini";
 
@@ -119,15 +123,7 @@ export async function checkAICredits(
 
     const hasCustomToken = tokenRows.length > 0;
 
-    // Si tiene créditos, permitir y marcar para consumo
-    if (hasCredits) {
-      (req as any).useCustomToken = false;
-      (req as any).billingData = billing;
-      next();
-      return;
-    }
-
-    // Si no tiene créditos pero tiene token custom, permitir
+    // Prioridad: si tiene token custom, SIEMPRE usar ese token primero
     if (hasCustomToken) {
       // Importar TokenService para desencriptar
       const { TokenService } = await import("../services/token.service");
@@ -139,6 +135,14 @@ export async function checkAICredits(
 
       (req as any).useCustomToken = true;
       (req as any).customToken = decryptedToken;
+      (req as any).billingData = billing;
+      next();
+      return;
+    }
+
+    // Si no tiene token custom, usar créditos del sistema
+    if (hasCredits) {
+      (req as any).useCustomToken = false;
       (req as any).billingData = billing;
       next();
       return;
