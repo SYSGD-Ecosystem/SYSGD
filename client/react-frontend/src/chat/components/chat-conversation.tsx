@@ -1,26 +1,23 @@
-import { Bot, File, Mic, Paperclip, Send, Smile, Video, X } from "lucide-react";
+import { File, Mic, Paperclip, Send, Smile, Video, X } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Agent } from "../../types/Agent";
-import { useAgents } from "../hooks/useAgents";
 import {
 	type Message as BackendMessage,
 	type Conversation,
-	useChat,
 } from "../hooks/useChat";
 import type { Message } from "./chat-interface";
 import { ChatMessage } from "./chat-message";
 import { ChatSettings } from "./chat-settings";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useChatContext } from "../hooks/useChatContext";
 
 interface ChatConversationProps {
 	chat: Conversation;
 	showSettings: boolean;
 	onShowSettingsChange: (show: boolean) => void;
-	selectedAgent?: Agent | null;
 }
 
 export interface ExtendedMessage extends Message {
@@ -48,7 +45,6 @@ export function ChatConversation({
 	chat,
 	showSettings,
 	onShowSettingsChange,
-	selectedAgent,
 }: ChatConversationProps) {
 	const {
 		fetchMessages,
@@ -56,9 +52,7 @@ export function ChatConversation({
 		sendMessage,
 		setMessagesForConversation,
 		markAsRead,
-	} = useChat();
-
-	const { sendMessageToAgent } = useAgents();
+	} = useChatContext();
 
 	const [messages, setMessages] = useState<ExtendedMessage[]>([]);
 	const [newMessage, setNewMessage] = useState("");
@@ -71,7 +65,6 @@ export function ChatConversation({
 		null,
 	);
 	const [sending, setSending] = useState(false);
-	const [waitingForAgent, setWaitingForAgent] = useState(false);
 	const [anErrorOcurred, setAnErrorOcurred] = useState(false);
 	const { toast } = useToast();
 
@@ -290,163 +283,63 @@ export function ChatConversation({
 				}
 			}
 
-			// Check if we have a selected agent
-			if (selectedAgent) {
-				// Set loading state for agent
-				setWaitingForAgent(true);
+			const payload: any = {
+				content: newMessage || null,
+				...attachment_payload,
+				reply_to: replyingTo?.id ?? null,
+			};
 
-				// Send message to agent
-				const agentPayload = {
-					agent_id: selectedAgent.id,
-					conversation_id: chat.id,
-					content: newMessage || "",
-					...(attachment_payload.attachment_type && {
-						attachment_type: attachment_payload.attachment_type as
-							| "image"
-							| "audio"
-							| "video"
-							| "file",
-						attachment_url: attachment_payload.attachment_url,
-					}),
+			const sent = await sendMessage(chat.id, payload);
+			if (sent) {
+				const normalizedBackend: ExtendedMessage = {
+					id: String((sent as any).id),
+					content: sent.content ?? "",
+					sender: "me",
+					timestamp: sent.created_at
+						? new Date(sent.created_at).toLocaleTimeString("es-ES", {
+								hour: "2-digit",
+								minute: "2-digit",
+							})
+						: new Date().toLocaleTimeString(),
+					senderName: (sent as any).sender_name ?? undefined,
+					attachment: (sent as any).attachment_url
+						? {
+								url: (sent as any).attachment_url,
+								type:
+									(sent as any).attachment_type ??
+									attachment_payload.attachment_type ??
+									"file",
+								name:
+									(sent as any).attachment_name ??
+									attachment_payload.attachment_name,
+								size:
+									(sent as any).attachment_size ??
+									attachment_payload.attachment_size,
+							}
+						: undefined,
+					replyTo: sent.reply_to
+						? {
+								id: String(sent.reply_to),
+								content: (sent as any).reply_preview ?? "",
+								senderName: undefined,
+							}
+						: undefined,
 				};
 
-				const agentResponse = await sendMessageToAgent(agentPayload);
+				setMessages((prev) =>
+					prev.map((m) => (m.id === tempId ? normalizedBackend : m)),
+				);
 
-				if (agentResponse) {
-					// Replace optimistic message with user message
-					const userMessage: ExtendedMessage = {
-						id: String(agentResponse.userMessage.id),
-						content: agentResponse.userMessage.content || "",
-						sender: "me",
-						timestamp: agentResponse.userMessage.created_at
-							? new Date(
-									agentResponse.userMessage.created_at,
-								).toLocaleTimeString("es-ES", {
-									hour: "2-digit",
-									minute: "2-digit",
-								})
-							: new Date().toLocaleTimeString(),
-						senderName: undefined,
-						attachment: attachment_payload.attachment_url
-							? {
-									url: attachment_payload.attachment_url,
-									type:
-										(attachment_payload.attachment_type as
-											| "image"
-											| "audio"
-											| "video"
-											| "file") || "file",
-									name: attachment_payload.attachment_name,
-									size: attachment_payload.attachment_size,
-								}
-							: undefined,
-					};
+				const currentHookMsgs = messagesMap[chat.id] ?? [];
+				setMessagesForConversation(chat.id, [
+					...currentHookMsgs,
+					sent as BackendMessage,
+				]);
 
-					// Add agent response message
-					const agentMessage: ExtendedMessage = {
-						id: String(agentResponse.agentMessage.id),
-						content: agentResponse.agentMessage.content || "",
-						sender: "other",
-						timestamp: agentResponse.agentMessage.created_at
-							? new Date(
-									agentResponse.agentMessage.created_at,
-								).toLocaleTimeString("es-ES", {
-									hour: "2-digit",
-									minute: "2-digit",
-								})
-							: new Date().toLocaleTimeString(),
-						senderName: selectedAgent.name,
-					};
-
-					setMessages((prev) => [
-						...prev.filter((m) => m.id !== tempId),
-						userMessage,
-						agentMessage,
-					]);
-
-					// Update hook's messages map
-					const currentHookMsgs = messagesMap[chat.id] ?? [];
-					setMessagesForConversation(chat.id, [
-						...currentHookMsgs,
-						agentResponse.userMessage as BackendMessage,
-						agentResponse.agentMessage as BackendMessage,
-					]);
-
-					// Mark as read
-					try {
-						await markAsRead(chat.id, String(agentResponse.agentMessage.id));
-					} catch (err) {
-						console.error(err);
-					}
-				} else {
-					// Agent failed, remove optimistic message
-					setMessages((prev) => prev.filter((m) => m.id !== tempId));
-					toast({
-						title: "Error",
-						description: "No se pudo conectar con el agente. Intenta de nuevo.",
-					});
-					setAnErrorOcurred(true);
-				}
-			} else {
-				// Regular message sending (existing logic)
-				const payload: any = {
-					content: newMessage || null,
-					...attachment_payload,
-					reply_to: replyingTo?.id ?? null,
-				};
-
-				const sent = await sendMessage(chat.id, payload);
-				if (sent) {
-					const normalizedBackend: ExtendedMessage = {
-						id: String((sent as any).id),
-						content: sent.content ?? "",
-						sender: "me",
-						timestamp: sent.created_at
-							? new Date(sent.created_at).toLocaleTimeString("es-ES", {
-									hour: "2-digit",
-									minute: "2-digit",
-								})
-							: new Date().toLocaleTimeString(),
-						senderName: (sent as any).sender_name ?? undefined,
-						attachment: (sent as any).attachment_url
-							? {
-									url: (sent as any).attachment_url,
-									type:
-										(sent as any).attachment_type ??
-										attachment_payload.attachment_type ??
-										"file",
-									name:
-										(sent as any).attachment_name ??
-										attachment_payload.attachment_name,
-									size:
-										(sent as any).attachment_size ??
-										attachment_payload.attachment_size,
-								}
-							: undefined,
-						replyTo: sent.reply_to
-							? {
-									id: String(sent.reply_to),
-									content: (sent as any).reply_preview ?? "",
-									senderName: undefined,
-								}
-							: undefined,
-					};
-
-					setMessages((prev) =>
-						prev.map((m) => (m.id === tempId ? normalizedBackend : m)),
-					);
-
-					const currentHookMsgs = messagesMap[chat.id] ?? [];
-					setMessagesForConversation(chat.id, [
-						...currentHookMsgs,
-						sent as BackendMessage,
-					]);
-
-					try {
-						await markAsRead(chat.id, String(sent.id));
-					} catch (err) {
-						console.error(err);
-					}
+				try {
+					await markAsRead(chat.id, String(sent.id));
+				} catch (err) {
+					console.error(err);
 				}
 			}
 		} catch (err) {
@@ -459,7 +352,6 @@ export function ChatConversation({
 			setAnErrorOcurred(true);
 		} finally {
 			setSending(false);
-			setWaitingForAgent(false);
 			setNewMessage("");
 			setAttachment(null);
 			setAttachmentPreview(null);
@@ -552,64 +444,12 @@ export function ChatConversation({
 						/>
 					))}
 
-					{/* Loading message for agent */}
-					{waitingForAgent && selectedAgent && (
-						<div className="flex gap-3">
-							<div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
-								<Bot className="w-4 h-4" />
-							</div>
-							<div className="flex flex-col items-start max-w-[70%]">
-								<span className="text-xs text-muted-foreground mb-1 px-1">
-									{selectedAgent.name}
-								</span>
-								<div className="bg-muted text-foreground rounded-2xl px-4 py-2">
-									<div className="flex items-center gap-2">
-										<div className="flex space-x-1">
-											<div
-												className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
-												style={{ animationDelay: "0ms" }}
-											></div>
-											<div
-												className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
-												style={{ animationDelay: "150ms" }}
-											></div>
-											<div
-												className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
-												style={{ animationDelay: "300ms" }}
-											></div>
-										</div>
-										<span className="text-sm text-muted-foreground">
-											Escribiendo...
-										</span>
-									</div>
-								</div>
-							</div>
-						</div>
-					)}
 				</div>
 			</ScrollArea>
 
 			{/* Input */}
 			<div className="border-t border-border p-4 bg-card">
 				<div className="max-w-4xl mx-auto">
-					{selectedAgent && (
-						<div className="mb-2 p-2 bg-blue-50 dark:bg-blue-950/20 rounded-lg flex items-center justify-between">
-							<div className="flex items-center gap-2">
-								<div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-									<Bot className="h-3 w-3 text-blue-600" />
-								</div>
-								<div className="flex-1 min-w-0">
-									<p className="text-xs font-medium text-blue-900 dark:text-blue-100">
-										Agente activo: {selectedAgent.name}
-									</p>
-									<p className="text-xs text-blue-700 dark:text-blue-300">
-										Soporte: {selectedAgent.support.join(", ")}
-									</p>
-								</div>
-							</div>
-						</div>
-					)}
-
 					{replyingTo && (
 						<div className="mb-2 p-2 bg-muted rounded-lg flex items-center justify-between">
 							<div className="flex-1 min-w-0">

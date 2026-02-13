@@ -1,35 +1,28 @@
 import {
-	Bot,
 	ChevronLeft,
 	ChevronRight,
 	HelpCircle,
 	Home,
 	MessageSquare,
-	Plus,
 	Settings,
 } from "lucide-react";
 import { type FC, useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { Agent } from "../../types/Agent";
 import type { Conversation } from "../hooks/useChat";
-import { AgentsListModal } from "./agents-list-modal";
-import { CreateAgentModal } from "./create-agent-modal";
 import { NewChatModal } from "./new-chat-modal";
+import { useNavigate } from "react-router-dom";
 
 interface ChatToolbarProps {
 	selectedChat?: Conversation;
 	onGoHome: () => void;
-	onAgentSelect?: (agent: Agent) => void;
 }
 
 export const ChatToolbar: FC<ChatToolbarProps> = ({
 	selectedChat,
 	onGoHome,
-	onAgentSelect,
 }) => {
+	const navigate = useNavigate();
 	const [isCollapsed, setIsCollapsed] = useState(false);
-	const [showCreateAgent, setShowCreateAgent] = useState(false);
-	const [showAgentsList, setShowAgentsList] = useState(false);
 	const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
 
 	const toolbarItems = [
@@ -41,18 +34,11 @@ export const ChatToolbar: FC<ChatToolbarProps> = ({
 			variant: "ghost" as const,
 		},
 		{
-			id: "agents",
-			icon: Bot,
-			label: "Agentes",
-			onClick: () => setShowAgentsList(true),
-			variant: "ghost" as const,
-		},
-		{
-			id: "create-agent",
-			icon: Plus,
-			label: "Crear Agente",
-			onClick: () => setShowCreateAgent(true),
-			variant: "default" as const,
+			id: "agents-module",
+			icon: MessageSquare,
+			label: "Chat con Agentes",
+			onClick: () => navigate("/chat/agents"),
+			variant: "outline" as const,
 		},
 		{
 			id: "settings",
@@ -141,7 +127,7 @@ export const ChatToolbar: FC<ChatToolbarProps> = ({
 									{selectedChat.title || "Sin nombre"}
 								</div>
 								<div className="text-xs text-muted-foreground">
-									{selectedChat.type === "bot" ? "Agente" : "Usuario"}
+									Chat interno de equipo
 								</div>
 							</div>
 						</div>
@@ -168,25 +154,6 @@ export const ChatToolbar: FC<ChatToolbarProps> = ({
 					</div>
 				)}
 			</div>
-
-			{/* Modals */}
-			<CreateAgentModal
-				open={showCreateAgent}
-				onOpenChange={setShowCreateAgent}
-				onAgentCreated={(agent) => {
-					console.log("Agent created:", agent);
-					setShowCreateAgent(false);
-				}}
-			/>
-
-			<AgentsListModal
-				open={showAgentsList}
-				onOpenChange={setShowAgentsList}
-				onAgentSelect={(agent) => {
-					onAgentSelect?.(agent);
-					setShowAgentsList(false);
-				}}
-			/>
 
 			<NewChatModal
 				open={isNewChatModalOpen}

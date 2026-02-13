@@ -4,7 +4,6 @@ import { Menu, Settings } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getRandomEmoji } from "@/utils/util";
-import type { Agent } from "../../types/Agent";
 import type { Conversation } from "../hooks/useChat";
 import { ChatConversation } from "./chat-conversation";
 import { ChatSidebar } from "./chat-sidebar";
@@ -39,7 +38,6 @@ export function ChatInterface() {
 	);
 	const [sidebarOpen, setSidebarOpen] = useState(true);
 	const [showSettings, setShowSettings] = useState(false);
-	const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
 
 	return (
 		<div className="flex h-screen bg-background">
@@ -50,7 +48,6 @@ export function ChatInterface() {
 				<ChatSidebar
 					selectedChat={selectedChat ?? undefined}
 					onSelectChat={setSelectedChat}
-					onAgentSelect={setSelectedAgent}
 				/>
 			</div>
 
@@ -87,7 +84,7 @@ export function ChatInterface() {
 												: "Me"}
 									</h2>
 									<p className="text-xs text-muted-foreground">
-										{selectedChat.type === "bot" ? "Agente" : "Usuario"}
+										Chat interno de equipo
 										{/* {selectedChat.online && " • En línea"} */}
 									</p>
 								</div>
@@ -115,7 +112,6 @@ export function ChatInterface() {
 							chat={selectedChat}
 							showSettings={showSettings}
 							onShowSettingsChange={setShowSettings}
-							selectedAgent={selectedAgent}
 						/>
 					) : (
 						<div className="h-full flex items-center justify-center text-muted-foreground">
@@ -152,7 +148,6 @@ export function ChatInterface() {
 			<ChatToolbar
 				selectedChat={selectedChat}
 				onGoHome={() => setSelectedChat(undefined)}
-				onAgentSelect={setSelectedAgent}
 			/>
 		</div>
 	);

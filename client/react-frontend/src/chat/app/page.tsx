@@ -1,5 +1,10 @@
 import { ChatInterface } from "../components/chat-interface";
+import { ChatProvider } from "../hooks/useChatContext";
 
 export default function HomeChat() {
-	return <ChatInterface />;
+	return (
+		<ChatProvider>
+			<ChatInterface />
+		</ChatProvider>
+	);
 }

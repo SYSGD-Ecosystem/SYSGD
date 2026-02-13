@@ -2,34 +2,25 @@
 import { type FC, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Users, Bot, Home } from "lucide-react";
-import { type Conversation, useChat } from "../hooks/useChat";
+import { Search, Users, Home } from "lucide-react";
+import { type Conversation } from "../hooks/useChat";
 import { getEmojiFromName } from "@/utils/util";
 import { useNavigate } from "react-router-dom";
 import { IoChatboxOutline } from "react-icons/io5";
-import { useAgents } from "../hooks/useAgents";
-import type { Agent } from "../../types/Agent";
+import { useChatContext } from "../hooks/useChatContext";
 
 
 interface ChatSidebarProps {
 	selectedChat?: Conversation;
 	onSelectChat: (chat: Conversation) => void;
-	onAgentSelect?: (agent: Agent) => void;
 }
 
 export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 	const navigate = useNavigate();
 	const [searchQuery, setSearchQuery] = useState("");
-	const [filter, setFilter] = useState<
-		"all" | "user" | "agent" | "private" | "bot"
-	>("all");
+	const [filter, setFilter] = useState<"all" | "private">("all");
 
-	const { conversations } = useChat();
-	const { agents } = useAgents();
-
-	console.log(agents)
-
-	console.log("Conversations in Sidebar:", conversations);
+	const { conversations } = useChatContext();
 
 	const filteredChats = conversations.filter((chat) => {
 		if (!chat.members || chat.members.length === 0 || !chat.members[0].name)
@@ -102,13 +93,13 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 						Usuarios
 					</Button>
 					<Button
-						variant={filter === "bot" ? "default" : "outline"}
+						variant="outline"
 						size="sm"
-						onClick={() => setFilter("bot")}
+						disabled
 						className="flex-1"
+						title="El chat con agentes ahora vive en un módulo independiente"
 					>
-						<Bot className="h-4 w-4 mr-1" />
-						Agentes
+						Agentes (módulo separado)
 					</Button>
 				</div>
 			</div>
