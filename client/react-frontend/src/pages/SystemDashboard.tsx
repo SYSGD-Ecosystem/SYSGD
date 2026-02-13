@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/a11y/useKeyWithClickEvents: <explanation> */
 /** biome-ignore-all lint/a11y/noStaticElementInteractions: <explanation> */
-import { type FC, useEffect, useState } from "react";
+import { type FC, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
 	Activity,
@@ -84,6 +84,57 @@ interface Project {
 	completed_tasks: number;
 }
 
+const PROJECT_ACTIVITY_STORAGE_KEY = "dashboard:project-activity";
+
+interface ProjectActivityRecord {
+	projectId: string;
+	lastOpenedAt: string;
+}
+
+const readProjectActivity = (): ProjectActivityRecord[] => {
+	try {
+		const raw = localStorage.getItem(PROJECT_ACTIVITY_STORAGE_KEY);
+		if (!raw) return [];
+		const parsed = JSON.parse(raw);
+		if (!Array.isArray(parsed)) return [];
+		return parsed.filter(
+			(item): item is ProjectActivityRecord =>
+				typeof item?.projectId === "string" &&
+				typeof item?.lastOpenedAt === "string",
+		);
+	} catch {
+		return [];
+	}
+};
+
+const writeProjectActivity = (records: ProjectActivityRecord[]) => {
+	localStorage.setItem(PROJECT_ACTIVITY_STORAGE_KEY, JSON.stringify(records));
+};
+
+const getRelativeActivityText = (isoDate?: string): string => {
+	if (!isoDate) return "Sin actividad reciente";
+	const date = new Date(isoDate);
+	if (Number.isNaN(date.getTime())) return "Sin actividad reciente";
+
+	const now = Date.now();
+	const diffMs = Math.max(0, now - date.getTime());
+	const minute = 60 * 1000;
+	const hour = 60 * minute;
+	const day = 24 * hour;
+
+	if (diffMs < minute) return "Hace un momento";
+	if (diffMs < hour) {
+		const minutes = Math.floor(diffMs / minute);
+		return `Hace ${minutes} min`;
+	}
+	if (diffMs < day) {
+		const hours = Math.floor(diffMs / hour);
+		return `Hace ${hours} h`;
+	}
+	const days = Math.floor(diffMs / day);
+	return `Hace ${days} día${days === 1 ? "" : "s"}`;
+};
+
 const SystemDashboard: FC = () => {
 	const [viewMode, setViewMode] = useState<ViewMode>("home");
 
@@ -93,6 +144,7 @@ const SystemDashboard: FC = () => {
 	const [showNotifications, setShowNotifications] = useState(false);
 	const [documents, setDocument] = useState<DocumentFile[]>([]);
 	const [projects, setProjects] = useState<Project[]>([]);
+	const [projectActivity, setProjectActivity] = useState<ProjectActivityRecord[]>([]);
 	const { handleCreateProject, handleUpdateProject, handleDeleteProject } =
 		useProjectConnection();
 	const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
@@ -335,6 +387,49 @@ const SystemDashboard: FC = () => {
 	}, [archives]);
 
 	useEffect(() => {
+		if (typeof window === "undefined") return;
+		setProjectActivity(readProjectActivity());
+	}, []);
+
+	const trackProjectOpen = (projectId: string) => {
+		const nowIso = new Date().toISOString();
+		setProjectActivity((prev) => {
+			const next = [
+				{ projectId, lastOpenedAt: nowIso },
+				...prev.filter((item) => item.projectId !== projectId),
+			].slice(0, 20);
+			writeProjectActivity(next);
+			return next;
+		});
+	};
+
+	const recentProjects = useMemo(() => {
+		if (projects.length === 0) return [];
+
+		const activityMap = new Map(
+			projectActivity.map((item) => [item.projectId, item.lastOpenedAt]),
+		);
+
+		const withActivity = projects
+			.filter((project) => activityMap.has(project.id))
+			.sort((a, b) => {
+				const dateA = new Date(activityMap.get(a.id) || 0).getTime();
+				const dateB = new Date(activityMap.get(b.id) || 0).getTime();
+				return dateB - dateA;
+			});
+
+		if (withActivity.length >= 3) {
+			return withActivity.slice(0, 3);
+		}
+
+		const missing = projects.filter(
+			(project) => !withActivity.some((active) => active.id === project.id),
+		);
+
+		return [...withActivity, ...missing].slice(0, 3);
+	}, [projects, projectActivity]);
+
+	useEffect(() => {
 		if (invitations) {
 			// Contar invitaciones pendientes (no aceptadas ni rechazadas)
 			const pendingInvitations = invitations.filter(
@@ -435,11 +530,12 @@ const SystemDashboard: FC = () => {
 					<Separator />
 					<CardContent>
 						<div className="space-y-3">
-							{projects.slice(0, 3).map((project) => (
+							{recentProjects.map((project) => (
 								<div
 									key={project.id}
 									onClick={() => {
 										setProjectId(project.id);
+										trackProjectOpen(project.id);
 										navigate("/projects");
 									}}
 									className="flex w-full cursor-pointer items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -451,13 +547,18 @@ const SystemDashboard: FC = () => {
 										<p className="text-sm text-gray-600 dark:text-gray-400">
 											{project.members_count} miembros
 										</p>
+										<p className="text-xs text-gray-500 dark:text-gray-400">
+											Actividad: {getRelativeActivityText(
+												projectActivity.find((item) => item.projectId === project.id)?.lastOpenedAt,
+											)}
+										</p>
 									</div>
 									<Badge className={getStatusColor(project.status ?? "")}>
 										{project.status}
 									</Badge>
 								</div>
 							))}
-							{projects.length === 0 && (
+							{recentProjects.length === 0 && (
 								<p className="text-center text-gray-500 dark:text-gray-400 py-4">
 									No hay proyectos aún
 								</p>
@@ -615,6 +716,7 @@ const SystemDashboard: FC = () => {
 								<Button
 									onClick={() => {
 										setProjectId(project.id);
+										trackProjectOpen(project.id);
 										navigate("/projects");
 									}}
 									variant="ghost"
