@@ -1,10 +1,18 @@
 "use client";
 
-import { Bot, Menu, Plus, Settings, X } from "lucide-react";
+import { Bot, Menu, MessageSquarePlus, Plus, Settings, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { getRandomEmoji } from "@/utils/util";
 import useCurrentUser from "@/hooks/connection/useCurrentUser";
 import type { Agent } from "../../types/Agent";
@@ -25,6 +33,8 @@ export function AgentsChatInterface() {
 	const [showSettings, setShowSettings] = useState(false);
 	const [showAgentsList, setShowAgentsList] = useState(false);
 	const [showCreateAgent, setShowCreateAgent] = useState(false);
+	const [showCreateConversationModal, setShowCreateConversationModal] =
+		useState(false);
 	const [newConversationName, setNewConversationName] = useState("");
 	const { conversations, createConversation, fetchConversations } = useChatContext();
 	const { user } = useCurrentUser();
@@ -50,6 +60,7 @@ export function AgentsChatInterface() {
 		if (conversation) {
 			setSelectedChat(conversation);
 			setNewConversationName("");
+			setShowCreateConversationModal(false);
 			await fetchConversations();
 		}
 	};
@@ -78,16 +89,13 @@ export function AgentsChatInterface() {
 							</Button>
 						</div>
 						<p className="text-xs text-muted-foreground">Sección dedicada a conversaciones con agentes externos.</p>
-						<div className="space-y-2">
-							<Input
-								placeholder="Nombre de la conversación"
-								value={newConversationName}
-								onChange={(e) => setNewConversationName(e.target.value)}
-							/>
-							<Button className="w-full" onClick={() => void handleCreateAgentConversation()}>
-								Nueva conversación
-							</Button>
-						</div>
+						<Button
+							className="w-full"
+							onClick={() => setShowCreateConversationModal(true)}
+						>
+							<MessageSquarePlus className="h-4 w-4 mr-2" />
+							Nueva conversación
+						</Button>
 					</div>
 					<div className="flex-1 overflow-y-auto p-2">
 						{agentConversations.map((chat) => (
@@ -104,8 +112,15 @@ export function AgentsChatInterface() {
 										: "hover:bg-sidebar-accent/60"
 								}`}
 							>
-								<div className="font-medium truncate">{chat.title || "Agente"}</div>
-								<div className="text-xs text-muted-foreground truncate">{chat.last_message?.content || "Sin mensajes"}</div>
+								<div className="flex items-start gap-2">
+									<div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 mt-0.5">
+										<Bot className="h-3.5 w-3.5" />
+									</div>
+									<div className="min-w-0">
+										<div className="font-medium truncate">{chat.title || "Agente"}</div>
+										<div className="text-xs text-muted-foreground truncate">{chat.last_message?.content || "Sin mensajes"}</div>
+									</div>
+								</div>
 							</button>
 						))}
 					</div>
@@ -199,6 +214,35 @@ export function AgentsChatInterface() {
 					setShowCreateAgent(false);
 				}}
 			/>
+
+			<Dialog
+				open={showCreateConversationModal}
+				onOpenChange={setShowCreateConversationModal}
+			>
+				<DialogContent className="sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle>Nueva conversación con agentes</DialogTitle>
+						<DialogDescription>
+							Asigna un nombre para crear la conversación y luego selecciona el agente.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="space-y-2">
+						<Input
+							placeholder="Ej. Soporte IA - Infraestructura"
+							value={newConversationName}
+							onChange={(e) => setNewConversationName(e.target.value)}
+						/>
+					</div>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setShowCreateConversationModal(false)}>
+							Cancelar
+						</Button>
+						<Button onClick={() => void handleCreateAgentConversation()}>
+							Crear conversación
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }
