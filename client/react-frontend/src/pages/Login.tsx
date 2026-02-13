@@ -45,7 +45,43 @@ const Login: FC = () => {
 			// Redirect to dashboard
 			router("/dashboard");
 		}
-	}, [checkServerStatus]);
+	}, [checkServerStatus, router]);
+
+	useEffect(() => {
+		if (loginSuccess) {
+			router("/dashboard");
+		}
+	}, [loginSuccess, router]);
+
+	useEffect(() => {
+		if (!success) return;
+
+		const token = localStorage.getItem("token");
+		if (token) {
+			router("/dashboard");
+			return;
+		}
+
+		setIsLoginPage(true);
+		setPassword("");
+		setRepetPassword("");
+	}, [success, router]);
+
+	const handleRegisterSubmit = (e: FormEvent) => {
+		e.preventDefault();
+
+		if (password !== repetPassword) {
+			alert("Las contraseñas no coinciden");
+			return;
+		}
+
+		register({ name, email: user, password });
+	};
+
+	const handleLoginSubmit = (e: FormEvent) => {
+		e.preventDefault();
+		login({ email: user, password });
+	};
 
 	if (status === "checking")
 		return (
@@ -70,26 +106,6 @@ const Login: FC = () => {
 	if (authUser) {
 		router("/dashboard");
 		return null;
-	}
-
-	const handleRegisterSubmit = (e: FormEvent) => {
-		e.preventDefault();
-
-		if (password !== repetPassword) {
-			alert("Las contraseñas no coinciden");
-			return;
-		}
-
-		register({ name, email: user, password });
-	};
-
-	const handleLoginSubmit = (e: FormEvent) => {
-		e.preventDefault();
-		login({ email: user, password });
-	};
-
-	if (loginSuccess) {
-		router("/dashboard");
 	}
 
 	return (
