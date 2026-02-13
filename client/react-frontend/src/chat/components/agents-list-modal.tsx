@@ -2,7 +2,6 @@
 
 import { Bot, Loader2, Pause, Play, Trash2 } from "lucide-react";
 import { type FC, useState } from "react";
-import { IoChatboxOutline } from "react-icons/io5";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -22,19 +21,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
-import useCurrentUser from "@/hooks/connection/useCurrentUser";
 import type { Agent, AgentSupport } from "../../types/Agent";
 import { useAgents } from "../hooks/useAgents";
-import { useChat } from "../hooks/useChat";
-import { useToast } from "@/hooks/use-toast";
 
 interface AgentsListModalProps {
 	open: boolean;
@@ -50,27 +38,6 @@ export const AgentsListModal: FC<AgentsListModalProps> = ({
 	const { agents, loading, deleteAgent, updateAgent } = useAgents();
 	const [deleteAgentId, setDeleteAgentId] = useState<string | null>(null);
 	const [isDeleting, setIsDeleting] = useState(false);
-	const { createConversation } = useChat();
-	const { user } = useCurrentUser();
-	const { toast } = useToast();
-
-	// crear conversacion con agente
-	const handleCreateConversationWithAgent = async (agent: Agent) => {
-		const conversation = await createConversation({
-			type: "bot",
-			contactemail: user?.email || "",
-			members: [user?.email || ""],
-			title: agent.name,
-		});
-
-		if (conversation) {
-			toast({
-				title: "Conversación creada",
-				description: `Se ha creado una nueva conversación con el agente ${agent.name}.`,
-			});
-		}
-		onOpenChange(false);
-	};
 
 	const getSupportBadgeColor = (support: AgentSupport) => {
 		switch (support) {
@@ -123,153 +90,92 @@ export const AgentsListModal: FC<AgentsListModalProps> = ({
 	return (
 		<>
 			<Dialog open={open} onOpenChange={onOpenChange}>
-				<DialogContent className="sm:max-w-[800px] max-h-[80vh]">
+				<DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">
 					<DialogHeader>
-						<DialogTitle>Gestionar Agentes</DialogTitle>
+						<DialogTitle>Seleccionar agente</DialogTitle>
 						<DialogDescription>
-							Administra tus agentes de IA. Puedes activar, desactivar, editar o
-							eliminar agentes.
+							Elige qué agente quieres usar en la conversación actual.
 						</DialogDescription>
 					</DialogHeader>
 
-					<div className="space-y-4">
-						{loading ? (
-							<div className="flex items-center justify-center py-8">
-								<Loader2 className="h-6 w-6 animate-spin" />
-								<span className="ml-2">Cargando agentes...</span>
-							</div>
-						) : agents.length === 0 ? (
-							<div className="text-center py-8">
-								<Bot className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-								<h3 className="text-lg font-semibold mb-2">No hay agentes</h3>
-								<p className="text-muted-foreground">
-									Crea tu primer agente para comenzar a usar el sistema.
-								</p>
-							</div>
-						) : (
-							<div className="border rounded-lg">
-								<Table>
-									<TableHeader>
-										<TableRow>
-											<TableHead>Nombre</TableHead>
-											<TableHead>URL</TableHead>
-											<TableHead>Soporte</TableHead>
-											<TableHead>Estado</TableHead>
-											<TableHead>Acciones</TableHead>
-										</TableRow>
-									</TableHeader>
-									<TableBody>
-										{agents.map((agent) => (
-											<TableRow key={agent.id}>
-												<TableCell>
-													<div className="flex items-center space-x-2">
-														<Bot className="h-4 w-4 text-primary" />
-														<div>
-															<div className="font-medium">{agent.name}</div>
-															{agent.description && (
-																<div className="text-sm text-muted-foreground">
-																	{agent.description}
-																</div>
-															)}
-														</div>
-													</div>
-												</TableCell>
-												<TableCell>
-													<div className="max-w-[200px] truncate text-sm text-muted-foreground">
-														{agent.url}
-													</div>
-												</TableCell>
-												<TableCell>
-													<div className="flex flex-wrap gap-1">
-														{agent.support.map((support) => (
-															<Badge
-																key={support}
-																variant="secondary"
-																className={`text-xs ${getSupportBadgeColor(support)}`}
-															>
-																{getSupportIcon(support)} {support}
-															</Badge>
-														))}
-													</div>
-												</TableCell>
-												<TableCell>
-													<Badge
-														variant={agent.is_active ? "default" : "secondary"}
-														className={
-															agent.is_active
-																? "bg-green-100 text-green-800"
-																: ""
-														}
-													>
-														{agent.is_active ? "Activo" : "Inactivo"}
-													</Badge>
-												</TableCell>
-												<TableCell>
-													<div className="flex items-center space-x-1">
-														<Button
-															variant="ghost"
-															size="sm"
-															onClick={() => handleAgentSelect(agent)}
-															title="Usar agente"
-														>
-															<Play className="h-4 w-4" />
-														</Button>
-														<Button
-															variant="ghost"
-															size="sm"
-															onClick={() => handleToggleAgent(agent)}
-															title={agent.is_active ? "Desactivar" : "Activar"}
-														>
-															{agent.is_active ? (
-																<Pause className="h-4 w-4" />
-															) : (
-																<Play className="h-4 w-4" />
-															)}
-														</Button>
-														<Button
-															variant="ghost"
-															size="sm"
-															onClick={() =>
-																handleCreateConversationWithAgent(agent)
-															}
-															title="Nuevo chat"
-															className="text-red-600 hover:text-red-700"
-														>
-															<IoChatboxOutline className="h-4 w-4" />
-														</Button>
-														<Button
-															variant="ghost"
-															size="sm"
-															onClick={() => setDeleteAgentId(agent.id)}
-															title="Eliminar"
-															className="text-red-600 hover:text-red-700"
-														>
-															<Trash2 className="h-4 w-4" />
-														</Button>
-													</div>
-												</TableCell>
-											</TableRow>
+					{loading ? (
+						<div className="flex items-center justify-center py-8">
+							<Loader2 className="h-6 w-6 animate-spin" />
+							<span className="ml-2">Cargando agentes...</span>
+						</div>
+					) : agents.length === 0 ? (
+						<div className="text-center py-8">
+							<Bot className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+							<h3 className="text-lg font-semibold mb-2">No hay agentes</h3>
+							<p className="text-muted-foreground">
+								Crea tu primer agente para comenzar a usar el sistema.
+							</p>
+						</div>
+					) : (
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+							{agents.map((agent) => (
+								<div key={agent.id} className="border rounded-lg p-4 space-y-3 bg-card">
+									<div className="flex items-start justify-between gap-3">
+										<div className="min-w-0">
+											<div className="flex items-center gap-2">
+												<Bot className="h-4 w-4 text-primary" />
+												<h4 className="font-semibold truncate">{agent.name}</h4>
+											</div>
+											{agent.description && (
+												<p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+													{agent.description}
+												</p>
+											)}
+										</div>
+										<Badge variant={agent.is_active ? "default" : "secondary"}>
+											{agent.is_active ? "Activo" : "Inactivo"}
+										</Badge>
+									</div>
+
+									<p className="text-xs text-muted-foreground truncate">{agent.url}</p>
+
+									<div className="flex flex-wrap gap-1">
+										{agent.support.map((support) => (
+											<Badge key={support} variant="secondary" className={`text-xs ${getSupportBadgeColor(support)}`}>
+												{getSupportIcon(support)} {support}
+											</Badge>
 										))}
-									</TableBody>
-								</Table>
-							</div>
-						)}
-					</div>
+									</div>
+
+									<div className="flex items-center gap-2 pt-1">
+										<Button size="sm" onClick={() => handleAgentSelect(agent)}>
+											Usar en conversación
+										</Button>
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={() => handleToggleAgent(agent)}
+										>
+											{agent.is_active ? <Pause className="h-4 w-4 mr-1" /> : <Play className="h-4 w-4 mr-1" />}
+											{agent.is_active ? "Desactivar" : "Activar"}
+										</Button>
+										<Button
+											variant="ghost"
+											size="sm"
+											onClick={() => setDeleteAgentId(agent.id)}
+											className="text-red-600 hover:text-red-700"
+										>
+											<Trash2 className="h-4 w-4" />
+										</Button>
+									</div>
+								</div>
+							))}
+						</div>
+					)}
 				</DialogContent>
 			</Dialog>
 
-			{/* Delete Confirmation Dialog */}
-			<AlertDialog
-				open={!!deleteAgentId}
-				onOpenChange={() => setDeleteAgentId(null)}
-			>
+			<AlertDialog open={!!deleteAgentId} onOpenChange={() => setDeleteAgentId(null)}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>¿Eliminar agente?</AlertDialogTitle>
 						<AlertDialogDescription>
-							Esta acción no se puede deshacer. El agente será eliminado
-							permanentemente y ya no estará disponible para usar en
-							conversaciones.
+							Esta acción no se puede deshacer. El agente será eliminado permanentemente.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
