@@ -15,12 +15,22 @@ router.get("/status", (_req, res) => {
 router.get("/:projectId", isAuthenticated, async (req, res) => {
 	const { projectId } = req.params;
 	try {
-		// Obtener miembros activos (ya aceptados)
+		// Obtener miembros activos (incluye creador/owner aunque no tenga fila en resource_access)
 		const membersResult = await pool.query(
-			`SELECT u.id, u.name, u.email, ra.role, 'active' as status
+			`WITH active_members AS (
+       SELECT p.created_by AS user_id, 'owner'::text AS role
+       FROM projects p
+       WHERE p.id = $1
+
+       UNION
+
+       SELECT ra.user_id, COALESCE(ra.role, 'member') AS role
        FROM resource_access ra
-       JOIN users u ON ra.user_id = u.id
-       WHERE ra.resource_type = 'project' AND ra.resource_id = $1`,
+       WHERE ra.resource_type = 'project' AND ra.resource_id = $1
+     )
+     SELECT u.id, u.name, u.email, am.role, 'active' as status
+     FROM active_members am
+     JOIN users u ON am.user_id = u.id`,
 			[projectId],
 		);
 
