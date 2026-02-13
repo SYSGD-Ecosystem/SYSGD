@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import api from "@/lib/api";
 import type { CreateNoteData, ProjectNote, UpdateNoteData } from "@/types/Note";
 
 interface UseNotesResult {
@@ -12,26 +13,16 @@ interface UseNotesResult {
 	refreshNotes: () => Promise<void>;
 }
 
-const API_BASE_URL =
-	import.meta.env.VITE_API_URL || "http://localhost:3000/api";
-
 export const useNotes = (projectId: number | string): UseNotesResult => {
 	const [notes, setNotes] = useState<ProjectNote[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	// Helper function to validate projectId
-	const validateProjectId = (): boolean => {
-		if (projectId === null || projectId === undefined) {
-			setError("No projectId provided");
-			return false;
-		}
-		return true;
-	};
 
 	// Función para obtener todas las notas del proyecto
 	const fetchNotes = useCallback(async (): Promise<void> => {
-		if (!validateProjectId()) {
+		if (projectId === null || projectId === undefined) {
+			setError("No projectId provided");
 			setNotes([]);
 			return;
 		}
@@ -40,24 +31,8 @@ export const useNotes = (projectId: number | string): UseNotesResult => {
 		setError(null);
 
 		try {
-			const response = await fetch(
-				`${API_BASE_URL}/projects/${projectId}/notes`,
-				{
-					method: "GET",
-					credentials: "include",
-					headers: {
-						"Content-Type": "application/json",
-					},
-				},
-			);
-
-			if (!response.ok) {
-				const errorText = await response.text();
-				console.error("Fetch error response:", errorText);
-				throw new Error(`Error ${response.status}: ${response.statusText}`);
-			}
-
-			const result = await response.json();
+			const response = await api.get(`/api/projects/${projectId}/notes`);
+			const result = response.data;
 			if (!result || typeof result !== "object" || !("data" in result)) {
 				setError('Respuesta de la API inválida: falta la propiedad "data"');
 				setNotes([]);
@@ -80,7 +55,8 @@ export const useNotes = (projectId: number | string): UseNotesResult => {
 	const createNote = async (
 		data: CreateNoteData,
 	): Promise<ProjectNote | null> => {
-		if (!validateProjectId()) {
+		if (projectId === null || projectId === undefined) {
+			setError("No projectId provided");
 			return null;
 		}
 
@@ -88,25 +64,8 @@ export const useNotes = (projectId: number | string): UseNotesResult => {
 		setError(null);
 
 		try {
-			const response = await fetch(
-				`${API_BASE_URL}/projects/${projectId}/notes`,
-				{
-					method: "POST",
-					credentials: "include",
-					headers: {
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify(data),
-				},
-			);
-
-			if (!response.ok) {
-				const errorText = await response.text();
-				console.error("Error response:", errorText);
-				throw new Error(`Error ${response.status}: ${response.statusText}`);
-			}
-
-			const result = await response.json();
+			const response = await api.post(`/api/projects/${projectId}/notes`, data);
+			const result = response.data;
 			const newNote = result.data;
 
 			// Agregar la nueva nota al estado local
@@ -135,20 +94,8 @@ export const useNotes = (projectId: number | string): UseNotesResult => {
 		setError(null);
 
 		try {
-			const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
-				method: "PUT",
-				credentials: "include",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify(data),
-			});
-
-			if (!response.ok) {
-				throw new Error(`Error ${response.status}: ${response.statusText}`);
-			}
-
-			const result = await response.json();
+			const response = await api.put(`/api/notes/${id}`, data);
+			const result = response.data;
 			const updatedNote = result.data;
 
 			// Actualizar la nota en el estado local
@@ -176,17 +123,7 @@ export const useNotes = (projectId: number | string): UseNotesResult => {
 		setError(null);
 
 		try {
-			const response = await fetch(`${API_BASE_URL}/notes/${id}`, {
-				method: "DELETE",
-				credentials: "include",
-				headers: {
-					"Content-Type": "application/json",
-				},
-			});
-
-			if (!response.ok) {
-				throw new Error(`Error ${response.status}: ${response.statusText}`);
-			}
+			await api.delete(`/api/notes/${id}`);
 
 			// Eliminar la nota del estado local
 			setNotes((prevNotes) => prevNotes.filter((note) => note.id !== id));
