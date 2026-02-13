@@ -5,10 +5,211 @@ import { getCurrentUserData } from "../controllers/users";
 
 const router = Router();
 
+type TimeEntryStatus = "running" | "paused" | "completed";
+
+const VALID_STATUSES: TimeEntryStatus[] = ["running", "paused", "completed"];
+
 const secondsBetween = (start: Date, end: Date) => {
 	const diffMs = end.getTime() - start.getTime();
 	return Math.max(0, Math.floor(diffMs / 1000));
 };
+
+const toDate = (value?: string | Date | null) => {
+	if (!value) {
+		return null;
+	}
+	const parsed = value instanceof Date ? value : new Date(value);
+	if (Number.isNaN(parsed.getTime())) {
+		return null;
+	}
+	return parsed;
+};
+
+const ensureTaskProjectConsistency = async (
+	taskId: string | null,
+	projectId: string | null,
+): Promise<
+	| { projectId: string | null }
+	| { error: string; status: number }
+> => {
+	if (!taskId) {
+		return { projectId };
+	}
+
+	const taskResult = await pool.query(
+		"SELECT project_id FROM tasks WHERE id = $1",
+		[taskId],
+	);
+
+	if (taskResult.rows.length === 0) {
+		return { error: "Tarea no encontrada", status: 404 };
+	}
+
+	const taskProjectId = taskResult.rows[0].project_id as string;
+	if (projectId && projectId !== taskProjectId) {
+		return {
+			error: "El proyecto no coincide con la tarea seleccionada",
+			status: 400,
+		};
+	}
+
+	return { projectId: taskProjectId };
+};
+
+const ensureNoOtherRunningEntry = async (userId: string, currentId?: string) => {
+	const values: string[] = [userId];
+	let query =
+		"SELECT id FROM time_entries WHERE user_id = $1 AND status = 'running'";
+
+	if (currentId) {
+		values.push(currentId);
+		query += ` AND id <> $${values.length}`;
+	}
+
+	query += " LIMIT 1";
+	const running = await pool.query(query, values);
+	return running.rows[0]?.id as string | undefined;
+};
+
+router.post("/", isAuthenticated, async (req: Request, res: Response) => {
+	const user = getCurrentUserData(req);
+	if (!user?.id) {
+		res.status(401).json({ error: "Usuario no autenticado" });
+		return;
+	}
+
+	const userId = String(user.id);
+
+
+	const {
+		project_id,
+		task_id,
+		description,
+		start_time,
+		end_time,
+		duration_seconds,
+		status,
+	} = req.body as {
+		project_id?: string | null;
+		task_id?: string | null;
+		description?: string | null;
+		start_time?: string;
+		end_time?: string | null;
+		duration_seconds?: number | null;
+		status?: TimeEntryStatus;
+	};
+
+	const normalizedStatus: TimeEntryStatus = status ?? "completed";
+	if (!VALID_STATUSES.includes(normalizedStatus)) {
+		res.status(400).json({ error: "Estado inválido" });
+		return;
+	}
+
+	const startDate = toDate(start_time);
+	if (!startDate) {
+		res.status(400).json({ error: "start_time es requerido y debe ser válido" });
+		return;
+	}
+
+	const endDate = toDate(end_time ?? null);
+	if (end_time && !endDate) {
+		res.status(400).json({ error: "end_time debe ser una fecha válida" });
+		return;
+	}
+
+	if (endDate && endDate < startDate) {
+		res
+			.status(400)
+			.json({ error: "end_time no puede ser anterior a start_time" });
+		return;
+	}
+
+	if (
+		duration_seconds !== undefined &&
+		duration_seconds !== null &&
+		(!Number.isInteger(duration_seconds) || duration_seconds < 0)
+	) {
+		res.status(400).json({ error: "duration_seconds debe ser entero >= 0" });
+		return;
+	}
+
+	const consistency = await ensureTaskProjectConsistency(
+		task_id ?? null,
+		project_id ?? null,
+	);
+	if ("error" in consistency) {
+		res.status(consistency.status).json({ error: consistency.error });
+		return;
+	}
+
+	if (normalizedStatus === "running") {
+		const runningId = await ensureNoOtherRunningEntry(userId);
+		if (runningId) {
+			res.status(409).json({
+				error: "Ya existe un cronómetro en ejecución",
+				active_entry_id: runningId,
+			});
+			return;
+		}
+	}
+
+	const computedDuration =
+		duration_seconds ?? (endDate ? secondsBetween(startDate, endDate) : 0);
+
+	if (normalizedStatus === "completed" && !endDate && duration_seconds == null) {
+		res.status(400).json({
+			error:
+				"Para estado completed debes enviar end_time o duration_seconds",
+		});
+		return;
+	}
+
+	if (normalizedStatus !== "completed" && endDate) {
+		res
+			.status(400)
+			.json({ error: "Solo registros completed pueden tener end_time" });
+		return;
+	}
+
+	const now = new Date();
+	const lastStartedAt = normalizedStatus === "running" ? now : null;
+
+	try {
+		const result = await pool.query(
+			`INSERT INTO time_entries (
+          user_id,
+          project_id,
+          task_id,
+          start_time,
+          end_time,
+          duration_seconds,
+          status,
+          description,
+          last_started_at,
+          updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING *`,
+			[
+				userId,
+				consistency.projectId ?? null,
+				task_id ?? null,
+				startDate,
+				normalizedStatus === "completed" ? endDate : null,
+				computedDuration,
+				normalizedStatus,
+				description ?? null,
+				lastStartedAt,
+				now,
+			],
+		);
+
+		res.status(201).json(result.rows[0]);
+	} catch (error) {
+		console.error("Error al crear registro manual de tiempo:", error);
+		res.status(500).json({ error: "Error al crear registro manual de tiempo" });
+	}
+});
 
 router.post("/start", isAuthenticated, async (req: Request, res: Response) => {
 	const user = getCurrentUserData(req);
@@ -17,6 +218,8 @@ router.post("/start", isAuthenticated, async (req: Request, res: Response) => {
 		return;
 	}
 
+	const userId = String(user.id);
+
 	const { project_id, task_id, description } = req.body as {
 		project_id?: string | null;
 		task_id?: string | null;
@@ -24,53 +227,32 @@ router.post("/start", isAuthenticated, async (req: Request, res: Response) => {
 	};
 
 	try {
-		const running = await pool.query(
-			"SELECT id FROM time_entries WHERE user_id = $1 AND status = 'running' LIMIT 1",
-			[user.id],
-		);
-
-		if (running.rows.length > 0) {
+		const runningId = await ensureNoOtherRunningEntry(userId);
+		if (runningId) {
 			res.status(409).json({
 				error: "Ya existe un cronómetro en ejecución",
-				active_entry_id: running.rows[0].id,
+				active_entry_id: runningId,
 			});
 			return;
 		}
 
-		let resolvedProjectId = project_id ?? null;
-
-		if (task_id) {
-			const taskResult = await pool.query(
-				"SELECT project_id FROM tasks WHERE id = $1",
-				[task_id],
-			);
-
-			if (taskResult.rows.length === 0) {
-				res.status(404).json({ error: "Tarea no encontrada" });
-				return;
-			}
-
-			const taskProjectId = taskResult.rows[0].project_id as string;
-
-			if (resolvedProjectId && resolvedProjectId !== taskProjectId) {
-				res.status(400).json({
-					error: "El proyecto no coincide con la tarea seleccionada",
-				});
-				return;
-			}
-
-			resolvedProjectId = taskProjectId;
+		const consistency = await ensureTaskProjectConsistency(
+			task_id ?? null,
+			project_id ?? null,
+		);
+		if ("error" in consistency) {
+			res.status(consistency.status).json({ error: consistency.error });
+			return;
 		}
 
 		const now = new Date();
-
 		const result = await pool.query(
 			`INSERT INTO time_entries (user_id, project_id, task_id, start_time, status, description, duration_seconds, last_started_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
 			[
-				user.id,
-				resolvedProjectId,
+				userId,
+				consistency.projectId ?? null,
 				task_id ?? null,
 				now,
 				"running",
@@ -84,6 +266,154 @@ router.post("/start", isAuthenticated, async (req: Request, res: Response) => {
 	} catch (error) {
 		console.error("Error al iniciar registro de tiempo:", error);
 		res.status(500).json({ error: "Error al iniciar registro de tiempo" });
+	}
+});
+
+router.put("/:id", isAuthenticated, async (req: Request, res: Response) => {
+	const user = getCurrentUserData(req);
+	const { id } = req.params;
+
+	if (!user?.id) {
+		res.status(401).json({ error: "Usuario no autenticado" });
+		return;
+	}
+
+	const userId = String(user.id);
+	const entryId = String(id);
+
+	const {
+		project_id,
+		task_id,
+		description,
+		start_time,
+		end_time,
+		duration_seconds,
+		status,
+	} = req.body as {
+		project_id?: string | null;
+		task_id?: string | null;
+		description?: string | null;
+		start_time?: string;
+		end_time?: string | null;
+		duration_seconds?: number | null;
+		status?: TimeEntryStatus;
+	};
+
+	if (status && !VALID_STATUSES.includes(status)) {
+		res.status(400).json({ error: "Estado inválido" });
+		return;
+	}
+
+	try {
+		const currentResult = await pool.query(
+			"SELECT * FROM time_entries WHERE id = $1 AND user_id = $2",
+			[entryId, userId],
+		);
+
+		if (currentResult.rows.length === 0) {
+			res.status(404).json({ error: "Registro no encontrado" });
+			return;
+		}
+
+		const current = currentResult.rows[0];
+		const nextStatus: TimeEntryStatus = status ?? current.status;
+		const nextStartDate = toDate(start_time ?? current.start_time);
+		const nextEndDate = toDate(end_time === undefined ? current.end_time : end_time);
+
+		if (!nextStartDate) {
+			res.status(400).json({ error: "start_time inválido" });
+			return;
+		}
+
+		if (end_time && !nextEndDate) {
+			res.status(400).json({ error: "end_time inválido" });
+			return;
+		}
+
+		if (nextEndDate && nextEndDate < nextStartDate) {
+			res
+				.status(400)
+				.json({ error: "end_time no puede ser anterior a start_time" });
+			return;
+		}
+
+		if (
+			duration_seconds !== undefined &&
+			duration_seconds !== null &&
+			(!Number.isInteger(duration_seconds) || duration_seconds < 0)
+		) {
+			res.status(400).json({ error: "duration_seconds debe ser entero >= 0" });
+			return;
+		}
+
+		const nextTaskId = task_id === undefined ? current.task_id : task_id;
+		const requestedProjectId =
+			project_id === undefined ? current.project_id : project_id;
+		const consistency = await ensureTaskProjectConsistency(
+			nextTaskId,
+			requestedProjectId,
+		);
+		if ("error" in consistency) {
+			res.status(consistency.status).json({ error: consistency.error });
+			return;
+		}
+
+		if (nextStatus === "running") {
+			const runningId = await ensureNoOtherRunningEntry(userId, entryId);
+			if (runningId) {
+				res.status(409).json({
+					error: "Ya existe un cronómetro en ejecución",
+					active_entry_id: runningId,
+				});
+				return;
+			}
+		}
+
+		if (nextStatus !== "completed" && nextEndDate) {
+			res
+				.status(400)
+				.json({ error: "Solo registros completed pueden tener end_time" });
+			return;
+		}
+
+		const nextDuration =
+			duration_seconds ??
+			(nextEndDate
+				? secondsBetween(nextStartDate, nextEndDate)
+				: current.duration_seconds ?? 0);
+
+		const now = new Date();
+		const updateResult = await pool.query(
+			`UPDATE time_entries
+        SET project_id = $1,
+            task_id = $2,
+            start_time = $3,
+            end_time = $4,
+            duration_seconds = $5,
+            status = $6,
+            description = $7,
+            last_started_at = $8,
+            updated_at = $9
+        WHERE id = $10
+        RETURNING *`,
+			[
+				consistency.projectId ?? null,
+				nextTaskId,
+				nextStartDate,
+				nextStatus === "completed" ? nextEndDate : null,
+				nextDuration,
+				nextStatus,
+				description === undefined ? current.description : description,
+				nextStatus === "running" ? now : null,
+				now,
+				entryId,
+			],
+		);
+
+		res.json(updateResult.rows[0]);
+	} catch (error) {
+		console.error("Error al actualizar registro de tiempo:", error);
+		res.status(500).json({ error: "Error al actualizar registro de tiempo" });
 	}
 });
 
@@ -167,15 +497,11 @@ router.put(
 				return;
 			}
 
-			const running = await pool.query(
-				"SELECT id FROM time_entries WHERE user_id = $1 AND status = 'running' AND id <> $2 LIMIT 1",
-				[user.id, id],
-			);
-
-			if (running.rows.length > 0) {
+			const runningId = await ensureNoOtherRunningEntry(String(user.id), String(id));
+			if (runningId) {
 				res.status(409).json({
 					error: "Ya existe un cronómetro en ejecución",
-					active_entry_id: running.rows[0].id,
+					active_entry_id: runningId,
 				});
 				return;
 			}
@@ -264,18 +590,48 @@ router.get("/", isAuthenticated, async (req: Request, res: Response) => {
 		return;
 	}
 
-	const { project_id, task_id, status, active } = req.query as {
+	const { project_id, task_id, status, active, include_team } = req.query as {
 		project_id?: string;
 		task_id?: string;
 		status?: string;
 		active?: string;
+		include_team?: string;
 	};
 
 	try {
-		const conditions = ["te.user_id = $1"];
-		const values: Array<string> = [user.id];
+		const includeTeamEntries = include_team === "true";
+		const values: Array<string> = [];
+		const conditions: string[] = [];
 
-		if (project_id) {
+		if (includeTeamEntries && project_id) {
+			const accessResult = await pool.query(
+				`SELECT 1
+         FROM projects p
+         LEFT JOIN resource_access ra
+           ON ra.resource_type = 'project'
+          AND ra.resource_id = p.id
+          AND ra.user_id = $2
+         WHERE p.id = $1
+           AND (p.created_by = $2 OR ra.user_id IS NOT NULL)
+         LIMIT 1`,
+				[project_id, user.id],
+			);
+
+			if (accessResult.rows.length === 0) {
+				res.status(403).json({
+					error: "No tienes permisos para ver registros del proyecto",
+				});
+				return;
+			}
+
+			values.push(project_id);
+			conditions.push(`te.project_id = $${values.length}`);
+		} else {
+			values.push(user.id);
+			conditions.push(`te.user_id = $${values.length}`);
+		}
+
+		if (project_id && !(includeTeamEntries && project_id)) {
 			values.push(project_id);
 			conditions.push(`te.project_id = $${values.length}`);
 		}
@@ -299,10 +655,13 @@ router.get("/", isAuthenticated, async (req: Request, res: Response) => {
         te.*,
         p.name AS project_name,
         t.title AS task_title,
-        t.project_task_number AS task_number
+        t.project_task_number AS task_number,
+        u.name AS worker_name,
+        u.email AS worker_email
       FROM time_entries te
       LEFT JOIN projects p ON te.project_id = p.id
       LEFT JOIN tasks t ON te.task_id = t.id
+      LEFT JOIN users u ON te.user_id = u.id
       WHERE ${conditions.join(" AND ")}
       ORDER BY te.start_time DESC
     `;
