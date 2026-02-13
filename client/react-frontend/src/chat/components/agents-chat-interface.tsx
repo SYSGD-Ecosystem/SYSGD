@@ -87,11 +87,6 @@ export function AgentsChatInterface() {
 							<Button className="w-full" onClick={() => void handleCreateAgentConversation()}>
 								Nueva conversación
 							</Button>
-							{selectedChat && (
-								<Button variant="secondary" className="w-full" onClick={() => setShowAgentsList(true)}>
-									Seleccionar agente para esta conversación
-								</Button>
-							)}
 						</div>
 					</div>
 					<div className="flex-1 overflow-y-auto p-2">
@@ -130,7 +125,21 @@ export function AgentsChatInterface() {
 							<h2 className="text-sm sm:text-base font-medium text-foreground truncate">
 								{selectedChat?.title || "Módulo de agentes"}
 							</h2>
-							<p className="text-xs text-muted-foreground truncate">{selectedAgent?.name || "Sin agente seleccionado"}</p>
+							<div className="flex items-center gap-2">
+								<p className="text-xs text-muted-foreground truncate">
+									{selectedAgent?.name || "Sin agente seleccionado"}
+								</p>
+								{selectedChat && (
+									<Button
+										variant="outline"
+										size="sm"
+										className="h-6 px-2 text-[11px]"
+										onClick={() => setShowAgentsList(true)}
+									>
+										{selectedAgent ? "Cambiar" : "Seleccionar"}
+									</Button>
+								)}
+							</div>
 						</div>
 					</div>
 					<div className="flex items-center gap-2">
