@@ -7,13 +7,6 @@ import type {
 } from "../../types/Agent";
 import api from "@/lib/api";
 
-interface AgentExternalResponse {
-	respuesta?: string;
-	response?: string;
-	message?: string;
-	[key: string]: unknown;
-}
-
 export const useAgents = () => {
 	const [agents, setAgents] = useState<Agent[]>([]);
 	const [loading, setLoading] = useState<boolean>(false);
@@ -106,57 +99,9 @@ export const useAgents = () => {
 		setLoading(true);
 		setError(null);
 		try {
-			const agent = agents.find((a) => a.id === messageData.agent_id);
-			if (!agent) {
-				throw new Error("Agente no encontrado");
-			}
-
-			const agentRequest: {
-				prompt?: string;
-				systemPrompt?: string;
-				image?: string;
-				audio?: string;
-				video?: string;
-				file?: string;
-			} = {
-				prompt: messageData.content,
-				systemPrompt: (agent as any).system_prompt || "",
-			};
-
-			if (messageData.attachment_type && messageData.attachment_url) {
-				switch (messageData.attachment_type) {
-					case "image":
-						agentRequest.image = messageData.attachment_url;
-						break;
-					case "audio":
-						agentRequest.audio = messageData.attachment_url;
-						break;
-					case "video":
-						agentRequest.video = messageData.attachment_url;
-						break;
-					case "file":
-						agentRequest.file = messageData.attachment_url;
-						break;
-				}
-			}
-
-			const { data: agentResponse } = await api.post<AgentExternalResponse>(
-				agent.url,
-				agentRequest,
-			);
-
-			const agentResponseContent =
-				agentResponse.respuesta ??
-				agentResponse.response ??
-				agentResponse.message ??
-				"Sin respuesta del agente";
-
 			const { data: serverResult } = await api.post(
 				"/api/agents/message",
-				{
-					...messageData,
-					agent_response: agentResponseContent,
-				},
+				messageData,
 			);
 
 			return serverResult;

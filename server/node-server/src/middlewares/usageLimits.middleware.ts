@@ -111,9 +111,22 @@ export async function checkAICredits(
       ? req.body.provider.toLowerCase()
       : undefined;
 
-    const tokenType = req.baseUrl.includes("/openrouter") || requestProvider === "openrouter"
-      ? "openrouter"
-      : "gemini";
+    let tokenType: "gemini" | "openrouter" =
+      req.baseUrl.includes("/openrouter") || requestProvider === "openrouter"
+        ? "openrouter"
+        : "gemini";
+
+    if (req.baseUrl.includes("/agents") && req.body?.agent_id) {
+      const agentRow = await pool.query(
+        "SELECT url FROM agents WHERE id = $1 AND created_by = $2",
+        [req.body.agent_id, user.id]
+      );
+
+      if (agentRow.rows.length > 0) {
+        const agentUrl = String(agentRow.rows[0].url || "").toLowerCase();
+        tokenType = agentUrl.includes("/api/openrouter") ? "openrouter" : "gemini";
+      }
+    }
 
     // Verificar si tiene token custom en user_tokens
     const { rows: tokenRows } = await pool.query(
