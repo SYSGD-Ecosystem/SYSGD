@@ -44,9 +44,9 @@ export function AgentsChatInterface() {
 				}`}
 			>
 				<div className="h-full flex flex-col">
-					<div className="p-4 border-b border-sidebar-border space-y-3">
+					<div className="p-3 border-b border-sidebar-border space-y-2.5">
 						<div className="flex items-center justify-between">
-							<h2 className="font-semibold text-sidebar-foreground">Chat con agentes</h2>
+							<h2 className="text-sm font-semibold text-sidebar-foreground">Chat con agentes</h2>
 							<div className="flex gap-2">
 								<Button size="icon" variant="outline" onClick={() => setShowCreateAgent(true)} title="Crear agente">
 									<Plus className="h-4 w-4" />
@@ -82,16 +82,16 @@ export function AgentsChatInterface() {
 			</aside>
 
 			<main className="flex-1 flex flex-col min-w-0">
-				<header className="h-16 border-b border-border flex items-center justify-between px-3 sm:px-4 bg-card">
+				<header className="h-14 border-b border-border flex items-center justify-between px-3 sm:px-4 bg-card">
 					<div className="flex items-center gap-2 sm:gap-3 min-w-0">
 						<Button variant="ghost" size="icon" onClick={() => setSidebarOpen((v) => !v)}>
 							{sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
 						</Button>
-						<div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold shrink-0">
+						<div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold shrink-0">
 							{selectedChat ? getRandomEmoji() : <Bot className="h-4 w-4" />}
 						</div>
 						<div className="min-w-0">
-							<h2 className="font-semibold text-foreground truncate">
+							<h2 className="text-sm sm:text-base font-medium text-foreground truncate">
 								{selectedChat?.title || "Módulo de agentes"}
 							</h2>
 							<p className="text-xs text-muted-foreground truncate">{selectedAgent?.name || "Sin agente seleccionado"}</p>
@@ -127,7 +127,7 @@ export function AgentsChatInterface() {
 					) : (
 						<div className="h-full flex items-center justify-center text-muted-foreground p-6 text-center">
 							<div>
-								<h3 className="text-lg font-semibold text-foreground mb-2">Selecciona una conversación de agente</h3>
+								<h3 className="text-base font-semibold text-foreground mb-2">Selecciona una conversación de agente</h3>
 								<p className="text-sm">Puedes crear un agente nuevo o seleccionar uno existente para iniciar.</p>
 							</div>
 						</div>

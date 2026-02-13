@@ -74,16 +74,16 @@ export function ChatInterface() {
 			</aside>
 
 			<main className="flex-1 flex flex-col min-w-0">
-				<header className="h-16 border-b border-border flex items-center justify-between px-3 sm:px-4 bg-card">
+				<header className="h-14 border-b border-border flex items-center justify-between px-3 sm:px-4 bg-card">
 					<div className="flex items-center gap-2 sm:gap-3 min-w-0">
 						<Button variant="ghost" size="icon" onClick={() => setSidebarOpen((v) => !v)}>
 							{sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
 						</Button>
-						<div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold shrink-0">
+						<div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold shrink-0 text-sm">
 							{selectedChat ? getRandomEmoji() : "💬"}
 						</div>
 						<div className="min-w-0">
-							<h2 className="font-semibold text-foreground truncate">{headerTitle}</h2>
+							<h2 className="text-sm sm:text-base font-medium text-foreground truncate">{headerTitle}</h2>
 							<p className="text-xs text-muted-foreground truncate">Canal de colaboración interna</p>
 						</div>
 					</div>
@@ -115,7 +115,7 @@ export function ChatInterface() {
 					) : (
 						<div className="h-full flex items-center justify-center text-muted-foreground p-6 text-center">
 							<div>
-								<h3 className="text-lg font-semibold mb-2 text-foreground">Bienvenido a SYSGD-CHAT</h3>
+								<h3 className="text-base font-semibold mb-2 text-foreground">Bienvenido a SYSGD-CHAT</h3>
 								<p className="text-sm">Selecciona una conversación para comenzar.</p>
 							</div>
 						</div>

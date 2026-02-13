@@ -31,7 +31,7 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 
 	return (
 		<div className="h-full flex flex-col bg-sidebar min-w-0">
-			<div className="p-4 border-b border-sidebar-border space-y-3">
+			<div className="p-3 border-b border-sidebar-border space-y-2.5">
 				<div className="flex items-center justify-between">
 					<Button
 						variant="ghost"
@@ -41,9 +41,9 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 					>
 						<Home className="w-4 h-4 mr-1" /> Inicio
 					</Button>
-					<div className="flex gap-2 items-center">
+					<div className="flex gap-1.5 items-center">
 						<IoChatboxOutline className="size-4" />
-						<h1 className="text-lg font-bold text-sidebar-foreground">SYSGD-CHAT</h1>
+						<h1 className="text-sm font-semibold text-sidebar-foreground">SYSGD-CHAT</h1>
 					</div>
 				</div>
 

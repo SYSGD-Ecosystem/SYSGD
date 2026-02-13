@@ -17,7 +17,7 @@ export const ChatToolbar: FC<ChatToolbarProps> = ({ onGoHome }) => {
 	return (
 		<>
 			<aside className="hidden xl:flex h-full w-64 border-l border-border bg-card p-4 flex-col">
-				<h3 className="font-semibold text-foreground mb-3">Acciones</h3>
+				<h3 className="text-sm font-medium text-foreground mb-3">Acciones</h3>
 				<div className="space-y-2">
 					<Button
 						variant="default"
