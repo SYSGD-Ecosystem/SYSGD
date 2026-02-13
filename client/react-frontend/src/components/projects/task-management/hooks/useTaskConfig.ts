@@ -3,6 +3,15 @@ import { useCallback, useEffect, useState } from "react";
 import api from "@/lib/api";
 
 // --- Interfaces se mantienen igual ---
+export type TaskStateIconName =
+	| "circle"
+	| "clock"
+	| "check-circle"
+	| "pause-circle"
+	| "x-circle"
+	| "alert-circle"
+	| "play-circle";
+
 export interface TaskType {
 	name: string;
 	color: string;
@@ -15,6 +24,7 @@ export interface TaskPriority {
 export interface TaskState {
 	name: string;
 	color: string;
+	icon?: TaskStateIconName;
 	requires_context: boolean;
 }
 export interface TaskConfig {

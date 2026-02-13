@@ -112,6 +112,16 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 		setisDialogOpenDialog(false);
 	};
 
+
+
+	const handleDialogStatusChange = async (status: string) => {
+		if (!selectedTask) return;
+		const updated = await updateTask(selectedTask.id as string, { status });
+		if (updated) {
+			setselectedTask((prev) => (prev ? { ...prev, status } : prev));
+		}
+	};
+
 	const handleAddNewTask = () => {
 		const defaultType = config?.types?.[0]?.name ?? "Tarea";
 		const defaultPriority =
@@ -191,6 +201,7 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 	const getUniqueStatuses = () => {
 		return [...new Set(tasks.map((task) => task.status))];
 	};
+
 
 	return (
 		<div className="bg-white h-full flex flex-col rounded-lg dark:border shadow-sm dark:bg-gray-800 dark:border-gray-700">
@@ -451,12 +462,12 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 										setisDialogOpenDialog(true);
 									}}
 								>
-									{/* Desktop Version */}
-									<TableCell className="hidden md:table-cell">
-										<div className="flex items-center justify-center">
-											{getStatusIcon(task.status)}
-										</div>
-									</TableCell>
+							{/* Desktop Version */}
+							<TableCell className="hidden md:table-cell">
+								<div className="flex items-center justify-center">
+									{getStatusIcon(task.status, config)}
+								</div>
+							</TableCell>
 									<TableCell className="hidden md:table-cell font-medium">
 										{task.title}
 									</TableCell>
@@ -521,12 +532,12 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 										</div>
 									</TableCell>
 
-									{/* Mobile Version */}
-									<TableCell className="md:hidden p-2">
-										<div className="flex items-center justify-center">
-											{getStatusIcon(task.status)}
-										</div>
-									</TableCell>
+							{/* Mobile Version */}
+							<TableCell className="md:hidden p-2">
+								<div className="flex items-center justify-center">
+									{getStatusIcon(task.status, config)}
+								</div>
+							</TableCell>
 									<TableCell className="md:hidden p-2">
 										<div className="flex flex-col gap-1">
 											<span className="font-medium text-sm line-clamp-2">
@@ -622,6 +633,7 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 					onDeleteChange={() =>
 						handleDeleteConfirmed(selectedTask.id as string)
 					}
+					onStatusChange={handleDialogStatusChange}
 				/>
 			)}
 

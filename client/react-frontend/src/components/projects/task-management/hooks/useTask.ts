@@ -52,20 +52,30 @@ export const useTasks = (projectId: string) => {
 
 	// Actualizar tarea
 	const updateTask = async (taskId: string, taskData: Partial<Task>) => {
+		let previousTask: Task | undefined;
+
+		setTasks((prev) => {
+			previousTask = prev.find((task) => task.id === taskId);
+			return prev.map((task) =>
+				task.id === taskId ? { ...task, ...taskData } : task,
+			);
+		});
+
 		try {
-			const taskPayload = {
-				...taskData,
-				assignees: taskData.assignees?.map((a) => a.id) || [],
-			};
+			const taskPayload: Record<string, unknown> = { ...taskData };
+			if (taskData.assignees) {
+				taskPayload.assignees = taskData.assignees.map((assignee) => assignee.id);
+			}
 
 			await api.put(`/api/tasks/${taskId}`, taskPayload);
-
-			// En lugar de refrescar todo, podrías actualizar solo la tarea en el estado
-			setTasks((prev) =>
-				prev.map((t) => (t.id === taskId ? { ...t, ...taskData } : t)),
-			);
 			return true;
 		} catch (err) {
+			if (previousTask) {
+				const taskToRestore = previousTask;
+				setTasks((prev) =>
+					prev.map((task) => (task.id === taskId ? taskToRestore : task)),
+				);
+			}
 			console.error("Error actualizando tarea:", err);
 			return false;
 		}

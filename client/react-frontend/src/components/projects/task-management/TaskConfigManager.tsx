@@ -11,18 +11,41 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { useTaskConfig } from "./hooks/useTaskConfig";
+import { getStatusIcon } from "@/utils/util-components";
+import {
+	type TaskStateIconName,
+	useTaskConfig,
+} from "./hooks/useTaskConfig";
 
 const TaskConfigManager: FC<{ projectId: string }> = ({ projectId }) => {
 	const { config, loading, updateConfig } = useTaskConfig(projectId);
 	const [newType, setNewType] = useState("");
 	const [newPriority, setNewPriority] = useState("");
 	const [newState, setNewState] = useState("");
+	const [newStateIcon, setNewStateIcon] =
+		useState<TaskStateIconName>("circle");
 	const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+
+	const stateIconOptions: TaskStateIconName[] = [
+		"circle",
+		"clock",
+		"check-circle",
+		"pause-circle",
+		"x-circle",
+		"alert-circle",
+		"play-circle",
+	];
 
 	const toggleSection = (section: string) => {
 		setOpenSections((prev) => ({
@@ -84,11 +107,13 @@ const TaskConfigManager: FC<{ projectId: string }> = ({ projectId }) => {
 			{
 				name: newState.trim(),
 				color: randomColor,
+				icon: newStateIcon,
 				requires_context: false,
 			},
 		];
 		updateConfig({ ...config!, states: updatedStates });
 		setNewState("");
+		setNewStateIcon("circle");
 	};
 
 	const handleDeleteType = (typeName: string) => {
@@ -332,10 +357,13 @@ const TaskConfigManager: FC<{ projectId: string }> = ({ projectId }) => {
 										className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
 									>
 										<GripVertical className="h-4 w-4 text-gray-400 cursor-move" />
-										<div
-											className="w-3 h-3 rounded-full flex-shrink-0"
-											style={{ backgroundColor: state.color }}
-										/>
+										<div className="flex-shrink-0">
+											{getStatusIcon(state.name, {
+												states: [state],
+												types: [],
+												priorities: [],
+											})}
+										</div>
 										<span className="flex-1 text-sm">{state.name}</span>
 										{state.requires_context && (
 											<Badge variant="secondary" className="text-xs">
@@ -355,7 +383,7 @@ const TaskConfigManager: FC<{ projectId: string }> = ({ projectId }) => {
 							</div>
 
 							{/* Input para agregar nuevo */}
-							<div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+							<div className="grid grid-cols-1 sm:grid-cols-[1fr_220px_auto] gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
 								<Input
 									placeholder="Nuevo estado (ej: En revisión...)"
 									value={newState}
@@ -363,6 +391,49 @@ const TaskConfigManager: FC<{ projectId: string }> = ({ projectId }) => {
 									onKeyPress={(e) => e.key === "Enter" && handleAddState()}
 									className="text-sm"
 								/>
+								<Select
+									value={newStateIcon}
+									onValueChange={(value) => setNewStateIcon(value as TaskStateIconName)}
+								>
+									<SelectTrigger className="text-sm">
+										<div className="flex items-center gap-2">
+											{getStatusIcon("", {
+												states: [
+													{
+														name: "preview",
+														color: "#6b7280",
+														icon: newStateIcon,
+														requires_context: false,
+													},
+												],
+												types: [],
+												priorities: [],
+											})}
+											<SelectValue placeholder="Icono" />
+										</div>
+									</SelectTrigger>
+									<SelectContent>
+										{stateIconOptions.map((icon) => (
+											<SelectItem key={icon} value={icon}>
+												<div className="flex items-center gap-2">
+													{getStatusIcon("", {
+														states: [
+															{
+																name: "preview",
+																color: "#6b7280",
+																icon,
+																requires_context: false,
+															},
+														],
+														types: [],
+														priorities: [],
+													})}
+													<span>{icon}</span>
+												</div>
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
 								<Button
 									onClick={handleAddState}
 									size="sm"
