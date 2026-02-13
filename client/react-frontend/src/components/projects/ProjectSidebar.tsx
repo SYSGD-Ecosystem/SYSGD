@@ -3,6 +3,7 @@ import {
 	FileText,
 	Github,
 	Lightbulb,
+	Clock,
 	Settings,
 	Users,
 } from "lucide-react";
@@ -23,6 +24,7 @@ export function ProjectSidebar({
 }: SidebarProps) {
 	const projectItems = [
 		{ id: "tasks", label: "GESTIÓN DE TAREAS", icon: CheckSquare },
+		{ id: "time-tracking", label: "TIME TRACKING", icon: Clock },
 		{ id: "ideas", label: "BANCO DE IDEAS", icon: Lightbulb },
 		{ id: "notes", label: "NOTAS Y APUNTES", icon: FileText },
 		{ id: "github", label: "GITHUB", icon: Github },

@@ -72,7 +72,7 @@ type DashboardItem = Project | DocumentFile;
 
 export function HomeDashboard() {
 	const [projects, setProjects] = useState<Project[]>([]);
-	const { projects: mProjects } = useProjects();
+	const { projects: mProjects, reloadProjects } = useProjects();
 	const { handleCreateProject } = useProjectConnection();
 	const navigate = useNavigate();
 	const { user, loading: loadingUser } = useCurrentUser();
@@ -203,10 +203,33 @@ export function HomeDashboard() {
 		handleCreateProject(
 			newProject.name,
 			newProject.desciption,
-			() => {
+			(project) => {
+				if (project?.id) {
+					const createdProject: Project = {
+						id: project.id,
+						name: project.name,
+						description: project.description,
+						created_by: project.created_by,
+						created_at: project.created_at,
+						status: project.status,
+						visibility: project.visibility,
+						tipo: "project",
+						members_count: 0,
+						total_tasks: 0,
+						completed_tasks: 0,
+					};
+
+					setProjects((prev) => [
+						createdProject,
+						...prev,
+					]);
+				}
+
+				setNewProject({ name: "", desciption: "" });
+				void reloadProjects();
 				toast({
 					title: "Exito",
-					description: "Proyecto creado, por favor refresque la página",
+					description: "Proyecto creado correctamente",
 				});
 			},
 			() => {

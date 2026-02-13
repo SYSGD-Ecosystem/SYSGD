@@ -1,4 +1,5 @@
 import { pool } from "../db";
+import { createDefaultUserData } from "../utils/billing";
 
 export const createUser = async (
 	name: string,
@@ -7,9 +8,10 @@ export const createUser = async (
 	privileges: string,
 ) => {
 	try {
+		const defaultUserData = createDefaultUserData();
 		const result = await pool.query(
-			"INSERT INTO users (name, email, password, privileges) VALUES ($1, $2, $3, $4) RETURNING *",
-			[name, email, password, privileges],
+			"INSERT INTO users (name, email, password, privileges, user_data) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+			[name, email, password, privileges, JSON.stringify(defaultUserData)],
 		);
 
 		return {

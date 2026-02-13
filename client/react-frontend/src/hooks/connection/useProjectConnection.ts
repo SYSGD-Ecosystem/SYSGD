@@ -2,10 +2,13 @@ import { AxiosError } from "axios";
 import api from "@/lib/api";
 
 type ProjectData = {
+	id?: string;
 	name: string;
 	description: string;
 	status?: string;
 	visibility?: string;
+	created_by?: string;
+	created_at?: string;
 };
 
 type ApiErrorResponse = {
@@ -18,7 +21,7 @@ type useProjectConnectionReturnType = {
 	handleCreateProject: (
 		name: string,
 		description: string,
-		onSuccess: () => void,
+		onSuccess: (project?: ProjectData) => void,
 		onFail: (error?: string) => void,
 	) => Promise<void>;
 	handleUpdateProject: (
@@ -76,12 +79,15 @@ const useProjectConnection = (): useProjectConnectionReturnType => {
 	const handleCreateProject = async (
 		name: string,
 		description: string,
-		onSuccess: () => void,
+		onSuccess: (project?: ProjectData) => void,
 		onFail: (error?: string) => void,
 	) => {
 		try {
-			await api.post("/api/projects", { name, description });
-			onSuccess();
+			const { data } = await api.post<ProjectData>("/api/projects", {
+				name,
+				description,
+			});
+			onSuccess(data);
 		} catch (error: unknown) {
 			console.error("Error al crear proyecto:", error);
 			const errorMessage = getErrorMessage(error);

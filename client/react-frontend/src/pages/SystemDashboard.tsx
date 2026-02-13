@@ -18,6 +18,7 @@ import {
 	MoreVertical,
 	Search,
 	Settings,
+	Trash2,
 	Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,12 @@ import { Textarea } from "@/components/ui/textarea";
 import SettingsModal from "@/components/SettingsModal";
 import Loading from "@/components/Loading";
 import { Separator } from "@/components/ui/separator";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type ViewMode = "home" | "projects" | "documents";
 
@@ -86,14 +93,15 @@ const SystemDashboard: FC = () => {
 	const [showNotifications, setShowNotifications] = useState(false);
 	const [documents, setDocument] = useState<DocumentFile[]>([]);
 	const [projects, setProjects] = useState<Project[]>([]);
-	const { handleCreateProject } = useProjectConnection();
+	const { handleCreateProject, handleUpdateProject, handleDeleteProject } =
+		useProjectConnection();
 	const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
 	const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
 	const { toast } = useToast();
 
 	const navigate = useNavigate();
 	const { user, loading: loadingUser } = useCurrentUser();
-	const { projects: mProjects = [] } = useProjects();
+	const { projects: mProjects = [], reloadProjects } = useProjects();
 	const { archives = [] } = useArchives();
 	const setProjectId = useSelectionStore((state) => state.setProjectId);
 	const setArchive = useArchiveStore((state) => state.selectArchive);
@@ -103,6 +111,7 @@ const SystemDashboard: FC = () => {
 		name: "",
 		desciption: "",
 	});
+	const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
 
 	const [newDocument, setNewDocument] = useState({
 		name: "",
@@ -155,22 +164,104 @@ const SystemDashboard: FC = () => {
 		}
 	};
 
-	const createProject = () => {
+	const saveProject = () => {
+		if (editingProjectId) {
+			handleUpdateProject(
+				editingProjectId,
+				{ name: newProject.name, description: newProject.desciption },
+				() => {
+					toast({
+						title: "Éxito",
+						description: "Proyecto actualizado correctamente",
+					});
+					setIsProjectDialogOpen(false);
+					setEditingProjectId(null);
+					setNewProject({ name: "", desciption: "" });
+					void reloadProjects();
+				},
+				(error) => {
+					toast({
+						title: "Error",
+						description: error || "No se pudo actualizar el proyecto",
+						variant: "destructive",
+					});
+				},
+			);
+			return;
+		}
+
 		handleCreateProject(
 			newProject.name,
 			newProject.desciption,
-			() => {
+			(project) => {
+				if (project?.id) {
+					const createdProject: Project = {
+						id: project.id,
+						name: project.name,
+						description: project.description,
+						created_by: project.created_by,
+						created_at: project.created_at,
+						status: project.status,
+						visibility: project.visibility,
+						tipo: "project",
+						members_count: 0,
+						total_tasks: 0,
+						completed_tasks: 0,
+					};
+
+					setProjects((prev) => [
+						createdProject,
+						...prev,
+					]);
+				}
+
 				toast({
 					title: "Exito",
-					description: "Proyecto creado, por favor refresque la página",
+					description: "Proyecto creado correctamente",
 				});
 				setIsProjectDialogOpen(false);
+				setNewProject({ name: "", desciption: "" });
+				void reloadProjects();
 			},
-			() => {
+			(error) => {
 				toast({
 					title: "Error",
 					description:
+						error ||
 						"No se creó el proyecto, por favor, verifique su conexión o conecte con soporte",
+					variant: "destructive",
+				});
+			},
+		);
+	};
+
+	const openEditProjectDialog = (project: Project) => {
+		setEditingProjectId(project.id);
+		setNewProject({
+			name: project.name,
+			desciption: project.description || "",
+		});
+		setIsProjectDialogOpen(true);
+	};
+
+	const deleteProject = (projectId: string) => {
+		if (!window.confirm("¿Deseas eliminar este proyecto? Esta acción no se puede deshacer.")) {
+			return;
+		}
+
+		handleDeleteProject(
+			projectId,
+			() => {
+				toast({
+					title: "Éxito",
+					description: "Proyecto eliminado correctamente",
+				});
+				void reloadProjects();
+			},
+			(error) => {
+				toast({
+					title: "Error",
+					description: error || "No se pudo eliminar el proyecto",
 					variant: "destructive",
 				});
 			},
@@ -434,7 +525,13 @@ const SystemDashboard: FC = () => {
 						{filteredProjects.length} proyectos en total
 					</p>
 				</div>
-				<Button onClick={() => setIsProjectDialogOpen(true)}>
+				<Button
+					onClick={() => {
+						setEditingProjectId(null);
+						setNewProject({ name: "", desciption: "" });
+						setIsProjectDialogOpen(true);
+					}}
+				>
 					<FolderPlus className="w-4 h-4 mr-2" />
 					Nuevo Proyecto
 				</Button>
@@ -454,9 +551,26 @@ const SystemDashboard: FC = () => {
 										{project.name}
 									</CardTitle>
 								</div>
-								<Button variant="ghost" disabled size="sm">
-									<MoreVertical className="w-4 h-4" />
-								</Button>
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<Button variant="ghost" size="sm">
+											<MoreVertical className="w-4 h-4" />
+										</Button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="end">
+										<DropdownMenuItem onClick={() => openEditProjectDialog(project)}>
+											<Edit className="w-4 h-4 mr-2" />
+											Editar
+										</DropdownMenuItem>
+										<DropdownMenuItem
+											onClick={() => deleteProject(project.id)}
+											className="text-red-600 focus:text-red-600"
+										>
+											<Trash2 className="w-4 h-4 mr-2" />
+											Eliminar
+										</DropdownMenuItem>
+									</DropdownMenuContent>
+								</DropdownMenu>
 							</div>
 							<Badge
 								className={`w-fit ${getStatusColor(project.status ?? "")}`}
@@ -511,7 +625,7 @@ const SystemDashboard: FC = () => {
 									Ver
 								</Button>
 								<Button
-									disabled
+									onClick={() => openEditProjectDialog(project)}
 									variant="ghost"
 									size="sm"
 									className="flex-1 cursor-pointer"
@@ -539,7 +653,13 @@ const SystemDashboard: FC = () => {
 							: "Comienza creando tu primer proyecto"}
 					</p>
 					{!searchTerm && (
-						<Button onClick={() => setIsProjectDialogOpen(true)}>
+						<Button
+							onClick={() => {
+								setEditingProjectId(null);
+								setNewProject({ name: "", desciption: "" });
+								setIsProjectDialogOpen(true);
+							}}
+						>
 							<FolderPlus className="w-4 h-4 mr-2" />
 							Crear Proyecto
 						</Button>
@@ -923,12 +1043,12 @@ const SystemDashboard: FC = () => {
 				</footer>
 			</div>
 
-			{/* Dialog para crear proyecto */}
+			{/* Dialog para crear/editar proyecto */}
 			<Dialog open={isProjectDialogOpen} onOpenChange={setIsProjectDialogOpen}>
 				<DialogContent className="max-w-md mx-4 dark:bg-gray-800 dark:border-gray-700">
 					<DialogHeader>
 						<DialogTitle className="text-gray-900 dark:text-white">
-							Crear Nuevo Proyecto
+							{editingProjectId ? "Editar proyecto" : "Crear Nuevo Proyecto"}
 						</DialogTitle>
 					</DialogHeader>
 					<div className="space-y-4">
@@ -962,11 +1082,17 @@ const SystemDashboard: FC = () => {
 						<div className="flex justify-end gap-2">
 							<Button
 								variant="outline"
-								onClick={() => setIsProjectDialogOpen(false)}
+								onClick={() => {
+									setIsProjectDialogOpen(false);
+									setEditingProjectId(null);
+									setNewProject({ name: "", desciption: "" });
+								}}
 							>
 								Cancelar
 							</Button>
-							<Button onClick={createProject}>Crear Proyecto</Button>
+							<Button onClick={saveProject}>
+								{editingProjectId ? "Guardar cambios" : "Crear Proyecto"}
+							</Button>
 						</div>
 					</div>
 				</DialogContent>
