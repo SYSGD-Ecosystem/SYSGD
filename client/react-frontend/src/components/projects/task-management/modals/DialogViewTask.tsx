@@ -122,7 +122,7 @@ const DialogViewTask: FC<{
 	}, [activeEntry, isOpen, refreshEntries, selectedTask.id]);
 
 	return (
-		<Dialog open={isOpen} onOpenChange={onOpenChange}>
+		<Dialog  open={isOpen} onOpenChange={onOpenChange}>
 			<DialogContent className="max-w-3xl max-h-[85vh] p-0 flex flex-col">
 				{/* Header compacto */}
 				<div className="flex-shrink-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 p-6">
@@ -339,7 +339,7 @@ const DialogViewTask: FC<{
 				{/* Botones fijos en la parte inferior */}
 				<div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-6 bg-white dark:bg-gray-900">
 					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-						<div className="w-full sm:w-64">
+						<div className="w-full sm:w-64 hidden">
 							<Select
 								value={selectedTask.status}
 								onValueChange={(value) => {
@@ -364,7 +364,7 @@ const DialogViewTask: FC<{
 								</SelectContent>
 							</Select>
 						</div>
-						<div className="flex justify-end gap-3">
+						<div className="flex w-full justify-end gap-3">
 							<Button
 								variant="outline"
 								disabled={isButtonDisabled}
