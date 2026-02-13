@@ -477,7 +477,7 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 										<SelectTrigger className="h-8 w-40">
 											<div className="flex items-center gap-2 truncate">
 												{getStatusIcon(task.status, config)}
-												<SelectValue />
+												<span className="truncate">{task.status}</span>
 											</div>
 										</SelectTrigger>
 										<SelectContent>
