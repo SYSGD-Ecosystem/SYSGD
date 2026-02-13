@@ -8,6 +8,7 @@ import {
   deleteAgent,
   sendMessageToAgent
 } from '../controllers/agents.controller';
+import { checkAICredits } from '../middlewares/usageLimits.middleware';
 
 const router = Router();
 
@@ -29,7 +30,7 @@ router.delete('/:id', isAuthenticated, async (req: Request, res: Response) => {
 });
 
 // Enviar mensaje a agente
-router.post('/message', isAuthenticated, async (req: Request, res: Response) => {
+router.post('/message', isAuthenticated, checkAICredits, async (req: Request, res: Response) => {
   await sendMessageToAgent(req, res);
 });
 

@@ -4,6 +4,10 @@ import {
 	FileText,
 	Github,
 	HelpCircle,
+	LifeBuoy,
+	MessageSquare,
+	Rocket,
+	ShieldCheck,
 	Zap,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -28,20 +32,24 @@ type HelpItem = {
 
 export default function HelpPage() {
 	const [activeCategory, setActiveCategory] = useState<HelpCategoryId>("help");
-	const [activeItemId, setActiveItemId] = useState<string>("getting-started");
+	const [activeItemId, setActiveItemId] = useState<string>("quick-start");
 	const [search, setSearch] = useState("");
 
 	const categories = useMemo(
 		() => [
 			{
 				id: "help" as const,
-				label: "Help",
+				label: "Ayuda",
 				icon: <HelpCircle className="h-4 w-4" />,
 			},
-			{ id: "api" as const, label: "API", icon: <Code2 className="h-4 w-4" /> },
+			{
+				id: "api" as const,
+				label: "API",
+				icon: <Code2 className="h-4 w-4" />,
+			},
 			{
 				id: "updates" as const,
-				label: "Updates",
+				label: "Actualizaciones",
 				icon: <Zap className="h-4 w-4" />,
 			},
 		],
@@ -51,48 +59,161 @@ export default function HelpPage() {
 	const items = useMemo<HelpItem[]>(
 		() => [
 			{
-				id: "getting-started",
-				title: "Primeros pasos",
+				id: "quick-start",
+				title: "Guía rápida de uso",
 				category: "help",
-				summary: "Qué es SYSGD y cómo empezar.",
-				icon: <BookOpen className="h-4 w-4" />,
+				summary: "Cómo empezar a usar SYSGD en pocos pasos.",
+				icon: <Rocket className="h-4 w-4" />,
 				content: [
-					"SYSGD es un sistema para gestionar información y procesos documentales con seguridad y trazabilidad.",
+					"SYSGD centraliza trabajo colaborativo, tareas, notas, documentos y chat.",
 					"",
-					"Recomendado para comenzar:",
-					"- Inicia sesión.",
-					"- Crea/abre tu espacio de trabajo.",
-					"- Organiza documentos y permisos.",
+					"Flujo recomendado para nuevos usuarios:",
+					"1) Inicia sesión y verifica tu perfil en Configuración.",
+					"2) Crea o únete a un proyecto.",
+					"3) Usa tareas/notas para organizar trabajo interno.",
+					"4) Usa Chat interno para comunicación de equipo.",
+					"5) Usa Chat con agentes para apoyo IA especializado.",
 				],
 			},
 			{
-				id: "api-overview",
-				title: "API overview",
+				id: "chat-internal-vs-agents",
+				title: "Chat interno vs Chat con agentes",
+				category: "help",
+				summary: "Qué hace cada módulo y cuándo usarlo.",
+				icon: <MessageSquare className="h-4 w-4" />,
+				content: [
+					"Chat interno: conversaciones entre miembros del equipo (persona a persona).",
+					"Chat con agentes: conversaciones asistidas por IA para soporte, análisis o ejecución guiada.",
+					"",
+					"Buenas prácticas:",
+					"- Usa chat interno para coordinación diaria y decisiones de equipo.",
+					"- Usa chat con agentes cuando necesites ayuda IA, prompts o automatización.",
+					"- Crea una conversación por tema y luego selecciona/cambia el agente según convenga.",
+				],
+			},
+			{
+				id: "tokens-and-credits",
+				title: "Tokens personalizados y créditos",
+				category: "help",
+				summary: "Prioridad de token del usuario y consumo de créditos.",
+				icon: <ShieldCheck className="h-4 w-4" />,
+				content: [
+					"Puedes guardar tokens personales (por ejemplo Gemini u OpenRouter) desde Configuración.",
+					"",
+					"Regla de uso:",
+					"- Si existe token personal válido para el proveedor, el sistema lo prioriza.",
+					"- Si no existe, se usa el token del sistema.",
+					"",
+					"Créditos IA:",
+					"- No se descuentan créditos cuando usas token personal.",
+					"- Sí se descuentan cuando se usa token del sistema.",
+				],
+			},
+			{
+				id: "support",
+				title: "Soporte y resolución de problemas",
+				category: "help",
+				summary: "Qué revisar si algo falla y cómo pedir ayuda.",
+				icon: <LifeBuoy className="h-4 w-4" />,
+				content: [
+					"Si un módulo no responde correctamente:",
+					"- Verifica conexión y sesión activa.",
+					"- Revisa que el token API esté guardado si usas agentes IA.",
+					"- Comprueba permisos del proyecto/equipo.",
+					"",
+					"Si persiste el problema, reporta:",
+					"- Ruta y acción exacta realizada.",
+					"- Mensaje de error mostrado.",
+					"- Hora aproximada del fallo.",
+				],
+			},
+			{
+				id: "api-auth-and-users",
+				title: "API: autenticación y usuarios",
 				category: "api",
-				summary: "Resumen rápido de endpoints.",
+				summary: "Registro/login, perfil y métricas de uso.",
 				icon: <Code2 className="h-4 w-4" />,
 				content: [
-					"La API está pensada principalmente para el cliente web.",
+					"Base URL: {SERVER_URL}/api",
+					"Autenticación: Bearer token (Authorization) o sesión según flujo.",
 					"",
-					"Endpoints (resumen):",
-					"- /api/auth/*",
-					"- /api/projects/*",
-					"- /api/tasks/*",
-					"- /api/github/*",
+					"Endpoints principales:",
+					"- /api/auth/* (login, OAuth, etc.)",
+					"- /api/users/me (usuario actual)",
+					"- /api/users/usage (resumen de uso y créditos)",
+					"- /api/users/plan (plan del usuario)",
+					"- /api/users/public-users (listado público)",
 				],
 			},
 			{
-				id: "changelog",
-				title: "Cambios recientes",
-				category: "updates",
-				summary: "Notas rápidas de versión.",
+				id: "api-collaboration",
+				title: "API: colaboración (proyectos, tareas, notas)",
+				category: "api",
+				summary: "Operaciones base para gestión del trabajo.",
+				icon: <BookOpen className="h-4 w-4" />,
+				content: [
+					"Dominios principales:",
+					"- /api/projects/*",
+					"- /api/tasks/*",
+					"- /api/ideas/*",
+					"- /api/notes/* y /api/projects/:id/notes",
+					"- /api/members/* e /api/invitations/*",
+					"",
+					"IA en tareas:",
+					"- /api/tasks/generate (generación asistida)",
+				],
+			},
+			{
+				id: "api-chat-and-agents",
+				title: "API: chat y agentes IA",
+				category: "api",
+				summary: "Conversaciones internas y flujo de agentes.",
+				icon: <MessageSquare className="h-4 w-4" />,
+				content: [
+					"Chat interno:",
+					"- /api/chat/*",
+					"",
+					"Agentes:",
+					"- /api/agents/* (CRUD de agentes y mensajes)",
+					"- /api/agents/message (envío centralizado desde backend)",
+					"",
+					"Proveedores IA disponibles:",
+					"- /api/openrouter",
+					"- /api/openrouterai",
+					"- /api/generate (flujo Gemini)",
+					"- /api/qwen",
+				],
+			},
+			{
+				id: "api-files-and-integrations",
+				title: "API: archivos, tokens e integraciones",
+				category: "api",
+				summary: "Uploads, GitHub, tokens y otros módulos.",
 				icon: <FileText className="h-4 w-4" />,
 				content: [
-					"Aquí puedes mantener un changelog simple para los usuarios.",
+					"Archivos:",
+					"- /api/uploads",
+					"- /api/upload",
 					"",
-					"Ejemplo:",
-					"- Integración GitHub: repositorio por proyecto y token por usuario.",
-					"- Tokens cifrados en BD.",
+					"Integraciones y configuración:",
+					"- /api/github/*",
+					"- /api/tokens/* (guardar/eliminar/listar tokens)",
+					"- /api/verification/*",
+					"- /api/crypto-payments/*",
+					"- /api/time-entries/*",
+				],
+			},
+			{
+				id: "updates-recent",
+				title: "Novedades recientes",
+				category: "updates",
+				summary: "Resumen de mejoras funcionales visibles para usuarios.",
+				icon: <Zap className="h-4 w-4" />,
+				content: [
+					"- Mejora del módulo de chat con separación entre chat interno y chat con agentes.",
+					"- Flujo de agentes más claro: conversación por tema + selección/cambio de agente.",
+					"- Soporte para tokens personalizados de proveedores IA en configuración.",
+					"- Mejoras visuales y de responsividad en componentes principales de chat.",
 				],
 			},
 		],
@@ -106,7 +227,8 @@ export default function HelpPage() {
 		return base.filter(
 			(i) =>
 				i.title.toLowerCase().includes(q) ||
-				i.summary.toLowerCase().includes(q),
+				i.summary.toLowerCase().includes(q) ||
+				i.content.join(" ").toLowerCase().includes(q),
 		);
 	}, [items, activeCategory, search]);
 
@@ -121,11 +243,9 @@ export default function HelpPage() {
 			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 				<div className="flex items-start justify-between gap-4">
 					<div>
-						<h1 className="text-3xl font-bold tracking-tight">
-							Centro de ayuda
-						</h1>
+						<h1 className="text-3xl font-bold tracking-tight">Centro de ayuda</h1>
 						<p className="text-muted-foreground mt-2">
-							Categorías arriba, índice lateral y contenido por sección.
+							Guías funcionales del sistema y referencia de endpoints API por módulos.
 						</p>
 					</div>
 					<Button variant="outline" asChild>
@@ -172,32 +292,24 @@ export default function HelpPage() {
 											type="button"
 											onClick={() => setActiveItemId(i.id)}
 											className={`w-full rounded-md border p-3 text-left transition-colors hover:bg-muted ${
-												activeItemId === i.id
-													? "border-primary"
-													: "border-border"
+												activeItemId === i.id ? "border-primary" : "border-border"
 											}`}
 										>
 											<div className="flex items-start justify-between gap-3">
 												<div className="flex items-center gap-2">
-													<span className="text-muted-foreground">
-														{i.icon}
-													</span>
+													<span className="text-muted-foreground">{i.icon}</span>
 													<span className="font-medium">{i.title}</span>
 												</div>
 												<Badge variant="secondary" className="shrink-0">
 													{i.category.toUpperCase()}
 												</Badge>
 											</div>
-											<p className="text-sm text-muted-foreground mt-2">
-												{i.summary}
-											</p>
+											<p className="text-sm text-muted-foreground mt-2">{i.summary}</p>
 										</button>
 									))}
 
 									{filteredItems.length === 0 && (
-										<div className="text-sm text-muted-foreground p-3">
-											No hay resultados.
-										</div>
+										<div className="text-sm text-muted-foreground p-3">No hay resultados.</div>
 									)}
 								</div>
 							</ScrollArea>
@@ -214,10 +326,7 @@ export default function HelpPage() {
 						<CardContent>
 							<div className="space-y-3">
 								{activeItem.content.map((line, idx) => (
-									<p
-										key={`${activeItem.id}-${idx}`}
-										className="text-sm leading-6"
-									>
+									<p key={`${activeItem.id}-${idx}`} className="text-sm leading-6">
 										{line}
 									</p>
 								))}
@@ -236,10 +345,7 @@ export default function HelpPage() {
 									</a>
 								</div>
 								<Button variant="outline" asChild className="gap-2">
-									<Link
-										to="https://github.com/lazaroysr96/sysgd/"
-										target="_blank"
-									>
+									<Link to="https://github.com/lazaroysr96/sysgd/" target="_blank">
 										<Github className="h-4 w-4" />
 										GitHub
 									</Link>

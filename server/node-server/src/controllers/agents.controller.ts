@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { pool } from '../db';
 import { CreateAgentRequest, UpdateAgentRequest } from '../types/Agent';
+import { openRouterAgent } from '../openRouterAgent';
+import { consumeAICredits } from '../middlewares/usageLimits.middleware';
 
 export const createAgent = async (req: Request, res: Response) => {
   try {
@@ -188,8 +190,10 @@ export const deleteAgent = async (req: Request, res: Response) => {
 
 export const sendMessageToAgent = async (req: Request, res: Response) => {
   try {
-    const { agent_id, conversation_id, content, attachment_type, attachment_url, agent_response } = req.body;
+    const { agent_id, conversation_id, content, attachment_type, attachment_url } = req.body;
     const userId = (req as any).user?.id;
+    const useCustomToken = (req as any).useCustomToken;
+    const customToken = (req as any).customToken;
 
     if (!userId) {
       res.status(401).json({ error: 'Usuario no autenticado' });
@@ -213,6 +217,72 @@ export const sendMessageToAgent = async (req: Request, res: Response) => {
       return;
     }
 
+    const agentResult = await pool.query(
+      `SELECT id, name, url, system_prompt
+       FROM agents
+       WHERE id = $1 AND created_by = $2 AND is_active = true`,
+      [agent_id, userId]
+    );
+
+    if (agentResult.rows.length === 0) {
+      res.status(404).json({ error: 'Agente no encontrado o inactivo' });
+      return;
+    }
+
+    const agent = agentResult.rows[0] as {
+      id: string;
+      name: string;
+      url: string;
+      system_prompt?: string | null;
+    };
+
+    let resolvedAgentResponse = '';
+
+    if (agent.url.includes('/api/openrouter')) {
+      const openRouterResult = await openRouterAgent({
+        prompt: content,
+        model: 'openai/gpt-oss-120b:free',
+        systemPrompt: agent.system_prompt || undefined,
+        customToken: useCustomToken ? customToken : undefined,
+      });
+
+      resolvedAgentResponse =
+        openRouterResult.respuesta ||
+        openRouterResult.response ||
+        openRouterResult.message ||
+        'Sin respuesta del agente';
+    } else {
+      const externalResponse = await fetch(agent.url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: content,
+          systemPrompt: agent.system_prompt || '',
+          ...(attachment_type && attachment_url
+            ? {
+                [attachment_type]: attachment_url,
+              }
+            : {}),
+          ...(useCustomToken ? { customToken } : {}),
+        }),
+      });
+
+      if (!externalResponse.ok) {
+        const details = await externalResponse.text();
+        res.status(502).json({
+          error: 'Error en endpoint del agente',
+          details,
+        });
+        return;
+      }
+
+      const data = await externalResponse.json();
+      resolvedAgentResponse =
+        data.respuesta || data.response || data.message || 'Sin respuesta del agente';
+    }
+
     // Crear el mensaje del usuario en la base de datos
     const messageResult = await pool.query(
       `INSERT INTO messages (conversation_id, sender_id, content, attachment_type, attachment_url) 
@@ -223,22 +293,38 @@ export const sendMessageToAgent = async (req: Request, res: Response) => {
 
     const userMessage = messageResult.rows[0];
 
-    // Si se proporciona la respuesta del agente, guardarla también
-    let agentMessage = null;
-    if (agent_response) {
-      const agentMessageResult = await pool.query(
-        `INSERT INTO messages (conversation_id, sender_id, content) 
-         VALUES ($1, NULL, $2) 
-         RETURNING *`,
-        [conversation_id, agent_response]
-      );
-      agentMessage = agentMessageResult.rows[0];
+    const agentMessageResult = await pool.query(
+      `INSERT INTO messages (conversation_id, sender_id, content)
+       VALUES ($1, NULL, $2)
+       RETURNING *`,
+      [conversation_id, resolvedAgentResponse]
+    );
+
+    const agentMessage = agentMessageResult.rows[0];
+
+    if (!useCustomToken) {
+      await consumeAICredits(req, res, () => {
+        res.json({
+          userMessage,
+          agentMessage,
+          success: true,
+          billing: {
+            used_custom_token: false,
+            credits_consumed: 1,
+          },
+        });
+      });
+      return;
     }
 
     res.json({
       userMessage,
       agentMessage,
-      success: true
+      success: true,
+      billing: {
+        used_custom_token: true,
+        credits_consumed: 0,
+      },
     });
 
   } catch (error) {

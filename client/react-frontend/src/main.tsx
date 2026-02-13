@@ -5,6 +5,7 @@ import { Toaster as SonnerToaster } from "sonner";
 import { ElectronWrapper } from "@/components/ElectronWrapper";
 import { ThemeProvider } from "@/contexts/theme-context";
 import AppRouter from "./AppRouter.tsx";
+import AgentsChatPage from "./chat/app/agents-page.tsx";
 import HomeChat from "./chat/app/page.tsx";
 import ProjectsPage from "./components/DashboardPage.tsx";
 import ProjectPageDemo from "./components/demo/page.tsx";
@@ -55,6 +56,7 @@ createRoot(document.getElementById("root")!).render(
 						<Route path="/projects" element={<ProjectWorkSpace />} />
 						<Route path="/landpage" element={<LandingPage />} />
 						<Route path="/chat" element={<HomeChat />} />
+						<Route path="/chat/agents" element={<AgentsChatPage />} />
 						<Route path="/help" element={<Help />} />
 						<Route path="/settings" element={<SettingsPage />} />
 						<Route path="/settings/tokens" element={<TokenManagement />} />
