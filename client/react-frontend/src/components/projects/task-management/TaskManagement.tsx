@@ -112,13 +112,13 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 		setisDialogOpenDialog(false);
 	};
 
-	const handleQuickStatusChange = async (taskId: string, status: string) => {
-		await updateTask(taskId, { status });
+	// const handleQuickStatusChange = async (taskId: string, status: string) => {
+	// 	await updateTask(taskId, { status });
 
-		if (selectedTask?.id === taskId) {
-			setselectedTask((prev) => (prev ? { ...prev, status } : prev));
-		}
-	};
+	// 	if (selectedTask?.id === taskId) {
+	// 		setselectedTask((prev) => (prev ? { ...prev, status } : prev));
+	// 	}
+	// };
 
 	const handleAddNewTask = () => {
 		const defaultType = config?.types?.[0]?.name ?? "Tarea";
@@ -200,8 +200,8 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 		return [...new Set(tasks.map((task) => task.status))];
 	};
 
-	const statusOptions = config?.states?.map((state) => state.name) ??
-		getUniqueStatuses();
+	const statusOptions =
+		config?.states?.map((state) => state.name) ?? getUniqueStatuses();
 
 	return (
 		<div className="bg-white h-full flex flex-col rounded-lg dark:border shadow-sm dark:bg-gray-800 dark:border-gray-700">
@@ -462,37 +462,29 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 										setisDialogOpenDialog(true);
 									}}
 								>
-							{/* Desktop Version */}
-							<TableCell className="hidden md:table-cell">
-								<div
-									className="flex items-center justify-center"
-									onClick={(event) => event.stopPropagation()}
-								>
-									<Select
-										value={task.status}
-										onValueChange={(value) =>
-											handleQuickStatusChange(task.id as string, value)
-										}
-									>
-										<SelectTrigger className="h-8 w-40">
-											<div className="flex items-center gap-2 truncate">
+									{/* Desktop Version */}
+									<TableCell className="hidden md:table-cell">
+										<div className="flex items-center justify-center">
+											<Badge
+												className="flex items-center gap-1"
+												variant="outline"
+												style={{
+													backgroundColor:
+														config?.states?.find((s) => s.name === task.status)
+															?.color + "20",
+													borderColor: config?.states?.find(
+														(s) => s.name === task.status,
+													)?.color,
+													color: config?.states?.find(
+														(s) => s.name === task.status,
+													)?.color,
+												}}
+											>
 												{getStatusIcon(task.status, config)}
-												<span className="truncate">{task.status}</span>
-											</div>
-										</SelectTrigger>
-										<SelectContent>
-											{statusOptions.map((status) => (
-												<SelectItem key={status} value={status}>
-													<div className="flex items-center gap-2">
-														{getStatusIcon(status, config)}
-														<span>{status}</span>
-													</div>
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
-							</TableCell>
+												<span>{task.status}</span>
+											</Badge>
+										</div>
+									</TableCell>
 									<TableCell className="hidden md:table-cell font-medium">
 										{task.title}
 									</TableCell>
@@ -557,34 +549,14 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 										</div>
 									</TableCell>
 
-							{/* Mobile Version */}
-							<TableCell className="md:hidden p-2">
-								<div
-									className="flex items-center justify-center"
-									onClick={(event) => event.stopPropagation()}
-								>
-									<Select
-										value={task.status}
-										onValueChange={(value) =>
-											handleQuickStatusChange(task.id as string, value)
-										}
-									>
-										<SelectTrigger className="h-8 w-10 p-0 justify-center">
-											{getStatusIcon(task.status, config)}
-										</SelectTrigger>
-										<SelectContent>
-											{statusOptions.map((status) => (
-												<SelectItem key={status} value={status}>
-													<div className="flex items-center gap-2">
-														{getStatusIcon(status, config)}
-														<span>{status}</span>
-													</div>
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
-							</TableCell>
+									{/* Mobile Version */}
+									<TableCell className="md:hidden p-2">
+										<div className="flex items-center justify-center">
+											<div className="flex items-center gap-2">
+												{getStatusIcon(task.status, config)}
+											</div>
+										</div>
+									</TableCell>
 									<TableCell className="md:hidden p-2">
 										<div className="flex flex-col gap-1">
 											<span className="font-medium text-sm line-clamp-2">
