@@ -116,6 +116,18 @@ const Auth: FC = () => {
 	}, [loginSuccess, router]);
 
 	useEffect(() => {
+		if (!success) return;
+
+		const token = localStorage.getItem("token");
+		if (token) {
+			router("/dashboard");
+			return;
+		}
+
+		router("/login");
+	}, [success, router]);
+
+	useEffect(() => {
 		if (!checkData) return;
 
 		if (!checkData.exists) {
@@ -263,7 +275,7 @@ const Auth: FC = () => {
 
 					router("/dashboard");
 				}
-			} catch (err) {
+			} catch {
 				alert("Error al completar el registro");
 			}
 		}
@@ -279,22 +291,6 @@ const Auth: FC = () => {
 
 		await register({ name, email: user, password });
 
-		// Si el registro fue exitoso y hay token de invitación
-		if (success && invitationToken) {
-			try {
-				const token = localStorage.getItem("token");
-				await fetch(`${serverUrl}/api/invitations/accept`, {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						Authorization: `Bearer ${token}`,
-					},
-					body: JSON.stringify({ token: invitationToken }),
-				});
-			} catch (err) {
-				console.error("Error aceptando invitación:", err);
-			}
-		}
 	};
 
 	// Agrega un banner informativo cuando hay invitación

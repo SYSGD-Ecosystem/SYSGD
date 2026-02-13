@@ -119,7 +119,24 @@ router.post(
 
 			await client.query("COMMIT");
 
-			res.status(201).json(newTask);
+			const createdTaskResult = await client.query(
+				`SELECT
+       t.*,
+       COALESCE(
+         (
+           SELECT json_agg(json_build_object('id', u.id, 'name', u.name, 'email', u.email))
+           FROM task_assignees ta
+           JOIN users u ON ta.user_id = u.id
+           WHERE ta.task_id = t.id
+         ),
+         '[]'::json
+       ) AS assignees
+     FROM tasks t
+     WHERE t.id = $1`,
+				[newTask.id],
+			);
+
+			res.status(201).json(createdTaskResult.rows[0] ?? newTask);
 		} catch (err) {
 			await client.query("ROLLBACK");
 			console.error("Error creating task:", err);
