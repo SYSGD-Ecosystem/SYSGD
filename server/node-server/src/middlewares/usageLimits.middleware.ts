@@ -107,10 +107,14 @@ export async function checkAICredits(
     const billing = userData.billing;
     const hasCredits = billing.ai_task_credits > 0;
 
+    const tokenType = req.baseUrl.includes("/openrouter")
+      ? "openrouter"
+      : "gemini";
+
     // Verificar si tiene token custom en user_tokens
     const { rows: tokenRows } = await pool.query(
-      "SELECT encrypted_token, iv FROM user_tokens WHERE user_id = $1 AND token_type = 'gemini'",
-      [user.id]
+      "SELECT encrypted_token, iv FROM user_tokens WHERE user_id = $1 AND token_type = $2",
+      [user.id, tokenType]
     );
 
     const hasCustomToken = tokenRows.length > 0;
@@ -130,7 +134,7 @@ export async function checkAICredits(
       const decryptedToken = TokenService.decryptToken(
         tokenRows[0].encrypted_token,
         tokenRows[0].iv,
-        "gemini"
+        tokenType
       );
 
       (req as any).useCustomToken = true;
@@ -143,7 +147,7 @@ export async function checkAICredits(
     // No tiene créditos ni token custom
     res.status(402).json({
       error: "Créditos insuficientes",
-      message: "No tienes créditos disponibles. Puedes comprar más o configurar tu propio token de Gemini.",
+      message: `No tienes créditos disponibles. Puedes comprar más o configurar tu propio token de ${tokenType === "openrouter" ? "OpenRouter" : "Gemini"}.`,
       credits: {
         available: billing.ai_task_credits,
         purchased: billing.purchased_credits
@@ -524,10 +528,11 @@ export async function getUsageSummary(userId: string) {
     }
 
     // Obtener conteos actuales
-    const [projects, documents, geminiToken] = await Promise.all([
+    const [projects, documents, geminiToken, openrouterToken] = await Promise.all([
       pool.query("SELECT COUNT(*) as count FROM projects WHERE created_by = $1", [userId]),
       pool.query("SELECT COUNT(*) as count FROM document_management_file WHERE user_id = $1", [userId]),
-      pool.query("SELECT id FROM user_tokens WHERE user_id = $1 AND token_type = 'gemini'", [userId])
+      pool.query("SELECT id FROM user_tokens WHERE user_id = $1 AND token_type = 'gemini'", [userId]),
+      pool.query("SELECT id FROM user_tokens WHERE user_id = $1 AND token_type = 'openrouter'", [userId])
     ]);
 
     const projectCount = parseInt(projects.rows[0].count);
@@ -563,7 +568,9 @@ export async function getUsageSummary(userId: string) {
         custom_gemini_token: userData.billing.limits.custom_gemini_token || false,
         priority_support: userData.billing.limits.priority_support
       },
-      hasCustomToken: geminiToken.rows.length > 0
+      hasCustomToken: geminiToken.rows.length > 0 || openrouterToken.rows.length > 0,
+      hasCustomGeminiToken: geminiToken.rows.length > 0,
+      hasCustomOpenRouterToken: openrouterToken.rows.length > 0,
     };
   } catch (error) {
     console.error("Error obteniendo resumen de uso:", error);

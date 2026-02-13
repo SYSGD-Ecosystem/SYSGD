@@ -56,7 +56,7 @@ export async function initDatabase() {
 CREATE TABLE IF NOT EXISTS user_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  token_type TEXT NOT NULL CHECK (token_type IN ('github', 'gemini', 'replicate')),
+  token_type TEXT NOT NULL CHECK (token_type IN ('github', 'gemini', 'replicate', 'openrouter')),
   encrypted_token BYTEA NOT NULL,
   iv BYTEA NOT NULL,
   created_at TIMESTAMP DEFAULT NOW(),
@@ -67,6 +67,22 @@ CREATE TABLE IF NOT EXISTS user_tokens (
 -- Índice para búsquedas rápidas
 CREATE INDEX IF NOT EXISTS idx_user_tokens_user_id ON user_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_tokens_type ON user_tokens(token_type);
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.table_constraints
+    WHERE constraint_name = 'user_tokens_token_type_check'
+      AND table_name = 'user_tokens'
+  ) THEN
+    ALTER TABLE user_tokens DROP CONSTRAINT user_tokens_token_type_check;
+  END IF;
+
+  ALTER TABLE user_tokens
+  ADD CONSTRAINT user_tokens_token_type_check
+  CHECK (token_type IN ('github', 'gemini', 'replicate', 'openrouter'));
+END $$;
     
 -- ==============================
 -- Project Members View

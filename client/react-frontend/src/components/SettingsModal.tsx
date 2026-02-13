@@ -382,6 +382,13 @@ interface Token {
   updated_at: string;
 }
 
+const TOKEN_LABELS: Record<string, string> = {
+  github: 'GitHub',
+  gemini: 'Gemini AI',
+  openrouter: 'OpenRouter',
+  replicate: 'Replicate',
+};
+
 const TokensSettings: FC = () => {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -502,6 +509,7 @@ const TokensSettings: FC = () => {
               <SelectContent>
                 <SelectItem value="github">GitHub</SelectItem>
                 <SelectItem value="gemini">Gemini AI</SelectItem>
+                <SelectItem value="openrouter">OpenRouter</SelectItem>
                 <SelectItem value="replicate">Replicate</SelectItem>
               </SelectContent>
             </Select>
@@ -610,7 +618,7 @@ const TokensSettings: FC = () => {
                 className="flex items-center justify-between p-3 border rounded-lg"
               >
                 <div>
-                  <p className="font-medium capitalize">{token.token_type}</p>
+                  <p className="font-medium">{TOKEN_LABELS[token.token_type] || token.token_type}</p>
                   <p className="text-sm text-muted-foreground">
                     Creado: {new Date(token.created_at).toLocaleDateString()}
                   </p>

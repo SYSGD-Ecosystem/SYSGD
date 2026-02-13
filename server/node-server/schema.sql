@@ -147,7 +147,7 @@ CREATE INDEX IF NOT EXISTS idx_time_entries_project_id ON time_entries(project_i
 CREATE TABLE IF NOT EXISTS user_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  token_type TEXT NOT NULL CHECK (token_type IN ('github', 'gemini', 'replicate')),
+  token_type TEXT NOT NULL CHECK (token_type IN ('github', 'gemini', 'replicate', 'openrouter')),
   encrypted_token BYTEA NOT NULL,
   iv BYTEA NOT NULL,
   created_at TIMESTAMP DEFAULT NOW(),
