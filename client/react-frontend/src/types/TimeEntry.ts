@@ -16,4 +16,6 @@ export type TimeEntry = {
 	project_name?: string | null;
 	task_title?: string | null;
 	task_number?: number | null;
+	worker_name?: string | null;
+	worker_email?: string | null;
 };
