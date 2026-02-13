@@ -153,6 +153,7 @@ export function AgentsChatInterface() {
 							showSettings={showSettings}
 							onShowSettingsChange={setShowSettings}
 							selectedAgent={selectedAgent}
+							onRequestAgentSelection={() => setShowAgentsList(true)}
 						/>
 					) : (
 						<div className="h-full flex items-center justify-center text-muted-foreground p-6 text-center">

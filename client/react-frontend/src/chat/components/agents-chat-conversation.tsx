@@ -21,6 +21,7 @@ interface ChatConversationProps {
 	showSettings: boolean;
 	onShowSettingsChange: (show: boolean) => void;
 	selectedAgent?: Agent | null;
+	onRequestAgentSelection?: () => void;
 }
 
 export interface ExtendedMessage extends Message {
@@ -49,11 +50,11 @@ export function AgentsChatConversation({
 	showSettings,
 	onShowSettingsChange,
 	selectedAgent,
+	onRequestAgentSelection,
 }: ChatConversationProps) {
 	const {
 		fetchMessages,
 		messagesMap,
-		sendMessage,
 		setMessagesForConversation,
 		markAsRead,
 	} = useChatContext();
@@ -222,6 +223,16 @@ export function AgentsChatConversation({
 		if (sending) return;
 		if (!newMessage.trim() && !attachment) return;
 
+		if (!selectedAgent) {
+			toast({
+				title: "Selecciona un agente",
+				description:
+					"Antes de enviar un mensaje debes seleccionar un agente para esta conversación.",
+			});
+			onRequestAgentSelection?.();
+			return;
+		}
+
 		setSending(true);
 
 		setAnErrorOcurred(false);
@@ -290,10 +301,8 @@ export function AgentsChatConversation({
 				}
 			}
 
-			// Check if we have a selected agent
-			if (selectedAgent) {
-				// Set loading state for agent
-				setWaitingForAgent(true);
+			// Set loading state for agent
+			setWaitingForAgent(true);
 
 				// Send message to agent
 				const agentPayload = {
@@ -310,9 +319,9 @@ export function AgentsChatConversation({
 					}),
 				};
 
-				const agentResponse = await sendMessageToAgent(agentPayload);
+			const agentResponse = await sendMessageToAgent(agentPayload);
 
-				if (agentResponse) {
+			if (agentResponse) {
 					// Replace optimistic message with user message
 					const userMessage: ExtendedMessage = {
 						id: String(agentResponse.userMessage.id),
@@ -378,76 +387,14 @@ export function AgentsChatConversation({
 					} catch (err) {
 						console.error(err);
 					}
-				} else {
+			} else {
 					// Agent failed, remove optimistic message
 					setMessages((prev) => prev.filter((m) => m.id !== tempId));
 					toast({
 						title: "Error",
 						description: "No se pudo conectar con el agente. Intenta de nuevo.",
 					});
-					setAnErrorOcurred(true);
-				}
-			} else {
-				// Regular message sending (existing logic)
-				const payload: any = {
-					content: newMessage || null,
-					...attachment_payload,
-					reply_to: replyingTo?.id ?? null,
-				};
-
-				const sent = await sendMessage(chat.id, payload);
-				if (sent) {
-					const normalizedBackend: ExtendedMessage = {
-						id: String((sent as any).id),
-						content: sent.content ?? "",
-						sender: "me",
-						timestamp: sent.created_at
-							? new Date(sent.created_at).toLocaleTimeString("es-ES", {
-									hour: "2-digit",
-									minute: "2-digit",
-								})
-							: new Date().toLocaleTimeString(),
-						senderName: (sent as any).sender_name ?? undefined,
-						attachment: (sent as any).attachment_url
-							? {
-									url: (sent as any).attachment_url,
-									type:
-										(sent as any).attachment_type ??
-										attachment_payload.attachment_type ??
-										"file",
-									name:
-										(sent as any).attachment_name ??
-										attachment_payload.attachment_name,
-									size:
-										(sent as any).attachment_size ??
-										attachment_payload.attachment_size,
-								}
-							: undefined,
-						replyTo: sent.reply_to
-							? {
-									id: String(sent.reply_to),
-									content: (sent as any).reply_preview ?? "",
-									senderName: undefined,
-								}
-							: undefined,
-					};
-
-					setMessages((prev) =>
-						prev.map((m) => (m.id === tempId ? normalizedBackend : m)),
-					);
-
-					const currentHookMsgs = messagesMap[chat.id] ?? [];
-					setMessagesForConversation(chat.id, [
-						...currentHookMsgs,
-						sent as BackendMessage,
-					]);
-
-					try {
-						await markAsRead(chat.id, String(sent.id));
-					} catch (err) {
-						console.error(err);
-					}
-				}
+				setAnErrorOcurred(true);
 			}
 		} catch (err) {
 			console.error("Error sending message:", err);
