@@ -23,6 +23,12 @@ import { Button } from "../../../ui/button";
 import { Dialog, DialogContent } from "../../../ui/dialog";
 import { Input } from "../../../ui/input";
 import { Label } from "../../../ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+} from "../../../ui/select";
 
 const DialogViewTask: FC<{
 	selectedTask: Task;
@@ -30,13 +36,22 @@ const DialogViewTask: FC<{
 	onOpenChange: (open: boolean) => void;
 	onEditChange: () => void;
 	onDeleteChange: () => void;
-}> = ({ selectedTask, isOpen, onOpenChange, onEditChange, onDeleteChange }) => {
+	onStatusChange: (status: string) => Promise<void>;
+}> = ({
+	selectedTask,
+	isOpen,
+	onOpenChange,
+	onEditChange,
+	onDeleteChange,
+	onStatusChange,
+}) => {
 	const [isButtonDisabled, setIsButtonDisabled] = useState(false);
 	const [entries, setEntries] = useState<TimeEntry[]>([]);
 	const [loadingEntries, setLoadingEntries] = useState(false);
 	const [description, setDescription] = useState("");
 
 	const { config: taskConfig } = useTaskConfig(selectedTask.project_id);
+	const statusOptions = taskConfig?.states?.map((state) => state.name) ?? [selectedTask.status];
 	const activeEntry = useTimeTrackingStore((state) => state.activeEntry);
 	const now = useTimeTrackingStore((state) => state.now);
 	const fetchActiveEntry = useTimeTrackingStore((state) => state.fetchActiveEntry);
@@ -107,7 +122,7 @@ const DialogViewTask: FC<{
 	}, [activeEntry, isOpen, refreshEntries, selectedTask.id]);
 
 	return (
-		<Dialog open={isOpen} onOpenChange={onOpenChange}>
+		<Dialog  open={isOpen} onOpenChange={onOpenChange}>
 			<DialogContent className="max-w-3xl max-h-[85vh] p-0 flex flex-col">
 				{/* Header compacto */}
 				<div className="flex-shrink-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 p-6">
@@ -315,24 +330,51 @@ const DialogViewTask: FC<{
 
 				{/* Botones fijos en la parte inferior */}
 				<div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-6 bg-white dark:bg-gray-900">
-					<div className="flex justify-end gap-3">
-						<Button
-							variant="outline"
-							disabled={isButtonDisabled}
-							onClick={onEditChange}
-						>
-							Editar
-						</Button>
-						<Button
-							variant="destructive"
-							disabled={isButtonDisabled}
-							onClick={() => {
-								setIsButtonDisabled(true);
-								onDeleteChange();
-							}}
-						>
-							Eliminar
-						</Button>
+					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+						<div className="w-full sm:w-64 hidden">
+							<Select
+								value={selectedTask.status}
+								onValueChange={(value) => {
+									void onStatusChange(value);
+								}}
+							>
+								<SelectTrigger className="w-full">
+									<div className="flex items-center gap-2">
+										{getStatusIcon(selectedTask.status, taskConfig)}
+										<span>{selectedTask.status}</span>
+									</div>
+								</SelectTrigger>
+								<SelectContent>
+									{statusOptions.map((status) => (
+										<SelectItem key={status} value={status}>
+											<div className="flex items-center gap-2">
+												{getStatusIcon(status, taskConfig)}
+												<span>{status}</span>
+											</div>
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="flex w-full justify-end gap-3">
+							<Button
+								variant="outline"
+								disabled={isButtonDisabled}
+								onClick={onEditChange}
+							>
+								Editar
+							</Button>
+							<Button
+								variant="destructive"
+								disabled={isButtonDisabled}
+								onClick={() => {
+									setIsButtonDisabled(true);
+									onDeleteChange();
+								}}
+							>
+								Eliminar
+							</Button>
+						</div>
 					</div>
 				</div>
 			</DialogContent>
