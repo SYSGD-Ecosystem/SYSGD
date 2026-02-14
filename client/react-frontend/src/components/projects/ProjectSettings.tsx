@@ -49,7 +49,7 @@ const ProjectSettings: FC<ProjectSettingsProps> = ({ projectId }) => {
 			<Separator />
 
 			{/* Future Configuration Sections */}
-			<div className="space-y-4">
+			<div className="space-y-4 hidden">
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
