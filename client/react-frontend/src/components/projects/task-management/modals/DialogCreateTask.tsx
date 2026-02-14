@@ -152,7 +152,7 @@ const DialogCreateTask: FC<Props> = ({
 	if (isLoading) {
 		return (
 			<Dialog open={isOpen} onOpenChange={onOpenChange}>
-				<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+				<DialogContent className="w-[95vw] max-w-lg sm:max-w-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
 					<DialogHeader>
 						<DialogTitle>
 							<div className="w-32 h-6 bg-slate-300 dark:bg-slate-600 rounded-full animate-pulse" />
@@ -170,7 +170,7 @@ const DialogCreateTask: FC<Props> = ({
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+			<DialogContent className="w-[95vw] max-w-lg sm:max-w-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
 				<DialogHeader>
 					<DialogTitle>
 						{editingTask?.id && tasks.find((t) => t.id === editingTask.id)
@@ -194,44 +194,16 @@ const DialogCreateTask: FC<Props> = ({
 						</div>
 
 						<div>
-							<div className="flex items-center gap-2">
+							<div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
 								<Label htmlFor="descripcion">Descripción</Label>
 								{handleImprove && (
-									<div className="flex w-full justify-end gap-2">
-										{/* <Select
-											value={selectedModel}
-											onValueChange={setSelectedModel}
-										>
-											<SelectTrigger className="w-40 h-8 text-xs">
-												<Cpu className="h-3 w-3 mr-1" />
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent className="text-xs">
-												{aiModels.map((model) => (
-													<SelectItem
-														key={model.id}
-														value={model.id}
-														className="text-xs"
-													>
-														<div className="flex flex-col">
-															<span className="text-xs font-medium">
-																{model.name}
-															</span>
-															<span className="text-[10px] text-muted-foreground">
-																{model.provider}
-															</span>
-														</div>
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select> */}
-
+									<div className="flex w-full sm:w-auto justify-end gap-2 ml-auto">
 										<Select
 											value={selectedModel}
 											onValueChange={setSelectedModel}
 										>
 											{/* ---- Trigger (lo que se ve cuando está cerrado) ---- */}
-											<SelectTrigger className="w-56 h-8 text-xs flex items-center gap-2">
+											<SelectTrigger className="w-full sm:w-44 h-8 text-xs flex items-center gap-1 sm:gap-2">
 												{/* Icono opcional (puedes usar el icono del proveedor o uno genérico) */}
 												<Cpu className="h-3 w-3" />
 
@@ -283,14 +255,16 @@ const DialogCreateTask: FC<Props> = ({
 													selectedModelObj?.provider_id
 												)
 											}
-											className="h-8 px-3"
+											className="h-8 px-2 sm:px-3"
 										>
 											{geminiIsLoading ? (
 												<Loader2 className="h-4 w-4 animate-spin" />
 											) : (
 												<Sparkles className="h-4 w-4" />
 											)}
-											{!geminiIsLoading && "Mejorar"}
+											<span className="hidden sm:inline">
+												{!geminiIsLoading && "Mejorar"}
+											</span>
 										</Button>
 									</div>
 								)}
@@ -328,7 +302,7 @@ const DialogCreateTask: FC<Props> = ({
 									</Button>
 								</div>
 
-								<div className="bg-white dark:bg-slate-800 rounded-md p-3 max-h-48 overflow-y-auto">
+								<div className="bg-white dark:bg-slate-800 rounded-md p-3 max-h-48 overflow-y-auto no-scrollbar">
 									<Textarea
 										value={improvedText}
 										readOnly
@@ -337,7 +311,7 @@ const DialogCreateTask: FC<Props> = ({
 									/>
 								</div>
 
-								<div className="flex gap-2">
+								<div className="flex flex-col sm:flex-row gap-2">
 									<Button
 										type="button"
 										size="sm"
@@ -351,7 +325,8 @@ const DialogCreateTask: FC<Props> = ({
 										className="flex-1"
 									>
 										<Check className="h-4 w-4 mr-1" />
-										Aceptar y aplicar
+										<span className="hidden sm:inline">Aceptar y aplicar</span>
+										<span className="sm:hidden">Aceptar</span>
 									</Button>
 									<Button
 										type="button"
@@ -361,13 +336,14 @@ const DialogCreateTask: FC<Props> = ({
 										className="flex-1"
 									>
 										<X className="h-4 w-4 mr-1" />
-										Descartar
+										<span className="hidden sm:inline">Descartar</span>
+										<span className="sm:hidden">Cancelar</span>
 									</Button>
 								</div>
 							</div>
 						)}
 
-						<div className="grid grid-cols-2 gap-4">
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 							<div>
 								<Label htmlFor="tipo">Tipo</Label>
 								<Select
@@ -411,7 +387,7 @@ const DialogCreateTask: FC<Props> = ({
 							</div>
 						</div>
 
-						<div className="grid grid-cols-2 gap-4">
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 							<div>
 								<Label htmlFor="estado">Estado</Label>
 								<Select
@@ -489,11 +465,19 @@ const DialogCreateTask: FC<Props> = ({
 							</div>
 						</div>
 
-						<div className="flex justify-end gap-2">
-							<Button variant="outline" onClick={() => onOpenChange(false)}>
+						<div className="flex flex-col sm:flex-row justify-end gap-2">
+							<Button 
+								variant="outline" 
+								onClick={() => onOpenChange(false)}
+								className="w-full sm:w-auto"
+							>
 								Cancelar
 							</Button>
-							<Button disabled={isEditing} onClick={handleSaveTask}>
+							<Button 
+								disabled={isEditing} 
+								onClick={handleSaveTask}
+								className="w-full sm:w-auto"
+							>
 								Guardar
 							</Button>
 						</div>
