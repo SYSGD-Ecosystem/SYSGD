@@ -279,8 +279,8 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 									label="Agrupar por"
 									value={preferences.groupBy}
 									onChange={(value) => updatePreference("groupBy", value as GroupBy)}
-									options={["none", "type", "category", "assignee"]}
-									labels={{ none: "Sin agrupación", type: "Tipo", category: "Categoría", assignee: "Asignado" }}
+									options={["none", "type", "status", "assignee"]}
+									labels={{ none: "Sin agrupación", type: "Tipo", status: "Estado", assignee: "Asignado" }}
 								/>
 							</div>
 

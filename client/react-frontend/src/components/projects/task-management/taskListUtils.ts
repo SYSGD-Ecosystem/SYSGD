@@ -3,7 +3,7 @@ import type { TaskConfig } from "./hooks/useTaskConfig";
 
 export type SortField = "status" | "created_at" | "due_date" | "name";
 export type SortDirection = "asc" | "desc";
-export type GroupBy = "none" | "type" | "category" | "assignee";
+export type GroupBy = "none" | "type" | "status" | "assignee";
 
 export type TaskListPreferences = {
 	searchTerm: string;
@@ -37,7 +37,7 @@ export const getDefaultTaskPreferences = (): TaskListPreferences => ({
 	collapsedGroups: [],
 });
 
-type TaskWithExtras = Task & { due_date?: string; category?: string };
+type TaskWithExtras = Task & { due_date?: string };
 
 const normalizeDate = (value?: string) => {
 	if (!value) return Number.POSITIVE_INFINITY;
@@ -55,8 +55,8 @@ const getGroupValue = (task: TaskWithExtras, groupBy: GroupBy) => {
 	switch (groupBy) {
 		case "type":
 			return task.type || "Sin tipo";
-		case "category":
-			return task.category || "Sin categoría";
+		case "status":
+			return task.status || "Sin estado";
 		case "assignee":
 			return getTaskAssigneeText(task);
 		default:

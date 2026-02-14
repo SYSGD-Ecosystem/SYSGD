@@ -83,9 +83,9 @@ const statusOrdered = sortTasks(
 );
 assert.deepEqual(statusOrdered.map((task) => task.status), ["En progreso", "Pendiente", "Cancelada"]);
 
-const grouped = groupTasks(tasks, { ...getDefaultTaskPreferences(), groupBy: "type" });
-assert.equal(grouped.length, 2);
-assert.equal(grouped[0].label, "Bug");
+const grouped = groupTasks(tasks, { ...getDefaultTaskPreferences(), groupBy: "status" });
+assert.equal(grouped.length, 3);
+assert.equal(grouped[0].label, "Cancelada");
 
 const storage = new Map();
 global.window = {};

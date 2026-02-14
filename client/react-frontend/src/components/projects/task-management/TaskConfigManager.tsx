@@ -15,7 +15,6 @@ import {
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
-	SelectValue,
 } from "@/components/ui/select";
 import {
 	Collapsible,
@@ -397,7 +396,7 @@ const TaskConfigManager: FC<{ projectId: string }> = ({ projectId }) => {
 								>
 									<SelectTrigger className="text-sm">
 										<div className="flex items-center gap-2">
-											{getStatusIcon("", {
+											{getStatusIcon("preview", {
 												states: [
 													{
 														name: "preview",
@@ -409,14 +408,14 @@ const TaskConfigManager: FC<{ projectId: string }> = ({ projectId }) => {
 												types: [],
 												priorities: [],
 											})}
-											<SelectValue placeholder="Icono" />
+											<span className="text-sm">{newStateIcon}</span>
 										</div>
 									</SelectTrigger>
 									<SelectContent>
 										{stateIconOptions.map((icon) => (
 											<SelectItem key={icon} value={icon}>
 												<div className="flex items-center gap-2">
-													{getStatusIcon("", {
+													{getStatusIcon("preview", {
 														states: [
 															{
 																name: "preview",
