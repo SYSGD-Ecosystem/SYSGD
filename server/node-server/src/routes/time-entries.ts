@@ -211,6 +211,153 @@ router.post("/", isAuthenticated, async (req: Request, res: Response) => {
 	}
 });
 
+router.put("/:id/pause", isAuthenticated, async (req: Request, res: Response) => {
+	const user = getCurrentUserData(req);
+	const { id } = req.params;
+
+	if (!user?.id) {
+		res.status(401).json({ error: "Usuario no autenticado" });
+		return;
+	}
+
+	try {
+		const entryResult = await pool.query(
+			"SELECT * FROM time_entries WHERE id = $1 AND user_id = $2",
+			[id, user.id],
+		);
+
+		if (entryResult.rows.length === 0) {
+			res.status(404).json({ error: "Registro no encontrado" });
+			return;
+		}
+
+		const entry = entryResult.rows[0];
+
+		if (entry.status !== "running") {
+			res.status(400).json({ error: "Solo se pueden pausar entradas en ejecución" });
+			return;
+		}
+
+		const now = new Date();
+		const startTime = new Date(entry.start_time);
+		const lastStartedAt = entry.last_started_at ? new Date(entry.last_started_at) : startTime;
+		const additionalSeconds = secondsBetween(lastStartedAt, now);
+		const totalDuration = (entry.duration_seconds || 0) + additionalSeconds;
+
+		const result = await pool.query(
+			`UPDATE time_entries 
+       SET status = 'paused', duration_seconds = $1, updated_at = $2
+       WHERE id = $3
+       RETURNING *`,
+			[totalDuration, now, id],
+		);
+
+		res.json(result.rows[0]);
+	} catch (error) {
+		console.error("Error al pausar registro de tiempo:", error);
+		res.status(500).json({ error: "Error al pausar registro de tiempo" });
+	}
+});
+
+router.put("/:id/resume", isAuthenticated, async (req: Request, res: Response) => {
+	const user = getCurrentUserData(req);
+	const { id } = req.params;
+
+	if (!user?.id) {
+		res.status(401).json({ error: "Usuario no autenticado" });
+		return;
+	}
+
+	try {
+		const entryResult = await pool.query(
+			"SELECT * FROM time_entries WHERE id = $1 AND user_id = $2",
+			[id, user.id],
+		);
+
+		if (entryResult.rows.length === 0) {
+			res.status(404).json({ error: "Registro no encontrado" });
+			return;
+		}
+
+		const entry = entryResult.rows[0];
+
+		if (entry.status !== "paused") {
+			res.status(400).json({ error: "Solo se pueden reanudar entradas pausadas" });
+			return;
+		}
+
+		const now = new Date();
+
+		const result = await pool.query(
+			`UPDATE time_entries 
+       SET status = 'running', last_started_at = $1, updated_at = $1
+       WHERE id = $2
+       RETURNING *`,
+			[now, id],
+		);
+
+		res.json(result.rows[0]);
+	} catch (error) {
+		console.error("Error al reanudar registro de tiempo:", error);
+		res.status(500).json({ error: "Error al reanudar registro de tiempo" });
+	}
+});
+
+router.put("/:id/stop", isAuthenticated, async (req: Request, res: Response) => {
+	const user = getCurrentUserData(req);
+	const { id } = req.params;
+
+	if (!user?.id) {
+		res.status(401).json({ error: "Usuario no autenticado" });
+		return;
+	}
+
+	try {
+		const entryResult = await pool.query(
+			"SELECT * FROM time_entries WHERE id = $1 AND user_id = $2",
+			[id, user.id],
+		);
+
+		if (entryResult.rows.length === 0) {
+			res.status(404).json({ error: "Registro no encontrado" });
+			return;
+		}
+
+		const entry = entryResult.rows[0];
+
+		if (entry.status === "completed") {
+			res.status(400).json({ error: "La entrada ya está finalizada" });
+			return;
+		}
+
+		const now = new Date();
+		let totalDuration = entry.duration_seconds || 0;
+
+		if (entry.status === "running" && entry.last_started_at) {
+			const lastStartedAt = new Date(entry.last_started_at);
+			const additionalSeconds = secondsBetween(lastStartedAt, now);
+			totalDuration += additionalSeconds;
+		}
+
+		const result = await pool.query(
+			`UPDATE time_entries 
+       SET status = 'completed', 
+           end_time = $1, 
+           duration_seconds = $2, 
+           last_started_at = NULL,
+           updated_at = $1
+       WHERE id = $3
+       RETURNING *`,
+			[now, totalDuration, id],
+		);
+
+		res.json(result.rows[0]);
+	} catch (error) {
+		console.error("Error al detener registro de tiempo:", error);
+		res.status(500).json({ error: "Error al detener registro de tiempo" });
+	}
+});
+
 router.delete("/:id", isAuthenticated, async (req: Request, res: Response) => {
 	const user = getCurrentUserData(req);
 	const { id } = req.params;

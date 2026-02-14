@@ -98,6 +98,7 @@ const TimeTrackingSection = ({ projectId }: TimeTrackingSectionProps) => {
 	const [isManualDialogOpen, setIsManualDialogOpen] = useState(false);
 	const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
 	const [entryToDelete, setEntryToDelete] = useState<TimeEntry | null>(null);
+	const [stoppingEntry, setStoppingEntry] = useState(false);
 	const [manualEntryForm, setManualEntryForm] = useState<ManualEntryForm>(
 		createDefaultManualForm(projectId),
 	);
@@ -159,6 +160,24 @@ const TimeTrackingSection = ({ projectId }: TimeTrackingSectionProps) => {
 		if (entry) {
 			setDescription("");
 			void refreshEntries();
+		}
+	};
+
+	const handleStopEntry = async () => {
+		if (!activeEntry) return;
+		
+		setStoppingEntry(true);
+		try {
+			const result = await stopEntry(activeEntry.id);
+			if (result) {
+				toast({ title: "Tiempo detenido" });
+				void refreshEntries();
+			}
+		} catch (error) {
+			console.error("Error al detener:", error);
+			toast({ title: "Error", description: "No se pudo detener el tiempo", variant: "destructive" });
+		} finally {
+			setStoppingEntry(false);
 		}
 	};
 
@@ -331,12 +350,16 @@ const TimeTrackingSection = ({ projectId }: TimeTrackingSectionProps) => {
 						</Button>
 						<Button
 							size="sm"
-							onClick={() => activeEntry && stopEntry(activeEntry.id)}
-							disabled={!activeEntry}
+							onClick={handleStopEntry}
+							disabled={!activeEntry || stoppingEntry}
 							variant="destructive"
 						>
-							<Square className="w-4 h-4 mr-2" />
-							Finalizar
+							{stoppingEntry ? (
+								<span className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+							) : (
+								<Square className="w-4 h-4 mr-2" />
+							)}
+							{stoppingEntry ? "Deteniendo..." : "Finalizar"}
 						</Button>
 					</div>
 				</div>
