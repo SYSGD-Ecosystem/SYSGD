@@ -1,5 +1,18 @@
-import { Filter, Plus, Search, X, User, Tag, AlertCircle } from "lucide-react";
-import { type FC, useEffect, useState } from "react";
+import {
+	ArrowDown,
+	ArrowUp,
+	ArrowUpDown,
+	AlertCircle,
+	ChevronDown,
+	ChevronRight,
+	Filter,
+	Plus,
+	Search,
+	Tag,
+	User,
+	X,
+} from "lucide-react";
+import { type FC, useEffect, useMemo, useState } from "react";
 import { useTasks } from "@/components/projects/task-management/hooks/useTask";
 import { useTaskConfig } from "@/components/projects/task-management/hooks/useTaskConfig";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +42,17 @@ import { getStatusIcon } from "@/utils/util-components";
 import DialogCreateTask from "./modals/DialogCreateTask";
 import DialogViewTask from "./modals/DialogViewTask";
 import { CreditsErrorDialog } from "./modals/CreditErrorsDialog";
+import {
+	filterTasks,
+	getDefaultTaskPreferences,
+	groupTasks,
+	loadTaskPreferences,
+	saveTaskPreferences,
+	sortTasks,
+	type GroupBy,
+	type SortField,
+	type TaskListPreferences,
+} from "./taskListUtils";
 
 const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 	const { tasks, loading, createTask, updateTask, deleteTask } =
@@ -44,82 +68,64 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 		retry,
 	} = useGemini();
 
-	useEffect(() => {
-		if (error) {
-			setShowErrorDialog(true);
-		}
-	}, [error]);
-
-	const handleCloseErrorDialog = () => {
-		setShowErrorDialog(false);
-	};
-
-	const handleRetry = async () => {
-		setShowErrorDialog(false);
-		const success = await retry();
-
-		if (!success && error) {
-			setShowErrorDialog(true);
-		}
-	};
-
-	useEffect(() => {
-		if (improvedText && !geminiIsLoading) {
-			setShowImprovedPreview(true);
-		}
-	}, [improvedText, geminiIsLoading]);
-
 	const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
 	const [selectedTask, setselectedTask] = useState<Task | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [isDialogViewOpen, setisDialogOpenDialog] = useState(false);
 	const [isEditing, setIsEditing] = useState(false);
-
-	const [searchTerm, setSearchTerm] = useState("");
-	const [filterAssignee, setFilterAssignee] = useState("todos");
-	const [filterType, setFilterType] = useState("todos");
-	const [filterPriority, setFilterPriority] = useState("todos");
-	const [filterStatus, setFilterStatus] = useState("todos");
 	const [showFilters, setShowFilters] = useState(false);
 	const [showImprovedPreview, setShowImprovedPreview] = useState(false);
+	const [preferences, setPreferences] = useState<TaskListPreferences>(() =>
+		loadTaskPreferences(project_id),
+	);
+
+	useEffect(() => {
+		setPreferences(loadTaskPreferences(project_id));
+	}, [project_id]);
+
+	useEffect(() => {
+		saveTaskPreferences(project_id, preferences);
+	}, [project_id, preferences]);
+
+	useEffect(() => {
+		if (error) setShowErrorDialog(true);
+	}, [error]);
+
+	useEffect(() => {
+		if (improvedText && !geminiIsLoading) setShowImprovedPreview(true);
+	}, [improvedText, geminiIsLoading]);
+
+	const filteredTasks = useMemo(
+		() => filterTasks(tasks, preferences),
+		[tasks, preferences],
+	);
+	const orderedTasks = useMemo(
+		() => sortTasks(filteredTasks, preferences, config),
+		[filteredTasks, preferences, config],
+	);
+	const groupedTasks = useMemo(
+		() => groupTasks(orderedTasks, preferences),
+		[orderedTasks, preferences],
+	);
 
 	const handleSaveTask = async () => {
 		if (!editingTask) return;
 		setIsEditing(true);
-
-		let success = false;
-		if (editingTask.id && editingTask.id !== "new-task") {
-			success = await updateTask(editingTask.id, editingTask);
-		} else {
-			success = await createTask(editingTask);
-		}
-
+		const success =
+			editingTask.id && editingTask.id !== "new-task"
+				? await updateTask(editingTask.id, editingTask)
+				: await createTask(editingTask);
 		if (success) {
 			setEditingTask(null);
 			setIsDialogOpen(false);
-			setIsEditing(false);
 		}
+		setIsEditing(false);
 	};
 
 	const handleEditTask = (task: Partial<Task | null>) => {
 		setEditingTask(task);
 		setisDialogOpenDialog(false);
 		setIsDialogOpen(true);
-	};
-
-	const handleDeleteConfirmed = async (taskId: string) => {
-		await deleteTask(taskId);
-		setisDialogOpenDialog(false);
-	};
-
-
-
-	const handleDialogStatusChange = async (status: string) => {
-		if (!selectedTask) return;
-		const updated = await updateTask(selectedTask.id as string, { status });
-		if (updated) {
-			setselectedTask((prev) => (prev ? { ...prev, status } : prev));
-		}
 	};
 
 	const handleAddNewTask = () => {
@@ -129,8 +135,7 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 			config?.priorities?.[0]?.name ??
 			"Media";
 		const defaultStatus = config?.states?.[0]?.name ?? "Pendiente";
-
-		const newTask: Task = {
+		setEditingTask({
 			id: "new-task",
 			type: defaultType,
 			priority: defaultPriority,
@@ -140,101 +145,91 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 			assignees: [],
 			created_at: new Date().toISOString(),
 			project_id,
-		};
-		setEditingTask(newTask);
+		});
 		setIsDialogOpen(true);
 	};
 
-	const getFilteredTasks = () => {
-		return tasks.filter((task) => {
-			const matchesSearch = task.title
-				.toLowerCase()
-				.includes(searchTerm.toLowerCase());
-			const matchesAssignee =
-				filterAssignee === "todos" ||
-				(task.assignees &&
-					task.assignees.some((a) => a.name === filterAssignee));
-			const matchesType = filterType === "todos" || task.type === filterType;
-			const matchesStatus =
-				filterStatus === "todos" || task.status === filterStatus;
-			const matchesPriority =
-				filterPriority === "todos" || task.priority === filterPriority;
+	const handleDialogStatusChange = async (status: string) => {
+		if (!selectedTask) return;
+		const updated = await updateTask(selectedTask.id as string, { status });
+		if (updated) setselectedTask((prev) => (prev ? { ...prev, status } : prev));
+	};
 
-			return (
-				matchesSearch &&
-				matchesAssignee &&
-				matchesType &&
-				matchesStatus &&
-				matchesPriority
-			);
-		});
+	const updatePreference = <K extends keyof TaskListPreferences>(
+		key: K,
+		value: TaskListPreferences[K],
+	) => {
+		setPreferences((prev) => ({ ...prev, [key]: value }));
+	};
+
+	const toggleHiddenStatus = (status: string) => {
+		setPreferences((prev) => ({
+			...prev,
+			hiddenStatuses: prev.hiddenStatuses.includes(status)
+				? prev.hiddenStatuses.filter((current) => current !== status)
+				: [...prev.hiddenStatuses, status],
+		}));
+	};
+
+	const toggleGroupCollapsed = (groupLabel: string) => {
+		setPreferences((prev) => ({
+			...prev,
+			collapsedGroups: prev.collapsedGroups.includes(groupLabel)
+				? prev.collapsedGroups.filter((label) => label !== groupLabel)
+				: [...prev.collapsedGroups, groupLabel],
+		}));
 	};
 
 	const clearFilters = () => {
-		setSearchTerm("");
-		setFilterAssignee("todos");
-		setFilterType("todos");
-		setFilterPriority("todos");
-		setFilterStatus("todos");
+		const defaults = getDefaultTaskPreferences();
+		setPreferences((prev) => ({
+			...defaults,
+			sortField: prev.sortField,
+			sortDirection: prev.sortDirection,
+			groupBy: prev.groupBy,
+		}));
 	};
 
-	const hasActiveFilters = () => {
-		return (
-			searchTerm !== "" ||
-			filterAssignee !== "todos" ||
-			filterType !== "todos" ||
-			filterPriority !== "todos" ||
-			filterStatus !== "todos"
-		);
-	};
+	const resetAllView = () => setPreferences(getDefaultTaskPreferences());
+
+	const hasActiveFilters =
+		preferences.searchTerm !== "" ||
+		preferences.assignee !== "todos" ||
+		preferences.type !== "todos" ||
+		preferences.priority !== "todos" ||
+		preferences.status !== "todos" ||
+		preferences.hiddenStatuses.length > 0;
 
 	const getUniqueAssignees = () => {
 		const allAssignees = tasks.flatMap((task) => task.assignees || []);
-		const uniqueNames = Array.from(new Set(allAssignees.map((a) => a.name)));
-		return uniqueNames;
+		return Array.from(new Set(allAssignees.map((a) => a.name)));
 	};
 
-	const getUniquePriorities = () => {
-		return [...new Set(tasks.map((task) => task.priority))];
-	};
-
-	const getUniqueStatuses = () => {
-		return [...new Set(tasks.map((task) => task.status))];
-	};
-
+	const sortDirectionIcon = preferences.sortDirection === "asc" ? ArrowUp : ArrowDown;
+	const SortDirectionIcon = sortDirectionIcon;
 
 	return (
 		<div className="bg-white h-full flex flex-col rounded-lg dark:border shadow-sm dark:bg-gray-800 dark:border-gray-700">
-			{/* Header */}
 			<div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex-none">
 				<div className="flex justify-between items-start mb-4">
 					<div>
-						<h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-							GESTIÓN DE TAREAS
-						</h1>
-						<h2 className="text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-400">
-							{tasks.length} {tasks.length === 1 ? "tarea" : "tareas"}
-						</h2>
+						<h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">GESTIÓN DE TAREAS</h1>
+						<h2 className="text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-400">{filteredTasks.length} de {tasks.length} tareas</h2>
 					</div>
-					<Button
-						onClick={handleAddNewTask}
-						size="sm"
-						className="sm:size-default"
-					>
+					<Button onClick={handleAddNewTask} size="sm" className="sm:size-default">
 						<Plus className="w-4 h-4 sm:mr-2" />
 						<span className="hidden sm:inline">Nueva Tarea</span>
 					</Button>
 				</div>
 
 				<div className="space-y-3">
-					{/* Búsqueda y Filtros */}
 					<div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
 						<div className="relative flex-1">
 							<Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
 							<Input
 								placeholder="Buscar tareas..."
-								value={searchTerm}
-								onChange={(e) => setSearchTerm(e.target.value)}
+								value={preferences.searchTerm}
+								onChange={(e) => updatePreference("searchTerm", e.target.value)}
 								className="pl-10"
 							/>
 						</div>
@@ -243,140 +238,72 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 							<Button
 								variant="outline"
 								size="sm"
-								onClick={() => setShowFilters(!showFilters)}
-								className={`flex-1 sm:flex-none ${hasActiveFilters() ? "border-blue-500 text-blue-600 dark:text-blue-400" : ""}`}
+								onClick={() => setShowFilters((prev) => !prev)}
+								className={`flex-1 sm:flex-none ${hasActiveFilters ? "border-blue-500 text-blue-600 dark:text-blue-400" : ""}`}
 							>
 								<Filter className="w-4 h-4 sm:mr-2" />
 								<span className="hidden sm:inline">Filtros</span>
-								{hasActiveFilters() && (
-									<span className="ml-1 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-										{
-											[
-												searchTerm,
-												filterAssignee !== "todos",
-												filterType !== "todos",
-												filterPriority !== "todos",
-												filterStatus !== "todos",
-											].filter(Boolean).length
-										}
-									</span>
-								)}
 							</Button>
-
-							{hasActiveFilters() && (
-								<Button
-									variant="ghost"
-									size="sm"
-									onClick={clearFilters}
-									className="hidden sm:flex"
-								>
-									<X className="w-4 h-4 mr-2" />
-									Limpiar
-								</Button>
-							)}
+							<Button variant="ghost" size="sm" onClick={resetAllView} className="hidden sm:flex">
+								<X className="w-4 h-4 mr-2" />
+								Restablecer vista
+							</Button>
 						</div>
 					</div>
 
-					{/* Panel de filtros */}
 					{showFilters && (
 						<div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700 space-y-3">
 							<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-								<div>
-									<Label className="text-xs sm:text-sm font-medium mb-1.5 block">
-										Usuario
-									</Label>
-									<Select
-										value={filterAssignee}
-										onValueChange={setFilterAssignee}
-									>
-										<SelectTrigger className="h-9">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="todos">Todos</SelectItem>
-											{getUniqueAssignees().map((assignee) => (
-												<SelectItem key={assignee} value={assignee}>
-													{assignee}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
-
-								<div>
-									<Label className="text-xs sm:text-sm font-medium mb-1.5 block">
-										Tipo
-									</Label>
-									<Select value={filterType} onValueChange={setFilterType}>
-										<SelectTrigger className="h-9">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="todos">Todos</SelectItem>
-											{config?.types?.map((type) => (
-												<SelectItem key={type.name} value={type.name}>
-													{type.name}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
-
-								<div>
-									<Label className="text-xs sm:text-sm font-medium mb-1.5 block">
-										Prioridad
-									</Label>
-									<Select
-										value={filterPriority}
-										onValueChange={setFilterPriority}
-									>
-										<SelectTrigger className="h-9">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="todos">Todas</SelectItem>
-											{getUniquePriorities().map((priority) => (
-												<SelectItem key={priority} value={priority}>
-													{priority}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
-
-								<div>
-									<Label className="text-xs sm:text-sm font-medium mb-1.5 block">
-										Estado
-									</Label>
-									<Select value={filterStatus} onValueChange={setFilterStatus}>
-										<SelectTrigger className="h-9">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="todos">Todos</SelectItem>
-											{getUniqueStatuses().map((status) => (
-												<SelectItem key={status} value={status}>
-													{status}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
+								<FilterSelect label="Usuario" value={preferences.assignee} onChange={(value) => updatePreference("assignee", value)} options={["todos", ...getUniqueAssignees()]} />
+								<FilterSelect label="Tipo" value={preferences.type} onChange={(value) => updatePreference("type", value)} options={["todos", ...(config?.types?.map((type) => type.name) || [])]} />
+								<FilterSelect label="Prioridad" value={preferences.priority} onChange={(value) => updatePreference("priority", value)} options={["todos", ...(config?.priorities?.map((priority) => priority.name) || [])]} />
+								<FilterSelect label="Estado" value={preferences.status} onChange={(value) => updatePreference("status", value)} options={["todos", ...(config?.states?.map((state) => state.name) || [])]} />
 							</div>
 
-							{/* Resumen y botón limpiar en móvil */}
+							<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+								<FilterSelect
+									label="Ordenar por"
+									value={preferences.sortField}
+									onChange={(value) => updatePreference("sortField", value as SortField)}
+									options={["status", "created_at", "due_date", "name"]}
+									labels={{ status: "Estado", created_at: "Fecha de creación", due_date: "Fecha límite", name: "Nombre" }}
+								/>
+								<div>
+									<Label className="text-xs sm:text-sm font-medium mb-1.5 block">Dirección</Label>
+									<Button variant="outline" className="w-full justify-between" onClick={() => updatePreference("sortDirection", preferences.sortDirection === "asc" ? "desc" : "asc")}> 
+										<span>{preferences.sortDirection === "asc" ? "Ascendente" : "Descendente"}</span>
+										<SortDirectionIcon className="w-4 h-4 text-blue-600" />
+									</Button>
+								</div>
+								<FilterSelect
+									label="Agrupar por"
+									value={preferences.groupBy}
+									onChange={(value) => updatePreference("groupBy", value as GroupBy)}
+									options={["none", "type", "category", "assignee"]}
+									labels={{ none: "Sin agrupación", type: "Tipo", category: "Categoría", assignee: "Asignado" }}
+								/>
+							</div>
+
+							<div className="flex flex-wrap gap-2">
+								{(config?.states || []).map((state) => (
+									<Button
+										key={state.name}
+										variant={preferences.hiddenStatuses.includes(state.name) ? "outline" : "default"}
+										size="sm"
+										onClick={() => toggleHiddenStatus(state.name)}
+									>
+										{preferences.hiddenStatuses.includes(state.name) ? `Mostrar ${state.name}` : `Ocultar ${state.name}`}
+									</Button>
+								))}
+							</div>
+
 							<div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
-								<span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-									{getFilteredTasks().length} de {tasks.length} tareas
-								</span>
-								<Button
-									variant="ghost"
-									size="sm"
-									onClick={clearFilters}
-									className="sm:hidden h-8"
-								>
-									<X className="w-3 h-3 mr-1" />
-									Limpiar
+								<div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+									<ArrowUpDown className="w-3.5 h-3.5" />
+									<span>Activo: {preferences.sortField} ({preferences.sortDirection})</span>
+								</div>
+								<Button variant="ghost" size="sm" onClick={clearFilters} className="sm:hidden h-8">
+									<X className="w-3 h-3 mr-1" />Limpiar filtros
 								</Button>
 							</div>
 						</div>
@@ -384,223 +311,96 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 				</div>
 			</div>
 
-			{/* Table */}
 			<div className="flex-grow overflow-auto">
 				<Table>
 					<TableHeader className="sticky top-0 bg-white dark:bg-gray-800 z-10">
 						<TableRow>
-							{/* Versión Desktop */}
-							<TableHead className="hidden md:table-cell text-center w-20">
-								ESTADO
-							</TableHead>
+							<TableHead className="hidden md:table-cell text-center w-20">ESTADO</TableHead>
 							<TableHead className="hidden md:table-cell">TÍTULO</TableHead>
-							<TableHead className="hidden md:table-cell text-center w-28">
-								TIPO
-							</TableHead>
-							<TableHead className="hidden md:table-cell text-center w-28">
-								PRIORIDAD
-							</TableHead>
-							<TableHead className="hidden md:table-cell text-center w-24">
-								ASIGNADO
-							</TableHead>
-
-							{/* Versión Mobile - Solo iconos */}
-
-							<TableHead className="md:hidden text-center w-12 p-2">
-								<div
-									className="flex items-center justify-center"
-									title="Estado"
-								>
-									<AlertCircle className="w-4 h-4" />
-								</div>
-							</TableHead>
+							<TableHead className="hidden md:table-cell text-center w-28">TIPO</TableHead>
+							<TableHead className="hidden md:table-cell text-center w-28">PRIORIDAD</TableHead>
+							<TableHead className="hidden md:table-cell text-center w-24">ASIGNADO</TableHead>
+							<TableHead className="md:hidden text-center w-12 p-2"><AlertCircle className="w-4 h-4 mx-auto" /></TableHead>
 							<TableHead className="md:hidden p-2">TAREA</TableHead>
-							<TableHead className="md:hidden text-center w-12 p-2">
-								<div className="flex items-center justify-center" title="Tipo">
-									<Tag className="w-4 h-4" />
-								</div>
-							</TableHead>
-							<TableHead className="md:hidden text-center w-12 p-2">
-								<div
-									className="flex items-center justify-center"
-									title="Asignado"
-								>
-									<User className="w-4 h-4" />
-								</div>
-							</TableHead>
+							<TableHead className="md:hidden text-center w-12 p-2"><Tag className="w-4 h-4 mx-auto" /></TableHead>
+							<TableHead className="md:hidden text-center w-12 p-2"><User className="w-4 h-4 mx-auto" /></TableHead>
 						</TableRow>
 					</TableHeader>
-
 					{loading ? (
+						<TableBody>{[...Array(10)].map((_, index) => <SkeletonTableRows key={index} />)}</TableBody>
+					) : orderedTasks.length === 0 ? (
 						<TableBody>
-							{[...Array(10)].map((_, index) => (
-								<SkeletonTableRows key={index} />
-							))}
-						</TableBody>
-					) : getFilteredTasks().length === 0 ? (
-						<TableBody>
-							<TableRow>
-								<TableCell
-									colSpan={5}
-									className="text-center py-8 text-muted-foreground"
-								>
-									{hasActiveFilters()
-										? "No se encontraron tareas con los filtros aplicados"
-										: "No hay tareas creadas. ¡Crea tu primera tarea!"}
-								</TableCell>
-							</TableRow>
+							<TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No se encontraron tareas con la configuración actual.</TableCell></TableRow>
 						</TableBody>
 					) : (
 						<TableBody>
-							{getFilteredTasks().map((task) => (
-								<TableRow
-									key={task.id}
-									className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50"
-									onClick={() => {
-										setselectedTask(task);
-										setEditingTask(task);
-										setisDialogOpenDialog(true);
-									}}
-								>
-							{/* Desktop Version */}
-							<TableCell className="hidden md:table-cell">
-								<div className="flex items-center justify-center">
-									{getStatusIcon(task.status, config)}
-								</div>
-							</TableCell>
-									<TableCell className="hidden md:table-cell font-medium">
-										{task.title}
-									</TableCell>
-									<TableCell className="hidden md:table-cell">
-										<div className="flex justify-center">
-											<Badge
-												variant="outline"
-												style={{
-													backgroundColor:
-														config?.types?.find((t) => t.name === task.type)
-															?.color + "20",
-													borderColor: config?.types?.find(
-														(t) => t.name === task.type,
-													)?.color,
-												}}
-											>
-												{task.type}
-											</Badge>
-										</div>
-									</TableCell>
-									<TableCell className="hidden md:table-cell">
-										<div className="flex justify-center">
-											<Badge
-												variant={getPriorityColor(task.priority)}
-												style={{
-													backgroundColor:
-														config?.priorities?.find(
-															(p) => p.name === task.priority,
-														)?.color + "20",
-													borderColor: config?.priorities?.find(
-														(p) => p.name === task.priority,
-													)?.color,
-													color: config?.priorities?.find(
-														(p) => p.name === task.priority,
-													)?.color,
-												}}
-											>
-												{task.priority}
-											</Badge>
-										</div>
-									</TableCell>
-									<TableCell className="hidden md:table-cell">
-										<div className="flex items-center justify-center gap-1">
-											{task.assignees?.slice(0, 3).map((assignee) => (
-												<div
-													key={assignee.id}
-													className="w-7 h-7 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-xs font-bold text-white border-2 border-white dark:border-gray-800 shadow-sm"
-													title={assignee?.name || assignee?.email || "Usuario"}
-												>
-													{(
-														assignee?.name?.charAt(0) ||
-														assignee?.email?.charAt(0) ||
-														"?"
-													).toUpperCase()}
+							{groupedTasks.map((group) => (
+								<>
+									{preferences.groupBy !== "none" && (
+										<TableRow key={`group-${group.key}`} className="bg-muted/40 hover:bg-muted/50">
+											<TableCell colSpan={9}>
+												<button type="button" className="flex items-center gap-2 font-semibold" onClick={() => toggleGroupCollapsed(group.label)}>
+													{group.isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />} {group.label} <span className="text-muted-foreground text-xs">({group.tasks.length})</span>
+												</button>
+											</TableCell>
+										</TableRow>
+									)}
+									{!group.isCollapsed && group.tasks.map((task) => (
+										<TableRow key={task.id} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50" onClick={() => { setselectedTask(task); setEditingTask(task); setisDialogOpenDialog(true); }}>
+											<TableCell className="hidden md:table-cell"><div className="flex items-center justify-center">{getStatusIcon(task.status, config)}</div></TableCell>
+											<TableCell className="hidden md:table-cell font-medium">{task.title}</TableCell>
+											<TableCell className="hidden md:table-cell"><div className="flex justify-center"><Badge variant="outline">{task.type}</Badge></div></TableCell>
+											<TableCell className="hidden md:table-cell"><div className="flex justify-center"><Badge variant={getPriorityColor(task.priority)}>{task.priority}</Badge></div></TableCell>
+											<TableCell className="hidden md:table-cell">
+												<div className="flex items-center justify-center gap-1">
+													{task.assignees?.slice(0, 3).map((assignee) => (
+														<div
+															key={assignee.id}
+															className="w-7 h-7 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-xs font-bold text-white border-2 border-white dark:border-gray-800 shadow-sm"
+															title={assignee?.name || assignee?.email || "Usuario"}
+														>
+															{(
+																assignee?.name?.charAt(0) ||
+																assignee?.email?.charAt(0) ||
+																"?"
+															).toUpperCase()}
+														</div>
+													))}
+													{task.assignees && task.assignees.length > 3 && (
+														<div className="w-7 h-7 bg-gray-400 rounded-full flex items-center justify-center text-xs font-bold text-white">
+															+{task.assignees.length - 3}
+														</div>
+													)}
 												</div>
-											))}
-											{task.assignees && task.assignees.length > 3 && (
-												<div className="w-7 h-7 bg-gray-400 rounded-full flex items-center justify-center text-xs font-bold text-white">
-													+{task.assignees.length - 3}
+											</TableCell>
+											<TableCell className="md:hidden p-2"><div className="flex items-center justify-center">{getStatusIcon(task.status, config)}</div></TableCell>
+											<TableCell className="md:hidden p-2"><span className="font-medium text-sm line-clamp-2">{task.title}</span></TableCell>
+											<TableCell className="md:hidden p-2 text-center">{task.type}</TableCell>
+											<TableCell className="md:hidden p-2">
+												<div className="flex items-center justify-center -space-x-1">
+													{task.assignees?.slice(0, 2).map((assignee) => (
+														<div
+															key={assignee.id}
+															className="w-6 h-6 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-xs font-bold text-white border-2 border-white dark:border-gray-800"
+															title={assignee?.name || assignee?.email || "Usuario"}
+														>
+															{(
+																assignee?.name?.charAt(0) ||
+																assignee?.email?.charAt(0) ||
+																"?"
+															).toUpperCase()}
+														</div>
+													))}
+													{task.assignees && task.assignees.length > 2 && (
+														<div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-white dark:border-gray-800">
+															+{task.assignees.length - 2}
+														</div>
+													)}
 												</div>
-											)}
-										</div>
-									</TableCell>
-
-							{/* Mobile Version */}
-							<TableCell className="md:hidden p-2">
-								<div className="flex items-center justify-center">
-									{getStatusIcon(task.status, config)}
-								</div>
-							</TableCell>
-									<TableCell className="md:hidden p-2">
-										<div className="flex flex-col gap-1">
-											<span className="font-medium text-sm line-clamp-2">
-												{task.title}
-											</span>
-											<div className="flex items-center gap-1">
-												<Badge
-													variant={getPriorityColor(task.priority)}
-													className="text-xs px-1.5 py-0"
-													style={{
-														backgroundColor:
-															config?.priorities?.find(
-																(p) => p.name === task.priority,
-															)?.color + "20",
-														borderColor: config?.priorities?.find(
-															(p) => p.name === task.priority,
-														)?.color,
-														color: config?.priorities?.find(
-															(p) => p.name === task.priority,
-														)?.color,
-													}}
-												>
-													{task.priority}
-												</Badge>
-											</div>
-										</div>
-									</TableCell>
-									<TableCell className="md:hidden p-2">
-										<div className="flex justify-center">
-											<div
-												className="w-2 h-2 rounded-full"
-												style={{
-													backgroundColor: config?.types?.find(
-														(t) => t.name === task.type,
-													)?.color,
-												}}
-												title={task.type}
-											/>
-										</div>
-									</TableCell>
-									<TableCell className="md:hidden p-2">
-										<div className="flex items-center justify-center -space-x-1">
-											{task.assignees?.slice(0, 2).map((assignee) => (
-												<div
-													key={assignee.id}
-													className="w-6 h-6 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-xs font-bold text-white border-2 border-white dark:border-gray-800"
-													title={assignee?.name || assignee?.email}
-												>
-													{(
-														assignee?.name?.charAt(0) ||
-														assignee?.email?.charAt(0) ||
-														"?"
-													).toUpperCase()}
-												</div>
-											))}
-											{task.assignees && task.assignees.length > 2 && (
-												<div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-white dark:border-gray-800">
-													+{task.assignees.length - 2}
-												</div>
-											)}
-										</div>
-									</TableCell>
-								</TableRow>
+											</TableCell>
+										</TableRow>
+									))}
+								</>
 							))}
 						</TableBody>
 					)}
@@ -630,61 +430,57 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 					onOpenChange={setisDialogOpenDialog}
 					selectedTask={selectedTask}
 					onEditChange={() => handleEditTask(editingTask)}
-					onDeleteChange={() =>
-						handleDeleteConfirmed(selectedTask.id as string)
-					}
+					onDeleteChange={() => deleteTask(selectedTask.id as string)}
 					onStatusChange={handleDialogStatusChange}
 				/>
 			)}
 
 			<CreditsErrorDialog
 				open={showErrorDialog}
-				onClose={handleCloseErrorDialog}
+				onClose={() => setShowErrorDialog(false)}
 				error={error}
-				onRetry={error?.canRetry ? handleRetry : undefined}
+				onRetry={error?.canRetry ? async () => { setShowErrorDialog(false); const success = await retry(); if (!success && error) setShowErrorDialog(true);} : undefined}
 			/>
 		</div>
 	);
 };
 
-const SkeletonTableRows: FC = () => {
-	return (
-		<TableRow>
-			<TableCell className="hidden md:table-cell">
-				<Skeleton />
-			</TableCell>
-			<TableCell className="hidden md:table-cell">
-				<Skeleton />
-			</TableCell>
-			<TableCell className="hidden md:table-cell">
-				<Skeleton />
-			</TableCell>
-			<TableCell className="hidden md:table-cell">
-				<Skeleton />
-			</TableCell>
-			<TableCell className="hidden md:table-cell">
-				<Skeleton />
-			</TableCell>
-			<TableCell className="md:hidden p-2">
-				<Skeleton />
-			</TableCell>
-			<TableCell className="md:hidden p-2">
-				<Skeleton />
-			</TableCell>
-			<TableCell className="md:hidden p-2">
-				<Skeleton />
-			</TableCell>
-			<TableCell className="md:hidden p-2">
-				<Skeleton />
-			</TableCell>
-		</TableRow>
-	);
-};
+const FilterSelect: FC<{
+	label: string;
+	value: string;
+	onChange: (value: string) => void;
+	options: string[];
+	labels?: Record<string, string>;
+}> = ({ label, value, onChange, options, labels }) => (
+	<div>
+		<Label className="text-xs sm:text-sm font-medium mb-1.5 block">{label}</Label>
+		<Select value={value} onValueChange={onChange}>
+			<SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+			<SelectContent>
+				{options.map((option) => (
+					<SelectItem key={option} value={option}>{labels?.[option] || option}</SelectItem>
+				))}
+			</SelectContent>
+		</Select>
+	</div>
+);
 
-export const Skeleton: FC = () => {
-	return (
-		<div className="w-full h-4 bg-slate-300 dark:bg-slate-600 rounded-full animate-pulse" />
-	);
-};
+const SkeletonTableRows: FC = () => (
+	<TableRow>
+		<TableCell className="hidden md:table-cell"><Skeleton /></TableCell>
+		<TableCell className="hidden md:table-cell"><Skeleton /></TableCell>
+		<TableCell className="hidden md:table-cell"><Skeleton /></TableCell>
+		<TableCell className="hidden md:table-cell"><Skeleton /></TableCell>
+		<TableCell className="hidden md:table-cell"><Skeleton /></TableCell>
+		<TableCell className="md:hidden p-2"><Skeleton /></TableCell>
+		<TableCell className="md:hidden p-2"><Skeleton /></TableCell>
+		<TableCell className="md:hidden p-2"><Skeleton /></TableCell>
+		<TableCell className="md:hidden p-2"><Skeleton /></TableCell>
+	</TableRow>
+);
+
+export const Skeleton: FC = () => (
+	<div className="w-full h-4 bg-slate-300 dark:bg-slate-600 rounded-full animate-pulse" />
+);
 
 export default TaskManagement;
