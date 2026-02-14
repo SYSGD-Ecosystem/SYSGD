@@ -139,9 +139,9 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 					) : (
 						<>
 							<div
-								className={`rounded-2xl px-4 py-2 ${
+								className={`rounded-2xl px-4 py-2 max-w-[85%] ${
 									message.sender === "me"
-										? "bg-primary text-primary-foreground"
+										? "bg-slate-700 text-white dark:bg-blue-600 dark:text-white"
 										: "bg-muted text-foreground"
 								}`}
 							>

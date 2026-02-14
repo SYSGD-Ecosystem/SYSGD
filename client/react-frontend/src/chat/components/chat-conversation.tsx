@@ -13,6 +13,7 @@ import { ChatSettings } from "./chat-settings";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useChatContext } from "../hooks/useChatContext";
+import { useSocketContext, useSocketEvents } from "../hooks/useSocket";
 
 interface ChatConversationProps {
 	chat: Conversation;
@@ -70,9 +71,51 @@ export function ChatConversation({
 
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const currentUserId = useRef<string | null>(null);
 
 	const serverUrl =
 		(import.meta.env.VITE_SERVER_URL as string) || "http://localhost:3000";
+
+	const { joinConversation, leaveConversation } = useSocketContext();
+
+	// Receive socket events
+	useSocketEvents({
+		onNewMessage: (message) => {
+			console.log("Socket: Received new message:", message);
+			if (message.conversation_id === chat.id) {
+				const currentHookMsgs = messagesMap[chat.id] ?? [];
+				setMessagesForConversation(chat.id, [...currentHookMsgs, message]);
+			}
+		},
+	});
+
+	// Get current user ID
+	useEffect(() => {
+		fetch(`${serverUrl}/api/auth/me`, { credentials: "include" })
+			.then((res) => res.json())
+			.then((data) => {
+				currentUserId.current = data?.id;
+			})
+			.catch(() => {});
+	}, [serverUrl]);
+
+	// Log socket connection status
+	useEffect(() => {
+		console.log("ChatConversation mounted, socket should connect");
+		return () => {
+			console.log("ChatConversation unmounting");
+		};
+	}, []);
+
+	// Join conversation when chat changes
+	useEffect(() => {
+		if (!chat?.id) return;
+		joinConversation(chat.id);
+
+		return () => {
+			leaveConversation(chat.id);
+		};
+	}, [chat?.id, joinConversation, leaveConversation]);
 
 	// --- Load messages from backend when chat changes ---
 	useEffect(() => {
@@ -91,14 +134,13 @@ export function ChatConversation({
 	const normalizedMessages = useMemo(() => {
 		const list = messagesMap?.[chat.id] ?? [];
 		// map backend message shape to ExtendedMessage if needed
-		const userId = (window as any).__CURRENT_USER_ID;
 		return (list as BackendMessage[]).map((m) => ({
 			id: String(m.id),
 			content: m.content ?? "",
 			sender:
 				m.sender_id === undefined || m.sender_id === null
 					? ("other" as const)
-					: m.sender_id === userId
+					: m.sender_id === currentUserId.current
 						? ("me" as const)
 						: ("other" as const),
 			timestamp: m.created_at
@@ -108,7 +150,7 @@ export function ChatConversation({
 					})
 				: "",
 			senderName:
-				m.sender_id === userId
+				m.sender_id === currentUserId.current
 					? "Tú"
 					: m.sender_name || m.sender_email || "Usuario",
 			avatar: undefined, // Backend Message doesn't have avatar field
@@ -191,16 +233,20 @@ export function ChatConversation({
 			const fd = new FormData();
 			fd.append("file", file);
 			try {
+				console.log("Uploading file:", file.name, file.type, file.size);
 				const res = await fetch(`${serverUrl}/api/uploads`, {
 					method: "POST",
 					body: fd,
 					credentials: "include",
 				});
+				console.log("Upload response status:", res.status);
 				if (!res.ok) {
 					const errorData = await res.json();
+					console.error("Upload error:", errorData);
 					throw new Error(errorData.error || "Upload failed");
 				}
 				const data = await res.json();
+				console.log("Upload success:", data);
 				return data; // { url, attachment_name, attachment_size, attachment_type, key, bucket }
 			} catch (err) {
 				console.error("uploadFile error:", err);

@@ -1,5 +1,5 @@
-import { type FC, useState } from "react";
-import { Home, Search, Users } from "lucide-react";
+import { type FC, useState, useEffect } from "react";
+import { Home, Search, Users, Wifi, WifiOff, LogOut } from "lucide-react";
 import { IoChatboxOutline } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { getEmojiFromName } from "@/utils/util";
 import type { Conversation } from "../hooks/useChat";
 import { useChatContext } from "../hooks/useChatContext";
+import { useSocketContext } from "../hooks/useSocket";
 
 interface ChatSidebarProps {
 	selectedChat?: Conversation;
@@ -18,6 +19,8 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [filter, setFilter] = useState<"all" | "private">("all");
 	const { conversations } = useChatContext();
+	const { isConnected: socketConnected } = useSocketContext();
+	const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(null);
 
 	const filteredChats = conversations.filter((chat) => {
 		const chatName = chat.title || chat.members?.[0]?.name || "";
@@ -28,6 +31,24 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 		const matchesFilter = filter === "all" || chat.type === filter;
 		return matchesSearch && matchesFilter && chat.type !== "bot";
 	});
+
+	// Get current user info
+	useEffect(() => {
+		const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+		fetch(`${serverUrl}/api/auth/me`, { credentials: "include" })
+			.then((res) => res.json())
+			.then((data) => {
+				if (data?.name || data?.email) {
+					setCurrentUser({ name: data.name || data.email, email: data.email || "" });
+				}
+			})
+			.catch(() => {});
+	}, []);
+
+	const handleLogout = () => {
+		localStorage.removeItem("token");
+		navigate("/login");
+	};
 
 	return (
 		<div className="h-full flex flex-col bg-sidebar min-w-0">
@@ -84,6 +105,52 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 						isSelected={selectedChat?.id === chat.id}
 					/>
 				))}
+			</div>
+
+			{/* Footer con estado de conexión y perfil de usuario */}
+			<div className="p-3 border-t border-sidebar-border bg-sidebar-accent/30">
+				{/* Indicador de conexión */}
+				<div className="flex items-center justify-center gap-2 mb-2">
+					<div
+						className={`w-2.5 h-2.5 rounded-full ${
+							socketConnected ? "bg-green-500 animate-pulse" : "bg-red-500"
+						}`}
+					/>
+					<span className="text-xs text-muted-foreground">
+						{socketConnected ? "Conectado" : "Desconectado"}
+					</span>
+					{socketConnected ? (
+						<Wifi className="w-3.5 h-3.5 text-green-500" />
+					) : (
+						<WifiOff className="w-3.5 h-3.5 text-red-500" />
+					)}
+				</div>
+
+				{/* Perfil de usuario */}
+				{currentUser && (
+					<div className="flex items-center gap-2 p-2 rounded-lg bg-sidebar-accent hover:bg-sidebar-accent/80 transition-colors cursor-pointer">
+						<div className="w-8 h-8 rounded-full bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground text-sm font-semibold">
+							{getEmojiFromName(currentUser.name)}
+						</div>
+						<div className="flex-1 min-w-0">
+							<p className="text-sm font-medium truncate text-sidebar-foreground">
+								{currentUser.name}
+							</p>
+							<p className="text-xs text-muted-foreground truncate">
+								{currentUser.email}
+							</p>
+						</div>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-7 w-7"
+							onClick={handleLogout}
+							title="Cerrar sesión"
+						>
+							<LogOut className="w-4 h-4" />
+						</Button>
+					</div>
+				)}
 			</div>
 		</div>
 	);

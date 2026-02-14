@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import { findUserByemail, logUserLogin } from "../services/authService";
 import { pool } from "../db";
 import { createDefaultUserData } from "../utils/billing";
+import { request } from "node:http";
 
 dotenv.config();
 
@@ -146,6 +147,7 @@ export const checkUser = async (req: Request, res: Response) => {
 export const getCurrentUser = async (req: Request, res: Response) => {
 	// 1. Estrategia Híbrida: Header 'Authorization' O Cookie 'token'
 	const authHeader = req.headers.authorization;
+	console.log("Authorization Header:", { requestHeaders: req.headers });
 	console.log("Auth Header:", {authHeader});
 	const tokenFromHeader = authHeader?.startsWith("Bearer ")
 		? authHeader.split(" ")[1]

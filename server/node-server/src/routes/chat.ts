@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { pool } from "../db";
 import { isAuthenticated } from "../middlewares/auth-jwt";
 import { getCurrentUserData } from "../controllers/users";
+import { emitNewMessage } from "../socket";
 
 const router = Router();
 
@@ -244,6 +245,14 @@ router.post("/messages/send", isAuthenticated, async (req: Request, res: Respons
     );
 
     await client.query("COMMIT");
+    
+    const messageWithSender = {
+      ...newMessage,
+      sender_email: currentUser?.email,
+      sender_name: currentUser?.name || currentUser?.email,
+    };
+    
+    emitNewMessage(conversation_id, messageWithSender);
     res.status(201).json(newMessage);
     return;
   } catch (err) {
