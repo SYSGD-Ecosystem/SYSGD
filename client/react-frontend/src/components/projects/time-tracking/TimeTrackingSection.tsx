@@ -8,6 +8,7 @@ import {
 	Plus,
 	Square,
 	Target,
+	Trash2,
 	User,
 } from "lucide-react";
 import api from "@/lib/api";
@@ -15,6 +16,15 @@ import useProjects from "@/hooks/connection/useProjects";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
 	Dialog,
 	DialogContent,
@@ -87,6 +97,7 @@ const TimeTrackingSection = ({ projectId }: TimeTrackingSectionProps) => {
 	const [description, setDescription] = useState("");
 	const [isManualDialogOpen, setIsManualDialogOpen] = useState(false);
 	const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
+	const [entryToDelete, setEntryToDelete] = useState<TimeEntry | null>(null);
 	const [manualEntryForm, setManualEntryForm] = useState<ManualEntryForm>(
 		createDefaultManualForm(projectId),
 	);
@@ -214,6 +225,26 @@ const TimeTrackingSection = ({ projectId }: TimeTrackingSectionProps) => {
 				description: "No se pudo guardar el registro manual.",
 				variant: "destructive",
 			});
+		}
+	};
+
+	const confirmDelete = async () => {
+		if (!entryToDelete) return;
+		
+		try {
+			await api.delete(`/api/time-entries/${entryToDelete.id}`);
+			toast({ title: "Registro eliminado" });
+			void refreshEntries();
+			void fetchActiveEntry();
+		} catch (error) {
+			console.error("Error al eliminar registro:", error);
+			toast({
+				title: "Error",
+				description: "No se pudo eliminar el registro.",
+				variant: "destructive",
+			});
+		} finally {
+			setEntryToDelete(null);
 		}
 	};
 
@@ -395,6 +426,14 @@ const TimeTrackingSection = ({ projectId }: TimeTrackingSectionProps) => {
 												<Edit3 className="w-4 h-4 mr-1" />
 												Editar
 											</Button>
+											<Button
+												size="sm"
+												variant="ghost"
+												onClick={() => setEntryToDelete(entry)}
+											>
+												<Trash2 className="w-4 h-4 mr-1" />
+												Eliminar
+											</Button>
 										</div>
 
 										<div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs text-gray-600 dark:text-gray-400 min-w-0">
@@ -535,6 +574,28 @@ const TimeTrackingSection = ({ projectId }: TimeTrackingSectionProps) => {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+
+			<AlertDialog open={!!entryToDelete} onOpenChange={() => setEntryToDelete(null)}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>¿Eliminar registro de tiempo?</AlertDialogTitle>
+					</AlertDialogHeader>
+					<p className="text-sm text-gray-600 dark:text-gray-400">
+						Estás a punto de eliminar el registro de tiempo de{" "}
+						<strong>{entryToDelete?.project_name || "Tiempo general"}</strong>.
+						Esta acción no se puede deshacer.
+					</p>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancelar</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={confirmDelete}
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+						>
+							Eliminar
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 };
