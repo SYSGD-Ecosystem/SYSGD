@@ -351,11 +351,53 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 											<TableCell className="hidden md:table-cell font-medium">{task.title}</TableCell>
 											<TableCell className="hidden md:table-cell"><div className="flex justify-center"><Badge variant="outline">{task.type}</Badge></div></TableCell>
 											<TableCell className="hidden md:table-cell"><div className="flex justify-center"><Badge variant={getPriorityColor(task.priority)}>{task.priority}</Badge></div></TableCell>
-											<TableCell className="hidden md:table-cell text-center">{task.assignees?.[0]?.name || "—"}</TableCell>
+											<TableCell className="hidden md:table-cell">
+												<div className="flex items-center justify-center gap-1">
+													{task.assignees?.slice(0, 3).map((assignee) => (
+														<div
+															key={assignee.id}
+															className="w-7 h-7 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-xs font-bold text-white border-2 border-white dark:border-gray-800 shadow-sm"
+															title={assignee?.name || assignee?.email || "Usuario"}
+														>
+															{(
+																assignee?.name?.charAt(0) ||
+																assignee?.email?.charAt(0) ||
+																"?"
+															).toUpperCase()}
+														</div>
+													))}
+													{task.assignees && task.assignees.length > 3 && (
+														<div className="w-7 h-7 bg-gray-400 rounded-full flex items-center justify-center text-xs font-bold text-white">
+															+{task.assignees.length - 3}
+														</div>
+													)}
+												</div>
+											</TableCell>
 											<TableCell className="md:hidden p-2"><div className="flex items-center justify-center">{getStatusIcon(task.status, config)}</div></TableCell>
 											<TableCell className="md:hidden p-2"><span className="font-medium text-sm line-clamp-2">{task.title}</span></TableCell>
 											<TableCell className="md:hidden p-2 text-center">{task.type}</TableCell>
-											<TableCell className="md:hidden p-2 text-center">{task.assignees?.[0]?.name || "—"}</TableCell>
+											<TableCell className="md:hidden p-2">
+												<div className="flex items-center justify-center -space-x-1">
+													{task.assignees?.slice(0, 2).map((assignee) => (
+														<div
+															key={assignee.id}
+															className="w-6 h-6 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-xs font-bold text-white border-2 border-white dark:border-gray-800"
+															title={assignee?.name || assignee?.email || "Usuario"}
+														>
+															{(
+																assignee?.name?.charAt(0) ||
+																assignee?.email?.charAt(0) ||
+																"?"
+															).toUpperCase()}
+														</div>
+													))}
+													{task.assignees && task.assignees.length > 2 && (
+														<div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-white dark:border-gray-800">
+															+{task.assignees.length - 2}
+														</div>
+													)}
+												</div>
+											</TableCell>
 										</TableRow>
 									))}
 								</>
