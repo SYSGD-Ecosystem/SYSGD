@@ -15,6 +15,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type {
 	Agent,
@@ -41,8 +48,32 @@ export const CreateAgentModal: FC<CreateAgentModalProps> = ({
 		description: "",
 		systemPrompt: "",
 	});
+	const [agentType, setAgentType] = useState<"openrouter" | "gemini" | "custom">(
+		"openrouter",
+	);
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const { createAgent, loading } = useAgents();
+
+	const predefinedAgents = [
+		{
+			id: "openrouter",
+			label: "OpenRouter (Multi-modelo)",
+			description: "Acceso a múltiples modelos de IA (GPT, Claude, Llama, etc.)",
+			url: "https://sysgd-production.up.railway.app/api/openrouter",
+		},
+		{
+			id: "gemini",
+			label: "Gemini (Google)",
+			description: "Modelo de Google para generación de contenido",
+			url: "https://sysgd-production.up.railway.app/api/generate",
+		},
+		{
+			id: "custom",
+			label: "Agente Personalizado",
+			description: "Usa tu propia URL de API",
+			url: "",
+		},
+	];
 
 	const supportOptions: {
 		value: AgentSupport;
@@ -70,6 +101,17 @@ export const CreateAgentModal: FC<CreateAgentModalProps> = ({
 				? [...prev.support, support]
 				: prev.support.filter((s) => s !== support),
 		}));
+	};
+
+	const handleAgentTypeChange = (type: "openrouter" | "gemini" | "custom") => {
+		setAgentType(type);
+		const agent = predefinedAgents.find((a) => a.id === type);
+		if (agent) {
+			setFormData((prev) => ({
+				...prev,
+				url: agent.url,
+			}));
+		}
 	};
 
 	const validateForm = (): boolean => {
@@ -121,19 +163,20 @@ export const CreateAgentModal: FC<CreateAgentModalProps> = ({
 	const handleClose = () => {
 		setFormData({
 			name: "",
-			url: "",
-			support: [],
+			url: "https://sysgd-production.up.railway.app/api/openrouter",
+			support: ["text"],
 			description: "",
 			systemPrompt: "",
 		});
+		setAgentType("openrouter");
 		setErrors({});
 		onOpenChange(false);
 	};
 
 	return (
 		<Dialog open={open} onOpenChange={handleClose}>
-			<DialogContent className="sm:max-w-[500px]">
-				<DialogHeader>
+			<DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto no-scrollbar">
+				<DialogHeader className="shrink-0">
 					<DialogTitle>Crear Nuevo Agente</DialogTitle>
 					<DialogDescription>
 						Configura un nuevo agente de IA que se integrará con el sistema de
@@ -141,7 +184,7 @@ export const CreateAgentModal: FC<CreateAgentModalProps> = ({
 					</DialogDescription>
 				</DialogHeader>
 
-				<form onSubmit={handleSubmit} className="space-y-4">
+				<form onSubmit={handleSubmit} className="space-y-4 pr-1">
 					<div className="space-y-2">
 						<Label htmlFor="name">Nombre del Agente</Label>
 						<Input
@@ -159,22 +202,50 @@ export const CreateAgentModal: FC<CreateAgentModalProps> = ({
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="url">URL del Agente</Label>
-						<Input
-							id="url"
-							value={formData.url}
-							onChange={(e) =>
-								setFormData((prev) => ({ ...prev, url: e.target.value }))
+						<Label>Tipo de Agente</Label>
+						<Select
+							value={agentType}
+							onValueChange={(value) =>
+								handleAgentTypeChange(value as "openrouter" | "gemini" | "custom")
 							}
-							placeholder="https://api.ejemplo.com/agent"
-							className={errors.url ? "border-red-500" : ""}
-						/>
-						{errors.url && <p className="text-sm text-red-500">{errors.url}</p>}
-						<p className="text-xs text-muted-foreground">
-							La URL debe ser un endpoint que acepte peticiones POST con el
-							formato estándar.
-						</p>
+						>
+							<SelectTrigger>
+								<SelectValue placeholder="Selecciona un tipo de agente" />
+							</SelectTrigger>
+							<SelectContent>
+								{predefinedAgents.map((agent) => (
+									<SelectItem key={agent.id} value={agent.id}>
+										<div className="flex flex-col">
+											<span>{agent.label}</span>
+											<span className="text-xs text-muted-foreground">
+												{agent.description}
+											</span>
+										</div>
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
 					</div>
+
+					{agentType === "custom" && (
+						<div className="space-y-2">
+							<Label htmlFor="url">URL del Agente</Label>
+							<Input
+								id="url"
+								value={formData.url}
+								onChange={(e) =>
+									setFormData((prev) => ({ ...prev, url: e.target.value }))
+								}
+								placeholder="https://tu-api.com/agent"
+								className={errors.url ? "border-red-500" : ""}
+							/>
+							{errors.url && <p className="text-sm text-red-500">{errors.url}</p>}
+							<p className="text-xs text-muted-foreground">
+								La URL debe ser un endpoint que acepte peticiones POST con el
+								formato estándar.
+							</p>
+						</div>
+					)}
 
 					<div className="space-y-2">
 						<Label htmlFor="systemPrompt">Instrucciones (System Prompt)</Label>
@@ -247,7 +318,7 @@ export const CreateAgentModal: FC<CreateAgentModalProps> = ({
 						/>
 					</div>
 
-					<DialogFooter>
+					<DialogFooter className="shrink-0 pt-2">
 						<Button type="button" variant="outline" onClick={handleClose}>
 							Cancelar
 						</Button>
