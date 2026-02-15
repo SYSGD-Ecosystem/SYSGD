@@ -3,6 +3,7 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	type Message as BackendMessage,
 	type Conversation,
@@ -64,6 +65,7 @@ export function ChatConversation({
 		deleteMessage,
 		setMessagesForConversation,
 		markAsRead,
+		loadingMessagesMap,
 	} = useChatContext();
 
 	const [messages, setMessages] = useState<ExtendedMessage[]>([]);
@@ -211,6 +213,8 @@ export function ChatConversation({
 			markAsRead(chat.id, last.id).catch(() => {});
 		}
 	}, [normalizedMessages, chat.id, markAsRead]);
+
+	const isLoadingMessages = loadingMessagesMap?.[chat.id] ?? false;
 
 	const scrollToBottom = useCallback(
 		(behavior: ScrollBehavior = "auto") => {
@@ -552,6 +556,22 @@ export function ChatConversation({
 			{/* Messages */}
 			<ScrollArea className="flex-1 p-4" ref={scrollRef}>
 				<div className="space-y-4 max-w-4xl mx-auto">
+					{isLoadingMessages && messages.length === 0 && (
+						<div className="space-y-4">
+							{Array.from({ length: 6 }).map((_, index) => (
+								<div
+									key={`msg-skel-${index}`}
+									className={`flex gap-3 ${index % 2 === 0 ? "" : "flex-row-reverse"}`}
+								>
+									<Skeleton className="h-8 w-8 rounded-full flex-shrink-0" />
+									<div className="max-w-[70%] space-y-2">
+										<Skeleton className="h-4 w-24 rounded-md" />
+										<Skeleton className="h-16 w-full rounded-2xl" />
+									</div>
+								</div>
+							))}
+						</div>
+					)}
 					{messages.map((message) => (
 						<ChatMessage
 							key={message.id}

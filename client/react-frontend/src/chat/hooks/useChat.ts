@@ -78,6 +78,11 @@ export function useChat() {
 	const [messagesMap, setMessagesMap] = useState<Record<string, Message[]>>({});
 	const [invitations, setInvitations] = useState<Invitation[]>([]);
 	const [loading, setLoading] = useState<boolean>(false);
+	const [loadingConversations, setLoadingConversations] =
+		useState<boolean>(false);
+	const [loadingMessagesMap, setLoadingMessagesMap] = useState<
+		Record<string, boolean>
+	>({});
 	const [error, setError] = useState<string | null>(null);
 
 	const abortControllers = useRef<Record<string, AbortController>>({});
@@ -87,6 +92,7 @@ export function useChat() {
 	// -----------------------
 
 	const fetchConversations = useCallback(async () => {
+		setLoadingConversations(true);
 		setLoading(true);
 		setError(null);
 		try {
@@ -99,6 +105,7 @@ export function useChat() {
 			throw err;
 		} finally {
 			setLoading(false);
+			setLoadingConversations(false);
 		}
 	}, []);
 
@@ -109,6 +116,7 @@ export function useChat() {
 	const fetchMessages = useCallback(async (conversationId: string) => {
 		if (!conversationId) return;
 
+		setLoadingMessagesMap((prev) => ({ ...prev, [conversationId]: true }));
 		setLoading(true);
 		setError(null);
 
@@ -139,6 +147,7 @@ export function useChat() {
 			}
 		} finally {
 			setLoading(false);
+			setLoadingMessagesMap((prev) => ({ ...prev, [conversationId]: false }));
 			delete abortControllers.current[conversationId];
 		}
 	}, []);
@@ -548,6 +557,8 @@ export function useChat() {
 		messagesMap,
 		invitations,
 		loading,
+		loadingConversations,
+		loadingMessagesMap,
 		error,
 
 		// conversation actions

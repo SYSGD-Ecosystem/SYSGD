@@ -15,6 +15,7 @@ import { ChatMessage } from "./chat-message";
 import { ChatSettings } from "./chat-settings";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -68,6 +69,7 @@ export function AgentsChatConversation({
 		deleteMessage,
 		setMessagesForConversation,
 		markAsRead,
+		loadingMessagesMap,
 	} = useChatContext();
 
 	const { sendMessageToAgent } = useAgents();
@@ -152,6 +154,8 @@ export function AgentsChatConversation({
 				: undefined,
 		}));
 	}, [messagesMap, chat.id]);
+
+	const isLoadingMessages = loadingMessagesMap?.[chat.id] ?? false;
 
 	const isConversationAdmin = useMemo(() => {
 		const userId = (window as any).__CURRENT_USER_ID;
@@ -563,6 +567,22 @@ export function AgentsChatConversation({
 			{/* Messages */}
 			<ScrollArea className="flex-1 p-4" ref={scrollRef}>
 				<div className="space-y-4 max-w-4xl mx-auto">
+					{isLoadingMessages && messages.length === 0 && (
+						<div className="space-y-4">
+							{Array.from({ length: 6 }).map((_, index) => (
+								<div
+									key={`agent-msg-skel-${index}`}
+									className={`flex gap-3 ${index % 2 === 0 ? "" : "flex-row-reverse"}`}
+								>
+									<Skeleton className="h-8 w-8 rounded-full flex-shrink-0" />
+									<div className="max-w-[70%] space-y-2">
+										<Skeleton className="h-4 w-24 rounded-md" />
+										<Skeleton className="h-16 w-full rounded-2xl" />
+									</div>
+								</div>
+							))}
+						</div>
+					)}
 					{messages.map((message) => (
 						<ChatMessage
 							key={message.id}

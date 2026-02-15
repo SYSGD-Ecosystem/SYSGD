@@ -4,6 +4,7 @@ import { IoChatboxOutline } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getEmojiFromName } from "@/utils/util";
 import type { Conversation } from "../hooks/useChat";
 import { useChatContext } from "../hooks/useChatContext";
@@ -18,7 +19,7 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 	const navigate = useNavigate();
 	const [searchQuery, setSearchQuery] = useState("");
 	const [filter, setFilter] = useState<"all" | "private">("all");
-	const { conversations } = useChatContext();
+	const { conversations, loadingConversations } = useChatContext();
 	const { isConnected: socketConnected } = useSocketContext();
 	const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(null);
 
@@ -97,14 +98,31 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 			</div>
 
 			<div className="flex-1 overflow-y-auto p-2">
-				{filteredChats.map((chat) => (
-					<ChatConversationItem
-						key={chat.id}
-						chat={chat}
-						onSelectChat={onSelectChat}
-						isSelected={selectedChat?.id === chat.id}
-					/>
-				))}
+				{loadingConversations && conversations.length === 0 ? (
+					<div className="space-y-3 px-1">
+						{Array.from({ length: 6 }).map((_, index) => (
+							<div
+								key={`chat-skeleton-${index}`}
+								className="flex items-center gap-3 rounded-lg p-2"
+							>
+								<Skeleton className="h-10 w-10 rounded-full" />
+								<div className="flex-1 space-y-2">
+									<Skeleton className="h-4 w-3/4 rounded-md" />
+									<Skeleton className="h-3 w-1/2 rounded-md" />
+								</div>
+							</div>
+						))}
+					</div>
+				) : (
+					filteredChats.map((chat) => (
+						<ChatConversationItem
+							key={chat.id}
+							chat={chat}
+							onSelectChat={onSelectChat}
+							isSelected={selectedChat?.id === chat.id}
+						/>
+					))
+				)}
 			</div>
 
 			{/* Footer con estado de conexión y perfil de usuario */}
