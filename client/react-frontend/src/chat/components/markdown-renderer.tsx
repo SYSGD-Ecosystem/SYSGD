@@ -16,7 +16,9 @@ const MarkdownRendererComponent: React.FC<MarkdownRendererProps> = ({
 	className = "",
 }) => {
 	return (
-		<div className={`prose prose-sm max-w-none dark:prose-invert ${className}`}>
+		<div
+			className={`prose prose-sm max-w-none dark:prose-invert prose-img:max-w-full prose-img:rounded-lg ${className}`}
+		>
 			<ReactMarkdown
 				remarkPlugins={[remarkGfm]}
 				rehypePlugins={[rehypeHighlight]}
@@ -43,7 +45,7 @@ const MarkdownRendererComponent: React.FC<MarkdownRendererProps> = ({
 						);
 					},
 					pre: ({ children }) => (
-						<pre className="bg-muted dark:bg-black p-3 rounded-lg max-w-prose overflow-x-auto my-2">
+						<pre className="bg-muted dark:bg-black p-3 rounded-lg max-w-full overflow-x-auto my-2">
 							{children}
 						</pre>
 					),

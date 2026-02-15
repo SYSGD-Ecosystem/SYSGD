@@ -89,7 +89,7 @@ export function AudioPlayer({ src, className = "" }: AudioPlayerProps) {
 
 	return (
 		<div
-			className={`flex items-center gap-3 p-3 bg-background/50 rounded-lg min-w-[280px] max-w-sm ${className}`}
+			className={`flex items-center gap-3 p-3 bg-background/50 rounded-lg w-full max-w-full min-w-0 ${className}`}
 		>
 			{/** biome-ignore lint/a11y/useMediaCaption: <explanation> */}
 			<audio ref={audioRef} src={src} preload="metadata" />
