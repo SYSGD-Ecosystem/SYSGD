@@ -211,6 +211,212 @@ router.post("/", isAuthenticated, async (req: Request, res: Response) => {
 	}
 });
 
+router.post("/start", isAuthenticated, async (req: Request, res: Response) => {
+	const user = getCurrentUserData(req);
+	if (!user?.id) {
+		res.status(401).json({ error: "Usuario no autenticado" });
+		return;
+	}
+
+	const userId = String(user.id);
+
+	const { project_id, task_id, description } = req.body as {
+		project_id?: string | null;
+		task_id?: string | null;
+		description?: string | null;
+	};
+
+	try {
+		const runningId = await ensureNoOtherRunningEntry(userId);
+		if (runningId) {
+			res.status(409).json({
+				error: "Ya existe un cronómetro en ejecución",
+				active_entry_id: runningId,
+			});
+			return;
+		}
+
+		const consistency = await ensureTaskProjectConsistency(
+			task_id ?? null,
+			project_id ?? null,
+		);
+		if ("error" in consistency) {
+			res.status(consistency.status).json({ error: consistency.error });
+			return;
+		}
+
+		const now = new Date();
+		const result = await pool.query(
+			`INSERT INTO time_entries (user_id, project_id, task_id, start_time, status, description, duration_seconds, last_started_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING *`,
+			[
+				userId,
+				consistency.projectId ?? null,
+				task_id ?? null,
+				now,
+				"running",
+				description ?? null,
+				0,
+				now,
+			],
+		);
+
+		res.status(201).json(result.rows[0]);
+	} catch (error) {
+		console.error("Error al iniciar registro de tiempo:", error);
+		res.status(500).json({ error: "Error al iniciar registro de tiempo" });
+	}
+});
+
+router.put("/:id", isAuthenticated, async (req: Request, res: Response) => {
+	const user = getCurrentUserData(req);
+	const { id } = req.params;
+
+	if (!user?.id) {
+		res.status(401).json({ error: "Usuario no autenticado" });
+		return;
+	}
+
+	const userId = String(user.id);
+	const entryId = String(id);
+
+	const {
+		project_id,
+		task_id,
+		description,
+		start_time,
+		end_time,
+		duration_seconds,
+		status,
+	} = req.body as {
+		project_id?: string | null;
+		task_id?: string | null;
+		description?: string | null;
+		start_time?: string;
+		end_time?: string | null;
+		duration_seconds?: number | null;
+		status?: TimeEntryStatus;
+	};
+
+	if (status && !VALID_STATUSES.includes(status)) {
+		res.status(400).json({ error: "Estado inválido" });
+		return;
+	}
+
+	try {
+		const currentResult = await pool.query(
+			"SELECT * FROM time_entries WHERE id = $1 AND user_id = $2",
+			[entryId, userId],
+		);
+
+		if (currentResult.rows.length === 0) {
+			res.status(404).json({ error: "Registro no encontrado" });
+			return;
+		}
+
+		const current = currentResult.rows[0];
+		const nextStatus: TimeEntryStatus = status ?? current.status;
+		const nextStartDate = toDate(start_time ?? current.start_time);
+		const nextEndDate = toDate(end_time === undefined ? current.end_time : end_time);
+
+		if (!nextStartDate) {
+			res.status(400).json({ error: "start_time inválido" });
+			return;
+		}
+
+		if (end_time && !nextEndDate) {
+			res.status(400).json({ error: "end_time inválido" });
+			return;
+		}
+
+		if (nextEndDate && nextEndDate < nextStartDate) {
+			res
+				.status(400)
+				.json({ error: "end_time no puede ser anterior a start_time" });
+			return;
+		}
+
+		if (
+			duration_seconds !== undefined &&
+			duration_seconds !== null &&
+			(!Number.isInteger(duration_seconds) || duration_seconds < 0)
+		) {
+			res.status(400).json({ error: "duration_seconds debe ser entero >= 0" });
+			return;
+		}
+
+		const nextTaskId = task_id === undefined ? current.task_id : task_id;
+		const requestedProjectId =
+			project_id === undefined ? current.project_id : project_id;
+		const consistency = await ensureTaskProjectConsistency(
+			nextTaskId,
+			requestedProjectId,
+		);
+		if ("error" in consistency) {
+			res.status(consistency.status).json({ error: consistency.error });
+			return;
+		}
+
+		if (nextStatus === "running") {
+			const runningId = await ensureNoOtherRunningEntry(userId, entryId);
+			if (runningId) {
+				res.status(409).json({
+					error: "Ya existe un cronómetro en ejecución",
+					active_entry_id: runningId,
+				});
+				return;
+			}
+		}
+
+		if (nextStatus !== "completed" && nextEndDate) {
+			res
+				.status(400)
+				.json({ error: "Solo registros completed pueden tener end_time" });
+			return;
+		}
+
+		const nextDuration =
+			duration_seconds ??
+			(nextEndDate
+				? secondsBetween(nextStartDate, nextEndDate)
+				: current.duration_seconds ?? 0);
+
+		const now = new Date();
+		const updateResult = await pool.query(
+			`UPDATE time_entries
+        SET project_id = $1,
+            task_id = $2,
+            start_time = $3,
+            end_time = $4,
+            duration_seconds = $5,
+            status = $6,
+            description = $7,
+            last_started_at = $8,
+            updated_at = $9
+        WHERE id = $10
+        RETURNING *`,
+			[
+				consistency.projectId ?? null,
+				nextTaskId,
+				nextStartDate,
+				nextStatus === "completed" ? nextEndDate : null,
+				nextDuration,
+				nextStatus,
+				description === undefined ? current.description : description,
+				nextStatus === "running" ? now : null,
+				now,
+				entryId,
+			],
+		);
+
+		res.json(updateResult.rows[0]);
+	} catch (error) {
+		console.error("Error al actualizar registro de tiempo:", error);
+		res.status(500).json({ error: "Error al actualizar registro de tiempo" });
+	}
+});
+
 router.put("/:id/pause", isAuthenticated, async (req: Request, res: Response) => {
 	const user = getCurrentUserData(req);
 	const { id } = req.params;
@@ -234,158 +440,147 @@ router.put("/:id/pause", isAuthenticated, async (req: Request, res: Response) =>
 		const entry = entryResult.rows[0];
 
 		if (entry.status !== "running") {
-			res.status(400).json({ error: "Solo se pueden pausar entradas en ejecución" });
+			res.status(400).json({ error: "El cronómetro no está en ejecución" });
 			return;
 		}
 
 		const now = new Date();
-		const startTime = new Date(entry.start_time);
-		const lastStartedAt = entry.last_started_at ? new Date(entry.last_started_at) : startTime;
+		const lastStartedAt = new Date(entry.last_started_at || entry.start_time);
 		const additionalSeconds = secondsBetween(lastStartedAt, now);
-		const totalDuration = (entry.duration_seconds || 0) + additionalSeconds;
+		const durationSeconds = (entry.duration_seconds || 0) + additionalSeconds;
 
-		const result = await pool.query(
-			`UPDATE time_entries 
-       SET status = 'paused', duration_seconds = $1, updated_at = $2
+		const updateResult = await pool.query(
+			`UPDATE time_entries
+       SET status = 'paused',
+           duration_seconds = $1,
+           last_started_at = NULL,
+           updated_at = $2
        WHERE id = $3
        RETURNING *`,
-			[totalDuration, now, id],
+			[durationSeconds, now, id],
 		);
 
-		res.json(result.rows[0]);
+		res.json(updateResult.rows[0]);
 	} catch (error) {
 		console.error("Error al pausar registro de tiempo:", error);
 		res.status(500).json({ error: "Error al pausar registro de tiempo" });
 	}
 });
 
-router.put("/:id/resume", isAuthenticated, async (req: Request, res: Response) => {
-	const user = getCurrentUserData(req);
-	const { id } = req.params;
+router.put(
+	"/:id/resume",
+	isAuthenticated,
+	async (req: Request, res: Response) => {
+		const user = getCurrentUserData(req);
+		const { id } = req.params;
 
-	if (!user?.id) {
-		res.status(401).json({ error: "Usuario no autenticado" });
-		return;
-	}
-
-	try {
-		const entryResult = await pool.query(
-			"SELECT * FROM time_entries WHERE id = $1 AND user_id = $2",
-			[id, user.id],
-		);
-
-		if (entryResult.rows.length === 0) {
-			res.status(404).json({ error: "Registro no encontrado" });
+		if (!user?.id) {
+			res.status(401).json({ error: "Usuario no autenticado" });
 			return;
 		}
 
-		const entry = entryResult.rows[0];
+		try {
+			const entryResult = await pool.query(
+				"SELECT * FROM time_entries WHERE id = $1 AND user_id = $2",
+				[id, user.id],
+			);
 
-		if (entry.status !== "paused") {
-			res.status(400).json({ error: "Solo se pueden reanudar entradas pausadas" });
-			return;
-		}
+			if (entryResult.rows.length === 0) {
+				res.status(404).json({ error: "Registro no encontrado" });
+				return;
+			}
 
-		const now = new Date();
+			const entry = entryResult.rows[0];
 
-		const result = await pool.query(
-			`UPDATE time_entries 
-       SET status = 'running', last_started_at = $1, updated_at = $1
+			if (entry.status !== "paused") {
+				res.status(400).json({ error: "El cronómetro no está pausado" });
+				return;
+			}
+
+			const runningId = await ensureNoOtherRunningEntry(String(user.id), String(id));
+			if (runningId) {
+				res.status(409).json({
+					error: "Ya existe un cronómetro en ejecución",
+					active_entry_id: runningId,
+				});
+				return;
+			}
+
+			const now = new Date();
+			const updateResult = await pool.query(
+				`UPDATE time_entries
+       SET status = 'running',
+           last_started_at = $1,
+           updated_at = $1
        WHERE id = $2
        RETURNING *`,
-			[now, id],
-		);
+				[now, id],
+			);
 
-		res.json(result.rows[0]);
-	} catch (error) {
-		console.error("Error al reanudar registro de tiempo:", error);
-		res.status(500).json({ error: "Error al reanudar registro de tiempo" });
-	}
-});
+			res.json(updateResult.rows[0]);
+		} catch (error) {
+			console.error("Error al reanudar registro de tiempo:", error);
+			res.status(500).json({ error: "Error al reanudar registro de tiempo" });
+		}
+	},
+);
 
-router.put("/:id/stop", isAuthenticated, async (req: Request, res: Response) => {
-	const user = getCurrentUserData(req);
-	const { id } = req.params;
+router.put(
+	"/:id/stop",
+	isAuthenticated,
+	async (req: Request, res: Response) => {
+		const user = getCurrentUserData(req);
+		const { id } = req.params;
 
-	if (!user?.id) {
-		res.status(401).json({ error: "Usuario no autenticado" });
-		return;
-	}
-
-	try {
-		const entryResult = await pool.query(
-			"SELECT * FROM time_entries WHERE id = $1 AND user_id = $2",
-			[id, user.id],
-		);
-
-		if (entryResult.rows.length === 0) {
-			res.status(404).json({ error: "Registro no encontrado" });
+		if (!user?.id) {
+			res.status(401).json({ error: "Usuario no autenticado" });
 			return;
 		}
 
-		const entry = entryResult.rows[0];
+		try {
+			const entryResult = await pool.query(
+				"SELECT * FROM time_entries WHERE id = $1 AND user_id = $2",
+				[id, user.id],
+			);
 
-		if (entry.status === "completed") {
-			res.status(400).json({ error: "La entrada ya está finalizada" });
-			return;
-		}
+			if (entryResult.rows.length === 0) {
+				res.status(404).json({ error: "Registro no encontrado" });
+				return;
+			}
 
-		const now = new Date();
-		let totalDuration = entry.duration_seconds || 0;
+			const entry = entryResult.rows[0];
 
-		if (entry.status === "running" && entry.last_started_at) {
-			const lastStartedAt = new Date(entry.last_started_at);
-			const additionalSeconds = secondsBetween(lastStartedAt, now);
-			totalDuration += additionalSeconds;
-		}
+			if (entry.status === "completed") {
+				res.status(400).json({ error: "El cronómetro ya está finalizado" });
+				return;
+			}
 
-		const result = await pool.query(
-			`UPDATE time_entries 
-       SET status = 'completed', 
-           end_time = $1, 
-           duration_seconds = $2, 
+			const now = new Date();
+			const lastStartedAt = new Date(entry.last_started_at || entry.start_time);
+			const additionalSeconds =
+				entry.status === "running" ? secondsBetween(lastStartedAt, now) : 0;
+			const durationSeconds =
+				(entry.duration_seconds || 0) + additionalSeconds;
+
+			const updateResult = await pool.query(
+				`UPDATE time_entries
+       SET status = 'completed',
+           duration_seconds = $1,
+           end_time = $2,
            last_started_at = NULL,
-           updated_at = $1
+           updated_at = $2
        WHERE id = $3
        RETURNING *`,
-			[now, totalDuration, id],
-		);
+				[durationSeconds, now, id],
+			);
 
-		res.json(result.rows[0]);
-	} catch (error) {
-		console.error("Error al detener registro de tiempo:", error);
-		res.status(500).json({ error: "Error al detener registro de tiempo" });
-	}
-});
-
-router.delete("/:id", isAuthenticated, async (req: Request, res: Response) => {
-	const user = getCurrentUserData(req);
-	const { id } = req.params;
-
-	if (!user?.id) {
-		res.status(401).json({ error: "Usuario no autenticado" });
-		return;
-	}
-
-	try {
-		const entryResult = await pool.query(
-			"SELECT * FROM time_entries WHERE id = $1 AND user_id = $2",
-			[id, user.id],
-		);
-
-		if (entryResult.rows.length === 0) {
-			res.status(404).json({ error: "Registro no encontrado" });
-			return;
+			res.json(updateResult.rows[0]);
+		} catch (error) {
+			console.error("Error al finalizar registro de tiempo:", error);
+			res.status(500).json({ error: "Error al finalizar registro de tiempo" });
 		}
-
-		await pool.query("DELETE FROM time_entries WHERE id = $1", [id]);
-
-		res.json({ message: "Registro eliminado" });
-	} catch (error) {
-		console.error("Error al eliminar registro de tiempo:", error);
-		res.status(500).json({ error: "Error al eliminar registro de tiempo" });
-	}
-});
+	},
+);
 
 router.get("/", isAuthenticated, async (req: Request, res: Response) => {
 	const user = getCurrentUserData(req);
@@ -477,6 +672,35 @@ router.get("/", isAuthenticated, async (req: Request, res: Response) => {
 		console.error("Error al obtener registros de tiempo:", error);
 		res.status(500).json({ error: "Error al obtener registros de tiempo" });
 	}
+});
+
+router.delete("/:id", isAuthenticated, async (req: Request, res: Response) => {
+    const user = getCurrentUserData(req);
+    const { id } = req.params;
+
+    if (!user?.id) {
+        res.status(401).json({ error: "Usuario no autenticado" });
+        return;
+    }
+
+    try {
+        const entryResult = await pool.query(
+            "SELECT * FROM time_entries WHERE id = $1 AND user_id = $2",
+            [id, user.id],
+        );
+
+        if (entryResult.rows.length === 0) {
+            res.status(404).json({ error: "Registro no encontrado" });
+            return;
+        }
+
+        await pool.query("DELETE FROM time_entries WHERE id = $1", [id]);
+
+        res.status(204).send();
+    } catch (error) {
+        console.error("Error al eliminar registro de tiempo:", error);
+        res.status(500).json({ error: "Error al eliminar registro de tiempo" });
+    }
 });
 
 export default router;
