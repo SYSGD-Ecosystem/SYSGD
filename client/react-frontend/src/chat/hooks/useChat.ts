@@ -469,7 +469,7 @@ export function useChat() {
 			try {
 				await api.delete(`/api/chat/messages/${messageId}`);
 
-				let nextList: Message[] | null = null;
+				let nextList: Message[] = [];
 				setMessagesMap((prev) => {
 					const list = prev[conversationId] ?? [];
 					nextList = list.filter((m) => String(m.id) !== String(messageId));
