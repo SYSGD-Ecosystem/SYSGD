@@ -358,6 +358,58 @@ export function useChat() {
 	}, []);
 
 	// -----------------------
+	// Eliminar mensaje
+	// -----------------------
+	const deleteMessage = useCallback(
+		async (conversationId: string, messageId: string) => {
+			setError(null);
+
+			if (!conversationId || !messageId) {
+				throw new Error("conversationId y messageId requeridos");
+			}
+
+			try {
+				await api.delete(`/api/chat/messages/${messageId}`);
+
+				let nextList: Message[] | null = null;
+				setMessagesMap((prev) => {
+					const list = prev[conversationId] ?? [];
+					nextList = list.filter((m) => String(m.id) !== String(messageId));
+					return { ...prev, [conversationId]: nextList };
+				});
+
+				if (nextList) {
+					setConversations((prev) =>
+						prev.map((c) => {
+							if (c.id !== conversationId) return c;
+							if (c.last_message?.id !== messageId) return c;
+							const last = nextList[nextList.length - 1];
+							return {
+								...c,
+								last_message: last
+									? {
+											id: last.id,
+											content: last.content ?? null,
+											sender_id: last.sender_id ?? null,
+											created_at: last.created_at ?? null,
+										}
+									: null,
+							};
+						}),
+					);
+				}
+
+				return true;
+			} catch (err: any) {
+				const msg = getErrorMessage(err, "Error al eliminar mensaje");
+				setError(msg);
+				throw err;
+			}
+		},
+		[],
+	);
+
+	// -----------------------
 	// Utilidades y helpers
 	// -----------------------
 	const setMessagesForConversation = useCallback(
@@ -408,6 +460,7 @@ export function useChat() {
 		// message actions
 		fetchMessages,
 		sendMessage,
+		deleteMessage,
 		setMessagesForConversation,
 
 		// invitations

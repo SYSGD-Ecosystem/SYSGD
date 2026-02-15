@@ -14,6 +14,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useChatContext } from "../hooks/useChatContext";
 import { useSocketContext, useSocketEvents } from "../hooks/useSocket";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ChatConversationProps {
 	chat: Conversation;
@@ -51,6 +61,7 @@ export function ChatConversation({
 		fetchMessages,
 		messagesMap,
 		sendMessage,
+		deleteMessage,
 		setMessagesForConversation,
 		markAsRead,
 	} = useChatContext();
@@ -66,12 +77,14 @@ export function ChatConversation({
 		null,
 	);
 	const [sending, setSending] = useState(false);
+	const [messageToDelete, setMessageToDelete] =
+		useState<ExtendedMessage | null>(null);
 	const [anErrorOcurred, setAnErrorOcurred] = useState(false);
 	const { toast } = useToast();
 
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
-	const currentUserId = useRef<string | null>(null);
+	const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
 	const serverUrl =
 		(import.meta.env.VITE_SERVER_URL as string) || "http://localhost:3000";
@@ -94,7 +107,7 @@ export function ChatConversation({
 		fetch(`${serverUrl}/api/auth/me`, { credentials: "include" })
 			.then((res) => res.json())
 			.then((data) => {
-				currentUserId.current = data?.id;
+				setCurrentUserId(data?.id ?? null);
 			})
 			.catch(() => {});
 	}, [serverUrl]);
@@ -140,7 +153,7 @@ export function ChatConversation({
 			sender:
 				m.sender_id === undefined || m.sender_id === null
 					? ("other" as const)
-					: m.sender_id === currentUserId.current
+					: m.sender_id === currentUserId
 						? ("me" as const)
 						: ("other" as const),
 			timestamp: m.created_at
@@ -150,7 +163,7 @@ export function ChatConversation({
 					})
 				: "",
 			senderName:
-				m.sender_id === currentUserId.current
+				m.sender_id === currentUserId
 					? "Tú"
 					: m.sender_name || m.sender_email || "Usuario",
 			avatar: undefined, // Backend Message doesn't have avatar field
@@ -170,7 +183,21 @@ export function ChatConversation({
 					}
 				: undefined,
 		}));
-	}, [messagesMap, chat.id]);
+	}, [messagesMap, chat.id, currentUserId]);
+
+	const isConversationAdmin = useMemo(() => {
+		if (!currentUserId) return false;
+		return (
+			chat.members?.some(
+				(member) => member.id === currentUserId && member.role === "admin",
+			) ?? false
+		);
+	}, [chat.members, currentUserId]);
+
+	const isConversationCreator = useMemo(() => {
+		if (!currentUserId) return false;
+		return chat.created_by === currentUserId;
+	}, [chat.created_by, currentUserId]);
 
 	// Update local messages state when normalized messages change
 	useEffect(() => {
@@ -426,11 +453,23 @@ export function ChatConversation({
 		setEditingContent(message.content);
 	}, []);
 
-	const handleDelete = useCallback((messageId: string) => {
-		// no backend delete implemented in endpoints — do local remove for now
-		setMessages((prev) => prev.filter((m) => m.id !== messageId));
-		// note: if you implement backend delete, call it here and refresh hook messages
+	const handleDelete = useCallback((message: ExtendedMessage) => {
+		setMessageToDelete(message);
 	}, []);
+
+	const handleConfirmDelete = useCallback(async () => {
+		if (!messageToDelete) return;
+		try {
+			await deleteMessage(chat.id, messageToDelete.id);
+			setMessageToDelete(null);
+		} catch (err: any) {
+			const msg =
+				err?.response?.data?.error ||
+				err?.message ||
+				"Error al eliminar mensaje";
+			toast({ variant: "destructive", title: "Error", description: msg });
+		}
+	}, [deleteMessage, chat.id, messageToDelete, toast]);
 
 	const handleCopy = useCallback((content: string) => {
 		navigator.clipboard.writeText(content);
@@ -487,11 +526,36 @@ export function ChatConversation({
 							onSaveEdit={handleSaveEdit}
 							onCancelEdit={handleCancelEdit}
 							onEditingContentChange={handleSetEditingContent}
+							canDelete={
+								message.sender === "me" ||
+								isConversationAdmin ||
+								isConversationCreator
+							}
 						/>
 					))}
 
 				</div>
 			</ScrollArea>
+
+			<AlertDialog
+				open={!!messageToDelete}
+				onOpenChange={(open) => !open && setMessageToDelete(null)}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>¿Eliminar mensaje?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Esta acción no se puede deshacer.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancelar</AlertDialogCancel>
+						<AlertDialogAction onClick={handleConfirmDelete}>
+							Eliminar
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 
 			{/* Input */}
 			<div className="border-t border-border p-4 bg-card">

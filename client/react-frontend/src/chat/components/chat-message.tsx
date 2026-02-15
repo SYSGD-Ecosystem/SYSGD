@@ -17,11 +17,12 @@ interface ChatMessageProps {
 	onHover: (id: string | null) => void;
 	onReply: (message: ExtendedMessage) => void;
 	onEdit: (message: ExtendedMessage) => void;
-	onDelete: (messageId: string) => void;
+	onDelete: (message: ExtendedMessage) => void;
 	onCopy: (content: string) => void;
 	onSaveEdit: (messageId: string) => void;
 	onCancelEdit: () => void;
 	onEditingContentChange: (content: string) => void;
+	canDelete: boolean;
 }
 
 const ChatMessageComponent: React.FC<ChatMessageProps> = ({
@@ -37,6 +38,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 	onSaveEdit,
 	onCancelEdit,
 	onEditingContentChange,
+	canDelete,
 }) => {
 	const renderMessageContent = (msg: ExtendedMessage) => {
 		if (msg.attachment) {
@@ -184,9 +186,10 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 									<MessageActions
 										onReply={() => onReply(message)}
 										onEdit={() => onEdit(message)}
-										onDelete={() => onDelete(message.id)}
+										onDelete={() => onDelete(message)}
 										onCopy={() => onCopy(message.content)}
 										isOwnMessage={message.sender === "me"}
+										canDelete={canDelete}
 									/>
 								</div>
 							)}

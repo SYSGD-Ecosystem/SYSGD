@@ -20,6 +20,7 @@ const router = Router();
  * Mensajes:
  * - /messages/:conversationId      -> obtener mensajes (solo miembros)
  * - /messages/send                 -> enviar mensaje (solo miembros)
+ * - /messages/:messageId (DELETE)  -> eliminar mensaje (autor/admin/creador)
  */
 
 /* -----------------------
@@ -265,6 +266,69 @@ router.post("/messages/send", isAuthenticated, async (req: Request, res: Respons
   }
 });
 
+router.delete("/messages/:messageId", isAuthenticated, async (req: Request, res: Response) => {
+  const { messageId } = req.params;
+  const currentUser = getCurrentUserData(req);
+  const authUserId = currentUser?.id;
+
+  if (!authUserId) {
+    res.status(401).json({ error: "Usuario no autenticado" });
+    return;
+  }
+
+  if (!messageId) {
+    res.status(400).json({ error: "messageId requerido" });
+    return;
+  }
+
+  try {
+    const msgRes = await pool.query(
+      `SELECT id, conversation_id, sender_id FROM messages WHERE id = $1`,
+      [messageId]
+    );
+
+    if (msgRes.rowCount === 0) {
+      res.status(404).json({ error: "Mensaje no encontrado" });
+      return;
+    }
+
+    const message = msgRes.rows[0];
+
+    const membership = await pool.query(
+      `SELECT role FROM conversation_members WHERE conversation_id = $1 AND user_id = $2`,
+      [message.conversation_id, authUserId]
+    );
+
+    if (membership.rowCount === 0) {
+      res.status(403).json({ error: "No es miembro de la conversación" });
+      return;
+    }
+
+    const isAdmin = membership.rows[0].role === "admin";
+
+    const convRes = await pool.query(
+      `SELECT created_by FROM conversations WHERE id = $1`,
+      [message.conversation_id]
+    );
+    const isCreator = convRes.rows[0]?.created_by === authUserId;
+    const isSender = message.sender_id === authUserId;
+
+    if (!isSender && !isAdmin && !isCreator) {
+      res.status(403).json({ error: "Sin permisos para eliminar este mensaje" });
+      return;
+    }
+
+    await pool.query(`DELETE FROM messages WHERE id = $1`, [messageId]);
+
+    res.json({ deleted: true, id: messageId });
+    return;
+  } catch (err) {
+    console.error("Error eliminar mensaje:", err);
+    res.status(500).json({ error: "Error al eliminar mensaje" });
+    return;
+  }
+});
+
 /* -----------------------
    Crear conversación
    ----------------------- */
@@ -340,11 +404,12 @@ router.post("/conversations/create", isAuthenticated, async (req: Request, res: 
     );
     const conversationId = convRes.rows[0].id;
 
-    // Insertar miembros
+    // Insertar miembros (creador como admin)
     for (const uid of memberIds) {
+      const role = uid === authUserId ? "admin" : "member";
       await client.query(
-        `INSERT INTO conversation_members (conversation_id, user_id, role, joined_at) VALUES ($1, $2, 'member', NOW()) ON CONFLICT DO NOTHING;`,
-        [conversationId, uid]
+        `INSERT INTO conversation_members (conversation_id, user_id, role, joined_at) VALUES ($1, $2, $3, NOW()) ON CONFLICT DO NOTHING;`,
+        [conversationId, uid, role]
       );
     }
 
