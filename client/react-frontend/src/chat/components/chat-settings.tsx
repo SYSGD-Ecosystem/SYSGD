@@ -292,7 +292,7 @@ export function ChatSettings({ open, onOpenChange, chat }: ChatSettingsProps) {
 					</div>
 
 					{/* Sound Settings */}
-					<div className="space-y-4">
+					<div className="space-y-4 hidden">
 						<div className="flex items-center justify-between">
 							<div className="flex items-center gap-2">
 								<Volume2 className="h-5 w-5 text-muted-foreground" />
@@ -349,7 +349,7 @@ export function ChatSettings({ open, onOpenChange, chat }: ChatSettingsProps) {
 					</div>
 
 					{/* Notification Settings */}
-					<div className="flex items-center justify-between">
+					<div className="flex items-center justify-between hidden">
 						<div className="flex items-center gap-2">
 							<Bell className="h-5 w-5 text-muted-foreground" />
 							<Label htmlFor="notifications" className="text-base">
@@ -364,7 +364,7 @@ export function ChatSettings({ open, onOpenChange, chat }: ChatSettingsProps) {
 					</div>
 
 					{/* Message Settings */}
-					<div className="flex items-center justify-between">
+					<div className="items-center justify-between hidden">
 						<div className="flex items-center gap-2">
 							<MessageSquare className="h-5 w-5 text-muted-foreground" />
 							<Label htmlFor="read-receipts" className="text-base">
