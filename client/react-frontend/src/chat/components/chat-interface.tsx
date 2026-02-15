@@ -52,7 +52,11 @@ export function ChatInterface() {
 	useEffect(() => {
 		if (!selectedChat) return;
 		const updated = conversations.find((c) => c.id === selectedChat.id);
-		if (updated && updated !== selectedChat) {
+		if (!updated) {
+			setSelectedChat(undefined);
+			return;
+		}
+		if (updated !== selectedChat) {
 			setSelectedChat(updated);
 		}
 	}, [conversations, selectedChat]);

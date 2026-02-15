@@ -13,6 +13,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useChatContext } from "../hooks/useChatContext";
 import type { Conversation } from "../hooks/useChat";
 import { useToast } from "@/hooks/use-toast";
@@ -33,11 +43,13 @@ export function ChatSettings({ open, onOpenChange, chat }: ChatSettingsProps) {
 	const [memberEmail, setMemberEmail] = useState("");
 	const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 	const [saving, setSaving] = useState(false);
+	const [deleteOpen, setDeleteOpen] = useState(false);
 	const { toast } = useToast();
 	const {
 		updateConversationTitle,
 		addConversationMember,
 		removeConversationMember,
+		deleteConversation,
 		fetchCurrentUser,
 	} = useChatContext();
 
@@ -57,6 +69,11 @@ export function ChatSettings({ open, onOpenChange, chat }: ChatSettingsProps) {
 		const isCreator = chat.created_by === currentUserId;
 		return isAdmin || isCreator;
 	}, [chat.members, chat.created_by, currentUserId]);
+
+	const canDeleteConversation = useMemo(() => {
+		if (!currentUserId) return false;
+		return chat.created_by === currentUserId;
+	}, [chat.created_by, currentUserId]);
 
 	const handleSaveTitle = async () => {
 		if (!canManage) return;
@@ -113,6 +130,28 @@ export function ChatSettings({ open, onOpenChange, chat }: ChatSettingsProps) {
 					err?.response?.data?.error ||
 					err?.message ||
 					"No se pudo eliminar miembro",
+			});
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const handleDeleteConversation = async () => {
+		if (!canDeleteConversation) return;
+		setSaving(true);
+		try {
+			await deleteConversation(chat.id);
+			setDeleteOpen(false);
+			onOpenChange(false);
+			toast({ title: "Conversación eliminada" });
+		} catch (err: any) {
+			toast({
+				variant: "destructive",
+				title: "Error",
+				description:
+					err?.response?.data?.error ||
+					err?.message ||
+					"No se pudo eliminar la conversación",
 			});
 		} finally {
 			setSaving(false);
@@ -219,6 +258,37 @@ export function ChatSettings({ open, onOpenChange, chat }: ChatSettingsProps) {
 								)}
 							</div>
 						</div>
+
+						{canDeleteConversation && (
+							<div className="pt-2">
+								<AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+									<Button
+										type="button"
+										variant="destructive"
+										disabled={saving}
+										onClick={() => setDeleteOpen(true)}
+									>
+										Eliminar conversación
+									</Button>
+									<AlertDialogContent>
+										<AlertDialogHeader>
+											<AlertDialogTitle>
+												¿Eliminar conversación?
+											</AlertDialogTitle>
+											<AlertDialogDescription>
+												Esta acción no se puede deshacer.
+											</AlertDialogDescription>
+										</AlertDialogHeader>
+										<AlertDialogFooter>
+											<AlertDialogCancel>Cancelar</AlertDialogCancel>
+											<AlertDialogAction onClick={handleDeleteConversation}>
+												Eliminar
+											</AlertDialogAction>
+										</AlertDialogFooter>
+									</AlertDialogContent>
+								</AlertDialog>
+							</div>
+						)}
 					</div>
 
 					{/* Sound Settings */}
