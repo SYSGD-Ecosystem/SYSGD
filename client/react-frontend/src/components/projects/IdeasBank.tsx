@@ -41,6 +41,7 @@ const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 	const [editingIdea, setEditingIdea] = useState<Partial<Idea> | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [filterStatus, setFilterStatus] = useState("Todas");
+	const [viewingIdea, setViewingIdea] = useState<Idea | null>(null);
 
 	const statuses = [
 		"Todas",
@@ -247,7 +248,36 @@ const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 							<CardContent className="space-y-4">
 								<div>
 									<div className="prose prose-lg dark:prose-invert max-w-none">
-										<ReactMarkdown>{idea.description}</ReactMarkdown>
+										<div
+											role="button"
+											tabIndex={0}
+											onClick={() => setViewingIdea(idea)}
+											onKeyDown={(e) => {
+												if (e.key === "Enter" || e.key === " ") {
+													e.preventDefault();
+													setViewingIdea(idea);
+												}
+											}}
+											style={{
+												display: "-webkit-box",
+												WebkitLineClamp: 4,
+												WebkitBoxOrient: "vertical",
+												overflow: "hidden",
+											}}
+											className="cursor-pointer text-foreground/90 hover:text-foreground transition-colors"
+										>
+											<ReactMarkdown>{idea.description}</ReactMarkdown>
+										</div>
+									</div>
+									<div className="mt-2">
+										<Button
+											variant="link"
+											size="sm"
+											className="px-0"
+											onClick={() => setViewingIdea(idea)}
+										>
+											Leer más
+										</Button>
 									</div>
 								</div>
 
@@ -432,6 +462,47 @@ const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 									Cancelar
 								</Button>
 								<Button onClick={handleSaveIdea}>Guardar</Button>
+							</div>
+						</div>
+					)}
+				</DialogContent>
+			</Dialog>
+
+			<Dialog
+				open={!!viewingIdea}
+				onOpenChange={(open) => !open && setViewingIdea(null)}
+			>
+				<DialogContent className="sm:max-w-2xl w-full rounded-lg">
+					<DialogHeader>
+						<DialogTitle>{viewingIdea?.title || "Idea"}</DialogTitle>
+					</DialogHeader>
+					{viewingIdea && (
+						<div className="space-y-4">
+							<div className="flex flex-wrap gap-2">
+								<Badge className={getStatusColor(viewingIdea.status)}>
+									{viewingIdea.status}
+								</Badge>
+								<Badge variant={getPriorityColor(viewingIdea.priority)}>
+									{viewingIdea.priority}
+								</Badge>
+							</div>
+							<div className="max-h-[50vh] overflow-y-auto">
+								<div className="prose prose-lg dark:prose-invert max-w-none pr-2">
+									<ReactMarkdown>{viewingIdea.description}</ReactMarkdown>
+								</div>
+							</div>
+							<div className="grid grid-cols-2 gap-4 text-sm pt-2 border-t">
+								<div>
+									<span className="font-medium">Implementabilidad:</span>
+									<div className="flex items-center gap-1 mt-1">
+										{getImplementabilityIcon(viewingIdea.implementability)}
+										{viewingIdea.implementability}
+									</div>
+								</div>
+								<div>
+									<span className="font-medium">Impacto:</span>
+									<div className="mt-1">{viewingIdea.impact}</div>
+								</div>
 							</div>
 						</div>
 					)}
