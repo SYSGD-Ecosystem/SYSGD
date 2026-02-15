@@ -1,10 +1,14 @@
 import {
 	AlertCircle,
 	Calendar,
+	Check,
+	Clipboard,
+	Edit,
 	Pause,
 	Play,
 	Square,
 	Tag,
+	Trash2,
 	User,
 } from "lucide-react";
 import { type FC, useCallback, useEffect, useMemo, useState } from "react";
@@ -29,6 +33,7 @@ import {
 	SelectItem,
 	SelectTrigger,
 } from "../../../ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 const DialogViewTask: FC<{
 	selectedTask: Task;
@@ -49,6 +54,7 @@ const DialogViewTask: FC<{
 	const [entries, setEntries] = useState<TimeEntry[]>([]);
 	const [loadingEntries, setLoadingEntries] = useState(false);
 	const [description, setDescription] = useState("");
+	const { toast } = useToast();
 
 	const { config: taskConfig } = useTaskConfig(selectedTask.project_id);
 	const statusOptions = taskConfig?.states?.map((state) => state.name) ?? [
@@ -122,6 +128,16 @@ const DialogViewTask: FC<{
 			void refreshEntries();
 		}
 	}, [activeEntry, isOpen, refreshEntries, selectedTask.id]);
+
+	const handleCopyToClipboard = useCallback(async () => {
+		const textToCopy = `${selectedTask.title}\n\n${selectedTask.description || ""}`;
+		try {
+			await navigator.clipboard.writeText(textToCopy);
+			toast({ title: "Copiado al portapapeles", description: "Título y descripción copiados exitosamente" });
+		} catch {
+			toast({ variant: "destructive", title: "Error", description: "No se pudo copiar al portapapeles" });
+		}
+	}, [selectedTask.title, selectedTask.description, toast]);
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -366,22 +382,37 @@ const DialogViewTask: FC<{
 								</SelectContent>
 							</Select>
 						</div>
-						<div className="flex w-full justify-end gap-3">
+						<div className="flex w-full justify-end gap-2">
 							<Button
 								variant="outline"
+								size="sm"
+								onClick={handleCopyToClipboard}
+								title="Copiar título y descripción"
+							>
+								<Clipboard className="w-4 h-4 mr-2" />
+								Copiar
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
 								disabled={isButtonDisabled}
 								onClick={onEditChange}
+								title="Editar"
 							>
+								<Edit className="w-4 h-4 mr-2" />
 								Editar
 							</Button>
 							<Button
 								variant="destructive"
+								size="sm"
 								disabled={isButtonDisabled}
 								onClick={() => {
 									setIsButtonDisabled(true);
 									onDeleteChange();
 								}}
+								title="Eliminar"
 							>
+								<Trash2 className="w-4 h-4 mr-2" />
 								Eliminar
 							</Button>
 						</div>
