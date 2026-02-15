@@ -3,6 +3,7 @@ import { pool } from "../db";
 import { isAuthenticated } from "../middlewares/auth-jwt";
 import { getCurrentUserData } from "../controllers/users";
 import { emitNewMessage } from "../socket";
+import { deleteObjectByUrl } from "../services/s3";
 
 const router = Router();
 
@@ -283,7 +284,7 @@ router.delete("/messages/:messageId", isAuthenticated, async (req: Request, res:
 
   try {
     const msgRes = await pool.query(
-      `SELECT id, conversation_id, sender_id FROM messages WHERE id = $1`,
+      `SELECT id, conversation_id, sender_id, attachment_url FROM messages WHERE id = $1`,
       [messageId]
     );
 
@@ -318,9 +319,23 @@ router.delete("/messages/:messageId", isAuthenticated, async (req: Request, res:
       return;
     }
 
+    let attachmentDeleted = true;
+    if (message.attachment_url) {
+      try {
+        const result = await deleteObjectByUrl(message.attachment_url);
+        attachmentDeleted = result.deleted;
+        if (!attachmentDeleted) {
+          console.warn("No se pudo determinar key para eliminar adjunto:", message.attachment_url);
+        }
+      } catch (err) {
+        attachmentDeleted = false;
+        console.error("Error eliminando adjunto:", err);
+      }
+    }
+
     await pool.query(`DELETE FROM messages WHERE id = $1`, [messageId]);
 
-    res.json({ deleted: true, id: messageId });
+    res.json({ deleted: true, id: messageId, attachment_deleted: attachmentDeleted });
     return;
   } catch (err) {
     console.error("Error eliminar mensaje:", err);

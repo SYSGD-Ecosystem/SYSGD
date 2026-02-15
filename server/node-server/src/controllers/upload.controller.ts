@@ -1,20 +1,8 @@
 import { Request, Response } from 'express';
-import AWS from 'aws-sdk';
 import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-
-// Configurar AWS S3
-const s3 = new AWS.S3({
-  endpoint: process.env.AWS_ENDPOINT,
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION || 'us-east-1',
-  s3ForcePathStyle: true,
-  signatureVersion: 'v4'
-});
-
-const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || 'sysgd-uploads';
+import { s3, BUCKET_NAME } from '../services/s3';
 
 // Configurar multer para manejar archivos en memoria
 const upload = multer({
@@ -153,4 +141,3 @@ export const deleteFile = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Error interno del servidor al eliminar archivo' });
   }
 };
-
