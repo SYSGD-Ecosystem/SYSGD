@@ -90,6 +90,8 @@ export function AgentsChatConversation({
 	const { toast } = useToast();
 
 	const scrollRef = useRef<HTMLDivElement>(null);
+	const [isAtBottom, setIsAtBottom] = useState(true);
+	const isInitialScrollDone = useRef(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const serverUrl =
@@ -178,16 +180,55 @@ export function AgentsChatConversation({
 		}
 	}, [normalizedMessages, chat.id, markAsRead]);
 
-	// --- Scroll to bottom when messages change ---
-	useEffect(() => {
-		if (scrollRef.current) {
-			// Smooth scroll to bottom
-			scrollRef.current.scrollTo({
-				top: scrollRef.current.scrollHeight,
-				behavior: "smooth",
+	const scrollToBottom = useCallback(
+		(behavior: ScrollBehavior = "auto") => {
+			const root = scrollRef.current;
+			if (!root) return;
+			const viewport = root.querySelector<HTMLElement>(
+				"[data-radix-scroll-area-viewport]",
+			);
+			const target = viewport ?? root;
+			target.scrollTo({
+				top: target.scrollHeight,
+				behavior,
 			});
-		}
-	}, [messages]);
+		},
+		[],
+	);
+
+	// --- Track if user is near bottom ---
+	useEffect(() => {
+		const root = scrollRef.current;
+		if (!root) return;
+		const viewport =
+			root.querySelector<HTMLElement>("[data-radix-scroll-area-viewport]") ??
+			root;
+
+		const handleScroll = () => {
+			const distance =
+				viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+			setIsAtBottom(distance < 40);
+		};
+
+		handleScroll();
+		viewport.addEventListener("scroll", handleScroll);
+		return () => viewport.removeEventListener("scroll", handleScroll);
+	}, []);
+
+	// --- Scroll to bottom when messages change (only if already at bottom) ---
+	useEffect(() => {
+		if (!isAtBottom || !isInitialScrollDone.current) return;
+		requestAnimationFrame(() => scrollToBottom("smooth"));
+	}, [messages.length, isAtBottom, scrollToBottom]);
+
+	// --- Ensure bottom on chat switch ---
+	useEffect(() => {
+		isInitialScrollDone.current = false;
+		requestAnimationFrame(() => {
+			scrollToBottom("auto");
+			isInitialScrollDone.current = true;
+		});
+	}, [chat.id, scrollToBottom]);
 
 	const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
