@@ -1,7 +1,7 @@
 "use client";
 
 import { Menu, MessageSquare, Settings, Users, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +17,7 @@ import { ChatConversation } from "./chat-conversation";
 import { ChatSidebar } from "./chat-sidebar";
 import { ChatToolbar } from "./chat-toolbar";
 import { ThemeToggle } from "./theme-toggle";
+import { useChatContext } from "../hooks/useChatContext";
 
 export type ChatType = "user" | "agent";
 
@@ -46,6 +47,15 @@ export function ChatInterface() {
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 	const [showSettings, setShowSettings] = useState(false);
 	const [showMembersModal, setShowMembersModal] = useState(false);
+	const { conversations } = useChatContext();
+
+	useEffect(() => {
+		if (!selectedChat) return;
+		const updated = conversations.find((c) => c.id === selectedChat.id);
+		if (updated && updated !== selectedChat) {
+			setSelectedChat(updated);
+		}
+	}, [conversations, selectedChat]);
 
 	const headerTitle = useMemo(() => {
 		if (!selectedChat) return "Chat interno";

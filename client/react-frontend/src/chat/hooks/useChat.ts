@@ -358,6 +358,104 @@ export function useChat() {
 	}, []);
 
 	// -----------------------
+	// Actualizar conversación
+	// -----------------------
+	const updateConversationTitle = useCallback(
+		async (conversationId: string, title: string | null) => {
+			setError(null);
+			if (!conversationId) throw new Error("conversationId requerido");
+
+			try {
+				const { data } = await api.put<{ id: string; title: string | null }>(
+					`/api/chat/conversations/${conversationId}`,
+					{ title },
+				);
+
+				setConversations((prev) =>
+					prev.map((c) => (c.id === conversationId ? { ...c, title: data.title } : c)),
+				);
+
+				return data;
+			} catch (err: any) {
+				const msg = getErrorMessage(err, "Error al actualizar conversación");
+				setError(msg);
+				throw err;
+			}
+		},
+		[],
+	);
+
+	const addConversationMember = useCallback(
+		async (conversationId: string, email: string) => {
+			setError(null);
+			if (!conversationId || !email) {
+				throw new Error("conversationId y email requeridos");
+			}
+
+			try {
+				const { data } = await api.post<{
+					conversation_id: string;
+					member: UserShort;
+				}>(`/api/chat/conversations/${conversationId}/members`, { email });
+
+				setConversations((prev) =>
+					prev.map((c) => {
+						if (c.id !== conversationId) return c;
+						const exists =
+							c.members?.some((m) => m.id === data.member.id) ?? false;
+						return {
+							...c,
+							members: exists
+								? c.members
+								: [...(c.members ?? []), data.member],
+						};
+					}),
+				);
+
+				return data.member;
+			} catch (err: any) {
+				const msg = getErrorMessage(err, "Error al añadir miembro");
+				setError(msg);
+				throw err;
+			}
+		},
+		[],
+	);
+
+	const removeConversationMember = useCallback(
+		async (conversationId: string, userId: string) => {
+			setError(null);
+			if (!conversationId || !userId) {
+				throw new Error("conversationId y userId requeridos");
+			}
+
+			try {
+				await api.delete(
+					`/api/chat/conversations/${conversationId}/members/${userId}`,
+				);
+
+				setConversations((prev) =>
+					prev.map((c) =>
+						c.id === conversationId
+							? {
+									...c,
+									members: (c.members ?? []).filter((m) => m.id !== userId),
+								}
+							: c,
+					),
+				);
+
+				return true;
+			} catch (err: any) {
+				const msg = getErrorMessage(err, "Error al eliminar miembro");
+				setError(msg);
+				throw err;
+			}
+		},
+		[],
+	);
+
+	// -----------------------
 	// Eliminar mensaje
 	// -----------------------
 	const deleteMessage = useCallback(
@@ -456,6 +554,9 @@ export function useChat() {
 		fetchConversations,
 		createConversation,
 		deleteConversation,
+		updateConversationTitle,
+		addConversationMember,
+		removeConversationMember,
 
 		// message actions
 		fetchMessages,

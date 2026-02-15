@@ -707,7 +707,11 @@ export function ChatConversation({
 				</div>
 			</div>
 
-			<ChatSettings open={showSettings} onOpenChange={onShowSettingsChange} />
+			<ChatSettings
+				open={showSettings}
+				onOpenChange={onShowSettingsChange}
+				chat={chat}
+			/>
 		</div>
 	);
 }
