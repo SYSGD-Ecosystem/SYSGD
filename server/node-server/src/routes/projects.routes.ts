@@ -6,6 +6,7 @@ import {
 	getProjectById,
 	getProjects,
 	updateProject,
+	createProjectConversation,
 } from "../controllers/project.controller";
 import { checkProjectLimit } from "../middlewares/usageLimits.middleware";
 
@@ -25,5 +26,8 @@ router.put("/:id", isAuthenticated, updateProject);
 
 // Eliminar proyecto
 router.delete("/:id", isAuthenticated, deleteProject);
+
+// Crear conversación del proyecto (desde ajustes)
+router.post("/:projectId/create-conversation", isAuthenticated, createProjectConversation);
 
 export default router;

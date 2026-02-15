@@ -147,8 +147,6 @@ export const checkUser = async (req: Request, res: Response) => {
 export const getCurrentUser = async (req: Request, res: Response) => {
 	// 1. Estrategia Híbrida: Header 'Authorization' O Cookie 'token'
 	const authHeader = req.headers.authorization;
-	console.log("Authorization Header:", { requestHeaders: req.headers });
-	console.log("Auth Header:", {authHeader});
 	const tokenFromHeader = authHeader?.startsWith("Bearer ")
 		? authHeader.split(" ")[1]
 		: null;

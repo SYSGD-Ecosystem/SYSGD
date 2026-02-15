@@ -73,8 +73,12 @@ CREATE TABLE IF NOT EXISTS projects (
   created_by UUID REFERENCES users(id),
   created_at TIMESTAMP DEFAULT NOW(),
   status TEXT DEFAULT 'activo',
-  visibility TEXT DEFAULT 'privado'
+  visibility TEXT DEFAULT 'privado',
+  conversation_id UUID REFERENCES conversations(id) ON DELETE SET NULL
 );
+
+-- Migración: Agregar columna conversation_id a projects (si no existe)
+-- ALTER TABLE projects ADD COLUMN IF NOT EXISTS conversation_id UUID REFERENCES conversations(id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS projects_config (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -294,8 +298,14 @@ CREATE TABLE IF NOT EXISTS conversation_invitations (
   sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
   receiver_email TEXT,
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMP DEFAULT NOW(),
+  token TEXT UNIQUE,
+  expires_at TIMESTAMP
 );
+
+-- Migración: Agregar token y expires_at a conversation_invitations
+-- ALTER TABLE conversation_invitations ADD COLUMN IF NOT EXISTS token TEXT UNIQUE;
+-- ALTER TABLE conversation_invitations ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP;
 
 -- ==============================
 -- Agents module

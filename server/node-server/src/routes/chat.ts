@@ -402,16 +402,19 @@ router.post("/conversations/invite", isAuthenticated, async (req: Request, res: 
     const insertInv = await client.query(
       `
       INSERT INTO conversation_invitations
-        (conversation_id, sender_id, receiver_email, status, created_at)
-      VALUES ($1, $2, $3, 'pending', NOW())
+        (conversation_id, sender_id, receiver_email, status, created_at, token, expires_at)
+      VALUES ($1, $2, $3, 'pending', NOW(), gen_random_uuid()::text, NOW() + INTERVAL '7 days')
       RETURNING *;
     `,
       [conversation_id, authUserId, receiver_email]
     );
 
     await client.query("COMMIT");
-    // idealmente enviar un email con el enlace que incluya la id de invitación o token
-    res.status(201).json(insertInv.rows[0]);
+    
+    const invitation = insertInv.rows[0];
+    const inviteLink = `${process.env.APP_URL || 'http://localhost:5173'}/chat/invite/${invitation.token}`;
+    
+    res.status(201).json({ ...invitation, invite_link: inviteLink });
     return;
   } catch (err) {
     await client.query("ROLLBACK");
@@ -615,6 +618,62 @@ router.delete("/conversations/:conversationId", isAuthenticated, async (req: Req
     return;
   } finally {
     client.release();
+  }
+});
+
+/* -----------------------
+   Endpoint público para validar token de invitación
+   ----------------------- */
+router.get("/invites/validate/:token", async (req: Request, res: Response) => {
+  const { token } = req.params;
+
+  if (!token) {
+    res.status(400).json({ error: "Token requerido" });
+    return;
+  }
+
+  try {
+    const inviteResult = await pool.query(
+      `SELECT ci.*, c.title as conversation_title, c.type as conversation_type
+       FROM conversation_invitations ci
+       LEFT JOIN conversations c ON c.id = ci.conversation_id
+       WHERE ci.token = $1`,
+      [token]
+    );
+
+    if (inviteResult.rowCount === 0) {
+      res.status(404).json({ error: "Invitación no encontrada" });
+      return;
+    }
+
+    const invite = inviteResult.rows[0];
+
+    if (invite.status !== "pending") {
+      res.status(400).json({ error: "Invitación ya no está activa" });
+      return;
+    }
+
+    if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
+      res.status(400).json({ error: "Invitación expirada" });
+      return;
+    }
+
+    res.json({
+      valid: true,
+      invitation: {
+        id: invite.id,
+        receiver_email: invite.receiver_email,
+        conversation_id: invite.conversation_id,
+        conversation_title: invite.conversation_title,
+        conversation_type: invite.conversation_type,
+        expires_at: invite.expires_at,
+      }
+    });
+    return;
+  } catch (err) {
+    console.error("Error validar invitación:", err);
+    res.status(500).json({ error: "Error al validar invitación" });
+    return;
   }
 });
 

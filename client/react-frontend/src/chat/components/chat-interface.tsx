@@ -1,9 +1,16 @@
 "use client";
 
-import { Menu, MessageSquare, Settings, X } from "lucide-react";
+import { Menu, MessageSquare, Settings, Users, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { getRandomEmoji } from "@/utils/util";
 import type { Conversation } from "../hooks/useChat";
 import { ChatConversation } from "./chat-conversation";
@@ -38,6 +45,7 @@ export function ChatInterface() {
 	const [selectedChat, setSelectedChat] = useState<Conversation | undefined>();
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 	const [showSettings, setShowSettings] = useState(false);
+	const [showMembersModal, setShowMembersModal] = useState(false);
 
 	const headerTitle = useMemo(() => {
 		if (!selectedChat) return "Chat interno";
@@ -47,6 +55,11 @@ export function ChatInterface() {
 				? selectedChat.members[1].name
 				: "Conversación")
 		);
+	}, [selectedChat]);
+
+	const members = useMemo(() => {
+		if (!selectedChat?.members) return [];
+		return selectedChat.members;
 	}, [selectedChat]);
 
 	return (
@@ -83,8 +96,23 @@ export function ChatInterface() {
 							{selectedChat ? getRandomEmoji() : "💬"}
 						</div>
 						<div className="min-w-0">
-							<h2 className="text-sm sm:text-base font-medium text-foreground truncate">{headerTitle}</h2>
-							<p className="text-xs text-muted-foreground truncate">Canal de colaboración interna</p>
+							<button
+								type="button"
+								onClick={() => selectedChat && setShowMembersModal(true)}
+								disabled={!selectedChat}
+								className={`text-left hover:text-primary transition-colors ${
+									selectedChat ? "cursor-pointer" : "cursor-default"
+								}`}
+							>
+								<h2 className="text-sm sm:text-base font-medium text-foreground truncate">
+									{headerTitle}
+								</h2>
+							</button>
+							<p className="text-xs text-muted-foreground truncate">
+								{members.length > 0
+									? `${members.length} miembro${members.length !== 1 ? "s" : ""}`
+									: "Canal de colaboración interna"}
+							</p>
 						</div>
 					</div>
 					<div className="flex items-center gap-1 sm:gap-2">
@@ -124,6 +152,45 @@ export function ChatInterface() {
 			</main>
 
 			<ChatToolbar selectedChat={selectedChat} onGoHome={() => setSelectedChat(undefined)} />
+
+			<Dialog open={showMembersModal} onOpenChange={setShowMembersModal}>
+				<DialogContent className="sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle className="flex items-center gap-2">
+							<Users className="h-5 w-5" />
+							Miembros de la conversación
+						</DialogTitle>
+					</DialogHeader>
+					<ScrollArea className="max-h-[400px] mt-4">
+						<div className="space-y-2">
+							{members.map((member) => (
+								<div
+									key={member.id}
+									className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors"
+								>
+									<div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+										{member.name?.charAt(0).toUpperCase() || member.email?.charAt(0).toUpperCase() || "?"}
+									</div>
+									<div className="flex-1 min-w-0">
+										<p className="font-medium truncate">{member.name || member.email}</p>
+										<p className="text-xs text-muted-foreground truncate">{member.email}</p>
+									</div>
+									{member.role === "admin" && (
+										<span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
+											Admin
+										</span>
+									)}
+								</div>
+							))}
+							{members.length === 0 && (
+								<p className="text-center text-muted-foreground py-4">
+									No hay miembros en esta conversación
+								</p>
+							)}
+						</div>
+					</ScrollArea>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

@@ -1,9 +1,9 @@
 import type { FC } from "react";
 import "react-markdown-editor-lite/lib/index.css";
-import SystemDashboard from "./SystemDashboard";
+import SysgdCont from "@/cont/SysgdCont";
 
 const DevPreview: FC = () => {
-	return <SystemDashboard />;
+	return <SysgdCont/>;
 };
 
 export default DevPreview;

@@ -172,6 +172,22 @@ router.post(
 				],
 			);
 
+			if (invitation.resource_type === "project") {
+				const projectResult = await pool.query(
+					`SELECT conversation_id FROM projects WHERE id = $1`,
+					[invitation.resource_id]
+				);
+				
+				if (projectResult.rows[0]?.conversation_id) {
+					await pool.query(
+						`INSERT INTO conversation_members (conversation_id, user_id, role, joined_at)
+						 VALUES ($1, $2, 'member', NOW())
+						 ON CONFLICT DO NOTHING`,
+						[projectResult.rows[0].conversation_id, userId]
+					);
+				}
+			}
+
 			res.json({ 
 				message: "Invitación aceptada",
 				userStatus: 'active'
