@@ -1,11 +1,18 @@
 import {
 	GripHorizontal,
-	MessageSquare,
-	Minus,
-	PanelRightClose,
-	PanelRightOpen,
+	Maximize2,
+	MessageCircle,
+	Minimize2,
+	X,
 } from "lucide-react";
-import { type MouseEvent as ReactMouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+	type MouseEvent as ReactMouseEvent,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ChatConversation } from "@/chat/components/chat-conversation";
 import { useChatContext } from "@/chat/hooks/useChatContext";
@@ -26,6 +33,7 @@ export default function ProjectChatPanel({
 	isOpen,
 	onToggle,
 }: ProjectChatPanelProps) {
+	const navigate = useNavigate();
 	const { project, refreshProject, isLoading } = useProjectContext();
 	const { conversations, loadingConversations, fetchConversations } =
 		useChatContext();
@@ -95,8 +103,14 @@ export default function ProjectChatPanel({
 
 			const minX = margin;
 			const minY = margin;
-			const maxX = Math.max(margin, containerRect.width - panelRect.width - margin);
-			const maxY = Math.max(margin, containerRect.height - panelRect.height - margin);
+			const maxX = Math.max(
+				margin,
+				containerRect.width - panelRect.width - margin,
+			);
+			const maxY = Math.max(
+				margin,
+				containerRect.height - panelRect.height - margin,
+			);
 
 			setPosition({
 				x: Math.min(
@@ -153,7 +167,7 @@ export default function ProjectChatPanel({
 			>
 				<div className="flex items-center gap-2 min-w-0">
 					<div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 flex items-center justify-center shrink-0">
-						<MessageSquare className="w-4 h-4" />
+						<MessageCircle className="w-4 h-4" />
 					</div>
 					<div className="min-w-0">
 						<p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
@@ -172,13 +186,18 @@ export default function ProjectChatPanel({
 						size="icon"
 						onMouseDown={(event) => event.stopPropagation()}
 						onClick={() => setIsMinimized((prev) => !prev)}
-						title={isMinimized ? "Expandir chat" : "Minimizar chat"}
+						title={isMinimized ? "Restaurar" : "Minimizar"}
 					>
-						{isMinimized ? (
-							<PanelRightOpen className="w-4 h-4" />
-						) : (
-							<Minus className="w-4 h-4" />
-						)}
+						<Minimize2 className="w-4 h-4" />
+					</Button>
+					<Button
+						variant="ghost"
+						size="icon"
+						onMouseDown={(event) => event.stopPropagation()}
+						onClick={() => navigate("/chat")}
+						title="Abrir sección de chats"
+					>
+						<Maximize2 className="w-4 h-4" />
 					</Button>
 					<Button
 						variant="ghost"
@@ -187,7 +206,7 @@ export default function ProjectChatPanel({
 						onClick={onToggle}
 						title="Cerrar chat del proyecto"
 					>
-						<PanelRightClose className="w-4 h-4" />
+						<X className="w-4 h-4" />
 					</Button>
 				</div>
 			</div>

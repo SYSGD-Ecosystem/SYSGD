@@ -1,6 +1,6 @@
 "use client";
 //import useTheme from "@/hooks/useTheme";
-import { ChevronRight, Home, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { ChevronRight, Home, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
 	Select,
@@ -121,12 +121,10 @@ export function TopNavigation({
 									: "Mostrar chat del proyecto"
 							}
 						>
-							{isProjectChatOpen ? (
-								<PanelRightClose className="w-4 h-4" />
-							) : (
-								<PanelRightOpen className="w-4 h-4" />
-							)}
-							<span className="ml-2 hidden xl:inline">Chat proyecto</span>
+							<MessageCircle className="w-4 h-4" />
+							<span className="ml-2 hidden xl:inline">
+								{isProjectChatOpen ? "Ocultar chat" : "Abrir chat"}
+							</span>
 						</Button>
 					)}
 					<TimeTrackingIndicator onOpen={onTimeTrackingClick} />
