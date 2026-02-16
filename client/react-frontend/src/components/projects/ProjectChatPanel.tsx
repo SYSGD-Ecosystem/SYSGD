@@ -1,4 +1,4 @@
-import { MessageSquare, PanelLeftClose } from "lucide-react";
+import { MessageSquare, PanelRightClose } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChatConversation } from "@/chat/components/chat-conversation";
@@ -47,7 +47,7 @@ export default function ProjectChatPanel({
 	}
 
 	return (
-		<aside className="hidden lg:flex w-[360px] min-w-[320px] h-full border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-col">
+		<aside className="hidden lg:flex w-[360px] min-w-[320px] h-full border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-col">
 			<div className="h-14 px-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0">
 				<div className="flex items-center gap-2 min-w-0">
 					<div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 flex items-center justify-center shrink-0">
@@ -68,7 +68,7 @@ export default function ProjectChatPanel({
 					onClick={onToggle}
 					title="Ocultar chat del proyecto"
 				>
-					<PanelLeftClose className="w-4 h-4" />
+					<PanelRightClose className="w-4 h-4" />
 				</Button>
 			</div>
 

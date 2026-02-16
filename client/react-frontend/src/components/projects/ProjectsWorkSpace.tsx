@@ -144,10 +144,6 @@ const ProjectWorkSpace: FC = () => {
 								isMobileOpen={isMobileSidebarOpen}
 								onMobileClose={() => setIsMobileSidebarOpen(false)}
 							/>
-							<ProjectChatPanel
-								isOpen={isProjectChatOpen}
-								onToggle={() => setIsProjectChatOpen(false)}
-							/>
 							<main className="flex-1 p-2 md:p-4 overflow-auto">
 								{activeSection === "tasks" && (
 									<TaskManagement project_id={selectedProject} />
@@ -182,6 +178,10 @@ const ProjectWorkSpace: FC = () => {
 									<ProjectSettings projectId={selectedProject} />
 								)}
 							</main>
+							<ProjectChatPanel
+								isOpen={isProjectChatOpen}
+								onToggle={() => setIsProjectChatOpen(false)}
+							/>
 						</div>
 					</ProjectProvider>
 				</div>

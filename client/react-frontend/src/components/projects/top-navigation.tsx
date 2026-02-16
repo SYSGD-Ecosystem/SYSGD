@@ -1,6 +1,6 @@
 "use client";
 //import useTheme from "@/hooks/useTheme";
-import { ChevronRight, Home, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronRight, Home, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
 	Select,
@@ -122,9 +122,9 @@ export function TopNavigation({
 							}
 						>
 							{isProjectChatOpen ? (
-								<PanelLeftClose className="w-4 h-4" />
+								<PanelRightClose className="w-4 h-4" />
 							) : (
-								<PanelLeftOpen className="w-4 h-4" />
+								<PanelRightOpen className="w-4 h-4" />
 							)}
 							<span className="ml-2 hidden xl:inline">Chat proyecto</span>
 						</Button>
