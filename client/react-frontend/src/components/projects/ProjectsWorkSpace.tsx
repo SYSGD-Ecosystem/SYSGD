@@ -1,5 +1,7 @@
 import { type FC, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ChatProvider } from "@/chat/hooks/useChatContext";
+import { SocketProvider } from "@/chat/hooks/useSocket";
 import useCurrentUser from "@/hooks/connection/useCurrentUser";
 import { useSelectionStore } from "@/store/selection";
 import { useTimeTrackingStore } from "@/store/time-tracking";
@@ -8,6 +10,7 @@ import type { GitHubCacheEntry } from "./github-integration/GitHubIntegration.ts
 import GitHubIntegration from "./github-integration/GitHubIntegration.tsx";
 import IdeasBank from "./IdeasBank.tsx";
 import NotesSection from "./NotesSection.tsx";
+import ProjectChatPanel from "./ProjectChatPanel.tsx";
 import ProjectSettings from "./ProjectSettings.tsx";
 import { ProjectSidebar } from "./ProjectSidebar.tsx";
 import TeamManagement from "./TeamManagement.tsx";
@@ -30,6 +33,10 @@ import { ProjectProvider } from "./ProjectProvider.tsx";
 const ProjectWorkSpace: FC = () => {
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 	const [activeSection, setActiveSection] = useState("tasks");
+	const [isProjectChatOpen, setIsProjectChatOpen] = useState(() => {
+		if (typeof window === "undefined") return true;
+		return localStorage.getItem("projects:desktop-chat-open") !== "false";
+	});
 	const navigate = useNavigate();
 	const selectedProjectId = useSelectionStore(
 		(state) => state.selectedProjectId,
@@ -79,6 +86,13 @@ const ProjectWorkSpace: FC = () => {
 		void fetchActiveEntry();
 	}, [fetchActiveEntry]);
 
+	useEffect(() => {
+		localStorage.setItem(
+			"projects:desktop-chat-open",
+			String(isProjectChatOpen),
+		);
+	}, [isProjectChatOpen]);
+
 	if (loading)
 		return (
 			<div className="flex flex-col h-screen bg-slate-950 items-center justify-center">
@@ -106,63 +120,73 @@ const ProjectWorkSpace: FC = () => {
 	// TODO: Realizar comprobacion de proyecto seleccionado por aqui antes de mostrar cualquier cosa
 
 	return (
-		<div className="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
-			<TopNavigation
-				selectedProject={selectedProject}
-				onProjectChange={setSelectedProject}
-				onHomeClick={handleHomeClick}
-				onMobileSidebarToggle={() =>
-					setIsMobileSidebarOpen(!isMobileSidebarOpen)
-				}
-				isHomePage={false}
-				onTimeTrackingClick={() => setActiveSection("time-tracking")}
-			/>
-			<ProjectProvider projectId={selectedProject}>
-				<TimeTrackingTicker />
-				<div className="flex flex-1 relative overflow-hidden">
-					<ProjectSidebar
-						activeSection={activeSection}
-						onSectionChange={handleSectionChange}
-						isMobileOpen={isMobileSidebarOpen}
-						onMobileClose={() => setIsMobileSidebarOpen(false)}
+		<SocketProvider>
+			<ChatProvider>
+				<div className="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
+					<TopNavigation
+						selectedProject={selectedProject}
+						onProjectChange={setSelectedProject}
+						onHomeClick={handleHomeClick}
+						onMobileSidebarToggle={() =>
+							setIsMobileSidebarOpen(!isMobileSidebarOpen)
+						}
+						isHomePage={false}
+						onTimeTrackingClick={() => setActiveSection("time-tracking")}
+						onProjectChatToggle={() => setIsProjectChatOpen((prev) => !prev)}
+						isProjectChatOpen={isProjectChatOpen}
 					/>
-					<main className="flex-1 p-2 md:p-4 overflow-auto">
-						{activeSection === "tasks" && (
-							<TaskManagement project_id={selectedProject} />
-						)}
-
-						{activeSection === "time-tracking" && (
-							<TimeTrackingSection projectId={selectedProject} />
-						)}
-
-						{activeSection === "team" && (
-							<TeamManagement projectId={selectedProject} />
-						)}
-
-						{activeSection === "ideas" && (
-							<IdeasBank projectId={selectedProject} />
-						)}
-
-						{activeSection === "notes" && selectedProject && (
-							<NotesSection projectId={selectedProject} />
-						)}
-
-						{activeSection === "github" && selectedProject && (
-							<GitHubIntegration
-								projectId={selectedProject}
-								getGitHubCache={getGitHubCache}
-								setGitHubCache={setGitHubCache}
-								clearGitHubCache={clearGitHubCache}
+					<ProjectProvider projectId={selectedProject}>
+						<TimeTrackingTicker />
+						<div className="flex flex-1 relative overflow-hidden">
+							<ProjectSidebar
+								activeSection={activeSection}
+								onSectionChange={handleSectionChange}
+								isMobileOpen={isMobileSidebarOpen}
+								onMobileClose={() => setIsMobileSidebarOpen(false)}
 							/>
-						)}
+							<ProjectChatPanel
+								isOpen={isProjectChatOpen}
+								onToggle={() => setIsProjectChatOpen(false)}
+							/>
+							<main className="flex-1 p-2 md:p-4 overflow-auto">
+								{activeSection === "tasks" && (
+									<TaskManagement project_id={selectedProject} />
+								)}
 
-						{activeSection === "settings" && selectedProject && (
-							<ProjectSettings projectId={selectedProject} />
-						)}
-					</main>
+								{activeSection === "time-tracking" && (
+									<TimeTrackingSection projectId={selectedProject} />
+								)}
+
+								{activeSection === "team" && (
+									<TeamManagement projectId={selectedProject} />
+								)}
+
+								{activeSection === "ideas" && (
+									<IdeasBank projectId={selectedProject} />
+								)}
+
+								{activeSection === "notes" && selectedProject && (
+									<NotesSection projectId={selectedProject} />
+								)}
+
+								{activeSection === "github" && selectedProject && (
+									<GitHubIntegration
+										projectId={selectedProject}
+										getGitHubCache={getGitHubCache}
+										setGitHubCache={setGitHubCache}
+										clearGitHubCache={clearGitHubCache}
+									/>
+								)}
+
+								{activeSection === "settings" && selectedProject && (
+									<ProjectSettings projectId={selectedProject} />
+								)}
+							</main>
+						</div>
+					</ProjectProvider>
 				</div>
-			</ProjectProvider>
-		</div>
+			</ChatProvider>
+		</SocketProvider>
 	);
 };
 
