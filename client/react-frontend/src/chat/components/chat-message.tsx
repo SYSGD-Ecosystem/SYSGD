@@ -113,7 +113,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 		return (
 			<MarkdownRenderer
 				content={msg.content}
-				className="break-words whitespace-pre-wrap"
+				className="break-words [overflow-wrap:anywhere]"
 			/>
 		);
 	};
@@ -138,7 +138,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 						{message.senderName}
 					</span>
 				)}
-				<div className="relative group">
+				<div className="relative group max-w-full min-w-0">
 					{isEditing ? (
 						<div className="space-y-2">
 							<Input
@@ -159,7 +159,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 					) : (
 						<>
 							<div
-								className={`rounded-2xl px-4 py-3 max-w-full wrap-break-word overflow-hidden text-sm leading-relaxed ${
+								className={`rounded-2xl px-4 py-3 w-fit max-w-full min-w-0 overflow-visible text-sm leading-relaxed ${
 									message.sender === "me"
 										? "bg-blue-300 text-white dark:bg-blue-600 dark:text-white"
 										: "bg-muted text-foreground"
@@ -175,7 +175,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 										</p>
 									</div>
 								)}
-								<div className="wrap-break-word overflow-wrap-anywhere max-w-full">
+								<div className="max-w-full min-w-0 break-all [overflow-wrap:anywhere]">
 									{renderMessageContent(message)}
 								</div>
 							</div>

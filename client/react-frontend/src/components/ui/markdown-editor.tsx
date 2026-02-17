@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { type FC, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Button } from "./button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
 import { Textarea } from "./textarea";
@@ -241,7 +242,30 @@ const MarkdownEditor: FC<MarkdownEditorProps> = ({
 					<div className="min-h-[200px] max-h-[400px] p-4 bg-white dark:bg-gray-900 overflow-auto">
 						<div className="prose prose-sm dark:prose-invert max-w-none">
 							{value ? (
-								<ReactMarkdown>{value}</ReactMarkdown>
+								<ReactMarkdown
+									remarkPlugins={[remarkGfm]}
+									components={{
+										table: ({ children }) => (
+											<div className="my-3 w-full overflow-x-auto rounded-lg border border-border">
+												<table className="w-max min-w-full border-collapse text-sm">
+													{children}
+												</table>
+											</div>
+										),
+										th: ({ children }) => (
+											<th className="border border-border px-3 py-2 bg-muted font-semibold text-left whitespace-nowrap">
+												{children}
+											</th>
+										),
+										td: ({ children }) => (
+											<td className="border border-border px-3 py-2 align-top break-words">
+												{children}
+											</td>
+										),
+									}}
+								>
+									{value}
+								</ReactMarkdown>
 							) : (
 								<div className="text-gray-500 dark:text-gray-400 italic">
 									Vista previa del contenido Markdown...

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { type FC, useCallback, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import api from "@/lib/api";
 import { useTaskConfig } from "@/components/projects/task-management/hooks/useTaskConfig";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -194,7 +195,30 @@ const DialogViewTask: FC<{
 						{selectedTask.description && (
 							<div>
 								<div className="prose prose-lg dark:prose-invert max-w-none">
-									<ReactMarkdown>{selectedTask.description}</ReactMarkdown>
+									<ReactMarkdown
+										remarkPlugins={[remarkGfm]}
+										components={{
+											table: ({ children }) => (
+												<div className="my-3 w-full overflow-x-auto rounded-lg border border-border">
+													<table className="w-max min-w-full border-collapse text-sm">
+														{children}
+													</table>
+												</div>
+											),
+											th: ({ children }) => (
+												<th className="border border-border px-3 py-2 bg-muted font-semibold text-left whitespace-nowrap">
+													{children}
+												</th>
+											),
+											td: ({ children }) => (
+												<td className="border border-border px-3 py-2 align-top break-words">
+													{children}
+												</td>
+											),
+										}}
+									>
+										{selectedTask.description}
+									</ReactMarkdown>
 								</div>
 							</div>
 						)}

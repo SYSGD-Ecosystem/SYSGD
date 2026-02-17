@@ -9,7 +9,7 @@ import {
 	Trash2,
 	User,
 } from "lucide-react";
-import { type FC, useState } from "react";
+import { type FC, type ReactNode, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +33,25 @@ import {
 	SelectValue,
 } from "../ui/select";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+const markdownTableComponents = {
+	table: ({ children }: { children?: ReactNode }) => (
+		<div className="my-3 w-full overflow-x-auto rounded-lg border border-border">
+			<table className="w-max min-w-full border-collapse text-sm">{children}</table>
+		</div>
+	),
+	th: ({ children }: { children?: ReactNode }) => (
+		<th className="border border-border px-3 py-2 bg-muted font-semibold text-left whitespace-nowrap">
+			{children}
+		</th>
+	),
+	td: ({ children }: { children?: ReactNode }) => (
+		<td className="border border-border px-3 py-2 align-top break-words">
+			{children}
+		</td>
+	),
+};
 
 const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 	const { ideas, createIdea, deleteIdea, updateIdea } = useIdeas(projectId);
@@ -266,7 +285,12 @@ const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 											}}
 											className="cursor-pointer text-foreground/90 hover:text-foreground transition-colors"
 										>
-											<ReactMarkdown>{idea.description}</ReactMarkdown>
+											<ReactMarkdown
+												remarkPlugins={[remarkGfm]}
+												components={markdownTableComponents}
+											>
+												{idea.description}
+											</ReactMarkdown>
 										</div>
 									</div>
 									<div className="mt-2">
@@ -488,7 +512,12 @@ const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 							</div>
 							<div className="max-h-[50vh] overflow-y-auto">
 								<div className="prose prose-lg dark:prose-invert max-w-none pr-2">
-									<ReactMarkdown>{viewingIdea.description}</ReactMarkdown>
+									<ReactMarkdown
+										remarkPlugins={[remarkGfm]}
+										components={markdownTableComponents}
+									>
+										{viewingIdea.description}
+									</ReactMarkdown>
 								</div>
 							</div>
 							<div className="grid grid-cols-2 gap-4 text-sm pt-2 border-t">

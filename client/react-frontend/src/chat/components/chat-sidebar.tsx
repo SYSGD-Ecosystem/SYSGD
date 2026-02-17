@@ -134,7 +134,7 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 					</div>
 				</aside>
 
-				<div className="flex flex-1 min-w-0 flex-col gap-2 px-2">
+				<div className="flex flex-1 min-w-0 flex-col gap-2 px-2 pt-2 xl:pt-0">
 					<div className="relative group">
 						<div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
 							<Search className="h-4 w-4 text-muted-foreground/70 group-focus-within:text-sidebar-primary transition-colors" />

@@ -17,7 +17,7 @@ const MarkdownRendererComponent: React.FC<MarkdownRendererProps> = ({
 }) => {
 	return (
 		<div
-			className={`prose prose-sm max-w-none dark:prose-invert prose-img:max-w-full prose-img:rounded-lg ${className}`}
+			className={`prose prose-sm w-full max-w-none min-w-0 dark:prose-invert prose-img:max-w-full prose-img:rounded-lg ${className}`}
 		>
 			<ReactMarkdown
 				remarkPlugins={[remarkGfm]}
@@ -25,19 +25,22 @@ const MarkdownRendererComponent: React.FC<MarkdownRendererProps> = ({
 				components={{
 					// Personalizar componentes para mejor integración con el chat
 					p: ({ children }) => (
-						<p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
+						<p className="mb-2 last:mb-0 leading-relaxed break-all [overflow-wrap:anywhere]">
+							{children}
+						</p>
 					),
-					code: ({ /*node, inline,*/ className, children, ...props }) => {
-						/*if (inline) {
-              return (
-                <code 
-                  className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono" 
-                  {...props}
-                >
-                  {children}
-                </code>
-              );
-            }*/
+					code: ({ className, children, ...props }) => {
+						const isCodeBlock = Boolean(className?.includes("language-"));
+						if (!isCodeBlock) {
+							return (
+								<code
+									className="bg-muted px-1.5 py-0.5 rounded text-[0.85em] font-mono break-all"
+									{...props}
+								>
+									{children}
+								</code>
+							);
+						}
 						return (
 							<code className={className} {...props}>
 								{children}
@@ -45,7 +48,7 @@ const MarkdownRendererComponent: React.FC<MarkdownRendererProps> = ({
 						);
 					},
 					pre: ({ children }) => (
-						<pre className="bg-muted dark:bg-black p-3 rounded-lg max-w-full overflow-x-auto my-2">
+						<pre className="bg-muted dark:bg-black p-3 rounded-lg max-w-full overflow-x-auto my-2 whitespace-pre">
 							{children}
 						</pre>
 					),
@@ -83,19 +86,21 @@ const MarkdownRendererComponent: React.FC<MarkdownRendererProps> = ({
 						</a>
 					),
 					table: ({ children }) => (
-						<div className="overflow-x-auto my-2">
-							<table className="min-w-full border border-border rounded-lg">
+						<div className="my-2 w-full max-w-full overflow-x-auto rounded-lg border border-border">
+							<table className="w-max min-w-full border-collapse text-xs sm:text-sm">
 								{children}
 							</table>
 						</div>
 					),
 					th: ({ children }) => (
-						<th className="border border-border px-3 py-2 bg-muted font-semibold text-left">
+						<th className="border border-border px-3 py-2 bg-muted font-semibold text-left whitespace-nowrap">
 							{children}
 						</th>
 					),
 					td: ({ children }) => (
-						<td className="border border-border px-3 py-2">{children}</td>
+						<td className="border border-border px-3 py-2 align-top break-all [overflow-wrap:anywhere]">
+							{children}
+						</td>
 					),
 				}}
 			>
