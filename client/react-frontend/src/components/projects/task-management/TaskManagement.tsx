@@ -427,10 +427,22 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 			{selectedTask && (
 				<DialogViewTask
 					isOpen={isDialogViewOpen}
-					onOpenChange={setisDialogOpenDialog}
+					onOpenChange={(open) => {
+						setisDialogOpenDialog(open);
+						if (!open) {
+							setselectedTask(null);
+						}
+					}}
 					selectedTask={selectedTask}
 					onEditChange={() => handleEditTask(editingTask)}
-					onDeleteChange={() => deleteTask(selectedTask.id as string)}
+					onDeleteChange={async () => {
+						const deleted = await deleteTask(selectedTask.id as string);
+						if (deleted) {
+							setselectedTask(null);
+							setisDialogOpenDialog(false);
+						}
+						return deleted;
+					}}
 					onStatusChange={handleDialogStatusChange}
 				/>
 			)}

@@ -40,7 +40,7 @@ const DialogViewTask: FC<{
 	isOpen: boolean;
 	onOpenChange: (open: boolean) => void;
 	onEditChange: () => void;
-	onDeleteChange: () => void;
+	onDeleteChange: () => Promise<boolean>;
 	onStatusChange: (status: string) => Promise<void>;
 }> = ({
 	selectedTask,
@@ -429,9 +429,14 @@ const DialogViewTask: FC<{
 								variant="destructive"
 								size="sm"
 								disabled={isButtonDisabled}
-								onClick={() => {
+								onClick={async () => {
 									setIsButtonDisabled(true);
-									onDeleteChange();
+									const deleted = await onDeleteChange();
+									if (!deleted) {
+										setIsButtonDisabled(false);
+										return;
+									}
+									onOpenChange(false);
 								}}
 								title="Eliminar"
 							>
