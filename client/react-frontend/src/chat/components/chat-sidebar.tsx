@@ -1,5 +1,5 @@
-import { type FC, useState, useEffect, useRef } from "react";
-import { Home, Search, Users, LogOut, Plus, MessageSquare, X } from "lucide-react";
+import { type FC, useState, useEffect} from "react";
+import { Home, Search, Users, LogOut, Plus, Bot, X } from "lucide-react";
 import { IoChatboxOutline, IoChatbubbleOutline } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -129,7 +129,7 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 							className="w-full"
 							onClick={() => navigate("/chat/agents")}
 						>
-							<MessageSquare className="h-4 w-4" />
+							<Bot className="h-4 w-4" />
 						</Button>
 					</div>
 				</aside>
@@ -241,7 +241,7 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 							onClick={() => navigate("/chat/agents")}
 							size="sm"
 						>
-							<MessageSquare className="h-4 w-4" />
+							<Bot className="h-4 w-4" />
 						</Button>
 					</div>
 				</div>
