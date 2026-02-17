@@ -15,7 +15,6 @@ import { getRandomEmoji } from "@/utils/util";
 import type { Conversation } from "../hooks/useChat";
 import { ChatConversation } from "./chat-conversation";
 import { ChatSidebar } from "./chat-sidebar";
-import { ChatToolbar } from "./chat-toolbar";
 import { ThemeToggle } from "./theme-toggle";
 import { useChatContext } from "../hooks/useChatContext";
 
@@ -85,7 +84,6 @@ export function ChatInterface() {
 					onClick={() => setSidebarOpen(false)}
 				/>
 			)}
-
 			<aside
 				className={`fixed lg:static inset-y-0 left-0 z-30 w-80 max-w-[85vw] transform border-r border-border bg-sidebar transition-transform duration-200 ${
 					sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
@@ -103,8 +101,16 @@ export function ChatInterface() {
 			<main className="flex-1 flex flex-col min-w-0">
 				<header className="h-14 border-b border-border flex items-center justify-between px-3 sm:px-4 bg-card">
 					<div className="flex items-center gap-2 sm:gap-3 min-w-0">
-						<Button variant="ghost" size="icon" onClick={() => setSidebarOpen((v) => !v)}>
-							{sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={() => setSidebarOpen((v) => !v)}
+						>
+							{sidebarOpen ? (
+								<X className="h-5 w-5" />
+							) : (
+								<Menu className="h-5 w-5" />
+							)}
 						</Button>
 						<div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold shrink-0 text-sm">
 							{selectedChat ? getRandomEmoji() : "💬"}
@@ -139,7 +145,11 @@ export function ChatInterface() {
 							<MessageSquare className="h-5 w-5" />
 						</Button>
 						{selectedChat && (
-							<Button variant="ghost" size="icon" onClick={() => setShowSettings(true)}>
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() => setShowSettings(true)}
+							>
 								<Settings className="h-5 w-5" />
 							</Button>
 						)}
@@ -157,15 +167,17 @@ export function ChatInterface() {
 					) : (
 						<div className="h-full flex items-center justify-center text-muted-foreground p-6 text-center">
 							<div>
-								<h3 className="text-base font-semibold mb-2 text-foreground">Bienvenido a SYSGD-CHAT</h3>
-								<p className="text-sm">Selecciona una conversación para comenzar.</p>
+								<h3 className="text-base font-semibold mb-2 text-foreground">
+									Bienvenido a SYSGD-CHAT
+								</h3>
+								<p className="text-sm">
+									Selecciona una conversación para comenzar.
+								</p>
 							</div>
 						</div>
 					)}
 				</div>
 			</main>
-
-			<ChatToolbar selectedChat={selectedChat} onGoHome={() => setSelectedChat(undefined)} />
 
 			<Dialog open={showMembersModal} onOpenChange={setShowMembersModal}>
 				<DialogContent className="sm:max-w-md">
@@ -183,11 +195,17 @@ export function ChatInterface() {
 									className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors"
 								>
 									<div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
-										{member.name?.charAt(0).toUpperCase() || member.email?.charAt(0).toUpperCase() || "?"}
+										{member.name?.charAt(0).toUpperCase() ||
+											member.email?.charAt(0).toUpperCase() ||
+											"?"}
 									</div>
 									<div className="flex-1 min-w-0">
-										<p className="font-medium truncate">{member.name || member.email}</p>
-										<p className="text-xs text-muted-foreground truncate">{member.email}</p>
+										<p className="font-medium truncate">
+											{member.name || member.email}
+										</p>
+										<p className="text-xs text-muted-foreground truncate">
+											{member.email}
+										</p>
 									</div>
 									{member.role === "admin" && (
 										<span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">

@@ -16,25 +16,31 @@ export const ChatToolbar: FC<ChatToolbarProps> = ({ onGoHome }) => {
 
 	return (
 		<>
-			<aside className="hidden xl:flex h-full w-64 border-l border-border bg-card p-4 flex-col">
-				<h3 className="text-sm font-medium text-foreground mb-3">Acciones</h3>
+			<aside className="hidden xl:flex h-full w-14 border-r border-border bg-card p-1 flex-col">
 				<div className="space-y-2">
 					<Button
-						variant="default"
-						className="w-full justify-start"
+						title="Nueva conversación"
+						variant="ghost"
+						className="w-full"
 						onClick={() => setIsNewChatModalOpen(true)}
 					>
-						<Plus className="h-4 w-4 mr-2" /> Nueva conversación
-					</Button>
-					<Button variant="outline" className="w-full justify-start" onClick={onGoHome}>
-						<Home className="h-4 w-4 mr-2" /> Inicio chat interno
+						<Plus className="h-4 w-4" />
 					</Button>
 					<Button
-						variant="outline"
-						className="w-full justify-start"
+						title="Inicio chat interno"
+						variant="ghost"
+						className="w-full"
+						onClick={onGoHome}
+					>
+						<Home className="h-4 w-4" />
+					</Button>
+					<Button
+						title="Ir a chat con agentes"
+						variant="ghost"
+						className="w-full"
 						onClick={() => navigate("/chat/agents")}
 					>
-						<MessageSquare className="h-4 w-4 mr-2" /> Ir a chat con agentes
+						<MessageSquare className="h-4 w-4" />
 					</Button>
 				</div>
 			</aside>
