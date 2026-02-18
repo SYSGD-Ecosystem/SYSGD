@@ -32,7 +32,7 @@ export class AuthService {
   get apiBaseUrl(): string {
     const configured = localStorage.getItem(API_BASE_KEY)?.trim();
     if (configured) return configured.replace(/\/$/, '');
-    return window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://ecosysgd.com';
+    return window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://sysgd-production.up.railway.app';
   }
 
   setApiBaseUrl(url: string): void {
