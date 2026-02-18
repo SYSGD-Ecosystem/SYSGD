@@ -89,19 +89,26 @@ export function Hero() {
 						<div className="flex flex-col sm:flex-row gap-3">
 							<Button size="lg" className="group bg-blue-500 hover:bg-blue-600 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all">
 								<a
-									href="https://app.ecosysgd.com"
+									href="https://ecosysgd.com"
 									target="_blank"
 									rel="noopener noreferrer"
 									className="flex items-center gap-2"
 								>
 									<Sparkles className="h-4 w-4 group-hover:rotate-12 transition-transform" />
-									<span>Probar Ahora</span>
+									<span>Crear Cuenta Gratis</span>
 								</a>
 							</Button>
 
 							<Button size="lg" variant="outline" className="border-blue-500 text-blue-700 hover:border-pink-500 hover:bg-pink-50 hover:text-pink-500 transition-colors">
-								<a href="/api" className="flex items-center gap-2">
-									<span>Ver Planes</span>
+								<a href="https://work.ecosysgd.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+									<span>Ir a Work</span>
+									<ArrowRight className="h-4 w-4" />
+								</a>
+							</Button>
+
+							<Button size="lg" variant="outline" className="border-green-500 text-green-700 hover:border-green-600 hover:bg-green-50 transition-colors">
+								<a href="https://cont.ecosysgd.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+									<span>Ir a Cont</span>
 									<ArrowRight className="h-4 w-4" />
 								</a>
 							</Button>

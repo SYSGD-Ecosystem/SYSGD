@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Github, Sparkles } from "lucide-react"
-import Link from "next/link"
 
 export function Hero() {
   return (
@@ -25,16 +24,22 @@ export function Hero() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button size="lg" asChild>
-              <a href="https://app.ecosysgd.com" target="_blank" rel="noopener noreferrer">
+              <a href="https://ecosysgd.com" target="_blank" rel="noopener noreferrer">
                 <Sparkles className="mr-2 h-4 w-4" />
-                Probar Ahora
+                Crear Cuenta Gratis
               </a>
             </Button>
             <Button size="lg" variant="outline" asChild>
-              <Link href="/api">
-                Ver Planes
+              <a href="https://work.ecosysgd.com" target="_blank" rel="noopener noreferrer">
+                Ir a Work
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+              </a>
+            </Button>
+            <Button size="lg" variant="outline" asChild>
+              <a href="https://cont.ecosysgd.com" target="_blank" rel="noopener noreferrer">
+                Ir a Cont
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </a>
             </Button>
             <Button size="lg" variant="outline" asChild>
               <a href="https://github.com/SYSGD-Ecosystem" target="_blank" rel="noopener noreferrer">

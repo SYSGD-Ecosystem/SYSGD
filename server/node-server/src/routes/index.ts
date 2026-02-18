@@ -23,6 +23,7 @@ import cryptoPaymentRoutes from "./cryptoPayments.routes";
 import veri from "./verification.routes";
 import updates from "./updates.routes";
 import timeEntries from "./time-entries";
+import contLedger from "./cont-ledger";
 
 const router = Router();
 
@@ -49,6 +50,7 @@ router.use('/crypto-payments', cryptoPaymentRoutes);
 router.use("/verification", veri);
 router.use("/", taskConfig);
 router.use("/time-entries", timeEntries);
+router.use("/cont-ledger", contLedger);
 
 router.use(updates);
 
