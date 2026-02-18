@@ -139,6 +139,9 @@ const parseCurrency = (value: string): number => {
 const getMonthTotal = (entries: MonthEntry[]): number =>
 	entries.reduce((acc, curr) => acc + parseCurrency(curr.importe), 0);
 
+const DAY_COLUMN_WIDTH_PX = 34;
+const MONTH_COLUMN_WIDTH_PX = 58;
+
 const monthNameToCode: Record<string, MonthCode> = {
 	Enero: "ENE",
 	Febrero: "FEB",
@@ -196,6 +199,7 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 	const [quickForm, setQuickForm] = useState({
 		anio: "",
 		mes: "Enero",
+		dia: "",
 		importe: "",
 	});
 	const { exportToXlsx } = useExportTable();
@@ -232,7 +236,7 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 
 	const handleQuickInsert = () => {
 		const monthCode = monthNameToCode[quickForm.mes];
-		if (!monthCode || !quickForm.importe) return;
+		if (!monthCode || !quickForm.importe || !quickForm.dia) return;
 
 		const setter = activeSheet === "INGRESOS" ? setIngresos : setGastos;
 		setter((prev) => {
@@ -240,7 +244,7 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 			const firstEmptyIndex = rows.findIndex((row) => !row.importe);
 			const targetIndex = firstEmptyIndex >= 0 ? firstEmptyIndex : 0;
 			rows[targetIndex] = {
-				dia: rows[targetIndex].dia || "1",
+				dia: quickForm.dia,
 				importe: quickForm.importe,
 			};
 			return { ...prev, [monthCode]: rows };
@@ -249,7 +253,7 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 		if (quickForm.anio) {
 			handleGeneralChange("anio", quickForm.anio);
 		}
-		setQuickForm((prev) => ({ ...prev, importe: "" }));
+		setQuickForm((prev) => ({ ...prev, dia: "", importe: "" }));
 	};
 
 	const handleTributoChange = (rowIndex: number, field: keyof TributosEntry, value: string) => {
@@ -310,18 +314,27 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 		annual: number,
 		setter: Dispatch<SetStateAction<MonthEntries>>,
 	) => (
-		<table id="myTable" className="w-full min-w-[1100px] border-collapse text-xs md:text-sm">
+		<table
+			id="myTable"
+			className="w-full min-w-[1104px] border-collapse table-fixed"
+		>
+			<colgroup>
+				{monthCodes.flatMap((month) => [
+					<col key={`${month}-day-col`} style={{ width: `${DAY_COLUMN_WIDTH_PX}px` }} />,
+					<col key={`${month}-month-col`} style={{ width: `${MONTH_COLUMN_WIDTH_PX}px` }} />,
+				])}
+			</colgroup>
 			<thead>
 				<tr>
-					<th colSpan={24} className="border p-2 text-center bg-slate-200 dark:bg-slate-700 font-bold">
+					<th colSpan={24} className="border p-2 text-center bg-slate-200 dark:bg-slate-700 font-bold text-[10px]">
 						{title}
 					</th>
 				</tr>
 				<tr>
 					{monthCodes.map((month, idx) => (
 						<>
-							<th key={`${month}-day`} className="border p-1 bg-slate-100 dark:bg-slate-800">D</th>
-							<th key={`${month}-amount`} className="border p-1 bg-slate-100 dark:bg-slate-800">{monthCodes[idx]}</th>
+							<th key={`${month}-day`} className="border p-1 bg-slate-100 dark:bg-slate-800 text-[10px]">D</th>
+							<th key={`${month}-amount`} className="border p-1 bg-slate-100 dark:bg-slate-800 text-[10px]">{monthCodes[idx]}</th>
 						</>
 					))}
 				</tr>
@@ -337,7 +350,7 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 										onChange={(event: ChangeEvent<HTMLInputElement>) =>
 											handleMonthCellChange(setter, month, rowIndex, "dia", event.target.value)
 										}
-										className="h-8 rounded-none border-0 text-center"
+										className="h-8 rounded-none border-0 text-center text-[12px]"
 									/>
 								</td>
 								<td key={`${month}-amount-${rowIndex + 1}`} className="border p-0">
@@ -346,7 +359,7 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 										onChange={(event: ChangeEvent<HTMLInputElement>) =>
 											handleMonthCellChange(setter, month, rowIndex, "importe", event.target.value)
 										}
-										className="h-8 rounded-none border-0 text-right"
+										className="h-8 rounded-none border-0 text-right text-[12px]"
 									/>
 								</td>
 							</>
@@ -354,21 +367,21 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 					</tr>
 				))}
 				<tr>
-					<td className="border p-2 font-bold">Total</td>
+					<td className="border p-2 font-bold text-[12px]">Total</td>
 					{monthCodes.map((month, idx) => (
 						<>
 							<td key={`${month}-spacer`} className="border" />
-							<td key={`${month}-total`} className="border p-2 text-right font-semibold">
+							<td key={`${month}-total`} className="border p-2 text-right font-semibold text-[12px]">
 								{totals[idx].toFixed(2)}
 							</td>
 						</>
 					))}
 				</tr>
 				<tr>
-					<td colSpan={18} className="border p-2 text-right font-semibold">
+					<td colSpan={18} className="border p-2 text-right font-semibold text-[12px]">
 						Total de {title === "INGRESOS" ? "Ingresos" : "Gastos"} Anuales
 					</td>
-					<td colSpan={6} className="border p-2 text-right font-bold">
+					<td colSpan={6} className="border p-2 text-right font-bold text-[12px]">
 						{annual.toFixed(2)}
 					</td>
 				</tr>
@@ -433,8 +446,8 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 									<Input value={row[field]} onChange={(e) => handleTributoChange(idx, field, e.target.value)} className="h-8 border-0 rounded-none text-right" />
 								</td>
 							))}
-							<td className="border p-2 text-right font-semibold">{row.g.toFixed(2)}</td>
-							<td className="border p-2 text-right font-semibold">{row.k.toFixed(2)}</td>
+							<td className="border p-2 text-right font-semibold text-[12px]">{row.g.toFixed(2)}</td>
+							<td className="border p-2 text-right font-semibold text-[12px]">{row.k.toFixed(2)}</td>
 						</tr>
 					))}
 					<tr className="font-bold bg-slate-100 dark:bg-slate-800"><td className="border p-2">Total pagado</td><td className="border p-2 text-right">{tributosTotals.b.toFixed(2)}</td><td className="border p-2 text-right">{tributosTotals.c.toFixed(2)}</td><td className="border p-2 text-right">{tributosTotals.d.toFixed(2)}</td><td className="border p-2 text-right">{tributosTotals.e.toFixed(2)}</td><td className="border p-2 text-right">{tributosTotals.f.toFixed(2)}</td><td className="border p-2 text-right">{tributosTotals.h.toFixed(2)}</td><td className="border p-2 text-right">{tributosTotals.i.toFixed(2)}</td><td className="border p-2 text-right">{tributosTotals.j.toFixed(2)}</td><td className="border p-2 text-right">{tributosTotals.l.toFixed(2)}</td><td className="border p-2 text-right">{tributosTotals.m.toFixed(2)}</td><td className="border p-2 text-right">{tributosTotals.n.toFixed(2)}</td><td className="border p-2 text-right">{tributosTotals.o.toFixed(2)}</td><td className="border p-2 text-right">{tributosTotals.p.toFixed(2)}</td><td className="border p-2 text-right">{tributosTotals.g.toFixed(2)}</td><td className="border p-2 text-right">{tributosTotals.k.toFixed(2)}</td></tr>
@@ -498,7 +511,7 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 								<CardHeader className="pb-2">
 									<CardTitle className="text-sm">Formulario rápido</CardTitle>
 								</CardHeader>
-								<CardContent className="grid grid-cols-1 md:grid-cols-4 gap-3">
+								<CardContent className="grid grid-cols-1 md:grid-cols-5 gap-3">
 									<div>
 										<Label>Año</Label>
 										<Input
@@ -525,6 +538,15 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 										</Select>
 									</div>
 									<div>
+										<Label>Día</Label>
+										<Input
+											value={quickForm.dia}
+											onChange={(event) =>
+												setQuickForm((prev) => ({ ...prev, dia: event.target.value }))
+											}
+										/>
+									</div>
+									<div>
 										<Label>{activeSheet === "INGRESOS" ? "Ingreso" : "Gasto"}</Label>
 										<Input
 											value={quickForm.importe}
@@ -546,7 +568,7 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 							<CardHeader className="pb-2"><CardTitle className="text-sm">Vista previa imprimible ({pageSize})</CardTitle></CardHeader>
 							<CardContent>
 								<div className="overflow-x-auto">
-									<div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded shadow p-2 min-w-[860px]">
+									<div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded shadow p-2 min-w-[1104px]">
 										{sheetPreview()}
 									</div>
 								</div>
