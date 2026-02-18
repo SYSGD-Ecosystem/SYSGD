@@ -169,6 +169,7 @@ const SystemDashboard: FC = () => {
 		name: "",
 		company: "",
 		code: "",
+		documentType: "management" as "management" | "tcp",
 	});
 
 	// const unreadCount =
@@ -322,6 +323,12 @@ const SystemDashboard: FC = () => {
 
 	const { handleNewArchiving } = useConnection();
 	const handleCreateDocument = () => {
+		if (newDocument.documentType === "tcp") {
+			setIsDocumentDialogOpen(false);
+			navigate("/tcp-registro");
+			return;
+		}
+
 		handleNewArchiving(
 			newDocument.code,
 			newDocument.company,
@@ -332,6 +339,12 @@ const SystemDashboard: FC = () => {
 					description: "Archivo creado, por favor refresque la página",
 				});
 				setIsDocumentDialogOpen(false);
+				setNewDocument({
+					name: "",
+					company: "",
+					code: "",
+					documentType: "management",
+				});
 			},
 			() => {
 				toast({
@@ -1208,10 +1221,28 @@ const SystemDashboard: FC = () => {
 				<DialogContent className="max-w-sm mx-4 dark:bg-gray-800 dark:border-gray-700">
 					<DialogHeader>
 						<DialogTitle className="text-gray-900 dark:text-white">
-							Crear Nuevo Archivo de Gestión
+							Crear Nuevo Documento
 						</DialogTitle>
 					</DialogHeader>
 					<div className="space-y-4">
+						<div>
+							<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+								Tipo de documento
+							</Label>
+							<select
+								value={newDocument.documentType}
+								onChange={(event) =>
+									setNewDocument({
+										...newDocument,
+										documentType: event.target.value as "management" | "tcp",
+									})
+								}
+								className="w-full h-10 px-3 rounded-md border border-input bg-background dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+							>
+								<option value="management">Archivo de Gestión</option>
+								<option value="tcp">Registro de ingresos y gastos (TCP)</option>
+							</select>
+						</div>
 						<div>
 							<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
 								Nombre del archivo
@@ -1225,32 +1256,36 @@ const SystemDashboard: FC = () => {
 								className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
 							/>
 						</div>
-						<div>
-							<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-								Empresa:
-							</Label>
-							<Input
-								value={newDocument.company}
-								onChange={(e) =>
-									setNewDocument({ ...newDocument, company: e.target.value })
-								}
-								placeholder="Ej: SYSGD Inc"
-								className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-							/>
-						</div>
-						<div>
-							<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-								código:
-							</Label>
-							<Input
-								value={newDocument.code}
-								onChange={(e) =>
-									setNewDocument({ ...newDocument, code: e.target.value })
-								}
-								placeholder="Ej: OC37.1.1"
-								className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-							/>
-						</div>
+						{newDocument.documentType === "management" && (
+							<>
+								<div>
+									<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+										Empresa:
+									</Label>
+									<Input
+										value={newDocument.company}
+										onChange={(e) =>
+											setNewDocument({ ...newDocument, company: e.target.value })
+										}
+										placeholder="Ej: SYSGD Inc"
+										className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+									/>
+								</div>
+								<div>
+									<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+										código:
+									</Label>
+									<Input
+										value={newDocument.code}
+										onChange={(e) =>
+											setNewDocument({ ...newDocument, code: e.target.value })
+										}
+										placeholder="Ej: OC37.1.1"
+										className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+									/>
+								</div>
+							</>
+						)}
 						<div className="flex justify-end gap-2">
 							<Button
 								variant="outline"
@@ -1258,7 +1293,7 @@ const SystemDashboard: FC = () => {
 							>
 								Cancelar
 							</Button>
-							<Button onClick={handleCreateDocument}>Crear Archivo</Button>
+							<Button onClick={handleCreateDocument}>{newDocument.documentType === "management" ? "Crear Archivo" : "Crear Registro TCP"}</Button>
 						</div>
 					</div>
 				</DialogContent>
