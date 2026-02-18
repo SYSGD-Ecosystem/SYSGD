@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
   AlertMessage,
   AnnualReport,
+  DayAmountRow,
   MONTHS,
   MonthKey,
   RegistroTCP,
@@ -130,21 +131,59 @@ import { RegistroSyncService } from './services/registro-sync.service';
           </div>
         </form>
 
-        <div class="month-panels">
-          <article class="panel">
-            <h3>Ingresos {{ selectedMonth }}</h3>
-            <ul>
-              <li *ngFor="let row of registro.ingresos[selectedMonth]">Día {{ row.dia }}: {{ row.importe | currency:'CUP':'symbol':'1.2-2' }}</li>
-              <li *ngIf="registro.ingresos[selectedMonth].length === 0">Sin registros.</li>
-            </ul>
-          </article>
-          <article class="panel">
-            <h3>Gastos {{ selectedMonth }}</h3>
-            <ul>
-              <li *ngFor="let row of registro.gastos[selectedMonth]">Día {{ row.dia }}: {{ row.importe | currency:'CUP':'symbol':'1.2-2' }}</li>
-              <li *ngIf="registro.gastos[selectedMonth].length === 0">Sin registros.</li>
-            </ul>
-          </article>
+        <div class="table-section">
+          <h3>Movimientos del mes {{ selectedMonth }}</h3>
+          <div class="split-tables">
+            <article class="movement-card">
+              <h4>Ingresos</h4>
+              <div class="table-wrapper">
+                <table class="mov-table">
+                  <thead>
+                    <tr>
+                      <th>Día</th>
+                      <th>Ingreso</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let row of registro.ingresos[selectedMonth]; trackBy: trackByDayAmount">
+                      <td>{{ row.dia }}</td>
+                      <td>{{ row.importe | currency:'CUP':'symbol':'1.2-2' }}</td>
+                    </tr>
+                    <tr *ngIf="registro.ingresos[selectedMonth].length === 0">
+                      <td colspan="2" class="empty-cell">Sin ingresos en este mes.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </article>
+
+            <article class="movement-card">
+              <h4>Gastos</h4>
+              <div class="table-wrapper">
+                <table class="mov-table">
+                  <thead>
+                    <tr>
+                      <th>Día</th>
+                      <th>Gasto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let row of registro.gastos[selectedMonth]; trackBy: trackByDayAmount">
+                      <td>{{ row.dia }}</td>
+                      <td>{{ row.importe | currency:'CUP':'symbol':'1.2-2' }}</td>
+                    </tr>
+                    <tr *ngIf="registro.gastos[selectedMonth].length === 0">
+                      <td colspan="2" class="empty-cell">Sin gastos en este mes.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          </div>
+          <div class="movement-totals">
+            <span>Total ingresos: <strong>{{ selectedMonthIngresosTotal | currency:'CUP':'symbol':'1.2-2' }}</strong></span>
+            <span>Total gastos: <strong>{{ selectedMonthGastosTotal | currency:'CUP':'symbol':'1.2-2' }}</strong></span>
+          </div>
         </div>
       </section>
 
@@ -255,6 +294,14 @@ export class AppComponent implements OnInit {
   report: AnnualReport = this.ledger.getAnnualReport();
   alerts: AlertMessage[] = this.ledger.buildAlerts();
   djPreview = this.ledger.declarationPreview();
+
+  get selectedMonthIngresosTotal(): number {
+    return this.monthTotal(this.registro.ingresos[this.selectedMonth]);
+  }
+
+  get selectedMonthGastosTotal(): number {
+    return this.monthTotal(this.registro.gastos[this.selectedMonth]);
+  }
 
   get fiscalMunicipios(): string[] {
     const provincia = this.generalesForm.controls.fiscalProvincia.value;
@@ -523,4 +570,17 @@ export class AppComponent implements OnInit {
       void this.syncToServer();
     }
   };
+
+  trackByDayAmount(index: number, item: DayAmountRow): string {
+    return `${index}-${item.dia}-${item.importe}`;
+  }
+
+  private monthTotal(rows: DayAmountRow[]): number {
+    return rows.reduce((acc, row) => acc + this.toNumber(row.importe), 0);
+  }
+
+  private toNumber(value: string): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
 }

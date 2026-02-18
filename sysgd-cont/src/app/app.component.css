@@ -153,26 +153,68 @@ button {
   gap: 8px;
 }
 
-.month-panels {
+.table-section {
+  margin-top: 14px;
+}
+
+.table-section h3 {
+  margin: 0 0 10px;
+}
+
+.split-tables {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  margin-top: 10px;
 }
 
-.panel {
+.movement-card h4 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+
+.table-wrapper {
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 10px;
+  border-radius: 10px;
+  overflow: hidden;
+  overflow-x: auto;
 }
 
-.panel h3 {
-  margin: 0 0 6px;
+.mov-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 420px;
 }
 
-.panel ul {
-  margin: 0;
-  padding-left: 18px;
+.mov-table th,
+.mov-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  text-align: left;
+  font-size: 14px;
+}
+
+.mov-table th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #334155;
+}
+
+.mov-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.empty-cell {
+  color: #64748b;
+  text-align: center;
+}
+
+.movement-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  margin-top: 10px;
+  color: #334155;
+  font-size: 14px;
 }
 
 .summary .grid {
@@ -220,7 +262,7 @@ button {
     grid-template-columns: 1fr;
   }
 
-  .month-panels {
+  .split-tables {
     grid-template-columns: 1fr;
   }
 

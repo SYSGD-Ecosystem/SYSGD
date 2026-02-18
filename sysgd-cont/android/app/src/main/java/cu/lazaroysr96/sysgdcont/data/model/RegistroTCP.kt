@@ -42,18 +42,33 @@ data class RegistroTCP(
     val tributos: List<TributoRow> = emptyList()
 )
 
+data class VersionInfo(
+    val serverVersion: String = "",
+    val lastDownloadedVersion: String = "",
+    val localUserVersion: String = "",
+    val hasLocalUserChanges: Boolean = false
+)
+
+data class ConflictInfo(
+    val hasConflict: Boolean,
+    val conflictMessage: String,
+    val localNewEntries: List<DayAmountRow> = emptyList(),
+    val remoteNewEntries: List<DayAmountRow> = emptyList()
+)
+
 data class SyncResult(
     val success: Boolean,
     val message: String,
     val action: SyncAction,
-    val localModified: Boolean = false,
-    val remoteModified: Boolean = false
+    val conflictInfo: ConflictInfo? = null,
+    val needsUserDecision: Boolean = false
 )
 
 enum class SyncAction {
     PULL_ONLY,
     PUSH_ONLY,
     MERGED,
+    CONFLICT_DETECTED,
     CONFLICT_RESOLVED,
     NO_CHANGES
 }
