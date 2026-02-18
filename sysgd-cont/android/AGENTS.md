@@ -27,3 +27,18 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 - Java 17 (no usar Java 21)
 - Android SDK Platform 34
 - Gradle 8.5 (incluido via wrapper)
+
+## Reglas para Commits
+
+Al finalizar cualquier cambio, el agente debe sugerir:
+- **Título**: Formato conventional commits (feat, fix, chore, docs, etc.)
+- **Descripción**: Resumen de los cambios realizados
+
+Ejemplo:
+```
+feat: add new income entry form
+
+- Add date picker for entry date
+- Validate import amount > 0
+- Auto-calculate monthly totals
+```
