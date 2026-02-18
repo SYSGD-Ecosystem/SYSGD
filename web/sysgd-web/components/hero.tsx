@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Github, Sparkles } from "lucide-react"
+import { ArrowRight, Github } from "lucide-react"
 
 export function Hero() {
   return (
@@ -23,12 +23,6 @@ export function Hero() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button size="lg" asChild>
-              <a href="https://ecosysgd.com" target="_blank" rel="noopener noreferrer">
-                <Sparkles className="mr-2 h-4 w-4" />
-                Crear Cuenta Gratis
-              </a>
-            </Button>
             <Button size="lg" variant="outline" asChild>
               <a href="https://work.ecosysgd.com" target="_blank" rel="noopener noreferrer">
                 Ir a Work
@@ -47,6 +41,21 @@ export function Hero() {
                 GitHub
               </a>
             </Button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 text-left">
+            <a href="https://work.ecosysgd.com" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-blue-200 bg-white/70 p-3 hover:bg-blue-50 transition-colors">
+              <p className="text-sm font-semibold text-blue-800">Work</p>
+              <p className="text-xs text-muted-foreground mt-1">Gestión de proyectos, tareas y colaboración.</p>
+            </a>
+            <a href="https://cont.ecosysgd.com" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-green-200 bg-white/70 p-3 hover:bg-green-50 transition-colors">
+              <p className="text-sm font-semibold text-green-800">Cont</p>
+              <p className="text-xs text-muted-foreground mt-1">Registro de ingresos y gastos para TCP.</p>
+            </a>
+            <a href="/updates" className="rounded-lg border border-amber-200 bg-white/70 p-3 hover:bg-amber-50 transition-colors">
+              <p className="text-sm font-semibold text-amber-800">Institucional</p>
+              <p className="text-xs text-muted-foreground mt-1">Novedades, estado del proyecto y comunidad.</p>
+            </a>
           </div>
 
           <p className="text-sm text-muted-foreground mt-6">
