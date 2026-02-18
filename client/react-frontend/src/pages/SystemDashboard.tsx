@@ -38,6 +38,8 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDate } from "@/utils/util";
 import useConnection from "@/hooks/connection/useConnection";
 import useProjectConnection from "@/hooks/connection/useProjectConnection";
+import useBillingData from "@/hooks/connection/useBillingData";
+import useAccountingDocuments from "@/hooks/connection/useAccountingDocuments";
 import { Progress } from "@/components/ui/progress";
 import {
 	Dialog,
@@ -68,6 +70,7 @@ interface DocumentFile {
 	tipo: "document";
 	creator_name: string;
 	created_at: string;
+	document_kind: "management" | "tcp";
 }
 
 interface Project {
@@ -153,6 +156,12 @@ const SystemDashboard: FC = () => {
 
 	const navigate = useNavigate();
 	const { user, loading: loadingUser } = useCurrentUser();
+	const { billing } = useBillingData();
+	const {
+		documents: accountingDocuments,
+		reloadDocuments: reloadAccountingDocuments,
+		createDocument: createAccountingDocument,
+	} = useAccountingDocuments();
 	const { projects: mProjects = [], reloadProjects } = useProjects();
 	const { archives = [] } = useArchives();
 	const setProjectId = useSelectionStore((state) => state.setProjectId);
@@ -178,7 +187,7 @@ const SystemDashboard: FC = () => {
 	const filteredProjects = projects.filter((p) =>
 		p.name.toLowerCase().includes(searchTerm.toLowerCase()),
 	);
-	const filteredDocuments = archives.filter((d) =>
+	const filteredDocuments = documents.filter((d) =>
 		d.name.toLowerCase().includes(searchTerm.toLowerCase()),
 	);
 
@@ -324,8 +333,31 @@ const SystemDashboard: FC = () => {
 	const { handleNewArchiving } = useConnection();
 	const handleCreateDocument = () => {
 		if (newDocument.documentType === "tcp") {
-			setIsDocumentDialogOpen(false);
-			navigate("/tcp-registro");
+			const tier = billing?.tier ?? user?.user_data?.billing?.tier ?? "free";
+			if (tier === "free") {
+				toast({
+					title: "Función premium",
+					description:
+						"La creación de registros de ingresos y gastos está disponible para planes Pro o VIP",
+					variant: "destructive",
+				});
+				navigate("/billing/purchase");
+				return;
+			}
+
+			createAccountingDocument(newDocument.name || "Registro TCP")
+				.then((created) => {
+					void reloadAccountingDocuments();
+					setIsDocumentDialogOpen(false);
+					navigate(`/tcp-registro/${created.id}`);
+				})
+				.catch(() => {
+					toast({
+						title: "Error",
+						description: "No se pudo crear el registro contable",
+						variant: "destructive",
+					});
+				});
 			return;
 		}
 
@@ -384,7 +416,7 @@ const SystemDashboard: FC = () => {
 	}, [mProjects]);
 
 	useEffect(() => {
-		const docs: DocumentFile[] = archives.map((archive) => ({
+		const managementDocs: DocumentFile[] = archives.map((archive) => ({
 			id: archive.id,
 			name: archive.name,
 			company: archive.company,
@@ -392,12 +424,22 @@ const SystemDashboard: FC = () => {
 			creator_name: archive.creator_name,
 			created_at: archive.created_at,
 			tipo: "document",
+			document_kind: "management",
 		}));
 
-		if (docs !== null) {
-			setDocument(docs);
-		}
-	}, [archives]);
+		const tcpDocs: DocumentFile[] = accountingDocuments.map((document) => ({
+			id: document.id,
+			name: document.name,
+			company: "Contabilidad",
+			code: "TCP",
+			creator_name: user?.name ?? "",
+			created_at: document.createdAt,
+			tipo: "document",
+			document_kind: "tcp",
+		}));
+
+		setDocument([...tcpDocs, ...managementDocs]);
+	}, [archives, accountingDocuments, user?.name]);
 
 	useEffect(() => {
 		if (typeof window === "undefined") return;
@@ -820,7 +862,7 @@ const SystemDashboard: FC = () => {
 								</Button>
 							</div>
 							<Badge className="w-fit bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-								EGDyA
+								{doc.document_kind === "tcp" ? "Contabilidad" : "EGDyA"}
 							</Badge>
 						</CardHeader>
 

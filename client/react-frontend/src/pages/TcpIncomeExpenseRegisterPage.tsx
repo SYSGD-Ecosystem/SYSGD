@@ -1,6 +1,6 @@
 import { ArrowLeft, FileSpreadsheet, Printer } from "lucide-react";
-import { type ChangeEvent, type Dispatch, type FC, type SetStateAction, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { type ChangeEvent, type Dispatch, type FC, type SetStateAction, useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import useExportTable from "@/hooks/useExportTable";
+import api from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 type SheetTab = "GENERALES" | "INGRESOS" | "GASTOS" | "TRIBUTOS";
 type MonthCode =
@@ -157,7 +159,17 @@ const monthNameToCode: Record<string, MonthCode> = {
 	Diciembre: "DIC",
 };
 
+type TcpDocumentPayload = {
+	generalData: GeneralData;
+	ingresos: MonthEntries;
+	gastos: MonthEntries;
+	tributos: TributosEntry[];
+};
+
 const TcpIncomeExpenseRegisterPage: FC = () => {
+	const { documentId } = useParams<{ documentId?: string }>();
+	const { toast } = useToast();
+	const [isSaving, setIsSaving] = useState(false);
 	const [activeSheet, setActiveSheet] = useState<SheetTab>("GENERALES");
 	const [pageSize, setPageSize] = useState<"A4" | "Carta">("A4");
 	const [generalData, setGeneralData] = useState<GeneralData>({
@@ -203,6 +215,73 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 		importe: "",
 	});
 	const { exportToXlsx } = useExportTable();
+
+	useEffect(() => {
+		if (!documentId) return;
+
+		const loadDocument = async () => {
+			try {
+				const { data } = await api.get<{ payload?: TcpDocumentPayload }>(
+					`/api/accounting-documents/${documentId}`,
+				);
+				if (!data.payload) return;
+
+				setGeneralData(data.payload.generalData ?? {
+					anio: "",
+					nombre: "",
+					nit: "",
+					fiscalCalle: "",
+					fiscalMunicipio: "",
+					fiscalProvincia: "",
+					legalCalle: "",
+					legalMunicipio: "",
+					legalProvincia: "",
+					actividad: "",
+					codigo: "",
+					firmaDia: "",
+					firmaMes: "",
+					firmaAnio: "",
+				});
+				setIngresos(data.payload.ingresos ?? createMonthEntries());
+				setGastos(data.payload.gastos ?? createMonthEntries());
+				setTributos(data.payload.tributos ?? tributosMonths.map((mes) => ({
+					mes,
+					b: "", c: "", d: "", e: "", f: "", h: "", i: "", j: "", l: "", m: "", n: "", o: "", p: "",
+				})));
+			} catch {
+				toast({
+					title: "Error",
+					description: "No se pudo cargar el documento contable",
+					variant: "destructive",
+				});
+			}
+		};
+
+		void loadDocument();
+	}, [documentId, toast]);
+
+	const handleSaveDocument = async () => {
+		if (!documentId) return;
+		setIsSaving(true);
+		try {
+			const payload: TcpDocumentPayload = {
+				generalData,
+				ingresos,
+				gastos,
+				tributos,
+			};
+			await api.put(`/api/accounting-documents/${documentId}`, { payload });
+			toast({ title: "Guardado", description: "Documento contable guardado" });
+		} catch {
+			toast({
+				title: "Error",
+				description: "No se pudo guardar el documento",
+				variant: "destructive",
+			});
+		} finally {
+			setIsSaving(false);
+		}
+	};
 
 	const monthTotalsIngresos = useMemo(
 		() => monthCodes.map((month) => getMonthTotal(ingresos[month])),
@@ -490,7 +569,12 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 							<SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
 							<SelectContent><SelectItem value="A4">A4</SelectItem><SelectItem value="Carta">Carta</SelectItem></SelectContent>
 						</Select>
-						<Button variant="outline" onClick={exportToXlsx}><FileSpreadsheet className="w-4 h-4 mr-1" />Exportar Excel</Button>
+						{documentId && (
+								<Button variant="outline" onClick={handleSaveDocument} disabled={isSaving}>
+									{isSaving ? "Guardando..." : "Guardar"}
+								</Button>
+							)}
+							<Button variant="outline" onClick={exportToXlsx}><FileSpreadsheet className="w-4 h-4 mr-1" />Exportar Excel</Button>
 						<Button onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Imprimir</Button>
 					</div>
 				</div>

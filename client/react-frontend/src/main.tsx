@@ -66,6 +66,7 @@ createRoot(document.getElementById("root")!).render(
 						<Route path="/dashboard" element={<SystemDashboard />} />
 						<Route path="/about" element={<AboutPage/>} />
 						<Route path="/tcp-registro" element={<TcpIncomeExpenseRegisterPage />} />
+						<Route path="/tcp-registro/:documentId" element={<TcpIncomeExpenseRegisterPage />} />
 						<Route path="/*" element={<PageNotFound/>} />
 					</Routes>
 				</AppRouter>
