@@ -1,44 +1,42 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import api from "@/lib/api"; // Tu instancia centralizada de Axios
 
-const useGetData = (id: string) => {
-  const [data, setData] = useState([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+// Definimos un tipo genérico T para que este hook sea reutilizable
+export function useGetData<T = any>(id: string) {
+    const [data, setData] = useState<T | []>([]);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
 
-  const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
+    useEffect(() => {
+        // Evitamos peticiones si no hay ID
         if (!id) {
-          throw new Error("El código no puede estar vacío.");
+            setError("El código no puede estar vacío.");
+            setLoading(false);
+            return;
         }
 
-        const response = await fetch(`${serverUrl}/api/get_data?id=${encodeURIComponent(id)}`, {
-          credentials: "include",
-        });
+        const fetchData = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                // Axios maneja el encoding de los params automáticamente
+                const response = await api.get<T>("/api/get_data", {
+                    params: { id }
+                });
 
-        if (!response.ok) {
-          throw new Error("Error al obtener los datos");
-        }
+                setData(response.data);
+            } catch (err: any) {
+                console.error("Error en useGetData:", err);
+                setError(err.response?.data?.message || "Error al obtener los datos");
+            } finally {
+                setLoading(false);
+            }
+        };
 
-        const data = await response.json();
-        setData(data);
-        setError(null);
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      } catch (err: any) {
-        console.error(err);
-        setError(err.message || "Error desconocido");
-      } finally {
-        setLoading(false);
-      }
-    };
+        fetchData();
+    }, [id]); // Solo depende del ID, ya no del serverUrl
 
-    fetchData();
-  }, [id, serverUrl]);
-
-  return { data, error, loading };
-};
+    return { data, error, loading };
+}
 
 export default useGetData;

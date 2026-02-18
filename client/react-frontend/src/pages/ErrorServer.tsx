@@ -1,23 +1,23 @@
-import type React from "react";
-
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import {
 	AlertTriangle,
-	RefreshCw,
-	Home,
 	ArrowLeft,
-	Wifi,
-	Server,
 	Clock,
 	HelpCircle,
+	Home,
+	RefreshCw,
+	Server,
+	Wifi,
 } from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import useServerStatus from "@/hooks/connection/useServerStatus";
+import { canContinueOffline } from "@/utils/offline-access";
 
 interface ErrorServerProps {
 	serverUrl?: string;
@@ -32,7 +32,7 @@ const ErrorServer: React.FC<ErrorServerProps> = ({
 	errorMessage = "Servidor no disponible",
 	retryCount = 0,
 	onRetry,
-	serverUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin,
+	serverUrl = import.meta.env.VITE_SERVER_URL || window.location.origin,
 }) => {
 	const navigate = useNavigate();
 	const [isRetrying, setIsRetrying] = useState(false);
@@ -40,6 +40,7 @@ const ErrorServer: React.FC<ErrorServerProps> = ({
 	const [connectionStatus, setConnectionStatus] = useState<
 		"checking" | "offline" | "online"
 	>("checking");
+	const [offlineEligible, setOfflineEligible] = useState(false);
 	const { status: apiStatus, checkServerStatus } = useServerStatus(serverUrl);
 
 	// Check API status and network connectivity
@@ -62,6 +63,10 @@ const ErrorServer: React.FC<ErrorServerProps> = ({
 	}, [serverUrl, apiStatus]);
 
 	// Auto-retry countdown
+	useEffect(() => {
+		setOfflineEligible(canContinueOffline());
+	}, []);
+
 	useEffect(() => {
 		if (countdown > 0) {
 			const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
@@ -107,6 +112,10 @@ const ErrorServer: React.FC<ErrorServerProps> = ({
 
 	const goBack = () => {
 		navigate(-1);
+	};
+
+	const continueOffline = () => {
+		navigate("/dashboard");
 	};
 
 	const getStatusColor = () => {
@@ -255,6 +264,15 @@ const ErrorServer: React.FC<ErrorServerProps> = ({
 							</Button>
 						</div>
 
+						{offlineEligible && (
+							<Button
+								onClick={continueOffline}
+								className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+							>
+								Continuar offline con datos guardados
+							</Button>
+						)}
+
 						<Separator className="bg-slate-700" />
 
 						{/* Help Section */}
@@ -296,6 +314,7 @@ const ErrorServer: React.FC<ErrorServerProps> = ({
 								<div>Timestamp: {new Date().toISOString()}</div>
 								<div>User Agent: {navigator.userAgent.substring(0, 50)}...</div>
 								<div>Connection: {connectionStatus}</div>
+								<div>Server URL: {serverUrl}</div>
 							</div>
 						</details>
 					</CardContent>

@@ -1,8 +1,8 @@
+import { Github, Twitter } from "lucide-react";
 import { type FC, useEffect, useState } from "react";
-import BarButton from "../BarButton";
 import { IoArchive } from "react-icons/io5";
 import { Link } from "react-router-dom";
-import { Github, Twitter } from "lucide-react";
+import BarButton from "../BarButton";
 
 type SidebarProps = {
 	onOptionSelected: (option: number) => void;
@@ -69,19 +69,21 @@ const Sidebar: FC<SidebarProps> = ({ onOptionSelected }) => {
 			</div>
 			<div className="flex items-center justify-center p-1 border-t bg-slate-50 dark:bg-transparent dark:border-slate-700">
 				<div className=" font-normal text-base w-full">
-					<span className="text-slate-500 dark:text-slate-300">&copy; SYSGD 2025</span>
+					<span className="text-slate-500 dark:text-slate-300">
+						&copy; SYSGD 2025
+					</span>
 				</div>
 				<div className="flex gap-1 items-center">
 					<Link
 						to="https://github.com/lazaroysr96/sysgd/"
-            target="_blank"
+						target="_blank"
 						className="text-slate-500 p-2 dark:text-slate-300 hover:text-slate-700 dark:hover:text-slate-200"
 					>
 						<Github className="w-4 h-4" />
 					</Link>
 					<Link
 						to="https://x.com/SYSGD_"
-            target="_blank"
+						target="_blank"
 						className="text-slate-500 p-2 dark:text-slate-300 hover:text-slate-700 dark:hover:text-slate-200"
 					>
 						<Twitter className="w-4 h-4" />

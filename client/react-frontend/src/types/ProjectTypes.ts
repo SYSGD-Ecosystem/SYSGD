@@ -10,8 +10,7 @@ export type Idea = {
 	votes: number;
 	implementability: string;
 	impact: string;
-    project_id: string;
-    idea_number: number;
-    user_name: string;
-
+	project_id: string;
+	idea_number: number;
+	user_name: string;
 };

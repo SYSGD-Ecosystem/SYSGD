@@ -1,46 +1,47 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import api from "@/lib/api"; // Instancia centralizada
+import { RegistroDeEntradaData } from "@/components/docs/RegistroDeEntrada";
 
-const useGetEntryRegister = (entryId: string) => {
-    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    const [entry, setEntry] = useState<any>(null);
+// Definimos la estructura basada en tu columna entry_register JSONB
+
+
+export function useGetEntryRegister(entryId: string) {
+    const [entry, setEntry] = useState<RegistroDeEntradaData | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
-
-    // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
     useEffect(() => {
+        // Si no hay ID, no disparamos la petición
+        if (!entryId) {
+            setLoading(false);
+            return;
+        }
+
         const fetchEntry = async () => {
+            setLoading(true);
+            setError(null);
             try {
-                if (!entryId) {
-                    throw new Error("El ID de la entrada no puede estar vacío.");
-                }
+                // Usamos params de Axios para evitar concatenar strings manualmente
+                const response = await api.get<RegistroDeEntradaData>("/api/get-document-entry", {
+                    params: { id: entryId }
+                });
 
-                const response = await fetch(
-                    `${serverUrl}/api/get-document-entry?id=${encodeURIComponent(entryId)}`,
-                    { credentials: "include" }
-                );
-
-                if (!response.ok) {
-                    throw new Error("Error al obtener el registro de entrada");
-                }
-
-                const data = await response.json();
-                setEntry(data);
-                setError(null);
-            // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+                setEntry(response.data);
             } catch (err: any) {
-                console.error(err);
-                setError(err.message || "Error desconocido");
+                console.error("Error cargando registro de entrada:", err);
+                setError(
+                    err.response?.data?.message || 
+                    "Error al obtener el registro de entrada"
+                );
             } finally {
                 setLoading(false);
             }
         };
 
         fetchEntry();
-    }, [entryId, serverUrl]);
+    }, [entryId]);
 
     return { entry, error, loading };
-};
+}
 
 export default useGetEntryRegister;

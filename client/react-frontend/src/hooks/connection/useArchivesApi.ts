@@ -1,119 +1,100 @@
-import { useState, useCallback } from "react";
-
-const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+import { useCallback, useState } from "react";
+import api from "@/lib/api";
 
 export interface Archive {
-  id: string;
-  code: string;
-  company: string;
-  name: string;
+	id: string;
+	code: string;
+	company: string;
+	name: string;
 }
 
 export function useArchivesApi() {
-  const [archives, setArchives] = useState<Archive[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+	const [archives, setArchives] = useState<Archive[]>([]);
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
-  // Obtener todos los archivos
-  const fetchArchives = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${serverUrl}/api/archives`, { credentials: "include" });
-      if (!res.ok) throw new Error("Error al obtener archivos");
-      const data = await res.json();
-      setArchives(data);
-    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    } catch (e: any) {
-      setError(e.message || "Error desconocido");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+	// Listar: La base del Dropdown en el WorkSpace
+	const fetchArchives = useCallback(async () => {
+		setLoading(true);
+		setError(null);
+		try {
+			const res = await api.get<Archive[]>("/api/archives");
+			setArchives(res.data || []);
+		} catch (e: any) {
+			setError(e.response?.data?.message || "Error al obtener archivos");
+		} finally {
+			setLoading(false);
+		}
+	}, []);
 
-  // Crear un nuevo archivo
-  const createArchive = useCallback(
-    async (archive: Omit<Archive, "id">) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(`${serverUrl}/api/create`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(archive),
-        });
-        if (!res.ok) throw new Error("Error al crear archivo");
-        await fetchArchives();
-        return true;
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      } catch (e: any) {
-        setError(e.message || "Error desconocido");
-        return false;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [fetchArchives]
-  );
+	// Crear: Aquí es donde entrará la validación de licencias para MIPYMES
+	const createArchive = useCallback(
+		async (archive: Omit<Archive, "id">) => {
+			setLoading(true);
+			setError(null);
+			try {
+				// En el futuro, este endpoint verificará si la MIPYME
+				// tiene cupo en su suscripción para crear un nuevo libro/archivo
+				await api.post("/api/create", archive);
+				await fetchArchives();
+				return true;
+			} catch (e: any) {
+				const msg = e.response?.data?.message || "Error al crear archivo";
+				setError(msg);
+				return false;
+			} finally {
+				setLoading(false);
+			}
+		},
+		[fetchArchives],
+	);
 
-  // Actualizar un archivo
-  const updateArchive = useCallback(
-    async (id: number, data: Partial<Omit<Archive, "id">>) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(`${serverUrl}/api/archives/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(data),
-        });
-        if (!res.ok) throw new Error("Error al actualizar archivo");
-        await fetchArchives();
-        return true;
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      } catch (e: any) {
-        setError(e.message || "Error desconocido");
-        return false;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [fetchArchives]
-  );
+	// Actualizar: Vital para corregir Nombres o Códigos de entidad
+	const updateArchive = useCallback(
+		async (id: string | number, data: Partial<Omit<Archive, "id">>) => {
+			setLoading(true);
+			setError(null);
+			try {
+				await api.put(`/api/archives/${id}`, data);
+				await fetchArchives();
+				return true;
+			} catch (e: any) {
+				setError(e.response?.data?.message || "Error al actualizar archivo");
+				return false;
+			} finally {
+				setLoading(false);
+			}
+		},
+		[fetchArchives],
+	);
 
-  // Eliminar un archivo
-  const deleteArchive = useCallback(
-    async (id: string) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(`${serverUrl}/api/archives/${id}`, {
-          method: "DELETE",
-          credentials: "include",
-        });
-        if (!res.ok) throw new Error("Error al eliminar archivo");
-        await fetchArchives();
-        return true;
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      } catch (e: any) {
-        setError(e.message || "Error desconocido");
-        return false;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [fetchArchives]
-  );
+	// Eliminar: La acción más crítica
+	const deleteArchive = useCallback(
+		async (id: string) => {
+			if (!id) return false;
+			setLoading(true);
+			setError(null);
+			try {
+				await api.delete(`/api/archives/${id}`);
+				await fetchArchives();
+				return true;
+			} catch (e: any) {
+				setError(e.response?.data?.message || "Error al eliminar archivo");
+				return false;
+			} finally {
+				setLoading(false);
+			}
+		},
+		[fetchArchives],
+	);
 
-  return {
-    archives,
-    loading,
-    error,
-    fetchArchives,
-    createArchive,
-    updateArchive,
-    deleteArchive,
-  };
+	return {
+		archives,
+		loading,
+		error,
+		fetchArchives,
+		createArchive,
+		updateArchive,
+		deleteArchive,
+	};
 }

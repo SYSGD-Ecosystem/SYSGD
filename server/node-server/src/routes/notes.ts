@@ -36,7 +36,7 @@ router.get(
 					n.updated_at,
 					n.user_id,
 					u.name as author_name,
-					u.username as author_username
+					u.email as author_email
 				FROM project_notes n
 				JOIN users u ON n.user_id = u.id
 				WHERE n.project_id = $1
@@ -91,7 +91,7 @@ router.post(
 					n.updated_at,
 					n.user_id,
 					u.name as author_name,
-					u.username as author_username
+					u.email as author_email
 				FROM project_notes n
 				JOIN users u ON n.user_id = u.id
 				WHERE n.id = $1
@@ -186,7 +186,7 @@ router.put(
 					n.updated_at,
 					n.user_id,
 					u.name as author_name,
-					u.username as author_username
+					u.email as author_email
 				FROM project_notes n
 				JOIN users u ON n.user_id = u.id
 				WHERE n.id = $1

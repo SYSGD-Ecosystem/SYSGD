@@ -1,0 +1,304 @@
+import { Router, type Request, type Response } from "express";
+
+import { pool } from "../db";
+import { isAuthenticated } from "../middlewares/auth-jwt";
+import { isAdmin } from "../middlewares/auth";
+import { getCurrentUserData } from "../controllers/users";
+import {
+	checkAICredits,
+	consumeAICredits,
+} from "../middlewares/usageLimits.middleware";
+import { geminiAgent } from "../geminiAgent";
+import { openRouterAgent } from "../openRouterAgent";
+
+const router = Router();
+
+type UpdateCategory =
+	| "Nueva Funcionalidad"
+	| "Mejora"
+	| "Anuncio"
+	| "Documentación"
+	| "Seguridad";
+
+function normalizeCategory(category: unknown): UpdateCategory | null {
+	if (typeof category !== "string") return null;
+	const allowed: UpdateCategory[] = [
+		"Nueva Funcionalidad",
+		"Mejora",
+		"Anuncio",
+		"Documentación",
+		"Seguridad",
+	];
+	return (allowed as string[]).includes(category) ? (category as UpdateCategory) : null;
+}
+
+function parseDateOnly(value: unknown): string | null {
+	if (typeof value !== "string") return null;
+	// Expect YYYY-MM-DD
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+	return value;
+}
+
+// ==========================
+// PUBLIC
+// ==========================
+
+// GET /api/updates
+router.get("/updates", async (_req: Request, res: Response) => {
+	try {
+		const result = await pool.query(
+			`
+			SELECT id, title, description, category, youtube_url, publish_date AS date
+			FROM updates
+			ORDER BY publish_date DESC, created_at DESC
+			LIMIT 200
+			`,
+		);
+		res.json(result.rows);
+	} catch (err) {
+		console.error("Error fetching updates:", err);
+		res.status(500).json({ message: "Error al obtener updates" });
+	}
+});
+
+// GET /api/updates/:id
+router.get("/updates/:id", async (req: Request, res: Response) => {
+	const { id } = req.params;
+	try {
+		const result = await pool.query(
+			`SELECT id, title, description, category, youtube_url, publish_date AS date FROM updates WHERE id = $1`,
+			[id],
+		);
+		if (result.rows.length === 0) {
+			res.status(404).json({ message: "Update no encontrada" });
+			return;
+		}
+		res.json(result.rows[0]);
+	} catch (err) {
+		console.error("Error fetching update by id:", err);
+		res.status(500).json({ message: "Error al obtener update" });
+	}
+});
+
+// ==========================
+// ADMIN ONLY
+// ==========================
+
+router.post(
+	"/updates/generate",
+	isAuthenticated,
+	isAdmin,
+	checkAICredits,
+	async (req, res) => {
+		const { prompt, provider, model } = req.body;
+
+		if (!prompt) {
+			res.status(400).json({ error: "Falta el prompt" });
+			return;
+		}
+
+		try {
+			const useCustomToken = (req as any).useCustomToken;
+			const customToken = (req as any).customToken;
+
+			const systemPrompt =
+				"Eres un asistente especializado en redacción de changelogs y actualizaciones de producto (SaaS). Tu objetivo es mejorar, clarificar y profesionalizar el texto sin inventar funcionalidades. Mantén un tono claro, confiable y orientado a usuario. Devuelve SOLO el texto mejorado en Markdown, sin explicaciones adicionales.";
+
+			const result =
+				provider === "gemini"
+					? await geminiAgent({
+							prompt,
+							image: undefined,
+							audio: undefined,
+							video: undefined,
+							file: undefined,
+							model: model || "gemini-2.5-flash",
+							customToken: useCustomToken ? customToken : undefined,
+							forse_text_response: true,
+					  })
+					: await openRouterAgent({
+							prompt,
+							model,
+							customToken,
+							systemPrompt,
+							force_text_response: true,
+					  });
+
+			if (!useCustomToken) {
+				await consumeAICredits(req, res, () => {
+					res.json({
+						...result,
+						billing: {
+							used_custom_token: false,
+							credits_consumed: 1,
+						},
+					});
+				});
+				return;
+			}
+
+			res.json({
+				...result,
+				billing: {
+					used_custom_token: true,
+					credits_consumed: 0,
+				},
+			});
+		} catch (err) {
+			console.error("❌ Error en Updates Agent:", err);
+			res.status(500).json({
+				error: "Error interno del agente",
+				details: err instanceof Error ? err.message : "Error desconocido",
+			});
+		}
+	},
+);
+
+// POST /api/updates
+router.post("/updates", isAuthenticated, isAdmin, async (req: Request, res: Response) => {
+	const { title, description, category, date, youtube_url } = req.body;
+	const normalizedCategory = normalizeCategory(category);
+	const publishDate = parseDateOnly(date);
+	const user = getCurrentUserData(req);
+	const youtubeUrlNormalized = youtube_url === null || youtube_url === undefined ? null : String(youtube_url);
+
+	if (!title || typeof title !== "string") {
+		res.status(400).json({ message: "title requerido" });
+		return;
+	}
+	if (!description || typeof description !== "string") {
+		res.status(400).json({ message: "description requerido" });
+		return;
+	}
+	if (!normalizedCategory) {
+		res.status(400).json({ message: "category inválida" });
+		return;
+	}
+	if (!publishDate) {
+		res.status(400).json({ message: "date inválida (YYYY-MM-DD)" });
+		return;
+	}
+
+	try {
+		const result = await pool.query(
+			`
+			INSERT INTO updates (title, description, category, youtube_url, publish_date, created_by)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			RETURNING id, title, description, category, youtube_url, publish_date AS date
+			`,
+			[title, description, normalizedCategory, youtubeUrlNormalized, publishDate, user?.id || null],
+		);
+		res.status(201).json(result.rows[0]);
+	} catch (err) {
+		console.error("Error creating update:", err);
+		res.status(500).json({ message: "Error al crear update" });
+	}
+});
+
+// PUT /api/updates/:id
+router.put(
+	"/updates/:id",
+	isAuthenticated,
+	isAdmin,
+	async (req: Request, res: Response) => {
+		const { id } = req.params;
+		const { title, description, category, date, youtube_url } = req.body;
+
+		const fields: string[] = [];
+		const values: any[] = [];
+		let idx = 1;
+
+		if (title !== undefined) {
+			if (typeof title !== "string" || !title.trim()) {
+				res.status(400).json({ message: "title inválido" });
+				return;
+			}
+			fields.push(`title = $${idx++}`);
+			values.push(title);
+		}
+		if (description !== undefined) {
+			if (typeof description !== "string" || !description.trim()) {
+				res.status(400).json({ message: "description inválido" });
+				return;
+			}
+			fields.push(`description = $${idx++}`);
+			values.push(description);
+		}
+		if (category !== undefined) {
+			const normalized = normalizeCategory(category);
+			if (!normalized) {
+				res.status(400).json({ message: "category inválida" });
+				return;
+			}
+			fields.push(`category = $${idx++}`);
+			values.push(normalized);
+		}
+		if (date !== undefined) {
+			const publishDate = parseDateOnly(date);
+			if (!publishDate) {
+				res.status(400).json({ message: "date inválida (YYYY-MM-DD)" });
+				return;
+			}
+			fields.push(`publish_date = $${idx++}`);
+			values.push(publishDate);
+		}
+		if (youtube_url !== undefined) {
+			const youtubeUrlNormalized = youtube_url === null ? null : String(youtube_url);
+			fields.push(`youtube_url = $${idx++}`);
+			values.push(youtubeUrlNormalized);
+		}
+
+		if (fields.length === 0) {
+			res.status(400).json({ message: "No hay datos para actualizar" });
+			return;
+		}
+
+		fields.push(`updated_at = NOW()`);
+		values.push(id);
+
+		try {
+			const result = await pool.query(
+				`
+				UPDATE updates
+				SET ${fields.join(", ")}
+				WHERE id = $${idx}
+				RETURNING id, title, description, category, youtube_url, publish_date AS date
+				`,
+				values,
+			);
+
+			if (result.rows.length === 0) {
+				res.status(404).json({ message: "Update no encontrada" });
+				return;
+			}
+
+			res.json(result.rows[0]);
+		} catch (err) {
+			console.error("Error updating update:", err);
+			res.status(500).json({ message: "Error al actualizar update" });
+		}
+	},
+);
+
+// DELETE /api/updates/:id
+router.delete(
+	"/updates/:id",
+	isAuthenticated,
+	isAdmin,
+	async (req: Request, res: Response) => {
+		const { id } = req.params;
+		try {
+			const result = await pool.query("DELETE FROM updates WHERE id = $1", [id]);
+			if (result.rowCount === 0) {
+				res.status(404).json({ message: "Update no encontrada" });
+				return;
+			}
+			res.sendStatus(204);
+		} catch (err) {
+			console.error("Error deleting update:", err);
+			res.status(500).json({ message: "Error al eliminar update" });
+		}
+	},
+);
+
+export default router;

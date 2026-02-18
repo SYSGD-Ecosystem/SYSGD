@@ -1,46 +1,57 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import api from "@/lib/api"; // Tu instancia centralizada de Axios
+import { ExitRegisterData } from "@/components/docs/ExitRegister";
 
-const useGetExitRegister = (entryId: string) => {
-    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    const [exit, setExit] = useState<any>(null);
-    const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+// Definimos la estructura de la respuesta para mantener coherencia con el componente
+interface ExitResponse {
+	exit_register: ExitRegisterData[];
+	[key: string]: any;
+}
 
-    const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+export function useGetExitRegister(entryId: string) {
+	// Inicializamos con un array vacío para que el componente no falle al renderizar
+	const [exit, setExit] = useState<ExitResponse[]>([]);
+	const [error, setError] = useState<string | null>(null);
+	const [loading, setLoading] = useState(true);
 
-    // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
-    useEffect(() => {
-        const fetchEntry = async () => {
-            try {
-                if (!entryId) {
-                    throw new Error("El ID de la entrada no puede estar vacío.");
-                }
+	useEffect(() => {
+		// Si no hay ID, evitamos la petición y limpiamos el estado
+		if (!entryId) {
+			setExit([]);
+			setLoading(false);
+			return;
+		}
 
-                const response = await fetch(
-                    `${serverUrl}/api/get-document-exit?id=${encodeURIComponent(entryId)}`,
-                    { credentials: "include" }
-                );
+		const fetchExit = async () => {
+			setLoading(true);
+			setError(null);
+			try {
+				// Axios gestiona automáticamente los params y las credenciales
+				const response = await api.get<ExitResponse[]>(
+					"/api/get-document-exit",
+					{
+						params: { id: entryId },
+					},
+				);
 
-                if (!response.ok) {
-                    throw new Error("Error al obtener el registro de entrada");
-                }
+				// Garantizamos que siempre devolvemos un array, incluso si la data es null
+				setExit(response.data || []);
+			} catch (err: any) {
+				console.error("Error en useGetExitRegister:", err);
+				setError(
+					err.response?.data?.message ||
+						"Error al obtener el registro de salida",
+				);
+				setExit([]); // En caso de error, mantenemos el array vacío para seguridad de la UI
+			} finally {
+				setLoading(false);
+			}
+		};
 
-                const data = await response.json();
-                setExit(data);
-                setError(null);
-            // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-            } catch (err: any) {
-                console.error(err);
-                setError(err.message || "Error desconocido");
-            } finally {
-                setLoading(false);
-            }
-        };
+		fetchExit();
+	}, [entryId]);
 
-        fetchEntry();
-    }, [entryId, serverUrl]);
-
-    return { exit, error, loading };
-};
+	return { exit, error, loading };
+}
 
 export default useGetExitRegister;

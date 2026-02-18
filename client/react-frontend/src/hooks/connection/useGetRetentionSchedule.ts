@@ -1,40 +1,55 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import api from "@/lib/api";
 import type { RetentionScheduleData } from "../../types/RetentionSchedule";
 
-const useGetRetentionSchedule = (archiveId: string) => {
-  const [schedule, setSchedule] = useState<RetentionScheduleData[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+// Definimos la estructura de la respuesta de la DB (columna JSONB)
+interface RetentionResponse {
+    retention_schedule: RetentionScheduleData[];
+    [key: string]: any;
+}
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        if (!archiveId) throw new Error("Id vacío");
-        const res = await fetch(
-          `${serverUrl}/api/get-retention-schedule?id=${encodeURIComponent(archiveId)}`,
-          { credentials: "include" },
-        );
-        if (!res.ok) throw new Error("Error al obtener la TRD");
-        const json = await res.json();
-        const flat: RetentionScheduleData[] = Array.isArray(json)
-          ? json
-              .filter((i) => Array.isArray(i.retention_schedule))
-              .flatMap((i) => i.retention_schedule)
-          : [];
-        setSchedule(flat);
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-      } catch (e: any) {
-        setError(e.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [archiveId, serverUrl]);
+export const useGetRetentionSchedule = (archiveId: string) => {
+    // Inicializamos con array vacío para evitar errores de mapeo en la UI
+    const [schedule, setSchedule] = useState<RetentionScheduleData[]>([]);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
 
-  return { schedule, error, loading };
+    useEffect(() => {
+        if (!archiveId) {
+            setSchedule([]);
+            setLoading(false);
+            return;
+        }
+
+        const fetchTRD = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const response = await api.get<RetentionResponse[]>("/api/get-retention-schedule", {
+                    params: { id: archiveId }
+                });
+
+                // Replicamos tu lógica de filtrado y aplanamiento para ser fieles al componente
+                const flatData = Array.isArray(response.data)
+                    ? response.data
+                        .filter((item) => Array.isArray(item.retention_schedule))
+                        .flatMap((item) => item.retention_schedule)
+                    : [];
+
+                setSchedule(flatData);
+            } catch (err: any) {
+                console.error("Error cargando TRD:", err);
+                setError(err.response?.data?.message || "Error al obtener la TRD");
+                setSchedule([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchTRD();
+    }, [archiveId]);
+
+    return { schedule, error, loading };
 };
 
 export default useGetRetentionSchedule;

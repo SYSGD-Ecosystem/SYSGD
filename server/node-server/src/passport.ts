@@ -1,7 +1,7 @@
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import type { VerifyCallback } from "passport-google-oauth20";
-import { createUser, findUserByUsername } from "./services/authService";
+import { createUser, findUserByemail } from "./services/authService";
 import { generateJWT } from "./controllers/auth";
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
@@ -25,7 +25,7 @@ passport.use(
 			if (!email) return done(null, false);
 
 			try {
-				const user = await findUserByUsername(email);
+				const user = await findUserByemail(email);
 
 				if (user === null) {
 					const result = await createUser(name, email, "", "user");
@@ -33,20 +33,20 @@ passport.use(
 					if (!result.success) {
 						console.error("Error al crear usuario:", result.message);
 						return done(null, false);
-						// biome-ignore lint/style/noUselessElse: <explanation>
 					} else {
 						const token = generateJWT({
 							id: result.user.id,
-							username: result.user.username,
+							email: result.user.email,
 							name: result.user.name,
 							privileges: result.user.privileges,
 						});
 						return done(null, { token });
 					}
 				}
+				
 				const token = generateJWT({
 					id: user.id,
-					username: user.username,
+					email: user.email,
 					name: user.name,
 					privileges: user.privileges,
 				});

@@ -1,55 +1,72 @@
+import axios from "axios";
 import { useState } from "react";
-
-const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
-
+import api from "@/lib/api";
 
 interface RegisterData {
-  name: string;
-  username: string;
-  password: string;
+	name: string;
+	email: string;
+	password: string;
 }
 
 interface RegisterResult {
-  register: (data: RegisterData) => Promise<void>;
-  loading: boolean;
-  error: string;
-  success: boolean;
+	register: (data: RegisterData) => Promise<void>;
+	loading: boolean;
+	error: string;
+	success: boolean;
 }
 
 export function useRegisterUser(): RegisterResult {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState("");
+	const [success, setSuccess] = useState(false);
 
-  const register = async ({ name, username, password }: RegisterData) => {
-    setLoading(true);
-    setError("");
-    setSuccess(false);
+	const register = async ({ name, email, password }: RegisterData) => {
+		setLoading(true);
+		setError("");
+		setSuccess(false);
 
-    try {
-      const res = await fetch(`${serverUrl}/api/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name, username, password }),
-      });
+		try {
+			await api.post("/api/register", { name, email, password });
+			setSuccess(true);
 
-      if (res.status === 201) {
-        setSuccess(true);
-      } else if (res.status === 400) {
-        setError("Faltan datos obligatorios.");
-      } else if (res.status === 409) {
-        setError("El usuario ya existe.");
-      } else {
-        setError("Error desconocido del servidor.");
-      }
-    } catch (err) {
-      setError("No se pudo conectar con el servidor.");
-    } finally {
-      setLoading(false);
-    }
-  };
+			try {
+				const loginResponse = await api.post("/api/auth/login", {
+					email,
+					password,
+				});
+				const token = loginResponse.data?.token;
+				if (typeof token === "string" && token.length > 0) {
+					localStorage.setItem("token", token);
+				}
+			} catch (loginErr) {
+				console.warn(
+					"Registro exitoso, pero no se pudo iniciar sesión automáticamente.",
+					loginErr,
+				);
+			}
+		} catch (err) {
+			if (axios.isAxiosError(err) && err.response) {
+				const status = err.response.status;
+				const message = err.response.data?.error || err.response.data?.message;
 
-  return { register, loading, error, success };
+				if (status === 400) {
+					setError("Faltan datos obligatorios.");
+				} else if (status === 409) {
+					setError("El usuario ya existe.");
+				} else {
+					setError(
+						typeof message === "string"
+							? message
+							: "Error desconocido del servidor.",
+					);
+				}
+			} else {
+				setError("No se pudo conectar con el servidor.");
+			}
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	return { register, loading, error, success };
 }

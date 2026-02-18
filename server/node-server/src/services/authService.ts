@@ -1,15 +1,17 @@
 import { pool } from "../db";
+import { createDefaultUserData } from "../utils/billing";
 
 export const createUser = async (
 	name: string,
-	username: string,
+	email: string,
 	password: string,
 	privileges: string,
 ) => {
 	try {
+		const defaultUserData = createDefaultUserData();
 		const result = await pool.query(
-			"INSERT INTO users (name, username, password, privileges) VALUES ($1, $2, $3, $4) RETURNING *",
-			[name, username, password, privileges],
+			"INSERT INTO users (name, email, password, privileges, user_data) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+			[name, email, password, privileges, JSON.stringify(defaultUserData)],
 		);
 
 		return {
@@ -35,15 +37,15 @@ export const createUser = async (
 	}
 };
 
-export const findUserByUsername = async (username: string) => {
-	const result = await pool.query("SELECT * FROM users WHERE username = $1", [
-		username,
+export const findUserByemail = async (email: string) => {
+	const result = await pool.query("SELECT * FROM users WHERE email = $1", [
+		email,
 	]);
 	return result.rows[0] || null;
 };
 
 export const logUserLogin = async (
-	userId: number,
+	userId: string,
 	ip: string,
 	userAgent: string,
 ) => {

@@ -1,16 +1,16 @@
+import { type FC, useState } from "react";
 import { useInvitations } from "@/hooks/connection/useProjectMembers";
 import { useToast } from "@/hooks/use-toast";
-import { type FC, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
-import { Label } from "../ui/label";
-import { Input } from "../ui/input";
 import { Button } from "../ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
 
-const DialogInvite: FC<{ projectId: string; isOpen: boolean; onOpenChange: (open: boolean) => void; }> = ({
-	projectId,
-	isOpen,
-    onOpenChange
-}) => {
+const DialogInvite: FC<{
+	projectId: string;
+	isOpen: boolean;
+	onOpenChange: (open: boolean) => void;
+}> = ({ projectId, isOpen, onOpenChange }) => {
 	const { toast } = useToast();
 	const { sendInvitation } = useInvitations();
 	const [invitation, setInvitation] = useState({
@@ -74,10 +74,7 @@ const DialogInvite: FC<{ projectId: string; isOpen: boolean; onOpenChange: (open
 							/>
 						</div>
 						<div className="flex justify-end gap-2">
-							<Button
-								variant="outline"
-								onClick={() => onOpenChange(false)}
-							>
+							<Button variant="outline" onClick={() => onOpenChange(false)}>
 								Cancelar
 							</Button>
 							<Button onClick={handleInvitation}>Invitar</Button>

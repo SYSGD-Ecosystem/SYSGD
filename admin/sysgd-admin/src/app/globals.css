@@ -1,0 +1,218 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: oklch(0.98 0.005 240);
+  --foreground: oklch(0.2 0.02 240);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.02 240);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.02 240);
+  --primary: oklch(0.45 0.15 240);
+  --primary-foreground: oklch(0.98 0.005 240);
+  --secondary: oklch(0.95 0.01 240);
+  --secondary-foreground: oklch(0.3 0.05 240);
+  --muted: oklch(0.95 0.01 240);
+  --muted-foreground: oklch(0.5 0.02 240);
+  --accent: oklch(0.55 0.12 240);
+  --accent-foreground: oklch(0.98 0.005 240);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.9 0.01 240);
+  --input: oklch(0.9 0.01 240);
+  --ring: oklch(0.45 0.15 240);
+  --chart-1: oklch(0.45 0.15 240);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.25 0.05 240);
+  --sidebar-foreground: oklch(0.95 0.01 240);
+  --sidebar-primary: oklch(0.55 0.15 240);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.35 0.06 240);
+  --sidebar-accent-foreground: oklch(0.95 0.01 240);
+  --sidebar-border: oklch(0.35 0.05 240);
+  --sidebar-ring: oklch(0.55 0.15 240);
+}
+
+.dark {
+  --background: oklch(0.15 0.02 240);
+  --foreground: oklch(0.95 0.01 240);
+  --card: oklch(0.18 0.02 240);
+  --card-foreground: oklch(0.95 0.01 240);
+  --popover: oklch(0.18 0.02 240);
+  --popover-foreground: oklch(0.95 0.01 240);
+  --primary: oklch(0.6 0.15 240);
+  --primary-foreground: oklch(0.98 0.005 240);
+  --secondary: oklch(0.25 0.03 240);
+  --secondary-foreground: oklch(0.9 0.01 240);
+  --muted: oklch(0.25 0.03 240);
+  --muted-foreground: oklch(0.65 0.02 240);
+  --accent: oklch(0.55 0.12 240);
+  --accent-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.5 0.2 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.3 0.03 240);
+  --input: oklch(0.25 0.03 240);
+  --ring: oklch(0.6 0.15 240);
+  --chart-1: oklch(0.6 0.15 240);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.12 0.02 240);
+  --sidebar-foreground: oklch(0.95 0.01 240);
+  --sidebar-primary: oklch(0.6 0.15 240);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.22 0.03 240);
+  --sidebar-accent-foreground: oklch(0.95 0.01 240);
+  --sidebar-border: oklch(0.25 0.03 240);
+  --sidebar-ring: oklch(0.6 0.15 240);
+}
+
+@theme inline {
+  --font-sans: 'Geist', 'Geist Fallback';
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  .animated-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    overflow: hidden;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+  }
+
+  .blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.6;
+    animation: float 20s infinite ease-in-out;
+  }
+
+  .blob-1 {
+    width: 500px;
+    height: 500px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    top: -100px;
+    left: -100px;
+    animation-delay: 0s;
+  }
+
+  .blob-2 {
+    width: 400px;
+    height: 400px;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    top: 50%;
+    right: -100px;
+    animation-delay: -5s;
+  }
+
+  .blob-3 {
+    width: 350px;
+    height: 350px;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    bottom: -50px;
+    left: 30%;
+    animation-delay: -10s;
+  }
+
+  .blob-4 {
+    width: 300px;
+    height: 300px;
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    top: 30%;
+    left: 50%;
+    animation-delay: -15s;
+  }
+
+  .blob-5 {
+    width: 450px;
+    height: 450px;
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    bottom: 20%;
+    right: 20%;
+    animation-delay: -7s;
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    25% {
+      transform: translate(30px, -50px) scale(1.1);
+    }
+    50% {
+      transform: translate(-20px, 20px) scale(0.9);
+    }
+    75% {
+      transform: translate(50px, 50px) scale(1.05);
+    }
+  }
+
+  .wave-overlay {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 200px;
+    z-index: -1;
+    background: linear-gradient(to top, rgba(10, 10, 10, 0.8), transparent);
+    pointer-events: none;
+  }
+}

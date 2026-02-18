@@ -148,8 +148,8 @@ export const isAuthenticate = (
 		}
 
 		req.user = decoded as {
-			id: number;
-			username: string;
+			id: string;
+			email: string;
 			privileges: string;
 		};
 		next();

@@ -1,4 +1,4 @@
-const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+import api from "@/lib/api"; // Tu instancia centralizada de Axios
 
 type useConnectionReturnType = {
 	handleNewArchiving: (
@@ -8,42 +8,36 @@ type useConnectionReturnType = {
 		onSuccess: () => void,
 		onFail: () => void,
 	) => Promise<void>;
-
 	handleAddClassificationBoxData: (
 		id: string,
 		data: string,
 		onSuccess: () => void,
 		onFail: () => void,
 	) => Promise<void>;
-
 	handleNewDocumentEntry: (
 		data: string,
 		id: string,
 		onSuccess: () => void,
 		onFail: () => void,
 	) => Promise<void>;
-
 	handleNewDocumentExit: (
 		data: string,
 		id: string,
 		onSuccess: () => void,
 		onFail: () => void,
 	) => Promise<void>;
-
 	handleNewDocumentLoan: (
 		data: string,
 		id: string,
 		onSuccess: () => void,
 		onFail: () => void,
 	) => Promise<void>;
-
 	handleNewTopographicRegister: (
 		data: string,
 		id: string,
 		onSuccess: () => void,
 		onFail: () => void,
 	) => Promise<void>;
-
 	handleNewRetentionSchedule: (
 		data: string,
 		id: string,
@@ -53,6 +47,26 @@ type useConnectionReturnType = {
 };
 
 const useConnection = (): useConnectionReturnType => {
+	// Función genérica interna para evitar repetir el mismo try-catch 7 veces
+	const postData = async (
+		url: string,
+		body: object,
+		onSuccess: () => void,
+		onFail: () => void,
+	) => {
+		try {
+			const res = await api.post(url, body);
+			if (res.status === 200 || res.status === 201) {
+				onSuccess();
+			} else {
+				onFail();
+			}
+		} catch (e: any) {
+			console.error(`Error en ${url}:`, e.response?.data || e.message);
+			onFail();
+		}
+	};
+
 	const handleNewArchiving = async (
 		code: string,
 		company: string,
@@ -60,22 +74,7 @@ const useConnection = (): useConnectionReturnType => {
 		onSuccess: () => void,
 		onFail: () => void,
 	) => {
-		try {
-			const res = await fetch(`${serverUrl}/api/create`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify({ code, company, name }),
-			});
-			if (res.ok) onSuccess();
-			else {
-				const text = await res.text();
-				alert(text);
-				onFail();
-			}
-		} catch {
-			onFail();
-		}
+		await postData("/api/create", { code, company, name }, onSuccess, onFail);
 	};
 
 	const handleAddClassificationBoxData = async (
@@ -84,24 +83,12 @@ const useConnection = (): useConnectionReturnType => {
 		onSuccess: () => void,
 		onFail: () => void,
 	) => {
-		try {
-			const res = await fetch(`${serverUrl}/api/add_classification_data`, {
-				method: "POST", // 👈 Cambiar PUT por POST
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify({ id, data }), // 👈 Enviar ambos en el body
-			});
-
-			if (res.ok) onSuccess();
-			else {
-				const text = await res.text();
-				console.error(text);
-				onFail();
-			}
-		} catch (e) {
-			console.error("Error al guardar:", e);
-			onFail();
-		}
+		await postData(
+			"/api/add_classification_data",
+			{ id, data },
+			onSuccess,
+			onFail,
+		);
 	};
 
 	const handleNewDocumentEntry = async (
@@ -110,24 +97,7 @@ const useConnection = (): useConnectionReturnType => {
 		onSuccess: () => void,
 		onFail: () => void,
 	) => {
-		try {
-			const res = await fetch(`${serverUrl}/api/add-document-entry`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify({ data, id }),
-			});
-
-			if (res.ok) onSuccess();
-			else {
-				const text = await res.text();
-				console.error(text);
-				onFail();
-			}
-		} catch (e) {
-			console.error("Error al guardar el registro:", e);
-			onFail();
-		}
+		await postData("/api/add-document-entry", { data, id }, onSuccess, onFail);
 	};
 
 	const handleNewDocumentExit = async (
@@ -136,24 +106,7 @@ const useConnection = (): useConnectionReturnType => {
 		onSuccess: () => void,
 		onFail: () => void,
 	) => {
-		try {
-			const res = await fetch(`${serverUrl}/api/add-document-exit`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify({ data, id }),
-			});
-
-			if (res.ok) onSuccess();
-			else {
-				const text = await res.text();
-				console.error(text);
-				onFail();
-			}
-		} catch (e) {
-			console.error("Error al guardar el registro:", e);
-			onFail();
-		}
+		await postData("/api/add-document-exit", { data, id }, onSuccess, onFail);
 	};
 
 	const handleNewDocumentLoan = async (
@@ -162,24 +115,7 @@ const useConnection = (): useConnectionReturnType => {
 		onSuccess: () => void,
 		onFail: () => void,
 	) => {
-		try {
-			const res = await fetch(`${serverUrl}/api/add-document-loan`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify({ data, id }),
-			});
-
-			if (res.ok) onSuccess();
-			else {
-				const text = await res.text();
-				console.error(text);
-				onFail();
-			}
-		} catch (e) {
-			console.error("Error al guardar el préstamo:", e);
-			onFail();
-		}
+		await postData("/api/add-document-loan", { data, id }, onSuccess, onFail);
 	};
 
 	const handleNewTopographicRegister = async (
@@ -188,24 +124,12 @@ const useConnection = (): useConnectionReturnType => {
 		onSuccess: () => void,
 		onFail: () => void,
 	) => {
-		try {
-			const res = await fetch(`${serverUrl}/api/add-document-topographic`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify({ data, id }),
-			});
-
-			if (res.ok) onSuccess();
-			else {
-				const text = await res.text();
-				console.error(text);
-				onFail();
-			}
-		} catch (e) {
-			console.error("Error al guardar topográfico:", e);
-			onFail();
-		}
+		await postData(
+			"/api/add-document-topographic",
+			{ data, id },
+			onSuccess,
+			onFail,
+		);
 	};
 
 	const handleNewRetentionSchedule = async (
@@ -214,18 +138,12 @@ const useConnection = (): useConnectionReturnType => {
 		onSuccess: () => void,
 		onFail: () => void,
 	) => {
-		try {
-			const res = await fetch(`${serverUrl}/api/add-retention-schedule`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify({ data, id }),
-			});
-			if (res.ok) onSuccess();
-			else onFail();
-		} catch (e) {
-			onFail();
-		}
+		await postData(
+			"/api/add-retention-schedule",
+			{ data, id },
+			onSuccess,
+			onFail,
+		);
 	};
 
 	return {

@@ -1,9 +1,9 @@
+import axios from "axios";
 import { useState } from "react";
-
-const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+import api from "@/lib/api";
 
 interface LoginData {
-	username: string;
+	email: string;
 	password: string;
 }
 
@@ -19,34 +19,42 @@ export function useLogin(): LoginResult {
 	const [error, setError] = useState("");
 	const [success, setSuccess] = useState(false);
 
-	const login = async ({ username, password }: LoginData) => {
+	const login = async ({ email, password }: LoginData) => {
 		setLoading(true);
 		setError("");
 		setSuccess(false);
 
 		try {
-			const res = await fetch(`${serverUrl}/api/login`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				credentials: "include",
-				body: JSON.stringify({ username, password }),
-			});
+			const res = await api.post("/api/auth/login", { email, password });
 
-			if (res.status === 201) {
-				setSuccess(true);
-			} else if (res.status === 400) {
-				setError("Faltan datos obligatorios.");
-			} else if (res.status === 401) {
-				setError("El usuario no existe.");
-			} else if (res.status === 402) {
-				setError("Contraseña Incorrecta");
-			} else {
-				setError("Error desconocido del servidor.");
+			const { token } = res.data;
+
+			if (token) {
+				localStorage.setItem("token", token);
 			}
+
+			setSuccess(true);
 		} catch (err) {
-			setError("No se pudo conectar con el servidor.");
+			if (axios.isAxiosError(err) && err.response) {
+				const status = err.response.status;
+				const message = err.response.data?.message;
+
+				switch (status) {
+					case 400:
+						setError("Faltan datos obligatorios.");
+						break;
+					case 401:
+						setError("El usuario no existe.");
+						break;
+					case 402:
+						setError("Contraseña Incorrecta.");
+						break;
+					default:
+						setError(message || "Error del servidor.");
+				}
+			} else {
+				setError("No se pudo conectar con el servidor.");
+			}
 		} finally {
 			setLoading(false);
 		}

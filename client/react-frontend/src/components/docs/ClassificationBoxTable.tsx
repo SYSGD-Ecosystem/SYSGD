@@ -1,15 +1,15 @@
-import { type FC, useEffect } from "react";
-import Table, { Td, type Row } from "../BasicTableComponents";
-import useEditableTable from "../../hooks/useEditableTable";
-import useConnection from "../../hooks/connection/useConnection";
-import { spanish } from "../../lang/spanish";
-import useGetData from "../../hooks/connection/useGetData";
-import Loading from "../Loading";
-import { IoAlertCircle } from "react-icons/io5";
-import { FaFileAlt } from "react-icons/fa";
-import { Button } from "../ui/button";
 import { Plus, SaveAll } from "lucide-react";
+import { type FC, useEffect } from "react";
+import { FaFileAlt } from "react-icons/fa";
+import { IoAlertCircle } from "react-icons/io5";
 import { toast } from "sonner";
+import useConnection from "../../hooks/connection/useConnection";
+import useGetData from "../../hooks/connection/useGetData";
+import useEditableTable from "../../hooks/useEditableTable";
+import { spanish } from "../../lang/spanish";
+import Table, { type Row, Td } from "../BasicTableComponents";
+import Loading from "../Loading";
+import { Button } from "../ui/button";
 
 export type ClassificationBoxTableData = {
 	code: string;

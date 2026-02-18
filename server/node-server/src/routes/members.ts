@@ -3,6 +3,8 @@ import express, { type Request, type Response } from "express";
 import { pool } from "../db";
 import { isAuthenticated } from "../middlewares/auth-jwt";
 import { getCurrentUserData } from "../controllers/users";
+import { InvitationController } from "../controllers/invitationControler";
+import { createDefaultUserData } from "../utils/billing";
 const router = express.Router();
 
 router.get("/status", (_req, res) => {
@@ -13,14 +15,61 @@ router.get("/status", (_req, res) => {
 router.get("/:projectId", isAuthenticated, async (req, res) => {
 	const { projectId } = req.params;
 	try {
-		const result = await pool.query(
-			`SELECT u.id, u.name, u.username, ra.role
+		// Obtener miembros activos (incluye creador/owner aunque no tenga fila en resource_access)
+		const membersResult = await pool.query(
+			`WITH active_members AS (
+       SELECT p.created_by AS user_id, 'owner'::text AS role
+       FROM projects p
+       WHERE p.id = $1
+
+       UNION
+
+       SELECT ra.user_id, COALESCE(ra.role, 'member') AS role
        FROM resource_access ra
-       JOIN users u ON ra.user_id = u.id
-       WHERE ra.resource_type = 'project' AND ra.resource_id = $1`,
+       WHERE ra.resource_type = 'project' AND ra.resource_id = $1
+     )
+     SELECT u.id, u.name, u.email, am.role, 'active' as status
+     FROM active_members am
+     JOIN users u ON am.user_id = u.id`,
 			[projectId],
 		);
-		res.json(result.rows);
+
+		// Obtener invitaciones pendientes con receiver_id válido
+		const invitationsResult = await pool.query(
+			`SELECT i.id, i.receiver_id, i.receiver_email, i.role, i.created_at, 'invited' as status,
+				us.name as sender_name, us.email as sender_email
+       FROM invitations i
+       LEFT JOIN users us ON i.sender_id = us.id
+       WHERE i.resource_type = 'project' AND i.resource_id = $1 AND i.status = 'pending' AND i.receiver_id IS NOT NULL`,
+			[projectId],
+		);
+
+		// Combinar ambos resultados
+		const combinedResults = [
+			...membersResult.rows.map(member => ({
+				id: member.id,
+				name: member.name,
+				email: member.email,
+				role: member.role,
+				status: member.status,
+				tareasAsignadas: 0,
+				tareasCompletadas: 0
+			})),
+			...invitationsResult.rows.map(invitation => ({
+				id: invitation.receiver_id,
+				name: invitation.receiver_email,
+				email: invitation.receiver_email,
+				role: invitation.role,
+				status: invitation.status,
+				sender_name: invitation.sender_name,
+				sender_email: invitation.sender_email,
+				created_at: invitation.created_at,
+				tareasAsignadas: 0,
+				tareasCompletadas: 0
+			}))
+		];
+
+		res.json(combinedResults);
 	} catch (error) {
 		console.error("Error fetching project members:", error);
 		res.status(500).json({ error: "Error interno del servidor" });
@@ -35,24 +84,46 @@ router.post("/invite/:projectId", isAuthenticated, async (req, res) => {
 	const senderId = user?.id;
 
 	try {
+		// Verificar si el usuario ya existe
 		const userResult = await pool.query(
-			"SELECT id FROM users WHERE username = $1",
+			"SELECT id, status FROM users WHERE email = $1",
 			[email],
 		);
-		const receiverId = userResult.rows[0]?.id || null;
+		
+		let receiverId = userResult.rows[0]?.id || null;
+		let userExists = !!receiverId;
+		
+		// Si el usuario no existe, crearlo primero
+		if (!userExists) {
+			const defaultUserData = createDefaultUserData();
+			const newUserResult = await pool.query(
+				`INSERT INTO users (email, status, privileges, user_data) 
+				 VALUES ($1, 'invited', 'user', $2) 
+				 RETURNING id`,
+				[email, JSON.stringify(defaultUserData)]
+			);
+			receiverId = newUserResult.rows[0].id;
+		}
 
+		// Ahora crear la invitación con el receiver_id válido
 		await pool.query(
 			`INSERT INTO invitations (id, sender_id, receiver_id, receiver_email, resource_type, resource_id, role)
        VALUES (gen_random_uuid(), $1, $2, $3, 'project', $4, $5)`,
 			[senderId, receiverId, email, projectId, role || "member"],
 		);
 
-		// Aquí puedes llamar a una función para enviar el correo si receiverId es null
-
-		res.json({ message: "Invitación enviada" });
+		// CAMBIO IMPORTANTE: Llamar al controlador SIN enviar respuesta todavía
+		// El controlador ahora manejará la respuesta
+		await InvitationController.sendProjectInvitation(req, res);
+		
+		// NO enviamos respuesta aquí porque InvitationController.sendProjectInvitation ya lo hace
+		
 	} catch (error) {
 		console.error("Error creando la invitación:", error);
-		res.status(500).json({ error: "Error al invitar al usuario" });
+		// Solo enviar respuesta de error si no se ha enviado ya
+		if (!res.headersSent) {
+			res.status(500).json({ error: "Error al invitar al usuario" });
+		}
 	}
 });
 
@@ -81,6 +152,14 @@ router.post(
 				return;
 			}
 
+			// Si el usuario estaba en estado 'invited', actualizarlo a 'active'
+			await pool.query(
+				`UPDATE users 
+				 SET status = 'active' 
+				 WHERE id = $1 AND status = 'invited'`,
+				[userId]
+			);
+
 			await pool.query(
 				`INSERT INTO resource_access (user_id, resource_type, resource_id, role)
        VALUES ($1, $2, $3, $4)
@@ -93,7 +172,26 @@ router.post(
 				],
 			);
 
-			res.json({ message: "Invitación aceptada" });
+			if (invitation.resource_type === "project") {
+				const projectResult = await pool.query(
+					`SELECT conversation_id FROM projects WHERE id = $1`,
+					[invitation.resource_id]
+				);
+				
+				if (projectResult.rows[0]?.conversation_id) {
+					await pool.query(
+						`INSERT INTO conversation_members (conversation_id, user_id, role, joined_at)
+						 VALUES ($1, $2, 'member', NOW())
+						 ON CONFLICT DO NOTHING`,
+						[projectResult.rows[0].conversation_id, userId]
+					);
+				}
+			}
+
+			res.json({ 
+				message: "Invitación aceptada",
+				userStatus: 'active'
+			});
 			return;
 		} catch (error) {
 			console.error("Error aceptando la invitación:", error);

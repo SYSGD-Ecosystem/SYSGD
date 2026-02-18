@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
-
+import axios from "axios";
+import { useCallback, useEffect, useState } from "react";
+import api from "@/lib/api";
+import { PROJECTS_CACHE_KEY } from "@/utils/offline-access";
 
 export type Project = {
 	id: string;
@@ -9,47 +11,84 @@ export type Project = {
 	created_at?: string;
 	status?: string;
 	visibility?: string;
-    tipo: "project"
+	tipo: "project";
 
-    members_count: number;
+	members_count: number;
 	total_tasks: number;
 	completed_tasks: number;
 };
 
+const normalizeProjectsForCompare = (data: Project[]) =>
+	[...data].sort((a, b) => {
+		const aDate = new Date(a.created_at ?? 0).getTime();
+		const bDate = new Date(b.created_at ?? 0).getTime();
+		if (aDate !== bDate) return bDate - aDate;
+		return a.id.localeCompare(b.id);
+	});
+
+const areProjectsEqual = (a: Project[], b: Project[]) =>
+	JSON.stringify(normalizeProjectsForCompare(a)) ===
+	JSON.stringify(normalizeProjectsForCompare(b));
 
 const useProjects = () => {
-    const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
-    const [projects, setProjects] = useState<Project[]>([]);
-    const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+	const readProjectsCache = (): Project[] => {
+		try {
+			const raw = localStorage.getItem(PROJECTS_CACHE_KEY);
+			if (!raw) return [];
+			const parsed = JSON.parse(raw) as { projects?: Project[] };
+			return Array.isArray(parsed.projects) ? parsed.projects : [];
+		} catch {
+			return [];
+		}
+	};
 
-    // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        try {
-            const response = await fetch(`${serverUrl}/api/projects`, {
-                credentials: "include", // muy importante para que se manden las cookies de sesión
-            });
+	const writeProjectsCache = (data: Project[]) => {
+		localStorage.setItem(
+			PROJECTS_CACHE_KEY,
+			JSON.stringify({ projects: data, updatedAt: Date.now() }),
+		);
+	};
 
-            if (!response.ok) {
-                throw new Error("Error al obtener los proyectos");
-            }
+	const [projects, setProjects] = useState<Project[]>(() => readProjectsCache());
+	const [error, setError] = useState<string | null>(null);
+	const [loading, setLoading] = useState(() => readProjectsCache().length === 0);
 
-            const data = await response.json();
-            setProjects(data);
-            setError(null);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : String(err));
-        } finally {
-            setLoading(false);
-        }
-    }, [serverUrl]);
+	const fetchData = useCallback(async (showLoading = false) => {
+		if (showLoading) setLoading(true);
+		try {
+			const { data } = await api.get<Project[]>("/api/projects");
+			setProjects((prev) => (areProjectsEqual(prev, data) ? prev : data));
+			setError(null);
+		} catch (err) {
+			if (axios.isAxiosError(err)) {
+				setError(
+					err.response?.data?.message || "Error al obtener los proyectos",
+				);
+			} else {
+				setError("Error inesperado");
+			}
+		} finally {
+			if (showLoading) setLoading(false);
+		}
+	}, []);
 
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+	useEffect(() => {
+		const cached = readProjectsCache();
+		if (cached.length > 0) {
+			setProjects(cached);
+			setLoading(false);
+		} else {
+			setLoading(true);
+		}
 
-    return { projects, error, loading, reloadProjects: fetchData };
+		fetchData(cached.length === 0);
+	}, [fetchData]);
+
+	useEffect(() => {
+		writeProjectsCache(projects);
+	}, [projects]);
+
+	return { projects, error, loading, reloadProjects: fetchData };
 };
 
 export default useProjects;

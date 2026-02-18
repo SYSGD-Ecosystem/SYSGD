@@ -1,22 +1,33 @@
-import { type FC, useState } from "react";
 import {
-	Palette,
 	Bell,
-	Shield,
+	ChevronDown,
+	Copy,
+	Eye,
+	EyeOff,
 	Globe,
+	KeyRound,
+	Loader2,
 	Monitor,
+	Palette,
+	Shield,
 	Smartphone,
+	Trash2,
 } from "lucide-react";
+import { type FC, useState, useEffect } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
 	Select,
 	SelectContent,
@@ -24,16 +35,14 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { useTheme } from "@/contexts/theme-context";
-import {
-	Collapsible,
-	CollapsibleContent,
-	CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
-import { Label } from "@/components/ui/label";
 import { useUsers } from "@/hooks/connection/useUsers";
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+import api from "@/lib/api";
 
 interface SettingsModalProps {
 	isOpen: boolean;
@@ -52,6 +61,7 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 		{ id: "notifications", Label: "Notificaciones", icon: Bell },
 		{ id: "privacy", Label: "Privacidad", icon: Shield },
 		{ id: "general", Label: "General", icon: Globe },
+		{ id: "tokens", Label: "Tokens API", icon: KeyRound },
 	];
 
 	const themes = [
@@ -254,14 +264,16 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 								<p className="font-medium">{item.Label}</p>
 								<p className="text-sm text-gray-500">{item.desc}</p>
 							</div>
-							<Switch id={item.id} 
-							// funcion para hacer publico o privado el usuario
-							onCheckedChange={(checked) => {
-								if (item.id === "public-profile") {
-									toggleUserPublic(checked as boolean);
-								}
-							}}
-							defaultChecked={index !== 1} />
+							<Switch
+								id={item.id}
+								// funcion para hacer publico o privado el usuario
+								onCheckedChange={(checked) => {
+									if (item.id === "public-profile") {
+										toggleUserPublic(checked as boolean);
+									}
+								}}
+								defaultChecked={index !== 1}
+							/>
 						</div>
 					))}
 				</div>
@@ -363,6 +375,269 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 			</div>
 		</div>
 	);
+interface Token {
+  id: string;
+  token_type: string;
+  created_at: string;
+  updated_at: string;
+}
+
+const TOKEN_LABELS: Record<string, string> = {
+  github: 'GitHub',
+  gemini: 'Gemini AI',
+  openrouter: 'OpenRouter',
+  replicate: 'Replicate',
+};
+
+const TokensSettings: FC = () => {
+  const [tokens, setTokens] = useState<Token[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [tokenType, setTokenType] = useState('github');
+  const [tokenValue, setTokenValue] = useState('');
+	const [externalToken, setExternalToken] = useState('');
+	const [externalTokenLoading, setExternalTokenLoading] = useState(false);
+	const [showExternalToken, setShowExternalToken] = useState(false);
+
+
+  useEffect(() => {
+    fetchTokens();
+  }, []);
+
+  const fetchTokens = async () => {
+    try {
+      const response = await api.get('/api/tokens');
+      const data = response.data;
+      setTokens(data);
+    } catch (error) {
+      toast.error('Error al cargar los tokens');
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveToken = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tokenValue) return;
+
+    setIsSaving(true);
+    try {
+      await api.post('/api/tokens', {
+        token: tokenValue,
+        tokenType
+      });
+
+      toast.success('Token guardado correctamente');
+      setTokenValue('');
+      fetchTokens();
+    } catch (error) {
+      toast.error('Error al guardar el token');
+      console.error(error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteToken = async (id: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este token?')) return;
+
+    try {
+      await api.delete(`/api/tokens/${id}`);
+
+      toast.success('Token eliminado correctamente');
+      fetchTokens();
+    } catch (error) {
+      toast.error('Error al eliminar el token');
+      console.error(error);
+    }
+  };
+
+	const handleGenerateExternalToken = async () => {
+		setExternalTokenLoading(true);
+		try {
+			const response = await api.post<{ token: string }>('/api/auth/external-token');
+			setExternalToken(response.data.token);
+			setShowExternalToken(true);
+			toast.success('Token externo generado. Puedes copiarlo para otra app.');
+		} catch (error: any) {
+			toast.error(
+				error.response?.data?.message || 'Error al generar el token externo'
+			);
+			console.error(error);
+		} finally {
+			setExternalTokenLoading(false);
+		}
+	};
+
+	const handleCopyExternalToken = async () => {
+		if (!externalToken) return;
+		try {
+			await navigator.clipboard.writeText(externalToken);
+			toast.success('Token copiado al portapapeles');
+		} catch (error) {
+			toast.error('No se pudo copiar el token');
+			console.error(error);
+		}
+	};
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium">Administrar Tokens API</h3>
+        <p className="text-sm text-muted-foreground">
+          Gestiona tus tokens de integración con servicios externos
+        </p>
+      </div>
+
+      <form onSubmit={handleSaveToken} className="space-y-4">
+        <div className="grid gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="token-type">Tipo de Token</Label>
+            <Select value={tokenType} onValueChange={setTokenType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un tipo de token" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="github">GitHub</SelectItem>
+                <SelectItem value="gemini">Gemini AI</SelectItem>
+                <SelectItem value="openrouter">OpenRouter</SelectItem>
+                <SelectItem value="replicate">Replicate</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="token">Token</Label>
+            <div className="flex space-x-2">
+              <Input
+                id="token"
+                type="password"
+                placeholder="Ingresa tu token"
+                value={tokenValue}
+                onChange={(e) => setTokenValue(e.target.value)}
+                className="flex-1"
+              />
+              <Button type="submit" disabled={!tokenValue || isSaving}>
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : null}
+                Guardar
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              El token se almacenará de forma segura y encriptada
+            </p>
+          </div>
+        </div>
+      </form>
+
+			<div className="rounded-lg border p-4 space-y-4">
+				<div>
+					<h4 className="font-medium">Token para Apps Externas</h4>
+					<p className="text-sm text-muted-foreground">
+						Genera un token para usar la API desde móvil, escritorio u otros sistemas.
+					</p>
+				</div>
+				<div className="space-y-2">
+					<Label htmlFor="external-token">Token de acceso</Label>
+					<div className="relative">
+						<Input
+							id="external-token"
+							type={showExternalToken ? 'text' : 'password'}
+							value={externalToken}
+							readOnly
+							placeholder="Genera un token para copiarlo aquí"
+							className="pr-20"
+						/>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="absolute right-9 top-0 h-full px-2"
+							onClick={() => setShowExternalToken(!showExternalToken)}
+							disabled={!externalToken}
+						>
+							{showExternalToken ? (
+								<EyeOff className="w-4 h-4" />
+							) : (
+								<Eye className="w-4 h-4" />
+							)}
+						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="absolute right-0 top-0 h-full px-3"
+							onClick={handleCopyExternalToken}
+							disabled={!externalToken}
+						>
+							<Copy className="w-4 h-4" />
+						</Button>
+					</div>
+					<p className="text-xs text-muted-foreground">
+						Útil si te autenticas con Google en la web y necesitas acceso en el teléfono.
+					</p>
+				</div>
+				<Button
+					type="button"
+					onClick={handleGenerateExternalToken}
+					disabled={externalTokenLoading}
+					className="w-full"
+				>
+					{externalTokenLoading ? (
+						<>
+							<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+							Generando...
+						</>
+					) : (
+						'Generar token externo'
+					)}
+				</Button>
+			</div>
+
+      <div className="mt-8">
+        <h4 className="mb-4 font-medium">Tus Tokens</h4>
+        {tokens.length === 0 ? (
+          <div className="p-4 text-sm text-center text-muted-foreground">
+            No hay tokens guardados
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {tokens.map((token) => (
+              <div
+                key={token.id}
+                className="flex items-center justify-between p-3 border rounded-lg"
+              >
+                <div>
+                  <p className="font-medium">{TOKEN_LABELS[token.token_type] || token.token_type}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Creado: {new Date(token.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDeleteToken(token.id)}
+                >
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 	const renderCategoryContent = () => {
 		switch (activeCategory) {
@@ -374,6 +649,8 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 				return renderPrivacySettings();
 			case "general":
 				return renderGeneralSettings();
+			case "tokens":
+				return <TokensSettings />;
 			default:
 				return renderAppearanceSettings();
 		}
@@ -457,7 +734,7 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 				{/* Footer */}
 				{/* <div className="border-t p-4 flex justify-between items-center">
 					<p className="text-sm text-gray-500">
-						SYSGD v2.1.0 - Sistema de Gestión de Documentos
+						SYSGD v2.1.0 - Ecosistema de Gestión Modular
 					</p>
 					<div className="flex space-x-2">
 						<Button variant="outline" onClick={onClose}>

@@ -1,0 +1,42 @@
+{
+  "name": "electron",
+  "version": "1.0.0",
+  "description": "Sistema de Gestión de Documentos - Aplicación de escritorio",
+  "main": "main.js",
+  "homepage": "https://github.com/unisofthub/SYSGD",
+  "scripts": {
+    "dev": "electron main.js",
+    "dist": "electron-builder"
+  },
+  "keywords": ["electron", "desktop", "documents", "management", "sysgd"],
+  "author": {
+    "name": "SYSGD Team",
+    "email": "team@unisofthub.com"
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^39.2.4",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+  "appId": "com.unisofthub.sysgd",
+  "productName": "SYSGD",
+  "directories": {
+    "output": "dist"
+  },
+  "files": [
+    "main.js",
+    "preload.js",
+    "splash.html",
+    "aythen-splash.html",
+    "assets/**/*",
+    "www/**/*"
+  ],
+  "linux": {
+    "target": ["AppImage"],
+    "icon": "assets/icon.png",
+    "category": "Office",
+    "maintainer": "SYSGD Team <team@unisofthub.com>"
+  }
+}
+}

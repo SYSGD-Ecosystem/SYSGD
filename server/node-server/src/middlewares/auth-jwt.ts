@@ -10,12 +10,28 @@ if (!process.env.JWT_SECRET) {
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+export function verifyToken(token: string) {
+	try {
+		return jwt.verify(token, JWT_SECRET);
+	} catch (err) {
+		console.error("Token verification error:", err);
+		return null;
+	}
+}
+
 export const isAuthenticated = (
 	req: Request,
 	res: Response,
 	next: NextFunction,
 ) => {
-	const token = req.cookies?.token;
+	// const token = req.cookies?.token;
+	const authHeader = req.headers.authorization;
+	
+	const tokenFromHeader = authHeader?.startsWith("Bearer ")
+		? authHeader.split(" ")[1]
+		: null;
+
+	const token = tokenFromHeader || req.cookies?.token;
 
 	if (!token) {
 		res.status(401).json({ message: "Token no proporcionado" });

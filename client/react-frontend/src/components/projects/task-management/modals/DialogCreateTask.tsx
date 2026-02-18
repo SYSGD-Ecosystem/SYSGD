@@ -1,0 +1,491 @@
+import { Check, Cpu, Loader2, Sparkles, X } from "lucide-react";
+import { type FC, useMemo, useState } from "react";
+import { useTaskConfig } from "@/components/projects/task-management/hooks/useTaskConfig";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import {
+	DropdownMenu,
+	DropdownMenuCheckboxItem,
+	DropdownMenuContent,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import MarkdownEditor from "@/components/ui/markdown-editor";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import type { Task } from "@/types/Task";
+import { useProjectContext } from "../../ProjectProvider";
+
+type ProjectMember = {
+	id: string;
+	name: string;
+	email: string;
+	status?: string; // 'active' | 'invited'
+	sender_name?: string; // Para invitaciones
+	sender_email?: string; // Para invitaciones
+	created_at?: string; // Para invitaciones
+};
+
+// const Skeleton: FC = () => {
+// 	return (
+// 		<div className="w-full h-4 bg-slate-300 dark:bg-slate-600 rounded-full animate-pulse" />
+// 	);
+// };
+
+type Props = {
+	projectId: string;
+	isOpen: boolean;
+	onOpenChange: (open: boolean) => void;
+	editingTask: Partial<Task> | null;
+	setEditingTask: (task: Partial<Task> | null) => void;
+	tasks: Task[];
+	members: ProjectMember[];
+	isEditing: boolean;
+	handleSaveTask: () => void;
+	// IA funcional
+	geminiIsLoading?: boolean;
+	improvedText?: string;
+	handleImprove?: (
+		title: string,
+		description: string,
+		projectContext?: { name: string; description: string },
+		model?: string,
+		provider?: string,
+	) => void;
+	showImprovedPreview?: boolean;
+	setShowImprovedPreview?: (show: boolean) => void;
+};
+
+const DialogCreateTask: FC<Props> = ({
+	projectId,
+	isOpen,
+	onOpenChange,
+	editingTask,
+	setEditingTask,
+	tasks,
+	members,
+	isEditing,
+	handleSaveTask,
+	geminiIsLoading,
+	improvedText,
+	handleImprove,
+	showImprovedPreview,
+	setShowImprovedPreview,
+}) => {
+	const { config } = useTaskConfig(projectId);
+	const { project, isLoading } = useProjectContext();
+
+	console.log(
+		"Task Config in DialogCreateTask:",
+		project?.name,
+		project?.description,
+		{ project },
+	);
+	const [selectedModel, setSelectedModel] =
+		useState<string>("gemini-2.5-flash");
+
+	
+
+	const aiModels = [
+		{
+			id: "gemini-2.5-flash",
+			name: "Gemini 2.5 Flash",
+			provider: "Google",
+			provider_id: "gemini",
+			cost: "1",
+		},
+		{
+			id: "gemini-2.5-flash-lite",
+			name: "Gemini 2.5 Flash Lite",
+			provider: "Google",
+			provider_id: "gemini",
+			cost: "1",
+		},
+		{
+			id: "gemini-3-flash",
+			name: "Gemini 3 Flash",
+			provider: "Google",
+			provider_id: "gemini",
+			cost: "1",
+		},
+		{
+			id: "openai/gpt-oss-120b:free",
+			name: "GPT‑120B",
+			provider: "OpenRouter",
+			provider_id: "openrouter",
+			cost: "1",
+		},
+	];
+
+	const selectedModelObj = useMemo(
+		() => aiModels.find((m) => m.id === selectedModel),
+		[selectedModel],
+	);
+
+	const typeOptions = config?.types?.map((t) => t.name) ?? ["Tarea"];
+	const priorityOptions = config?.priorities?.map((p) => p.name) ?? [
+		"Alta",
+		"Media",
+		"Baja",
+	];
+	const statusOptions = config?.states?.map((s) => s.name) ?? [
+		"Pendiente",
+		"En Progreso",
+		"Completado",
+	];
+
+	if (isLoading) {
+		return (
+			<Dialog open={isOpen} onOpenChange={onOpenChange}>
+				<DialogContent className="w-[95vw] max-w-lg sm:max-w-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
+					<DialogHeader>
+						<DialogTitle>
+							<div className="w-32 h-6 bg-slate-300 dark:bg-slate-600 rounded-full animate-pulse" />
+						</DialogTitle>
+					</DialogHeader>
+					<div className="space-y-4">
+						<div className="w-full h-4 bg-slate-300 dark:bg-slate-600 rounded-full animate-pulse" />
+						<div className="w-full h-4 bg-slate-300 dark:bg-slate-600 rounded-full animate-pulse" />
+						<div className="w-full h-4 bg-slate-300 dark:bg-slate-600 rounded-full animate-pulse" />
+					</div>
+				</DialogContent>
+			</Dialog>
+		);
+	}
+
+	return (
+		<Dialog open={isOpen} onOpenChange={onOpenChange}>
+			<DialogContent className="w-[95vw] max-w-lg sm:max-w-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
+				<DialogHeader>
+					<DialogTitle>
+						{editingTask?.id && tasks.find((t) => t.id === editingTask.id)
+							? "Editar Tarea"
+							: "Nueva Tarea"}
+					</DialogTitle>
+				</DialogHeader>
+
+				{editingTask && (
+					<div className="space-y-4">
+						<div>
+							<Label htmlFor="titulo">Título</Label>
+							{/** biome-ignore lint/correctness/useUniqueElementIds: <explanation> */}
+							<Input
+								id="titulo"
+								value={editingTask.title ?? ""}
+								onChange={(e) =>
+									setEditingTask({ ...editingTask, title: e.target.value })
+								}
+							/>
+						</div>
+
+						<div>
+							<div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+								<Label htmlFor="descripcion">Descripción</Label>
+								{handleImprove && (
+									<div className="flex w-full sm:w-auto justify-end gap-2 ml-auto">
+										<Select
+											value={selectedModel}
+											onValueChange={setSelectedModel}
+										>
+											{/* ---- Trigger (lo que se ve cuando está cerrado) ---- */}
+											<SelectTrigger className="w-full sm:w-44 h-8 text-xs flex items-center gap-1 sm:gap-2">
+												{/* Icono opcional (puedes usar el icono del proveedor o uno genérico) */}
+												<Cpu className="h-3 w-3" />
+
+												{/* Texto principal */}
+												<span className="font-medium">
+													{selectedModelObj?.name ?? "Seleccionar modelo"}
+												</span>
+
+												{/* Texto secundario (proveedor) */}
+												{selectedModelObj && (
+													<span className="ml-1 text-[10px] text-muted-foreground">
+														({selectedModelObj.provider})
+													</span>
+												)}
+											</SelectTrigger>
+
+											{/* ---- Lista de opciones ---- */}
+											<SelectContent className="text-xs">
+												{aiModels.map((model) => (
+													<SelectItem
+														key={model.id}
+														value={model.id}
+														className="text-xs"
+													>
+														<div className="flex flex-col">
+															<span className="font-medium">{model.name}</span>
+															<span className="text-[10px] text-muted-foreground">
+																{model.provider}
+															</span>
+														</div>
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<Button
+											type="button"
+											size="sm"
+											variant="secondary"
+											disabled={geminiIsLoading || !editingTask.title?.trim()}
+											onClick={() =>
+												handleImprove(
+													editingTask.title ?? "",
+													editingTask.description ?? "",
+													{
+														name: project?.name || "",
+														description: project?.description || "",
+													},
+													selectedModel,
+													selectedModelObj?.provider_id
+												)
+											}
+											className="h-8 px-2 sm:px-3"
+										>
+											{geminiIsLoading ? (
+												<Loader2 className="h-4 w-4 animate-spin" />
+											) : (
+												<Sparkles className="h-4 w-4" />
+											)}
+											<span className="hidden sm:inline">
+												{!geminiIsLoading && "Mejorar"}
+											</span>
+										</Button>
+									</div>
+								)}
+							</div>
+							<div className="relative">
+								<MarkdownEditor
+									value={editingTask.description || ""}
+									onChange={(value) =>
+										setEditingTask({
+											...editingTask,
+											description: value,
+										})
+									}
+									placeholder="Describe la tarea usando Markdown..."
+									className="mt-2"
+								/>
+							</div>
+						</div>
+
+						{/* Vista previa mejorada con IA */}
+						{showImprovedPreview && improvedText && (
+							<div className="border-2 border-blue-200 dark:border-blue-800 rounded-lg p-4 bg-blue-50/50 dark:bg-blue-950/50 space-y-3">
+								<div className="flex items-center justify-between">
+									<div className="flex items-center gap-2 text-sm font-medium text-blue-700 dark:text-blue-300">
+										<Sparkles className="h-4 w-4" />
+										Descripción mejorada con IA
+									</div>
+									<Button
+										type="button"
+										size="sm"
+										variant="ghost"
+										onClick={() => setShowImprovedPreview?.(false)}
+									>
+										<X className="h-4 w-4" />
+									</Button>
+								</div>
+
+								<div className="bg-white dark:bg-slate-800 rounded-md p-3 max-h-48 overflow-y-auto no-scrollbar">
+									<Textarea
+										value={improvedText}
+										readOnly
+										className="min-h-24 resize-none border-0 bg-transparent shadow-none text-sm leading-relaxed"
+										placeholder="La respuesta de la IA aparecerá aquí..."
+									/>
+								</div>
+
+								<div className="flex flex-col sm:flex-row gap-2">
+									<Button
+										type="button"
+										size="sm"
+										onClick={() => {
+											setEditingTask({
+												...editingTask,
+												description: improvedText,
+											});
+											setShowImprovedPreview?.(false);
+										}}
+										className="flex-1"
+									>
+										<Check className="h-4 w-4 mr-1" />
+										<span className="hidden sm:inline">Aceptar y aplicar</span>
+										<span className="sm:hidden">Aceptar</span>
+									</Button>
+									<Button
+										type="button"
+										size="sm"
+										variant="outline"
+										onClick={() => setShowImprovedPreview?.(false)}
+										className="flex-1"
+									>
+										<X className="h-4 w-4 mr-1" />
+										<span className="hidden sm:inline">Descartar</span>
+										<span className="sm:hidden">Cancelar</span>
+									</Button>
+								</div>
+							</div>
+						)}
+
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+							<div>
+								<Label htmlFor="tipo">Tipo</Label>
+								<Select
+									value={editingTask.type}
+									onValueChange={(value) =>
+										setEditingTask({ ...editingTask, type: value })
+									}
+								>
+									<SelectTrigger>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{typeOptions.map((typeName) => (
+											<SelectItem key={typeName} value={typeName}>
+												{typeName}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+
+							<div>
+								<Label htmlFor="prioridad">Prioridad</Label>
+								<Select
+									value={editingTask.priority}
+									onValueChange={(value) =>
+										setEditingTask({ ...editingTask, priority: value })
+									}
+								>
+									<SelectTrigger>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{priorityOptions.map((priorityName) => (
+											<SelectItem key={priorityName} value={priorityName}>
+												{priorityName}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+						</div>
+
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+							<div>
+								<Label htmlFor="estado">Estado</Label>
+								<Select
+									value={editingTask.status}
+									onValueChange={(value) =>
+										setEditingTask({ ...editingTask, status: value })
+									}
+								>
+									<SelectTrigger>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{statusOptions.map((statusName) => (
+											<SelectItem key={statusName} value={statusName}>
+												{statusName}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+
+							<div>
+								<Label>Asignar a</Label>
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<Button
+											variant="outline"
+											className="w-full justify-start text-left font-normal"
+										>
+											{editingTask.assignees && editingTask.assignees.length > 0
+												? editingTask.assignees.map((a) => a.name).join(", ")
+												: "Seleccionar miembros"}
+										</Button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent className="w-full">
+										<DropdownMenuLabel>Miembros del Proyecto</DropdownMenuLabel>
+										<DropdownMenuSeparator />
+										{members.map((member) => (
+											<DropdownMenuCheckboxItem
+												key={member.id}
+												checked={
+													editingTask?.assignees?.some(
+														(a) => a.id === member.id,
+													) || false
+												}
+												onCheckedChange={(checked) => {
+													const currentAssignees = editingTask?.assignees || [];
+													if (checked) {
+														setEditingTask({
+															...editingTask,
+															assignees: [...currentAssignees, member],
+														});
+													} else {
+														setEditingTask({
+															...editingTask,
+															assignees: currentAssignees.filter(
+																(a) => a.id !== member.id,
+															),
+														});
+													}
+												}}
+											>
+												<div className="flex items-center justify-between w-full">
+													<span>{member.name}</span>
+													{member.status === "invited" && (
+														<Badge variant="secondary" className="text-xs ml-2">
+															Invitado
+														</Badge>
+													)}
+												</div>
+											</DropdownMenuCheckboxItem>
+										))}
+									</DropdownMenuContent>
+								</DropdownMenu>
+							</div>
+						</div>
+
+						<div className="flex flex-col sm:flex-row justify-end gap-2">
+							<Button 
+								variant="outline" 
+								onClick={() => onOpenChange(false)}
+								className="w-full sm:w-auto"
+							>
+								Cancelar
+							</Button>
+							<Button 
+								disabled={isEditing} 
+								onClick={handleSaveTask}
+								className="w-full sm:w-auto"
+							>
+								Guardar
+							</Button>
+						</div>
+					</div>
+				)}
+			</DialogContent>
+		</Dialog>
+	);
+};
+
+export default DialogCreateTask;

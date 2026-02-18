@@ -1,47 +1,44 @@
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
+import api from "@/lib/api"; // Tu instancia centralizada
 
 export type Invitation = {
-  id: string;
-  resource_type: "project" | "archive";
-  resource_id: string;
-  sender_id: number;
-  receiver_id: number;
-  status: "pending" | "accepted" | "rejected";
-  permissions: "read" | "write" | "admin";
-  created_at: string;
-  sender_name: string;
-  role: string
+    id: string;
+    resource_type: "project" | "archive";
+    resource_id: string;
+    sender_id: string;
+    receiver_id: string;
+    status: "pending" | "accepted" | "rejected";
+    permissions: "read" | "write" | "admin";
+    created_at: string;
+    sender_name: string;
+    role: string;
 };
 
 export function useGetInvitations() {
-  const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+    const [invitations, setInvitations] = useState<Invitation[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
-  const fetchInvitations = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${serverUrl}/api/invitations`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Error al obtener invitaciones");
-      const data = await res.json();
-      setInvitations(data);
-      setError(null);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [serverUrl]);
+    const fetchInvitations = useCallback(async () => {
+        setLoading(true);
+        setError(null); // Limpiamos errores previos al reintentar
+        try {
+            // Tipamos la respuesta directamente aquí
+            const res = await api.get<Invitation[]>("/api/invitations");
+            setInvitations(res.data);
+        } catch (err: any) {
+            console.error("Error cargando invitaciones:", err);
+            // Capturamos el mensaje del backend si existe
+            setError(err.response?.data?.message || "Error al obtener invitaciones");
+        } finally {
+            setLoading(false);
+        }
+    }, []); // Array de dependencias vacío real, sin trucos de linter
 
-
-  return {
-    invitations,
-    loading,
-    error,
-    fetchInvitations,
-  };
+    return {
+        invitations,
+        loading,
+        error,
+        fetchInvitations,
+    };
 }

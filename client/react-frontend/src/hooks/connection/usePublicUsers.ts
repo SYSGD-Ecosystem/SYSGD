@@ -43,8 +43,7 @@ export function usePublicUsers(): UsePublicUsersReturn {
 				return {
 					id: `u${user.id || index + 1}`,
 					name: user.name || "Usuario desconocido",
-					email: user.username || "sin-correo@example.com",
-					username: `@${user.username?.split("@")[0] || "usuario"}`,
+					email: user.email || "sin-correo@example.com",
 					type: "user",
 					avatar: initials || "👤",
 					online: true,

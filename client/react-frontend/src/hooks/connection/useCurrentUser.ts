@@ -1,33 +1,51 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import api from "@/lib/api";
+import type { User } from "@/types/user";
+import { readCachedUser, writeCachedUser } from "@/utils/offline-access";
 
-const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+type CurrentUserResponse = Omit<User, "privileges"> & {
+	privileges: User["privileges"] | null;
+};
 
 const useCurrentUser = () => {
-	const [user, setUser] = useState<null | {
-		id: number;
-		name: string;
-		username: string;
-		privileges: string;
-	}>(null);
+	const [user, setUser] = useState<User | null>(null);
+	const [isAuthenticated, setIsAuthenticated] = useState(false);
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
-		fetch(`${serverUrl}/api/me`, {
-			credentials: "include",
-		})
-			.then(async (res) => {
-				if (!res.ok) throw new Error("No autenticado");
-				const data = await res.json();
-				setUser(data);
-			})
-			.catch(() => setUser(null))
-			.finally(() => setLoading(false));
+		const fetchUser = async () => {
+			try {
+				const res = await api.get<CurrentUserResponse>("/api/auth/me");
+
+				console.log("Respuesta de /api/auth/me:", res);
+
+				const userData: User = {
+					...res.data,
+					privileges: res.data.privileges ?? "user",
+				};
+
+				setUser(userData);
+				writeCachedUser(userData);
+				setIsAuthenticated(true);
+			} catch {
+				const token = localStorage.getItem("token");
+				const cachedUser = readCachedUser();
+				if (token && cachedUser) {
+					setUser(cachedUser);
+					setIsAuthenticated(true);
+				} else {
+					setUser(null);
+					setIsAuthenticated(false);
+				}
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		fetchUser();
 	}, []);
 
-	if (user?.privileges === null) {
-		user.privileges = "user";
-	}
-	return { user, loading };
+	return { user, isAuthenticated, loading };
 };
 
 export default useCurrentUser;

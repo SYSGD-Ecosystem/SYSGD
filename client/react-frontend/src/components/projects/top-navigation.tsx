@@ -1,4 +1,6 @@
 "use client";
+//import useTheme from "@/hooks/useTheme";
+import { ChevronRight, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
 	Select,
@@ -8,9 +10,8 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import useProjects from "@/hooks/connection/useProjects";
-//import useTheme from "@/hooks/useTheme";
-import { Home, ChevronRight } from "lucide-react";
 import UserProfileTrigger from "../UserProfileTrigger";
+import TimeTrackingIndicator from "./time-tracking/TimeTrackingIndicator";
 
 interface TopNavigationProps {
 	selectedProject: string;
@@ -18,6 +19,7 @@ interface TopNavigationProps {
 	onHomeClick: () => void;
 	onMobileSidebarToggle: () => void;
 	isHomePage?: boolean;
+	onTimeTrackingClick?: () => void;
 }
 
 export function TopNavigation({
@@ -25,6 +27,7 @@ export function TopNavigation({
 	onProjectChange,
 	onHomeClick,
 	onMobileSidebarToggle,
+	onTimeTrackingClick,
 }: TopNavigationProps) {
 	const { projects } = useProjects();
 
@@ -68,12 +71,10 @@ export function TopNavigation({
 							<span className="hidden sm:inline">Inicio</span>
 						</Button>
 
-						<>
-							<ChevronRight className="w-4 h-4 text-gray-400" />
-							<span className="text-sm font-medium text-gray-900 dark:text-white">
-								{currentProject?.name || "Proyecto"}
-							</span>
-						</>
+						<ChevronRight className="w-4 h-4 text-gray-400" />
+						<span className="text-sm font-medium text-gray-900 dark:text-white">
+							{currentProject?.name || "Proyecto"}
+						</span>
 					</div>
 
 					<div className="h-6 w-px bg-gray-300 dark:bg-gray-600 hidden sm:block" />
@@ -104,6 +105,7 @@ export function TopNavigation({
 				</div>
 
 				<div className="flex items-center gap-1 md:gap-2">
+					<TimeTrackingIndicator onOpen={onTimeTrackingClick} />
 					{/* <Button variant="ghost" size="sm" className="hidden sm:flex">
 						<Bell className="w-4 h-4" />
 					</Button>

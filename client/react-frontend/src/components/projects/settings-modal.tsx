@@ -1,24 +1,28 @@
 "use client";
 
-import { useState } from "react";
 import {
-	Palette,
 	Bell,
-	Shield,
+	ChevronDown,
 	Globe,
 	Monitor,
+	Palette,
+	Shield,
 	Smartphone,
 } from "lucide-react";
+import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import {
 	Select,
 	SelectContent,
@@ -26,14 +30,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { useTheme } from "@/contexts/theme-context";
-import {
-	Collapsible,
-	CollapsibleContent,
-	CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
 
 interface SettingsModalProps {
 	isOpen: boolean;
@@ -448,7 +448,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 				{/* Footer */}
 				<div className="border-t p-4 flex justify-between items-center">
 					<p className="text-sm text-gray-500">
-						SYSGD v2.1.0 - Sistema de Gestión de Documentos
+						SYSGD v2.1.0 - Ecosistema de Gestión Modular
 					</p>
 					<div className="flex space-x-2">
 						<Button variant="outline" onClick={onClose}>

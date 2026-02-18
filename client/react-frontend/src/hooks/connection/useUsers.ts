@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import type { CreateUserData, UpdateUserData, User } from "../../types/user";
-
-const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+import api from "@/lib/api"; // Instancia centralizada de Axios
 
 interface UseUsersReturn {
 	users: User[];
 	loading: boolean;
 	error: string | null;
 	refetch: () => void;
-	createUser: (data: CreateUserData) => Promise<User>;
-	updateUser: (id: number, data: UpdateUserData) => Promise<void>;
-	deleteUser: (id: number) => Promise<void>;
+	createUser: (data: CreateUserData) => Promise<User | void>;
+	updateUser: (id: string, data: UpdateUserData) => Promise<void>;
+	deleteUser: (id: string) => Promise<void>;
 	toggleUserPublic: (isPublic: boolean) => Promise<void>;
 }
 
@@ -19,80 +18,68 @@ export function useUsers(): UseUsersReturn {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
-	const fetchUsers = useCallback(() => {
+	// GET: Obtener lista de usuarios
+	const fetchUsers = useCallback(async () => {
 		setLoading(true);
-		fetch(`${serverUrl}/api/users`, {
-			credentials: "include",
-		})
-			.then(async (res) => {
-				if (!res.ok) throw new Error("Error al obtener usuarios");
-				const data = await res.json();
-				setUsers(data);
-			})
-			.catch((e) => setError(e.message))
-			.finally(() => setLoading(false));
+		try {
+			const res = await api.get<User[]>("/api/users");
+			setUsers(res.data);
+			setError(null);
+		} catch (err: any) {
+			setError(err.response?.data?.message || "Error al obtener usuarios");
+		} finally {
+			setLoading(false);
+		}
 	}, []);
 
 	useEffect(() => {
 		fetchUsers();
 	}, [fetchUsers]);
 
-	const createUser = async (data: CreateUserData): Promise<User> => {
-		const res = await fetch(`${serverUrl}/api/users`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			credentials: "include",
-			body: JSON.stringify(data),
-		});
-		if (!res.ok) {
-			const msg = await res.text();
-			throw new Error(msg || "Error al crear usuario");
+	// POST: Crear usuario
+	const createUser = async (data: CreateUserData) => {
+		try {
+			const res = await api.post<User>("/api/users", data);
+			await fetchUsers(); // Refrescamos la lista para ver el nuevo usuario
+			return res.data;
+		} catch (err: any) {
+			const msg = err.response?.data?.message || "Error al crear usuario";
+			throw new Error(msg);
 		}
-		// backend returns 201 with no body, refetch list
-		fetchUsers();
-		// Try to get created user by another call; simpler return placeholder
-		return { id: Date.now(), ...data };
 	};
 
-	const updateUser = async (id: number, data: UpdateUserData) => {
-		const res = await fetch(`${serverUrl}/api/users/${id}`, {
-			method: "PUT",
-			headers: { "Content-Type": "application/json" },
-			credentials: "include",
-			body: JSON.stringify(data),
-		});
-		if (!res.ok) {
-			const msg = await res.text();
-			throw new Error(msg || "Error al actualizar usuario");
+	// PUT: Actualizar usuario
+	const updateUser = async (id: string, data: UpdateUserData) => {
+		try {
+			await api.put(`/api/users/${id}`, data);
+			await fetchUsers();
+		} catch (err: any) {
+			const msg = err.response?.data?.message || "Error al actualizar usuario";
+			throw new Error(msg);
 		}
-		fetchUsers();
 	};
 
-	const deleteUser = async (id: number) => {
-		const res = await fetch(`${serverUrl}/api/users/${id}`, {
-			method: "DELETE",
-			credentials: "include",
-		});
-		if (!res.ok) {
-			const msg = await res.text();
-			throw new Error(msg || "Error al eliminar usuario");
+	// DELETE: Eliminar usuario
+	const deleteUser = async (id: string) => {
+		try {
+			await api.delete(`/api/users/${id}`);
+			// Optimización local: filtramos el usuario borrado sin esperar al refetch
+			setUsers((prev) => prev.filter((u) => u.id !== id));
+		} catch (err: any) {
+			const msg = err.response?.data?.message || "Error al eliminar usuario";
+			throw new Error(msg);
 		}
-		fetchUsers();
 	};
 
-	// modificar estado publico o privado del usuario
+	// PUT: Modificar estado público/privado
 	const toggleUserPublic = async (isPublic: boolean) => {
-		const res = await fetch(`${serverUrl}/api/users/public`, {
-			method: "PUT",
-			headers: { "Content-Type": "application/json" },
-			credentials: "include",
-			body: JSON.stringify({ isPublic }),
-		});
-		if (!res.ok) {
-			const msg = await res.text();
-			throw new Error(msg || "Error al modificar estado de usuario");
+		try {
+			await api.put("/api/users/public", { isPublic });
+			await fetchUsers();
+		} catch (err: any) {
+			const msg = err.response?.data?.message || "Error al modificar estado";
+			throw new Error(msg);
 		}
-		fetchUsers();
 	};
 
 	return {

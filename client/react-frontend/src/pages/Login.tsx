@@ -1,14 +1,14 @@
 import { type FC, type FormEvent, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Loading from "@/components/Loading";
+import LoadingLogo from "@/components/LoadingLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRegisterUser } from "@/hooks/connection/useRegisterUser";
-import { useLogin } from "@/hooks/connection/useLogin";
-import { useNavigate } from "react-router-dom";
-import useServerStatus from "@/hooks/connection/useServerStatus";
 import { useAuthSession } from "@/hooks/connection/useAuthSession";
-import Loading from "@/components/Loading";
-import LoadingLogo from "@/components/LoadingLogo";
+import { useLogin } from "@/hooks/connection/useLogin";
+import { useRegisterUser } from "@/hooks/connection/useRegisterUser";
+import useServerStatus from "@/hooks/connection/useServerStatus";
 
 const Login: FC = () => {
 	const [isLoginPage, setIsLoginPage] = useState(true);
@@ -32,7 +32,56 @@ const Login: FC = () => {
 
 	useEffect(() => {
 		checkServerStatus();
-	}, [checkServerStatus]);
+
+		// Check for token in URL (Google OAuth callback)
+		const urlParams = new URLSearchParams(window.location.search);
+		const token = urlParams.get("token");
+
+		if (token) {
+			// Set the token as a cookie
+			document.cookie = `token=${token}; path=/; max-age=86400; secure; samesite=none`;
+			// Clean the URL
+			window.history.replaceState({}, document.title, window.location.pathname);
+			// Redirect to dashboard
+			router("/dashboard");
+		}
+	}, [checkServerStatus, router]);
+
+	useEffect(() => {
+		if (loginSuccess) {
+			router("/dashboard");
+		}
+	}, [loginSuccess, router]);
+
+	useEffect(() => {
+		if (!success) return;
+
+		const token = localStorage.getItem("token");
+		if (token) {
+			router("/dashboard");
+			return;
+		}
+
+		setIsLoginPage(true);
+		setPassword("");
+		setRepetPassword("");
+	}, [success, router]);
+
+	const handleRegisterSubmit = (e: FormEvent) => {
+		e.preventDefault();
+
+		if (password !== repetPassword) {
+			alert("Las contraseñas no coinciden");
+			return;
+		}
+
+		register({ name, email: user, password });
+	};
+
+	const handleLoginSubmit = (e: FormEvent) => {
+		e.preventDefault();
+		login({ email: user, password });
+	};
 
 	if (status === "checking")
 		return (
@@ -57,26 +106,6 @@ const Login: FC = () => {
 	if (authUser) {
 		router("/dashboard");
 		return null;
-	}
-
-	const handleRegisterSubmit = (e: FormEvent) => {
-		e.preventDefault();
-
-		if (password !== repetPassword) {
-			alert("Las contraseñas no coinciden");
-			return;
-		}
-
-		register({ name, username: user, password });
-	};
-
-	const handleLoginSubmit = (e: FormEvent) => {
-		e.preventDefault();
-		login({ username: user, password });
-	};
-
-	if (loginSuccess) {
-		router("/dashboard");
 	}
 
 	return (

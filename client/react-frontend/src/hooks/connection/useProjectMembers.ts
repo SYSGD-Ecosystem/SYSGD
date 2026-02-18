@@ -1,6 +1,6 @@
-import type { Member } from "@/types/Member";
-import { SERVER_URL } from "@/utils/util";
 import { useCallback, useEffect, useState } from "react";
+import api from "@/lib/api";
+import type { Member } from "@/types/Member";
 
 export const useProjectMembers = (projectId: string) => {
 	const [members, setMembers] = useState<Member[]>([]);
@@ -10,22 +10,13 @@ export const useProjectMembers = (projectId: string) => {
 	const fetchData = useCallback(async () => {
 		setLoading(true);
 		try {
-			const response = await fetch(`${SERVER_URL}/api/members/${projectId}`, {
-				credentials: "include",
-			});
+			const response = await api.get<Member[]>(`/api/members/${projectId}`);
 
-			if (!response.ok) {
-				throw new Error("feth members failed");
-			}
-
-			const data = await response.json();
-            console.log(data)
-			setMembers(data);
+			setMembers(response.data);
 			setError(false);
 		} catch (err) {
-			console.error("get members failed", err);
+			console.error("Error al obtener miembros:", err);
 			setError(true);
-			setLoading(false);
 		} finally {
 			setLoading(false);
 		}
@@ -47,7 +38,7 @@ type useInvitationsReturnType = {
 		onFail: () => void,
 	) => Promise<void>;
 
-    acceptInvitation: (
+	acceptInvitation: (
 		invitationId: string,
 		onSuccess: () => void,
 		onFail: () => void,
@@ -63,43 +54,28 @@ export const useInvitations = (): useInvitationsReturnType => {
 		onFail: () => void,
 	) => {
 		try {
-			const res = await fetch(`${SERVER_URL}/api/members/invite/${projectId}`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify({ email, role }),
+			await api.post(`/api/members/invite/${projectId}`, {
+				email,
+				role,
 			});
 
-			if (!res.ok) {
-				onFail();
-				throw new Error("fetch failed");
-			}
 			onSuccess();
 		} catch (e) {
-			console.error("failed invite", e);
+			console.error("Fallo al enviar invitación:", e);
 			onFail();
 		}
 	};
 
-
-    const acceptInvitation = async (
+	const acceptInvitation = async (
 		invitationId: string,
 		onSuccess: () => void,
 		onFail: () => void,
 	) => {
 		try {
-			const res = await fetch(`${SERVER_URL}/api/members/accept-invite/${invitationId}`, {
-				method: "POST",
-				credentials: "include",
-			});
-
-			if (!res.ok) {
-				onFail();
-				throw new Error("fetch failed");
-			}
+			await api.post(`/api/members/accept-invite/${invitationId}`);
 			onSuccess();
 		} catch (e) {
-			console.error("failed invite", e);
+			console.error("Fallo al aceptar invitación:", e);
 			onFail();
 		}
 	};

@@ -1,28 +1,28 @@
-import { type FC, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Calendar,
+	Edit,
+	Lightbulb,
+	Plus,
+	Star,
+	ThumbsDown,
+	ThumbsUp,
+	Trash2,
+	User,
+} from "lucide-react";
+import { type FC, type ReactNode, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import {
-	Plus,
-	Edit,
-	Trash2,
-	ThumbsUp,
-	ThumbsDown,
-	Lightbulb,
-	Calendar,
-	User,
-	Star,
-} from "lucide-react";
-import type { Idea } from "@/types/ProjectTypes";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useIdeas } from "@/hooks/connection/useIdeas";
+import type { Idea } from "@/types/ProjectTypes";
 import { timeAgo } from "@/utils/util";
 import { Label } from "../ui/label";
 import {
@@ -32,6 +32,26 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "../ui/select";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+const markdownTableComponents = {
+	table: ({ children }: { children?: ReactNode }) => (
+		<div className="my-3 w-full overflow-x-auto rounded-lg border border-border">
+			<table className="w-max min-w-full border-collapse text-sm">{children}</table>
+		</div>
+	),
+	th: ({ children }: { children?: ReactNode }) => (
+		<th className="border border-border px-3 py-2 bg-muted font-semibold text-left whitespace-nowrap">
+			{children}
+		</th>
+	),
+	td: ({ children }: { children?: ReactNode }) => (
+		<td className="border border-border px-3 py-2 align-top break-words">
+			{children}
+		</td>
+	),
+};
 
 const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 	const { ideas, createIdea, deleteIdea, updateIdea } = useIdeas(projectId);
@@ -40,6 +60,7 @@ const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 	const [editingIdea, setEditingIdea] = useState<Partial<Idea> | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [filterStatus, setFilterStatus] = useState("Todas");
+	const [viewingIdea, setViewingIdea] = useState<Idea | null>(null);
 
 	const statuses = [
 		"Todas",
@@ -244,7 +265,46 @@ const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 								</div>
 							</CardHeader>
 							<CardContent className="space-y-4">
-								<p className="text-sm text-gray-600">{idea.description}</p>
+								<div>
+									<div className="prose prose-lg dark:prose-invert max-w-none">
+										<div
+											role="button"
+											tabIndex={0}
+											onClick={() => setViewingIdea(idea)}
+											onKeyDown={(e) => {
+												if (e.key === "Enter" || e.key === " ") {
+													e.preventDefault();
+													setViewingIdea(idea);
+												}
+											}}
+											style={{
+												display: "-webkit-box",
+												WebkitLineClamp: 4,
+												WebkitBoxOrient: "vertical",
+												overflow: "hidden",
+											}}
+											className="cursor-pointer text-foreground/90 hover:text-foreground transition-colors"
+										>
+											<ReactMarkdown
+												remarkPlugins={[remarkGfm]}
+												components={markdownTableComponents}
+											>
+												{idea.description}
+											</ReactMarkdown>
+										</div>
+									</div>
+									<div className="mt-2">
+										<Button
+											variant="link"
+											size="sm"
+											className="px-0"
+											onClick={() => setViewingIdea(idea)}
+										>
+											Leer más
+										</Button>
+									</div>
+								</div>
+
 
 								<div className="grid grid-cols-2 gap-4 text-sm">
 									<div>
@@ -426,6 +486,52 @@ const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 									Cancelar
 								</Button>
 								<Button onClick={handleSaveIdea}>Guardar</Button>
+							</div>
+						</div>
+					)}
+				</DialogContent>
+			</Dialog>
+
+			<Dialog
+				open={!!viewingIdea}
+				onOpenChange={(open) => !open && setViewingIdea(null)}
+			>
+				<DialogContent className="sm:max-w-2xl w-full rounded-lg">
+					<DialogHeader>
+						<DialogTitle>{viewingIdea?.title || "Idea"}</DialogTitle>
+					</DialogHeader>
+					{viewingIdea && (
+						<div className="space-y-4">
+							<div className="flex flex-wrap gap-2">
+								<Badge className={getStatusColor(viewingIdea.status)}>
+									{viewingIdea.status}
+								</Badge>
+								<Badge variant={getPriorityColor(viewingIdea.priority)}>
+									{viewingIdea.priority}
+								</Badge>
+							</div>
+							<div className="max-h-[50vh] overflow-y-auto">
+								<div className="prose prose-lg dark:prose-invert max-w-none pr-2">
+									<ReactMarkdown
+										remarkPlugins={[remarkGfm]}
+										components={markdownTableComponents}
+									>
+										{viewingIdea.description}
+									</ReactMarkdown>
+								</div>
+							</div>
+							<div className="grid grid-cols-2 gap-4 text-sm pt-2 border-t">
+								<div>
+									<span className="font-medium">Implementabilidad:</span>
+									<div className="flex items-center gap-1 mt-1">
+										{getImplementabilityIcon(viewingIdea.implementability)}
+										{viewingIdea.implementability}
+									</div>
+								</div>
+								<div>
+									<span className="font-medium">Impacto:</span>
+									<div className="mt-1">{viewingIdea.impact}</div>
+								</div>
 							</div>
 						</div>
 					)}

@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Chat } from "../components/chat-interface";
 
-export function useConversations(userId: number) {
+export function useConversations(userId: string) {
 	const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 	const [conversations, setConversations] = useState<Chat[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -20,7 +20,6 @@ export function useConversations(userId: number) {
 				if (!res.ok) throw new Error("Error al cargar conversaciones");
 				const data = await res.json();
 				setConversations(data);
-			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 			} catch (err: any) {
 				setError(err.message || "Error desconocido");
 			} finally {

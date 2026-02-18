@@ -1,30 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
-	FileText,
-	Shield,
-	Database,
-	Users,
+	ArrowRight,
 	BarChart3,
 	CheckCircle,
-	ArrowRight,
-	Menu,
-	X,
-	Sun,
-	Moon,
+	Database,
+	FileText,
 	Github,
 	Mail,
-	Phone,
 	MapPin,
+	Menu,
+	Moon,
+	Phone,
+	Shield,
 	Star,
-	Zap,
+	Sun,
 	Twitter,
+	Users,
+	X,
+	Zap,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import useUserCount from "@/hooks/connection/useUserCount";
 
 export default function LandingPage() {
@@ -327,7 +327,9 @@ export default function LandingPage() {
 								</div>
 							</Card>
 							<Card className="p-6 text-center">
-								<div className="text-3xl font-bold text-primary mb-2">{loading ? "Cargando..." : count}</div>
+								<div className="text-3xl font-bold text-primary mb-2">
+									{loading ? "Cargando..." : count}
+								</div>
 								<div className="text-sm text-muted-foreground">
 									Usuarios registrados
 								</div>
@@ -466,7 +468,9 @@ export default function LandingPage() {
 							<h3 className="font-semibold mb-4">Soporte</h3>
 							<div className="space-y-2 text-sm text-muted-foreground">
 								<div>Documentación</div>
-								<div>Centro de ayuda</div>
+								<div>
+									<Link to="/help">Centro de ayuda</Link>
+								</div>
 								<div>Contacto</div>
 								<div>Estado del servicio</div>
 							</div>

@@ -1,7 +1,7 @@
 import type { FC } from "react";
-import IconButton from "../IconButton";
 import { FaHome, FaSitemap } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import IconButton from "../IconButton";
 
 const NavBar: FC = () => {
 	const navigate = useNavigate();
