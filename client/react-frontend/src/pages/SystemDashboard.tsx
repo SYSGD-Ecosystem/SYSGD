@@ -351,10 +351,14 @@ const SystemDashboard: FC = () => {
 					setIsDocumentDialogOpen(false);
 					navigate(`/tcp-registro/${created.id}`);
 				})
-				.catch(() => {
+				.catch((error: unknown) => {
+					const message =
+						error instanceof Error && error.message
+							? error.message
+							: "No se pudo crear el registro contable";
 					toast({
-						title: "Error",
-						description: "No se pudo crear el registro contable",
+						title: "Error al crear el registro",
+						description: message,
 						variant: "destructive",
 					});
 				});
