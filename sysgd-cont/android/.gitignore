@@ -1,0 +1,11 @@
+/build
+.gradle/
+app/build/
+gradle/wrapper/gradle-wrapper.jar
+*.apk
+*.aar
+*.jar
+local.properties
+*.iml
+.DS_Store
+
