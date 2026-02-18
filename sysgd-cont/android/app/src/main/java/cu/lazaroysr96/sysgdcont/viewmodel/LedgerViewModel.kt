@@ -100,11 +100,17 @@ class LedgerViewModel @Inject constructor(
             
             ledgerRepository.sync()
                 .onSuccess { result ->
+                    // Forzar actualización del registro en la UI
+                    val updatedRegistro = ledgerRepository.getRegistro()
+                    val updatedReport = ledgerRepository.calculateAnnualReport(updatedRegistro)
+                    
                     _uiState.update { 
                         it.copy(
                             isSyncing = false, 
                             syncSuccess = true,
-                            syncMessage = result.message
+                            syncMessage = result.message,
+                            registro = updatedRegistro,
+                            annualReport = updatedReport
                         ) 
                     }
                 }

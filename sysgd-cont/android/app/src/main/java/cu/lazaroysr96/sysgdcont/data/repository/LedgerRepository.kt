@@ -214,9 +214,13 @@ class LedgerRepository @Inject constructor(
                     val registro = getRegistro()
                     val updateResponse = apiService.updateLedger("Bearer $token", registro)
                     if (updateResponse.isSuccessful) {
-                        updateVersions(currentServerVersion, currentServerVersion)
+                        // Siempre descargar datos del servidor después de subir
+                        if (remoteRegistro != null) {
+                            saveRegistro(remoteRegistro)
+                            updateVersions(currentServerVersion, currentServerVersion)
+                        }
                         markAsSynced()
-                        Result.success(SyncResult(true, "Cambios subidos al servidor", SyncAction.PUSH_ONLY))
+                        Result.success(SyncResult(true, "Cambios subidos y datos actualizados", SyncAction.MERGED))
                     } else {
                         Result.failure(Exception("Error al subir: ${updateResponse.code()}"))
                     }
@@ -244,14 +248,19 @@ class LedgerRepository @Inject constructor(
                         saveRegistro(remoteRegistro)
                         updateVersions(currentServerVersion, currentServerVersion)
                         markAsSynced()
-                        Result.success(SyncResult(true, "Datos actualizados desde el servidor", SyncAction.PULL_ONLY))
+                        Result.success(SyncResult(true, "Datos descargados del servidor", SyncAction.PULL_ONLY))
                     } else {
                         Result.success(SyncResult(true, "Sin cambios", SyncAction.NO_CHANGES))
                     }
                 }
                 
                 else -> {
-                    Result.success(SyncResult(true, "Sin cambios", SyncAction.NO_CHANGES))
+                    // En cualquier caso, siempre guardar datos remotos si existen
+                    if (remoteRegistro != null) {
+                        saveRegistro(remoteRegistro)
+                        updateVersions(currentServerVersion, currentServerVersion)
+                    }
+                    Result.success(SyncResult(true, "Sincronizado", SyncAction.MERGED))
                 }
             }
         } catch (e: Exception) {
