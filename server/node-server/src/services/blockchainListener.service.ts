@@ -1,6 +1,7 @@
 // src/services/blockchainListener.service.ts
 import { CryptoPaymentService } from "./cryptoPayment.service";
 import { pool } from "../db";
+import { isValidTier, TIER_CREDITS, TIER_LIMITS } from "../utils/billing";
 
 export class BlockchainListenerService {
   private cryptoService: CryptoPaymentService;
@@ -264,6 +265,10 @@ export class BlockchainListenerService {
       } else if (product_id.startsWith("plan_")) {
         // Es compra de plan
         const [, tier, period] = product_id.split("_");
+
+        if (!isValidTier(tier)) {
+          throw new Error(`Tier inválido: ${tier}`);
+        }
         
         // Calcular fecha de renovación
         const nextReset = new Date();
@@ -273,15 +278,16 @@ export class BlockchainListenerService {
           nextReset.setFullYear(nextReset.getFullYear() + 1);
         }
 
-        // Determinar créditos iniciales según tier
-        const initialCredits = tier === "pro" ? 100 : 500;
+        // Determinar créditos iniciales y límites según tier
+        const initialCredits = TIER_CREDITS[tier];
+        const tierLimits = TIER_LIMITS[tier];
 
         await pool.query(
           `UPDATE users 
            SET user_data = jsonb_set(
              jsonb_set(
                jsonb_set(
-                 user_data,
+                 COALESCE(user_data, '{}'::jsonb),
                  '{billing,tier}',
                  $1
                ),
@@ -293,6 +299,17 @@ export class BlockchainListenerService {
            )
            WHERE id = $4`,
           [JSON.stringify(tier), initialCredits, nextReset.toISOString(), user_id]
+        );
+
+        await pool.query(
+          `UPDATE users
+           SET user_data = jsonb_set(
+             COALESCE(user_data, '{}'::jsonb),
+             '{billing,limits}',
+             $1::jsonb
+           )
+           WHERE id = $2`,
+          [JSON.stringify(tierLimits), user_id],
         );
 
         console.log(`✅ Plan ${tier} activado para usuario ${user_id} (Orden: ${order_id})`);

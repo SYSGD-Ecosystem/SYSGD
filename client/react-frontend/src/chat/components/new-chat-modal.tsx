@@ -105,9 +105,7 @@ export function NewChatModal({
 	// Seleccionar contacto público -> crear/conseguir conversación privada con ese user
 	const handleSelectContact = async (contact: Contact) => {
 		try {
-			// createConversation espera un objeto opts
-			// const conv = await createConversation({ contactemail: contact.email });
-			// opcional: refrescar conversaciones globales
+			/*const conv = */ await createConversation({ contactemail: contact.email });
 			await fetchConversations();
 			onSelectContact(contact);
 			setSearchQuery("");

@@ -11,6 +11,7 @@ interface ProjectData {
 	id: string;
 	name: string;
 	description: string;
+	conversation_id?: string | null;
 }
 
 interface ProjectContextType {
@@ -42,6 +43,7 @@ export const ProjectProvider = ({
 				id: projectId,
 				name: response.data.name,
 				description: response.data.description,
+				conversation_id: response.data.conversation_id,
 			});
 			setError(null);
 		} catch (err) {

@@ -1,9 +1,17 @@
+import { useState } from "react";
 import { UpdateCard } from "@/components/update-card";
 import useUpdates from "@/hooks/useUpdates";
-import { AlertCircle, Inbox, RefreshCw } from "lucide-react";
+import { AlertCircle, Inbox, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+
+const ITEMS_PER_PAGE = 10;
 
 export default function UpdatesPage() {
   const { updates, loading, error, refetch } = useUpdates();
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.ceil(updates.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedUpdates = updates.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950">
@@ -45,7 +53,7 @@ export default function UpdatesPage() {
           ) : updates.length === 0 ? (
             <EmptyState />
           ) : (
-            <UpdatesList updates={updates} />
+            <UpdatesList updates={paginatedUpdates} totalPages={totalPages} currentPage={currentPage} onPageChange={setCurrentPage} totalItems={updates.length} />
           )}
         </div>
       </div>
@@ -135,12 +143,15 @@ function EmptyState() {
 }
 
 // Updates List Component
-function UpdatesList({ updates }: { updates: any[] }) {
+function UpdatesList({ updates, totalPages, currentPage, onPageChange, totalItems }: { updates: any[]; totalPages: number; currentPage: number; onPageChange: (page: number) => void; totalItems: number }) {
+  const startItem = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+  const endItem = Math.min(currentPage * ITEMS_PER_PAGE, totalItems);
+
   return (
     <div className="grid gap-8 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm font-medium text-muted-foreground">
-          {updates.length} {updates.length === 1 ? 'actualización' : 'actualizaciones'} {updates.length === 1 ? 'encontrada' : 'encontradas'}
+          Mostrando {startItem}-{endItem} de {totalItems} {totalItems === 1 ? 'actualización' : 'actualizaciones'}
         </p>
       </div>
       
@@ -153,6 +164,43 @@ function UpdatesList({ updates }: { updates: any[] }) {
           <UpdateCard update={update} />
         </div>
       ))}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-8">
+          <button
+            type="button"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <button
+              key={page}
+              type="button"
+              onClick={() => onPageChange(page)}
+              className={`w-10 h-10 rounded-lg font-medium transition-colors ${
+                currentPage === page
+                  ? "bg-blue-600 text-white"
+                  : "border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+          
+          <button
+            type="button"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

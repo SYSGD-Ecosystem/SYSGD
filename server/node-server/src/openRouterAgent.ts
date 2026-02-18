@@ -27,10 +27,6 @@ const imageQuestionKeywords = [
 // Si contiene palabras de pregunta → texto
 // Solo si explícitamente pide generar → imagen
 
-if (!OPENROUTER_API_KEY) {
-	throw new Error("❌ Falta OPENROUTER_API_KEY en .env");
-}
-
 const API_BASE = "https://openrouter.ai/api/v1";
 
 /**
@@ -43,6 +39,10 @@ async function callOpenRouterChat(
 	customToken?: string,
 ): Promise<string> {
 	const token = customToken || OPENROUTER_API_KEY;
+
+	if (!token) {
+		throw new Error("No se encontró token de OpenRouter (usuario ni sistema)");
+	}
 
 	console.log("Using system:", systemPrompt);
 
@@ -94,11 +94,18 @@ console.log("Enviando esto...",{
 async function generateImageOpenRouter(
 	prompt: string,
 	model: string = "google/gemini-2.5-flash-image-preview",
+ 	customToken?: string,
 ): Promise<string> {
+	const token = customToken || OPENROUTER_API_KEY;
+
+	if (!token) {
+		throw new Error("No se encontró token de OpenRouter (usuario ni sistema)");
+	}
+
 	const response = await fetch(`${API_BASE}/chat/completions`, {
 		method: "POST",
 		headers: {
-			Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+			Authorization: `Bearer ${token}`,
 			"Content-Type": "application/json",
 			"HTTP-Referer": "https://tu-app.com",
 			"X-Title": "SYSGD Chat",
@@ -144,7 +151,7 @@ export async function processAgentRequest(
 			prompt.toLowerCase().includes("genera una imagen") &&
 			!force_text_response
 		) {
-			const imageUrl = await generateImageOpenRouter(prompt);
+			const imageUrl = await generateImageOpenRouter(prompt, model, customToken);
 			respuesta = "Aquí tienes la imagen generada:";
 			attachment_type = "image";
 			attachment_url = imageUrl;

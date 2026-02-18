@@ -1,30 +1,143 @@
-import { AlertCircle, Calendar, Tag, User } from "lucide-react";
-import { type FC, useEffect, useState } from "react";
+import {
+	AlertCircle,
+	Calendar,
+	Clipboard,
+	Edit,
+	Pause,
+	Play,
+	Square,
+	Tag,
+	Trash2,
+	User,
+} from "lucide-react";
+import { type FC, useCallback, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import api from "@/lib/api";
 import { useTaskConfig } from "@/components/projects/task-management/hooks/useTaskConfig";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Task } from "@/types/Task";
+import type { TimeEntry } from "@/types/TimeEntry";
+import { useTimeTrackingStore } from "@/store/time-tracking";
+import { formatDuration, getEntryDurationSeconds } from "@/utils/time";
 import { getPriorityColor } from "@/utils/util";
 import { getStatusIcon } from "@/utils/util-components";
 import { Badge } from "../../../ui/badge";
 import { Button } from "../../../ui/button";
 import { Dialog, DialogContent } from "../../../ui/dialog";
+import { Input } from "../../../ui/input";
+import { Label } from "../../../ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+} from "../../../ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 const DialogViewTask: FC<{
 	selectedTask: Task;
 	isOpen: boolean;
 	onOpenChange: (open: boolean) => void;
 	onEditChange: () => void;
-	onDeleteChange: () => void;
-}> = ({ selectedTask, isOpen, onOpenChange, onEditChange, onDeleteChange }) => {
+	onDeleteChange: () => Promise<boolean>;
+	onStatusChange: (status: string) => Promise<void>;
+}> = ({
+	selectedTask,
+	isOpen,
+	onOpenChange,
+	onEditChange,
+	onDeleteChange,
+	onStatusChange,
+}) => {
 	const [isButtonDisabled, setIsButtonDisabled] = useState(false);
+	const [entries, setEntries] = useState<TimeEntry[]>([]);
+	const [loadingEntries, setLoadingEntries] = useState(false);
+	const [description, setDescription] = useState("");
+	const { toast } = useToast();
 
 	const { config: taskConfig } = useTaskConfig(selectedTask.project_id);
+	const statusOptions = taskConfig?.states?.map((state) => state.name) ?? [
+		selectedTask.status,
+	];
+	const activeEntry = useTimeTrackingStore((state) => state.activeEntry);
+	const now = useTimeTrackingStore((state) => state.now);
+	const fetchActiveEntry = useTimeTrackingStore(
+		(state) => state.fetchActiveEntry,
+	);
+	const startEntry = useTimeTrackingStore((state) => state.startEntry);
+	const pauseEntry = useTimeTrackingStore((state) => state.pauseEntry);
+	const resumeEntry = useTimeTrackingStore((state) => state.resumeEntry);
+	const stopEntry = useTimeTrackingStore((state) => state.stopEntry);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	useEffect(() => {
 		setIsButtonDisabled(false);
 	}, [selectedTask]);
+
+	useEffect(() => {
+		if (!isOpen) return;
+		void fetchActiveEntry();
+	}, [fetchActiveEntry, isOpen]);
+
+	const refreshEntries = useCallback(async () => {
+		setLoadingEntries(true);
+		try {
+			const response = await api.get<TimeEntry[]>(
+				`/api/time-entries?task_id=${selectedTask.id}`,
+			);
+			setEntries(response.data);
+		} catch (error) {
+			console.error("Error al cargar registros de tiempo:", error);
+		} finally {
+			setLoadingEntries(false);
+		}
+	}, [selectedTask.id]);
+
+	useEffect(() => {
+		if (!isOpen) return;
+		void refreshEntries();
+	}, [isOpen, refreshEntries]);
+
+	const taskActiveEntry =
+		activeEntry && activeEntry.task_id === selectedTask.id ? activeEntry : null;
+	const hasOtherActiveEntry =
+		activeEntry && activeEntry.task_id !== selectedTask.id;
+
+	const totalSeconds = useMemo(() => {
+		return entries.reduce((total, entry) => {
+			return total + getEntryDurationSeconds(entry, now);
+		}, 0);
+	}, [entries, now]);
+
+	const handleStartTimer = async () => {
+		const started = await startEntry({
+			project_id: selectedTask.project_id,
+			task_id: selectedTask.id,
+			description: description.trim() || null,
+		});
+		if (started) {
+			setDescription("");
+			await refreshEntries();
+		}
+	};
+
+	useEffect(() => {
+		if (!isOpen) return;
+		if (!activeEntry || activeEntry.task_id === selectedTask.id) {
+			void refreshEntries();
+		}
+	}, [activeEntry, isOpen, refreshEntries, selectedTask.id]);
+
+	const handleCopyToClipboard = useCallback(async () => {
+		const textToCopy = `${selectedTask.title}\n\n${selectedTask.description || ""}`;
+		try {
+			await navigator.clipboard.writeText(textToCopy);
+			toast({ title: "Copiado al portapapeles", description: "Título y descripción copiados exitosamente" });
+		} catch {
+			toast({ variant: "destructive", title: "Error", description: "No se pudo copiar al portapapeles" });
+		}
+	}, [selectedTask.title, selectedTask.description, toast]);
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -82,10 +195,124 @@ const DialogViewTask: FC<{
 						{selectedTask.description && (
 							<div>
 								<div className="prose prose-lg dark:prose-invert max-w-none">
-									<ReactMarkdown>{selectedTask.description}</ReactMarkdown>
+									<ReactMarkdown
+										remarkPlugins={[remarkGfm]}
+										components={{
+											table: ({ children }) => (
+												<div className="my-3 w-full overflow-x-auto rounded-lg border border-border">
+													<table className="w-max min-w-full border-collapse text-sm">
+														{children}
+													</table>
+												</div>
+											),
+											th: ({ children }) => (
+												<th className="border border-border px-3 py-2 bg-muted font-semibold text-left whitespace-nowrap">
+													{children}
+												</th>
+											),
+											td: ({ children }) => (
+												<td className="border border-border px-3 py-2 align-top break-words">
+													{children}
+												</td>
+											),
+										}}
+									>
+										{selectedTask.description}
+									</ReactMarkdown>
 								</div>
 							</div>
 						)}
+
+						<div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800 space-y-4">
+							<div className="flex items-center justify-between flex-wrap gap-3">
+								<div>
+									<p className="text-xs uppercase text-gray-500">
+										Time Tracking
+									</p>
+									<p className="text-lg font-semibold text-gray-900 dark:text-white">
+										{taskActiveEntry
+											? formatDuration(
+													getEntryDurationSeconds(taskActiveEntry, now),
+												)
+											: "00:00:00"}
+									</p>
+									<p className="text-xs text-gray-500">
+										Total acumulado: {formatDuration(totalSeconds)}
+									</p>
+								</div>
+								{taskActiveEntry && (
+									<Badge variant="outline">{taskActiveEntry.status}</Badge>
+								)}
+							</div>
+
+							<div className="flex flex-wrap gap-2">
+								<Button
+									size="sm"
+									onClick={handleStartTimer}
+									disabled={!!activeEntry}
+								>
+									<Play className="w-4 h-4 mr-2" />
+									Iniciar cronómetro
+								</Button>
+								<Button
+									size="sm"
+									variant="secondary"
+									onClick={() =>
+										taskActiveEntry && pauseEntry(taskActiveEntry.id)
+									}
+									disabled={
+										!taskActiveEntry || taskActiveEntry.status !== "running"
+									}
+								>
+									<Pause className="w-4 h-4 mr-2" />
+									Pausar
+								</Button>
+								<Button
+									size="sm"
+									variant="secondary"
+									onClick={() =>
+										taskActiveEntry && resumeEntry(taskActiveEntry.id)
+									}
+									disabled={
+										!taskActiveEntry || taskActiveEntry.status !== "paused"
+									}
+								>
+									<Play className="w-4 h-4 mr-2" />
+									Reanudar
+								</Button>
+								<Button
+									size="sm"
+									variant="destructive"
+									onClick={() =>
+										taskActiveEntry && stopEntry(taskActiveEntry.id)
+									}
+									disabled={!taskActiveEntry}
+								>
+									<Square className="w-4 h-4 mr-2" />
+									Finalizar
+								</Button>
+							</div>
+
+							<div className="space-y-2">
+								<Label>Descripción del registro</Label>
+								<Input
+									value={description}
+									onChange={(event) => setDescription(event.target.value)}
+									placeholder="Ej: revisión de requerimientos"
+									disabled={!!activeEntry}
+								/>
+								{hasOtherActiveEntry && (
+									<p className="text-xs text-amber-600">
+										Ya tienes un cronómetro activo en otra tarea.
+									</p>
+								)}
+							</div>
+							{loadingEntries && (
+								<p className="text-xs text-gray-500">
+									Actualizando registros de tiempo...
+								</p>
+							)}
+						</div>
 
 						{/* Metadatos compactos */}
 						<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -152,24 +379,71 @@ const DialogViewTask: FC<{
 
 				{/* Botones fijos en la parte inferior */}
 				<div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-6 bg-white dark:bg-gray-900">
-					<div className="flex justify-end gap-3">
-						<Button
-							variant="outline"
-							disabled={isButtonDisabled}
-							onClick={onEditChange}
-						>
-							Editar
-						</Button>
-						<Button
-							variant="destructive"
-							disabled={isButtonDisabled}
-							onClick={() => {
-								setIsButtonDisabled(true);
-								onDeleteChange();
-							}}
-						>
-							Eliminar
-						</Button>
+					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+						<div className="w-full sm:w-64 hidden">
+							<Select
+								value={selectedTask.status}
+								onValueChange={(value) => {
+									void onStatusChange(value);
+								}}
+							>
+								<SelectTrigger className="w-full">
+									<div className="flex items-center gap-2">
+										{getStatusIcon(selectedTask.status, taskConfig)}
+										<span>{selectedTask.status}</span>
+									</div>
+								</SelectTrigger>
+								<SelectContent>
+									{statusOptions.map((status) => (
+										<SelectItem key={status} value={status}>
+											<div className="flex items-center gap-2">
+												{getStatusIcon(status, taskConfig)}
+												<span>{status}</span>
+											</div>
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="flex w-full justify-end gap-2">
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={handleCopyToClipboard}
+								title="Copiar título y descripción"
+							>
+								<Clipboard className="w-4 h-4 mr-2" />
+								Copiar
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={isButtonDisabled}
+								onClick={onEditChange}
+								title="Editar"
+							>
+								<Edit className="w-4 h-4 mr-2" />
+								Editar
+							</Button>
+							<Button
+								variant="destructive"
+								size="sm"
+								disabled={isButtonDisabled}
+								onClick={async () => {
+									setIsButtonDisabled(true);
+									const deleted = await onDeleteChange();
+									if (!deleted) {
+										setIsButtonDisabled(false);
+										return;
+									}
+									onOpenChange(false);
+								}}
+								title="Eliminar"
+							>
+								<Trash2 className="w-4 h-4 mr-2" />
+								Eliminar
+							</Button>
+						</div>
 					</div>
 				</div>
 			</DialogContent>

@@ -17,11 +17,12 @@ interface ChatMessageProps {
 	onHover: (id: string | null) => void;
 	onReply: (message: ExtendedMessage) => void;
 	onEdit: (message: ExtendedMessage) => void;
-	onDelete: (messageId: string) => void;
+	onDelete: (message: ExtendedMessage) => void;
 	onCopy: (content: string) => void;
 	onSaveEdit: (messageId: string) => void;
 	onCancelEdit: () => void;
 	onEditingContentChange: (content: string) => void;
+	canDelete: boolean;
 }
 
 const ChatMessageComponent: React.FC<ChatMessageProps> = ({
@@ -37,65 +38,84 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 	onSaveEdit,
 	onCancelEdit,
 	onEditingContentChange,
+	canDelete,
 }) => {
 	const renderMessageContent = (msg: ExtendedMessage) => {
 		if (msg.attachment) {
 			switch (msg.attachment.type) {
 				case "image":
 					return (
-						<div className="space-y-2">
+						<div className="space-y-3">
 							<img
 								src={msg.attachment.url || "/placeholder.svg"}
 								alt="Imagen adjunta"
-								className="rounded-lg max-w-sm max-h-64 object-cover"
+								className="rounded-lg w-full max-w-[360px] max-h-72 object-cover"
 							/>
 							{msg.content && (
-								<p className="text-sm leading-relaxed">{msg.content}</p>
+								<p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
+									{msg.content}
+								</p>
 							)}
 						</div>
 					);
 				case "audio":
 					return (
-						<div className="space-y-2">
-							<AudioPlayer src={msg.attachment.url} />
+						<div className="space-y-3">
+							<AudioPlayer src={msg.attachment.url} className="w-full" />
 							{msg.content && (
-								<p className="text-sm leading-relaxed">{msg.content}</p>
+								<p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
+									{msg.content}
+								</p>
 							)}
 						</div>
 					);
 				case "video":
 					return (
-						<div className="space-y-2">
+						<div className="space-y-3">
 							{/** biome-ignore lint/a11y/useMediaCaption: <explanation> */}
-							<video controls className="rounded-lg max-w-sm max-h-64">
+							<video
+								controls
+								className="rounded-lg w-full max-w-[360px] max-h-72"
+							>
 								<source src={msg.attachment.url} type="video/mp4" />
 								Tu navegador no soporta el elemento de video.
 							</video>
 							{msg.content && (
-								<p className="text-sm leading-relaxed">{msg.content}</p>
+								<p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
+									{msg.content}
+								</p>
 							)}
 						</div>
 					);
 				case "file":
 					return (
-						<div className="space-y-2">
-							<div className="flex items-center gap-2 p-3 bg-background/50 rounded-lg">
-								<File className="h-5 w-5" />
-								<div className="flex-1">
-									<p className="text-sm font-medium">{msg.attachment.name}</p>
-									<p className="text-xs text-muted-foreground">
+						<div className="space-y-3">
+							<div className="flex items-center gap-2 p-3 bg-background/50 rounded-lg max-w-full min-w-0">
+								<File className="h-5 w-5 flex-shrink-0" />
+								<div className="flex-1 min-w-0">
+									<p className="text-sm font-medium truncate">
+										{msg.attachment.name}
+									</p>
+									<p className="text-xs text-muted-foreground truncate">
 										{msg.attachment.size}
 									</p>
 								</div>
 							</div>
 							{msg.content && (
-								<p className="text-sm leading-relaxed">{msg.content}</p>
+								<p className="text-sm leading-relaxed break-words whitespace-pre-wrap">
+									{msg.content}
+								</p>
 							)}
 						</div>
 					);
 			}
 		}
-		return <MarkdownRenderer content={msg.content} />;
+		return (
+			<MarkdownRenderer
+				content={msg.content}
+				className="break-words [overflow-wrap:anywhere]"
+			/>
+		);
 	};
 
 	return (
@@ -111,14 +131,14 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 				</div>
 			)}
 			<div
-				className={`flex flex-col ${message.sender === "me" ? "items-end" : "items-start"} max-w-[70%]`}
+				className={`flex flex-col ${message.sender === "me" ? "items-end" : "items-start"} max-w-[75%] sm:max-w-[70%] min-w-0`}
 			>
 				{message.sender === "other" && message.senderName && (
 					<span className="text-xs text-muted-foreground mb-1 px-1">
 						{message.senderName}
 					</span>
 				)}
-				<div className="relative group">
+				<div className="relative group max-w-full min-w-0">
 					{isEditing ? (
 						<div className="space-y-2">
 							<Input
@@ -139,9 +159,9 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 					) : (
 						<>
 							<div
-								className={`rounded-2xl px-4 py-2 ${
+								className={`rounded-2xl px-4 py-3 w-fit max-w-full min-w-0 overflow-visible text-sm leading-relaxed ${
 									message.sender === "me"
-										? "bg-primary text-primary-foreground"
+										? "bg-blue-300 text-white dark:bg-blue-600 dark:text-white"
 										: "bg-muted text-foreground"
 								}`}
 							>
@@ -155,7 +175,9 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 										</p>
 									</div>
 								)}
-								{renderMessageContent(message)}
+								<div className="max-w-full min-w-0 break-all [overflow-wrap:anywhere]">
+									{renderMessageContent(message)}
+								</div>
 							</div>
 							{isHovered && (
 								<div
@@ -164,9 +186,10 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({
 									<MessageActions
 										onReply={() => onReply(message)}
 										onEdit={() => onEdit(message)}
-										onDelete={() => onDelete(message.id)}
+										onDelete={() => onDelete(message)}
 										onCopy={() => onCopy(message.content)}
 										isOwnMessage={message.sender === "me"}
+										canDelete={canDelete}
 									/>
 								</div>
 							)}

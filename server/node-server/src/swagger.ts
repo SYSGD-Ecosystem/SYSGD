@@ -8,7 +8,7 @@ const options: swaggerJSDoc.Options = {
     info: {
       title: "SYSGD API",
       version: "1.0.0",
-      description: "API para gestión documental SYSGD",
+      description: "API del ecosistema de gestión empresarial SYSGD",
     },
     servers: [
       {

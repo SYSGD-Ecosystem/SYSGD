@@ -26,6 +26,12 @@ CREATE TABLE IF NOT EXISTS users_logins (
   user_agent TEXT
 );
 
+CREATE TABLE IF NOT EXISTS cont_ledger_records (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  registro JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
 -- ==============================
 -- Updates (Public changelog)
 -- ==============================
@@ -73,8 +79,12 @@ CREATE TABLE IF NOT EXISTS projects (
   created_by UUID REFERENCES users(id),
   created_at TIMESTAMP DEFAULT NOW(),
   status TEXT DEFAULT 'activo',
-  visibility TEXT DEFAULT 'privado'
+  visibility TEXT DEFAULT 'privado',
+  conversation_id UUID REFERENCES conversations(id) ON DELETE SET NULL
 );
+
+-- Migración: Agregar columna conversation_id a projects (si no existe)
+-- ALTER TABLE projects ADD COLUMN IF NOT EXISTS conversation_id UUID REFERENCES conversations(id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS projects_config (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -119,12 +129,35 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 
 -- ==============================
+-- Time Entries
+-- ==============================
+CREATE TABLE IF NOT EXISTS time_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  project_id UUID REFERENCES projects(id) ON DELETE SET NULL,
+  task_id UUID REFERENCES tasks(id) ON DELETE SET NULL,
+  start_time TIMESTAMP NOT NULL,
+  end_time TIMESTAMP,
+  duration_seconds INTEGER,
+  status TEXT NOT NULL CHECK (status IN ('running', 'paused', 'completed')),
+  description TEXT,
+  last_started_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_time_entries_user_id ON time_entries(user_id);
+CREATE INDEX IF NOT EXISTS idx_time_entries_status ON time_entries(status);
+CREATE INDEX IF NOT EXISTS idx_time_entries_task_id ON time_entries(task_id);
+CREATE INDEX IF NOT EXISTS idx_time_entries_project_id ON time_entries(project_id);
+
+-- ==============================
 -- User Tokens
 -- ==============================
 CREATE TABLE IF NOT EXISTS user_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  token_type TEXT NOT NULL CHECK (token_type IN ('github', 'gemini', 'replicate')),
+  token_type TEXT NOT NULL CHECK (token_type IN ('github', 'gemini', 'replicate', 'openrouter')),
   encrypted_token BYTEA NOT NULL,
   iv BYTEA NOT NULL,
   created_at TIMESTAMP DEFAULT NOW(),
@@ -271,8 +304,14 @@ CREATE TABLE IF NOT EXISTS conversation_invitations (
   sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
   receiver_email TEXT,
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMP DEFAULT NOW(),
+  token TEXT UNIQUE,
+  expires_at TIMESTAMP
 );
+
+-- Migración: Agregar token y expires_at a conversation_invitations
+-- ALTER TABLE conversation_invitations ADD COLUMN IF NOT EXISTS token TEXT UNIQUE;
+-- ALTER TABLE conversation_invitations ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP;
 
 -- ==============================
 -- Agents module

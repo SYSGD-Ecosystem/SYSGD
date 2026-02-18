@@ -87,21 +87,16 @@ export function Hero() {
 
 						{/* Botones de acción */}
 						<div className="flex flex-col sm:flex-row gap-3">
-							<Button size="lg" className="group bg-blue-500 hover:bg-blue-600 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all">
-								<a
-									href="https://app.ecosysgd.com"
-									target="_blank"
-									rel="noopener noreferrer"
-									className="flex items-center gap-2"
-								>
-									<Sparkles className="h-4 w-4 group-hover:rotate-12 transition-transform" />
-									<span>Probar Ahora</span>
+							<Button size="lg" variant="outline" className="border-blue-500 text-blue-700 hover:border-pink-500 hover:bg-pink-50 hover:text-pink-500 transition-colors">
+								<a href="https://work.ecosysgd.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+									<span>Ir a Work</span>
+									<ArrowRight className="h-4 w-4" />
 								</a>
 							</Button>
 
-							<Button size="lg" variant="outline" className="border-blue-500 text-blue-700 hover:border-pink-500 hover:bg-pink-50 hover:text-pink-500 transition-colors">
-								<a href="/api" className="flex items-center gap-2">
-									<span>Ver Planes</span>
+							<Button size="lg" variant="outline" className="border-green-500 text-green-700 hover:border-green-600 hover:bg-green-50 transition-colors">
+								<a href="https://cont.ecosysgd.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+									<span>Ir a Cont</span>
 									<ArrowRight className="h-4 w-4" />
 								</a>
 							</Button>
@@ -117,6 +112,21 @@ export function Hero() {
 									<span>GitHub</span>
 								</a>
 							</Button>
+						</div>
+
+						<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+							<a href="https://work.ecosysgd.com" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-blue-200 bg-white/70 p-3 hover:bg-blue-50 transition-colors">
+								<p className="text-sm font-semibold text-blue-800">Work</p>
+								<p className="text-xs text-gray-600 mt-1">Gestión de proyectos, tareas y colaboración.</p>
+							</a>
+							<a href="https://cont.ecosysgd.com" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-green-200 bg-white/70 p-3 hover:bg-green-50 transition-colors">
+								<p className="text-sm font-semibold text-green-800">Cont</p>
+								<p className="text-xs text-gray-600 mt-1">Registro de ingresos y gastos para TCP.</p>
+							</a>
+							<a href="/updates" className="rounded-lg border border-amber-200 bg-white/70 p-3 hover:bg-amber-50 transition-colors">
+								<p className="text-sm font-semibold text-amber-800">Institucional</p>
+								<p className="text-xs text-gray-600 mt-1">Novedades, estado del proyecto y comunidad.</p>
+							</a>
 						</div>
 
 						{/* Advertencia Beta */}

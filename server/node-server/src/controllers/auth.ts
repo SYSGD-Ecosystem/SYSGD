@@ -4,6 +4,8 @@ import bcrypt from "bcrypt";
 import dotenv from "dotenv";
 import { findUserByemail, logUserLogin } from "../services/authService";
 import { pool } from "../db";
+import { createDefaultUserData } from "../utils/billing";
+import { request } from "node:http";
 
 dotenv.config();
 
@@ -145,7 +147,6 @@ export const checkUser = async (req: Request, res: Response) => {
 export const getCurrentUser = async (req: Request, res: Response) => {
 	// 1. Estrategia Híbrida: Header 'Authorization' O Cookie 'token'
 	const authHeader = req.headers.authorization;
-	console.log("Auth Header:", {authHeader});
 	const tokenFromHeader = authHeader?.startsWith("Bearer ")
 		? authHeader.split(" ")[1]
 		: null;
@@ -188,6 +189,7 @@ export const completeInvitedUserRegistration = async (
 	}
 
 	try {
+		const defaultUserData = createDefaultUserData();
 		// Verificar que el usuario existe y está en estado 'invited'
 		const userCheck = await findUserByemail(req.body.email);
 		if (!userCheck || userCheck.status !== "invited") {
@@ -201,9 +203,9 @@ export const completeInvitedUserRegistration = async (
 
 		await pool.query(
 			`UPDATE users 
-             SET name = $1, password = $2, status = 'active' 
-             WHERE id = $3 AND status = 'invited'`,
-			[name, hashedPassword, userId],
+				 SET name = $1, password = $2, status = 'active', user_data = COALESCE(user_data, $4::jsonb) 
+				 WHERE id = $3 AND status = 'invited'`,
+			[name, hashedPassword, userId, JSON.stringify(defaultUserData)],
 		);
 
 		// Generar token
@@ -237,6 +239,29 @@ export const completeInvitedUserRegistration = async (
 		console.error(err);
 		res.status(500).json({ message: "Error interno del servidor" });
 	}
+};
+
+export const issueExternalToken = async (req: Request, res: Response) => {
+	const user = req.user as UserPayload | undefined;
+
+	if (!user) {
+		res.status(401).json({ message: "No autorizado" });
+		return;
+	}
+
+	const token = generateJWT({
+		id: user.id,
+		email: user.email,
+		name: user.name,
+		privileges: user.privileges,
+	});
+
+	res.status(200).json({
+		message: "Token generado para acceso externo",
+		token,
+		tokenType: "Bearer",
+		expiresIn: "7d",
+	});
 };
 
 export const logout = async (req: Request, res: Response) => {

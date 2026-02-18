@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import type { User } from "@/types/user";
+import { readCachedUser, writeCachedUser } from "@/utils/offline-access";
 
-interface User {
-	id: string;
-	name: string;
-	email: string;
-	privileges: string;
-}
+type CurrentUserResponse = Omit<User, "privileges"> & {
+	privileges: User["privileges"] | null;
+};
 
 const useCurrentUser = () => {
 	const [user, setUser] = useState<User | null>(null);
@@ -16,21 +15,28 @@ const useCurrentUser = () => {
 	useEffect(() => {
 		const fetchUser = async () => {
 			try {
-				const res = await api.get<User>("/api/auth/me");
+				const res = await api.get<CurrentUserResponse>("/api/auth/me");
 
 				console.log("Respuesta de /api/auth/me:", res);
 
-				const userData = res.data;
-
-				if (userData && userData.privileges === null) {
-					userData.privileges = "user";
-				}
+				const userData: User = {
+					...res.data,
+					privileges: res.data.privileges ?? "user",
+				};
 
 				setUser(userData);
+				writeCachedUser(userData);
 				setIsAuthenticated(true);
 			} catch {
-				setUser(null);
-				setIsAuthenticated(false);
+				const token = localStorage.getItem("token");
+				const cachedUser = readCachedUser();
+				if (token && cachedUser) {
+					setUser(cachedUser);
+					setIsAuthenticated(true);
+				} else {
+					setUser(null);
+					setIsAuthenticated(false);
+				}
 			} finally {
 				setLoading(false);
 			}

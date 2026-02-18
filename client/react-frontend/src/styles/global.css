@@ -465,6 +465,24 @@ body,
 	height: 100%;
 }
 
+/* Scrollbar personalizado para modo claro o por defecto */
+::-webkit-scrollbar {
+	width: 8px;
+}
+
+::-webkit-scrollbar-track {
+	background: #f3f4f6;
+}
+
+::-webkit-scrollbar-thumb {
+	background: #d1d5db;
+	border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: #9ca3af;
+}
+
 /* Scrollbar personalizado para modo oscuro */
 .dark ::-webkit-scrollbar {
 	width: 8px;

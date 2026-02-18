@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/a11y/useKeyWithClickEvents: <explanation> */
 /** biome-ignore-all lint/a11y/noStaticElementInteractions: <explanation> */
-import { type FC, useEffect, useState } from "react";
+import { type FC, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
 	Activity,
@@ -18,6 +18,7 @@ import {
 	MoreVertical,
 	Search,
 	Settings,
+	Trash2,
 	Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,12 @@ import { Textarea } from "@/components/ui/textarea";
 import SettingsModal from "@/components/SettingsModal";
 import Loading from "@/components/Loading";
 import { Separator } from "@/components/ui/separator";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type ViewMode = "home" | "projects" | "documents";
 
@@ -77,6 +84,57 @@ interface Project {
 	completed_tasks: number;
 }
 
+const PROJECT_ACTIVITY_STORAGE_KEY = "dashboard:project-activity";
+
+interface ProjectActivityRecord {
+	projectId: string;
+	lastOpenedAt: string;
+}
+
+const readProjectActivity = (): ProjectActivityRecord[] => {
+	try {
+		const raw = localStorage.getItem(PROJECT_ACTIVITY_STORAGE_KEY);
+		if (!raw) return [];
+		const parsed = JSON.parse(raw);
+		if (!Array.isArray(parsed)) return [];
+		return parsed.filter(
+			(item): item is ProjectActivityRecord =>
+				typeof item?.projectId === "string" &&
+				typeof item?.lastOpenedAt === "string",
+		);
+	} catch {
+		return [];
+	}
+};
+
+const writeProjectActivity = (records: ProjectActivityRecord[]) => {
+	localStorage.setItem(PROJECT_ACTIVITY_STORAGE_KEY, JSON.stringify(records));
+};
+
+const getRelativeActivityText = (isoDate?: string): string => {
+	if (!isoDate) return "Sin actividad reciente";
+	const date = new Date(isoDate);
+	if (Number.isNaN(date.getTime())) return "Sin actividad reciente";
+
+	const now = Date.now();
+	const diffMs = Math.max(0, now - date.getTime());
+	const minute = 60 * 1000;
+	const hour = 60 * minute;
+	const day = 24 * hour;
+
+	if (diffMs < minute) return "Hace un momento";
+	if (diffMs < hour) {
+		const minutes = Math.floor(diffMs / minute);
+		return `Hace ${minutes} min`;
+	}
+	if (diffMs < day) {
+		const hours = Math.floor(diffMs / hour);
+		return `Hace ${hours} h`;
+	}
+	const days = Math.floor(diffMs / day);
+	return `Hace ${days} día${days === 1 ? "" : "s"}`;
+};
+
 const SystemDashboard: FC = () => {
 	const [viewMode, setViewMode] = useState<ViewMode>("home");
 
@@ -86,14 +144,16 @@ const SystemDashboard: FC = () => {
 	const [showNotifications, setShowNotifications] = useState(false);
 	const [documents, setDocument] = useState<DocumentFile[]>([]);
 	const [projects, setProjects] = useState<Project[]>([]);
-	const { handleCreateProject } = useProjectConnection();
+	const [projectActivity, setProjectActivity] = useState<ProjectActivityRecord[]>([]);
+	const { handleCreateProject, handleUpdateProject, handleDeleteProject } =
+		useProjectConnection();
 	const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
 	const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
 	const { toast } = useToast();
 
 	const navigate = useNavigate();
 	const { user, loading: loadingUser } = useCurrentUser();
-	const { projects: mProjects = [] } = useProjects();
+	const { projects: mProjects = [], reloadProjects } = useProjects();
 	const { archives = [] } = useArchives();
 	const setProjectId = useSelectionStore((state) => state.setProjectId);
 	const setArchive = useArchiveStore((state) => state.selectArchive);
@@ -103,6 +163,7 @@ const SystemDashboard: FC = () => {
 		name: "",
 		desciption: "",
 	});
+	const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
 
 	const [newDocument, setNewDocument] = useState({
 		name: "",
@@ -155,22 +216,104 @@ const SystemDashboard: FC = () => {
 		}
 	};
 
-	const createProject = () => {
+	const saveProject = () => {
+		if (editingProjectId) {
+			handleUpdateProject(
+				editingProjectId,
+				{ name: newProject.name, description: newProject.desciption },
+				() => {
+					toast({
+						title: "Éxito",
+						description: "Proyecto actualizado correctamente",
+					});
+					setIsProjectDialogOpen(false);
+					setEditingProjectId(null);
+					setNewProject({ name: "", desciption: "" });
+					void reloadProjects();
+				},
+				(error) => {
+					toast({
+						title: "Error",
+						description: error || "No se pudo actualizar el proyecto",
+						variant: "destructive",
+					});
+				},
+			);
+			return;
+		}
+
 		handleCreateProject(
 			newProject.name,
 			newProject.desciption,
-			() => {
+			(project) => {
+				if (project?.id) {
+					const createdProject: Project = {
+						id: project.id,
+						name: project.name,
+						description: project.description,
+						created_by: project.created_by,
+						created_at: project.created_at,
+						status: project.status,
+						visibility: project.visibility,
+						tipo: "project",
+						members_count: 0,
+						total_tasks: 0,
+						completed_tasks: 0,
+					};
+
+					setProjects((prev) => [
+						createdProject,
+						...prev,
+					]);
+				}
+
 				toast({
 					title: "Exito",
-					description: "Proyecto creado, por favor refresque la página",
+					description: "Proyecto creado correctamente",
 				});
 				setIsProjectDialogOpen(false);
+				setNewProject({ name: "", desciption: "" });
+				void reloadProjects();
 			},
-			() => {
+			(error) => {
 				toast({
 					title: "Error",
 					description:
+						error ||
 						"No se creó el proyecto, por favor, verifique su conexión o conecte con soporte",
+					variant: "destructive",
+				});
+			},
+		);
+	};
+
+	const openEditProjectDialog = (project: Project) => {
+		setEditingProjectId(project.id);
+		setNewProject({
+			name: project.name,
+			desciption: project.description || "",
+		});
+		setIsProjectDialogOpen(true);
+	};
+
+	const deleteProject = (projectId: string) => {
+		if (!window.confirm("¿Deseas eliminar este proyecto? Esta acción no se puede deshacer.")) {
+			return;
+		}
+
+		handleDeleteProject(
+			projectId,
+			() => {
+				toast({
+					title: "Éxito",
+					description: "Proyecto eliminado correctamente",
+				});
+				void reloadProjects();
+			},
+			(error) => {
+				toast({
+					title: "Error",
+					description: error || "No se pudo eliminar el proyecto",
 					variant: "destructive",
 				});
 			},
@@ -242,6 +385,49 @@ const SystemDashboard: FC = () => {
 			setDocument(docs);
 		}
 	}, [archives]);
+
+	useEffect(() => {
+		if (typeof window === "undefined") return;
+		setProjectActivity(readProjectActivity());
+	}, []);
+
+	const trackProjectOpen = (projectId: string) => {
+		const nowIso = new Date().toISOString();
+		setProjectActivity((prev) => {
+			const next = [
+				{ projectId, lastOpenedAt: nowIso },
+				...prev.filter((item) => item.projectId !== projectId),
+			].slice(0, 20);
+			writeProjectActivity(next);
+			return next;
+		});
+	};
+
+	const recentProjects = useMemo(() => {
+		if (projects.length === 0) return [];
+
+		const activityMap = new Map(
+			projectActivity.map((item) => [item.projectId, item.lastOpenedAt]),
+		);
+
+		const withActivity = projects
+			.filter((project) => activityMap.has(project.id))
+			.sort((a, b) => {
+				const dateA = new Date(activityMap.get(a.id) || 0).getTime();
+				const dateB = new Date(activityMap.get(b.id) || 0).getTime();
+				return dateB - dateA;
+			});
+
+		if (withActivity.length >= 3) {
+			return withActivity.slice(0, 3);
+		}
+
+		const missing = projects.filter(
+			(project) => !withActivity.some((active) => active.id === project.id),
+		);
+
+		return [...withActivity, ...missing].slice(0, 3);
+	}, [projects, projectActivity]);
 
 	useEffect(() => {
 		if (invitations) {
@@ -344,11 +530,12 @@ const SystemDashboard: FC = () => {
 					<Separator />
 					<CardContent>
 						<div className="space-y-3">
-							{projects.slice(0, 3).map((project) => (
+							{recentProjects.map((project) => (
 								<div
 									key={project.id}
 									onClick={() => {
 										setProjectId(project.id);
+										trackProjectOpen(project.id);
 										navigate("/projects");
 									}}
 									className="flex w-full cursor-pointer items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -360,13 +547,18 @@ const SystemDashboard: FC = () => {
 										<p className="text-sm text-gray-600 dark:text-gray-400">
 											{project.members_count} miembros
 										</p>
+										<p className="text-xs text-gray-500 dark:text-gray-400">
+											Actividad: {getRelativeActivityText(
+												projectActivity.find((item) => item.projectId === project.id)?.lastOpenedAt,
+											)}
+										</p>
 									</div>
 									<Badge className={getStatusColor(project.status ?? "")}>
 										{project.status}
 									</Badge>
 								</div>
 							))}
-							{projects.length === 0 && (
+							{recentProjects.length === 0 && (
 								<p className="text-center text-gray-500 dark:text-gray-400 py-4">
 									No hay proyectos aún
 								</p>
@@ -434,7 +626,13 @@ const SystemDashboard: FC = () => {
 						{filteredProjects.length} proyectos en total
 					</p>
 				</div>
-				<Button onClick={() => setIsProjectDialogOpen(true)}>
+				<Button
+					onClick={() => {
+						setEditingProjectId(null);
+						setNewProject({ name: "", desciption: "" });
+						setIsProjectDialogOpen(true);
+					}}
+				>
 					<FolderPlus className="w-4 h-4 mr-2" />
 					Nuevo Proyecto
 				</Button>
@@ -454,9 +652,26 @@ const SystemDashboard: FC = () => {
 										{project.name}
 									</CardTitle>
 								</div>
-								<Button variant="ghost" disabled size="sm">
-									<MoreVertical className="w-4 h-4" />
-								</Button>
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<Button variant="ghost" size="sm">
+											<MoreVertical className="w-4 h-4" />
+										</Button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="end">
+										<DropdownMenuItem onClick={() => openEditProjectDialog(project)}>
+											<Edit className="w-4 h-4 mr-2" />
+											Editar
+										</DropdownMenuItem>
+										<DropdownMenuItem
+											onClick={() => deleteProject(project.id)}
+											className="text-red-600 focus:text-red-600"
+										>
+											<Trash2 className="w-4 h-4 mr-2" />
+											Eliminar
+										</DropdownMenuItem>
+									</DropdownMenuContent>
+								</DropdownMenu>
 							</div>
 							<Badge
 								className={`w-fit ${getStatusColor(project.status ?? "")}`}
@@ -501,6 +716,7 @@ const SystemDashboard: FC = () => {
 								<Button
 									onClick={() => {
 										setProjectId(project.id);
+										trackProjectOpen(project.id);
 										navigate("/projects");
 									}}
 									variant="ghost"
@@ -511,7 +727,7 @@ const SystemDashboard: FC = () => {
 									Ver
 								</Button>
 								<Button
-									disabled
+									onClick={() => openEditProjectDialog(project)}
 									variant="ghost"
 									size="sm"
 									className="flex-1 cursor-pointer"
@@ -539,7 +755,13 @@ const SystemDashboard: FC = () => {
 							: "Comienza creando tu primer proyecto"}
 					</p>
 					{!searchTerm && (
-						<Button onClick={() => setIsProjectDialogOpen(true)}>
+						<Button
+							onClick={() => {
+								setEditingProjectId(null);
+								setNewProject({ name: "", desciption: "" });
+								setIsProjectDialogOpen(true);
+							}}
+						>
 							<FolderPlus className="w-4 h-4 mr-2" />
 							Crear Proyecto
 						</Button>
@@ -923,12 +1145,12 @@ const SystemDashboard: FC = () => {
 				</footer>
 			</div>
 
-			{/* Dialog para crear proyecto */}
+			{/* Dialog para crear/editar proyecto */}
 			<Dialog open={isProjectDialogOpen} onOpenChange={setIsProjectDialogOpen}>
 				<DialogContent className="max-w-md mx-4 dark:bg-gray-800 dark:border-gray-700">
 					<DialogHeader>
 						<DialogTitle className="text-gray-900 dark:text-white">
-							Crear Nuevo Proyecto
+							{editingProjectId ? "Editar proyecto" : "Crear Nuevo Proyecto"}
 						</DialogTitle>
 					</DialogHeader>
 					<div className="space-y-4">
@@ -962,11 +1184,17 @@ const SystemDashboard: FC = () => {
 						<div className="flex justify-end gap-2">
 							<Button
 								variant="outline"
-								onClick={() => setIsProjectDialogOpen(false)}
+								onClick={() => {
+									setIsProjectDialogOpen(false);
+									setEditingProjectId(null);
+									setNewProject({ name: "", desciption: "" });
+								}}
 							>
 								Cancelar
 							</Button>
-							<Button onClick={createProject}>Crear Proyecto</Button>
+							<Button onClick={saveProject}>
+								{editingProjectId ? "Guardar cambios" : "Crear Proyecto"}
+							</Button>
 						</div>
 					</div>
 				</DialogContent>

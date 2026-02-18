@@ -8,9 +8,9 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "SYSGD Ecosystem - Sistema de Gestión Empresarial",
+  title: "SYSGD Ecosystem - Plataforma de Gestión Empresarial Modular",
   description:
-    "Ecosistema modular de código abierto para la productividad empresarial. Gestión documental, proyectos y más.",
+    "Ecosistema modular de gestión empresarial que integra documentos, proyectos, IA y servicios digitales en una sola plataforma.",
   generator: "v0.app",
   icons: {
     icon: [

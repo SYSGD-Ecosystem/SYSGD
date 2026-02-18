@@ -10,6 +10,7 @@ interface MessageActionsProps {
 	onDelete: () => void;
 	onCopy: () => void;
 	isOwnMessage: boolean;
+	canDelete: boolean;
 }
 
 const MessageActionsComponent = ({
@@ -18,6 +19,7 @@ const MessageActionsComponent = ({
 	onDelete,
 	onCopy,
 	isOwnMessage,
+	canDelete,
 }: MessageActionsProps) => {
 	return (
 		<div className="flex items-center gap-1 bg-background border border-border rounded-lg shadow-lg p-1">
@@ -50,7 +52,7 @@ const MessageActionsComponent = ({
 			>
 				<Copy className="h-4 w-4" />
 			</Button>
-			{isOwnMessage && (
+			{canDelete && (
 				<Button
 					variant="ghost"
 					size="icon"

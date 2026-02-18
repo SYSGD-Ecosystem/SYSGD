@@ -4,6 +4,7 @@ import { pool } from "../db";
 import { isAuthenticated } from "../middlewares/auth-jwt";
 import { getCurrentUserData } from "../controllers/users";
 import { InvitationController } from "../controllers/invitationControler";
+import { createDefaultUserData } from "../utils/billing";
 const router = express.Router();
 
 router.get("/status", (_req, res) => {
@@ -14,12 +15,22 @@ router.get("/status", (_req, res) => {
 router.get("/:projectId", isAuthenticated, async (req, res) => {
 	const { projectId } = req.params;
 	try {
-		// Obtener miembros activos (ya aceptados)
+		// Obtener miembros activos (incluye creador/owner aunque no tenga fila en resource_access)
 		const membersResult = await pool.query(
-			`SELECT u.id, u.name, u.email, ra.role, 'active' as status
+			`WITH active_members AS (
+       SELECT p.created_by AS user_id, 'owner'::text AS role
+       FROM projects p
+       WHERE p.id = $1
+
+       UNION
+
+       SELECT ra.user_id, COALESCE(ra.role, 'member') AS role
        FROM resource_access ra
-       JOIN users u ON ra.user_id = u.id
-       WHERE ra.resource_type = 'project' AND ra.resource_id = $1`,
+       WHERE ra.resource_type = 'project' AND ra.resource_id = $1
+     )
+     SELECT u.id, u.name, u.email, am.role, 'active' as status
+     FROM active_members am
+     JOIN users u ON am.user_id = u.id`,
 			[projectId],
 		);
 
@@ -84,11 +95,12 @@ router.post("/invite/:projectId", isAuthenticated, async (req, res) => {
 		
 		// Si el usuario no existe, crearlo primero
 		if (!userExists) {
+			const defaultUserData = createDefaultUserData();
 			const newUserResult = await pool.query(
-				`INSERT INTO users (email, status, privileges) 
-				 VALUES ($1, 'invited', 'user') 
+				`INSERT INTO users (email, status, privileges, user_data) 
+				 VALUES ($1, 'invited', 'user', $2) 
 				 RETURNING id`,
-				[email]
+				[email, JSON.stringify(defaultUserData)]
 			);
 			receiverId = newUserResult.rows[0].id;
 		}
@@ -159,6 +171,22 @@ router.post(
 					invitation.role,
 				],
 			);
+
+			if (invitation.resource_type === "project") {
+				const projectResult = await pool.query(
+					`SELECT conversation_id FROM projects WHERE id = $1`,
+					[invitation.resource_id]
+				);
+				
+				if (projectResult.rows[0]?.conversation_id) {
+					await pool.query(
+						`INSERT INTO conversation_members (conversation_id, user_id, role, joined_at)
+						 VALUES ($1, $2, 'member', NOW())
+						 ON CONFLICT DO NOTHING`,
+						[projectResult.rows[0].conversation_id, userId]
+					);
+				}
+			}
 
 			res.json({ 
 				message: "Invitación aceptada",

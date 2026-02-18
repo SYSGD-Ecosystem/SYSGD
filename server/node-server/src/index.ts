@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import path from "node:path";
 import fs from "node:fs";
+import { createServer } from "http";
 import { initDatabase } from "./initDatabase";
 import routes from "./routes";
 import passport from "passport";
@@ -9,10 +10,12 @@ import "./passport";
 import { setupSwagger } from "./swagger";
 import cookieParser from "cookie-parser";
 import dotenv from 'dotenv';
+import { initSocketIO } from "./socket";
 
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
 
 app.use(cookieParser());
 
@@ -123,7 +126,8 @@ app.get("/", (_req, res) => {
 if (shouldInitDB) {
 	initDatabase()
 		.then(() => {
-			app.listen(PORT, () => {
+			initSocketIO(httpServer);
+			httpServer.listen(PORT, () => {
 				console.log(`🚀 SYSGD corriendo en http://localhost:${PORT}`);
 			});
 		})
@@ -132,7 +136,8 @@ if (shouldInitDB) {
 			process.exit(1);
 		});
 } else {
-	app.listen(PORT, () => {
+	initSocketIO(httpServer);
+	httpServer.listen(PORT, () => {
 		console.log(`🚀 SYSGD corriendo en http://localhost:${PORT}`);
 	});
 }

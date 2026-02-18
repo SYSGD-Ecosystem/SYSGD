@@ -9,6 +9,15 @@ import {
 	Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +40,7 @@ const Purchase: FC = () => {
 
 	const [activeSection, setActiveSection] = useState<Section>("credits");
 	const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+	const [showTestnetAlert, setShowTestnetAlert] = useState(true);
 
 	const { address, isConnected, usdtBalance, chainId, connect, disconnect } =
 		useWeb3(usdtAddress, paymentGatewayAddress);
@@ -65,6 +75,32 @@ const Purchase: FC = () => {
 
 	return (
 		<div className="flex h-screen overflow-hidden bg-background">
+			<AlertDialog open={showTestnetAlert}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Atención</AlertDialogTitle>
+						<AlertDialogDescription className="space-y-2">
+							<p>
+								Las funciones de pago y compra de créditos están en fase de
+								prueba. Por el momento, solo es posible utilizarlas mediante un
+								token de prueba en la red Testnet Sepolia.
+							</p>
+							<p>
+								Si deseas probar estas funcionalidades, envía un correo
+								electrónico al administrador de la plataforma a{" "}
+								<strong>lazaroyunier96@outlook.es</strong> para recibir créditos
+								de prueba.
+							</p>
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogAction onClick={() => setShowTestnetAlert(false)}>
+							Entendido
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
 			{/* SIDEBAR ESCRITORIO */}
 			<aside className="hidden md:flex w-64 border-r bg-card flex-col">
 				<PurchaseSidebar

@@ -4,6 +4,7 @@ import { isAuthenticated } from "../middlewares/auth-jwt";
 import { getCurrentUserData } from "../controllers/users";
 import { createCryptoPaymentService } from "../services/cryptoPayment.service";
 import { getBlockchainListener } from "../services/blockchainListener.service";
+import { isValidTier, TIER_CREDITS, TIER_LIMITS } from "../utils/billing";
 
 const router = Router();
 
@@ -305,6 +306,10 @@ async function processCompletedPayment(order: any) {
     } else if (product_id.startsWith("plan_")) {
       // Es compra de plan
       const [, tier, period] = product_id.split("_");
+
+      if (!isValidTier(tier)) {
+        throw new Error(`Tier inválido: ${tier}`);
+      }
       
       // Calcular fecha de renovación
       const nextReset = new Date();
@@ -314,15 +319,16 @@ async function processCompletedPayment(order: any) {
         nextReset.setFullYear(nextReset.getFullYear() + 1);
       }
 
-      // Determinar créditos iniciales según tier
-      const initialCredits = tier === "pro" ? 100 : 500;
+      // Determinar créditos iniciales y límites según tier
+      const initialCredits = TIER_CREDITS[tier];
+      const tierLimits = TIER_LIMITS[tier];
 
       await pool.query(
         `UPDATE users 
          SET user_data = jsonb_set(
            jsonb_set(
              jsonb_set(
-               user_data,
+               COALESCE(user_data, '{}'::jsonb),
                '{billing,tier}',
                $1
              ),
@@ -334,6 +340,17 @@ async function processCompletedPayment(order: any) {
          )
          WHERE id = $4`,
         [JSON.stringify(tier), initialCredits, nextReset.toISOString(), user_id]
+      );
+
+      await pool.query(
+        `UPDATE users
+         SET user_data = jsonb_set(
+           COALESCE(user_data, '{}'::jsonb),
+           '{billing,limits}',
+           $1::jsonb
+         )
+         WHERE id = $2`,
+        [JSON.stringify(tierLimits), user_id],
       );
 
       console.log(`✅ Plan ${tier} activado para usuario ${user_id}`);

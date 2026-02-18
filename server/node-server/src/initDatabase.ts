@@ -31,6 +31,14 @@ export async function initDatabase() {
   `);
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS cont_ledger_records (
+      user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      registro JSONB NOT NULL DEFAULT '{}'::jsonb,
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS updates (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       title TEXT NOT NULL,
@@ -56,7 +64,7 @@ export async function initDatabase() {
 CREATE TABLE IF NOT EXISTS user_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  token_type TEXT NOT NULL CHECK (token_type IN ('github', 'gemini', 'replicate')),
+  token_type TEXT NOT NULL CHECK (token_type IN ('github', 'gemini', 'replicate', 'openrouter')),
   encrypted_token BYTEA NOT NULL,
   iv BYTEA NOT NULL,
   created_at TIMESTAMP DEFAULT NOW(),
@@ -67,6 +75,22 @@ CREATE TABLE IF NOT EXISTS user_tokens (
 -- Índice para búsquedas rápidas
 CREATE INDEX IF NOT EXISTS idx_user_tokens_user_id ON user_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_tokens_type ON user_tokens(token_type);
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.table_constraints
+    WHERE constraint_name = 'user_tokens_token_type_check'
+      AND table_name = 'user_tokens'
+  ) THEN
+    ALTER TABLE user_tokens DROP CONSTRAINT user_tokens_token_type_check;
+  END IF;
+
+  ALTER TABLE user_tokens
+  ADD CONSTRAINT user_tokens_token_type_check
+  CHECK (token_type IN ('github', 'gemini', 'replicate', 'openrouter'));
+END $$;
     
 -- ==============================
 -- Project Members View
@@ -160,6 +184,30 @@ GROUP BY
     project_task_number INTEGER NOT NULL,
     UNIQUE (project_id, project_task_number)
   );
+`);
+
+	await pool.query(`
+  CREATE TABLE IF NOT EXISTS time_entries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    project_id UUID REFERENCES projects(id) ON DELETE SET NULL,
+    task_id UUID REFERENCES tasks(id) ON DELETE SET NULL,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP,
+    duration_seconds INTEGER,
+    status TEXT NOT NULL CHECK (status IN ('running', 'paused', 'completed')),
+    description TEXT,
+    last_started_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+  );
+`);
+
+	await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_time_entries_user_id ON time_entries(user_id);
+  CREATE INDEX IF NOT EXISTS idx_time_entries_status ON time_entries(status);
+  CREATE INDEX IF NOT EXISTS idx_time_entries_task_id ON time_entries(task_id);
+  CREATE INDEX IF NOT EXISTS idx_time_entries_project_id ON time_entries(project_id);
 `);
 
   await pool.query(`

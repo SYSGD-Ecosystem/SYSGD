@@ -1,64 +1,58 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, FileText, TrendingUp, Eye } from "lucide-react"
-
-const stats = [
-  {
-    title: "Total Usuarios",
-    value: "24",
-    description: "3 nuevos esta semana",
-    icon: Users,
-  },
-  {
-    title: "Posts Publicados",
-    value: "18",
-    description: "5 publicados este mes",
-    icon: FileText,
-  },
-  {
-    title: "Visitas Totales",
-    value: "1,284",
-    description: "+12% vs mes anterior",
-    icon: Eye,
-  },
-  {
-    title: "Engagement",
-    value: "89%",
-    description: "+5% vs mes anterior",
-    icon: TrendingUp,
-  },
-]
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useUpdates } from "@/hooks/connection/useUpdates";
+import { useUsers } from "@/hooks/connection/useUsers";
+import { Users, TrendingUp } from "lucide-react";
 
 export default function AdminDashboard() {
-  return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Bienvenido al panel de administración de SYSGD
-        </p>
-      </div>
+	const { users } = useUsers();
+	const { updates } = useUpdates();
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Card key={stat.title} className="border-border">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.title}
-              </CardTitle>
-              <stat.icon className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {stat.description}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+	return (
+		<div className="flex flex-col gap-6">
+			<div>
+				<h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+				<p className="text-muted-foreground">
+					Bienvenido al panel de administración de SYSGD
+				</p>
+			</div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="border-border">
+			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+				<Card className="border-border">
+					<CardHeader className="flex flex-row items-center justify-between pb-2">
+						<CardTitle className="text-sm font-medium text-muted-foreground">
+							Total Usuarios
+						</CardTitle>
+						<Users className="w-4 h-4 text-muted-foreground" />
+					</CardHeader>
+					<CardContent>
+						<p className="text-2xl font-bold text-foreground">
+							{users?.length || 0}
+						</p>
+						<p className="text-sm text-muted-foreground">
+							Usuarios registrados en el sistema
+						</p>
+					</CardContent>
+				</Card>
+				<Card className="border-border">
+					<CardHeader className="flex flex-row items-center justify-between pb-2">
+						<CardTitle className="text-sm font-medium text-muted-foreground">
+							Actualizaciones
+						</CardTitle>
+						<TrendingUp className="w-4 h-4 text-muted-foreground" />
+					</CardHeader>
+					<CardContent>
+						<p className="text-2xl font-bold text-foreground">
+							{updates?.length || 0}
+						</p>
+						<p className="text-sm text-muted-foreground">
+							Actualizaciones recientes del sistema
+						</p>
+					</CardContent>
+				</Card>
+			</div>
+
+			<div className="grid gap-6 lg:grid-cols-2">
+				{/* <Card className="border-border">
           <CardHeader>
             <CardTitle>Actividad Reciente</CardTitle>
             <CardDescription>Últimas acciones en el sistema</CardDescription>
@@ -81,9 +75,9 @@ export default function AdminDashboard() {
               ))}
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
-        <Card className="border-border">
+				{/* <Card className="border-border">
           <CardHeader>
             <CardTitle>Posts Destacados</CardTitle>
             <CardDescription>Los posts más vistos este mes</CardDescription>
@@ -107,8 +101,8 @@ export default function AdminDashboard() {
               ))}
             </div>
           </CardContent>
-        </Card>
-      </div>
-    </div>
-  )
+        </Card> */}
+			</div>
+		</div>
+	);
 }

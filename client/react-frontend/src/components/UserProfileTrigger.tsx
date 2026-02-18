@@ -1,13 +1,25 @@
 import { ChevronDown, User } from "lucide-react";
-import type { FC } from "react";
+import { type FC, useEffect } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import useCurrentUser from "../hooks/connection/useCurrentUser";
+import useServerStatus from "@/hooks/connection/useServerStatus";
 import UserProfileDialog from "./UserProfileDialog";
 
 // Componente para usar como trigger personalizado en el header
 const UserProfileTrigger: FC = () => {
 	const { user, loading } = useCurrentUser();
+	const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+	const { status, checkServerStatus } = useServerStatus(serverUrl);
+
+	useEffect(() => {
+		checkServerStatus();
+		const intervalId = window.setInterval(() => {
+			void checkServerStatus();
+		}, 30000);
+
+		return () => window.clearInterval(intervalId);
+	}, [checkServerStatus]);
 
 	if (loading) {
 		return (
@@ -43,11 +55,29 @@ const UserProfileTrigger: FC = () => {
 		<UserProfileDialog
 			trigger={
 				<Button variant="ghost" className="flex items-center gap-2 h-auto p-2">
-					<Avatar className="h-8 w-8">
-						<AvatarFallback className="text-xs bg-primary/10">
-							{getInitials(user.name)}
-						</AvatarFallback>
-					</Avatar>
+					<div className="relative">
+						<Avatar className="h-8 w-8">
+							<AvatarFallback className="text-xs bg-primary/10">
+								{getInitials(user.name)}
+							</AvatarFallback>
+						</Avatar>
+						<span
+							className={`absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-background ${
+								status === "online"
+									? "bg-green-500"
+									: status === "offline"
+										? "bg-red-500"
+										: "bg-yellow-500"
+							}`}
+							title={
+								status === "online"
+									? "Conectado"
+									: status === "offline"
+										? "Offline"
+										: "Verificando..."
+							}
+						/>
+					</div>
 					<div className="hidden sm:block text-left">
 						<p className="text-sm font-medium leading-none">{user.name}</p>
 						<p className="text-xs text-muted-foreground">{user.email}</p>

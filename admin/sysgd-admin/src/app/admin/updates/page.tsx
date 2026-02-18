@@ -261,7 +261,7 @@ export default function UpdatesPage() {
         </div>
         <Button onClick={() => handleOpenDialog()} disabled={loading}>
           <Plus className="w-4 h-4 mr-2" />
-          Nueva Actualización
+          <span className="hidden md:inline">Nueva Actualización</span>
         </Button>
       </div>
 
@@ -466,7 +466,7 @@ export default function UpdatesPage() {
                         </span>
                       )}
                     </SelectTrigger>
-                    <SelectContent className="text-xs">
+                    <SelectContent className="text-xs z-[100]" sideOffset={4} withPortal={false}>
                       {aiModels.map((model) => (
                         <SelectItem key={model.id} value={model.id} className="text-xs">
                           <div className="flex flex-col">
@@ -503,6 +503,7 @@ export default function UpdatesPage() {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Describe la actualización en detalle... (Markdown permitido)"
                 rows={6}
+                className="max-h-60"
               />
             </div>
 

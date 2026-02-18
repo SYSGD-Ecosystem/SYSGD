@@ -2,6 +2,8 @@ import { Router, Request, Response } from "express";
 import { pool } from "../db";
 import { isAuthenticated } from "../middlewares/auth-jwt";
 import { getCurrentUserData } from "../controllers/users";
+import { emitNewMessage } from "../socket";
+import { deleteObjectByUrl } from "../services/s3";
 
 const router = Router();
 
@@ -15,10 +17,14 @@ const router = Router();
  * - /conversations/invite/accept   -> aceptar invitación
  * - /conversations/:conversationId/read -> marcar como leído
  * - /conversations/:conversationId (DELETE) -> eliminar conversación (solo creador)
+ * - /conversations/:conversationId (PUT) -> actualizar conversación (admin/creador)
+ * - /conversations/:conversationId/members (POST) -> añadir miembro (admin/creador)
+ * - /conversations/:conversationId/members/:userId (DELETE) -> eliminar miembro (admin/creador o self)
  *
  * Mensajes:
  * - /messages/:conversationId      -> obtener mensajes (solo miembros)
  * - /messages/send                 -> enviar mensaje (solo miembros)
+ * - /messages/:messageId (DELETE)  -> eliminar mensaje (autor/admin/creador)
  */
 
 /* -----------------------
@@ -244,6 +250,14 @@ router.post("/messages/send", isAuthenticated, async (req: Request, res: Respons
     );
 
     await client.query("COMMIT");
+    
+    const messageWithSender = {
+      ...newMessage,
+      sender_email: currentUser?.email,
+      sender_name: currentUser?.name || currentUser?.email,
+    };
+    
+    emitNewMessage(conversation_id, messageWithSender);
     res.status(201).json(newMessage);
     return;
   } catch (err) {
@@ -253,6 +267,257 @@ router.post("/messages/send", isAuthenticated, async (req: Request, res: Respons
     return;
   } finally {
     client.release();
+  }
+});
+
+router.put("/conversations/:conversationId", isAuthenticated, async (req: Request, res: Response) => {
+  const { conversationId } = req.params;
+  const { title } = req.body;
+  const currentUser = getCurrentUserData(req);
+  const authUserId = currentUser?.id;
+
+  if (!authUserId) {
+    res.status(401).json({ error: "Usuario no autenticado" });
+    return;
+  }
+
+  if (!conversationId) {
+    res.status(400).json({ error: "conversationId requerido" });
+    return;
+  }
+
+  try {
+    const membership = await pool.query(
+      `SELECT role FROM conversation_members WHERE conversation_id = $1 AND user_id = $2`,
+      [conversationId, authUserId]
+    );
+    if (membership.rowCount === 0) {
+      res.status(403).json({ error: "No es miembro de la conversación" });
+      return;
+    }
+
+    const isAdmin = membership.rows[0].role === "admin";
+    const convRes = await pool.query(`SELECT created_by FROM conversations WHERE id = $1`, [conversationId]);
+    const isCreator = convRes.rows[0]?.created_by === authUserId;
+
+    if (!isAdmin && !isCreator) {
+      res.status(403).json({ error: "Sin permisos para actualizar conversación" });
+      return;
+    }
+
+    const result = await pool.query(
+      `UPDATE conversations SET title = $1 WHERE id = $2 RETURNING id, title`,
+      [title ?? null, conversationId]
+    );
+
+    res.json(result.rows[0]);
+    return;
+  } catch (err) {
+    console.error("Error actualizar conversación:", err);
+    res.status(500).json({ error: "Error al actualizar conversación" });
+    return;
+  }
+});
+
+router.post("/conversations/:conversationId/members", isAuthenticated, async (req: Request, res: Response) => {
+  const { conversationId } = req.params;
+  const { email, user_id } = req.body;
+  const currentUser = getCurrentUserData(req);
+  const authUserId = currentUser?.id;
+
+  if (!authUserId) {
+    res.status(401).json({ error: "Usuario no autenticado" });
+    return;
+  }
+
+  if (!conversationId) {
+    res.status(400).json({ error: "conversationId requerido" });
+    return;
+  }
+
+  if (!email && !user_id) {
+    res.status(400).json({ error: "email o user_id requerido" });
+    return;
+  }
+
+  try {
+    const membership = await pool.query(
+      `SELECT role FROM conversation_members WHERE conversation_id = $1 AND user_id = $2`,
+      [conversationId, authUserId]
+    );
+    if (membership.rowCount === 0) {
+      res.status(403).json({ error: "No es miembro de la conversación" });
+      return;
+    }
+
+    const isAdmin = membership.rows[0].role === "admin";
+    const convRes = await pool.query(`SELECT created_by FROM conversations WHERE id = $1`, [conversationId]);
+    const isCreator = convRes.rows[0]?.created_by === authUserId;
+
+    if (!isAdmin && !isCreator) {
+      res.status(403).json({ error: "Sin permisos para añadir miembros" });
+      return;
+    }
+
+    let userId = user_id as string | undefined;
+    if (!userId) {
+      const userRes = await pool.query(`SELECT id FROM users WHERE email = $1`, [email]);
+      if (userRes.rowCount === 0) {
+        res.status(404).json({ error: "Usuario no encontrado" });
+        return;
+      }
+      userId = userRes.rows[0].id;
+    }
+
+    await pool.query(
+      `INSERT INTO conversation_members (conversation_id, user_id, role, joined_at) VALUES ($1, $2, 'member', NOW()) ON CONFLICT DO NOTHING;`,
+      [conversationId, userId]
+    );
+
+    const memberRes = await pool.query(
+      `SELECT u.id, u.email, u.name, cm.role
+       FROM conversation_members cm
+       JOIN users u ON u.id = cm.user_id
+       WHERE cm.conversation_id = $1 AND cm.user_id = $2`,
+      [conversationId, userId]
+    );
+
+    res.json({ conversation_id: conversationId, member: memberRes.rows[0] });
+    return;
+  } catch (err) {
+    console.error("Error añadir miembro:", err);
+    res.status(500).json({ error: "Error al añadir miembro" });
+    return;
+  }
+});
+
+router.delete(
+  "/conversations/:conversationId/members/:userId",
+  isAuthenticated,
+  async (req: Request, res: Response) => {
+    const { conversationId, userId } = req.params;
+    const currentUser = getCurrentUserData(req);
+    const authUserId = currentUser?.id;
+
+    if (!authUserId) {
+      res.status(401).json({ error: "Usuario no autenticado" });
+      return;
+    }
+
+    if (!conversationId || !userId) {
+      res.status(400).json({ error: "conversationId y userId requeridos" });
+      return;
+    }
+
+    try {
+      const membership = await pool.query(
+        `SELECT role FROM conversation_members WHERE conversation_id = $1 AND user_id = $2`,
+        [conversationId, authUserId]
+      );
+      if (membership.rowCount === 0) {
+        res.status(403).json({ error: "No es miembro de la conversación" });
+        return;
+      }
+
+      const isAdmin = membership.rows[0].role === "admin";
+      const convRes = await pool.query(`SELECT created_by FROM conversations WHERE id = $1`, [conversationId]);
+      const isCreator = convRes.rows[0]?.created_by === authUserId;
+      const isSelf = authUserId === userId;
+
+      if (!isSelf && !isAdmin && !isCreator) {
+        res.status(403).json({ error: "Sin permisos para eliminar miembros" });
+        return;
+      }
+
+      await pool.query(
+        `DELETE FROM conversation_members WHERE conversation_id = $1 AND user_id = $2`,
+        [conversationId, userId]
+      );
+
+      res.json({ conversation_id: conversationId, removed_user_id: userId });
+      return;
+    } catch (err) {
+      console.error("Error eliminar miembro:", err);
+      res.status(500).json({ error: "Error al eliminar miembro" });
+      return;
+    }
+  },
+);
+
+router.delete("/messages/:messageId", isAuthenticated, async (req: Request, res: Response) => {
+  const { messageId } = req.params;
+  const currentUser = getCurrentUserData(req);
+  const authUserId = currentUser?.id;
+
+  if (!authUserId) {
+    res.status(401).json({ error: "Usuario no autenticado" });
+    return;
+  }
+
+  if (!messageId) {
+    res.status(400).json({ error: "messageId requerido" });
+    return;
+  }
+
+  try {
+    const msgRes = await pool.query(
+      `SELECT id, conversation_id, sender_id, attachment_url FROM messages WHERE id = $1`,
+      [messageId]
+    );
+
+    if (msgRes.rowCount === 0) {
+      res.status(404).json({ error: "Mensaje no encontrado" });
+      return;
+    }
+
+    const message = msgRes.rows[0];
+
+    const membership = await pool.query(
+      `SELECT role FROM conversation_members WHERE conversation_id = $1 AND user_id = $2`,
+      [message.conversation_id, authUserId]
+    );
+
+    if (membership.rowCount === 0) {
+      res.status(403).json({ error: "No es miembro de la conversación" });
+      return;
+    }
+
+    const isAdmin = membership.rows[0].role === "admin";
+
+    const convRes = await pool.query(
+      `SELECT created_by FROM conversations WHERE id = $1`,
+      [message.conversation_id]
+    );
+    const isCreator = convRes.rows[0]?.created_by === authUserId;
+    const isSender = message.sender_id === authUserId;
+
+    if (!isSender && !isAdmin && !isCreator) {
+      res.status(403).json({ error: "Sin permisos para eliminar este mensaje" });
+      return;
+    }
+
+    let attachmentDeleted = true;
+    if (message.attachment_url) {
+      try {
+        const result = await deleteObjectByUrl(message.attachment_url);
+        attachmentDeleted = result.deleted;
+        if (!attachmentDeleted) {
+          console.warn("No se pudo determinar key para eliminar adjunto:", message.attachment_url);
+        }
+      } catch (err) {
+        attachmentDeleted = false;
+        console.error("Error eliminando adjunto:", err);
+      }
+    }
+
+    await pool.query(`DELETE FROM messages WHERE id = $1`, [messageId]);
+
+    res.json({ deleted: true, id: messageId, attachment_deleted: attachmentDeleted });
+    return;
+  } catch (err) {
+    console.error("Error eliminar mensaje:", err);
+    res.status(500).json({ error: "Error al eliminar mensaje" });
+    return;
   }
 });
 
@@ -331,11 +596,12 @@ router.post("/conversations/create", isAuthenticated, async (req: Request, res: 
     );
     const conversationId = convRes.rows[0].id;
 
-    // Insertar miembros
+    // Insertar miembros (creador como admin)
     for (const uid of memberIds) {
+      const role = uid === authUserId ? "admin" : "member";
       await client.query(
-        `INSERT INTO conversation_members (conversation_id, user_id, role, joined_at) VALUES ($1, $2, 'member', NOW()) ON CONFLICT DO NOTHING;`,
-        [conversationId, uid]
+        `INSERT INTO conversation_members (conversation_id, user_id, role, joined_at) VALUES ($1, $2, $3, NOW()) ON CONFLICT DO NOTHING;`,
+        [conversationId, uid, role]
       );
     }
 
@@ -393,16 +659,19 @@ router.post("/conversations/invite", isAuthenticated, async (req: Request, res: 
     const insertInv = await client.query(
       `
       INSERT INTO conversation_invitations
-        (conversation_id, sender_id, receiver_email, status, created_at)
-      VALUES ($1, $2, $3, 'pending', NOW())
+        (conversation_id, sender_id, receiver_email, status, created_at, token, expires_at)
+      VALUES ($1, $2, $3, 'pending', NOW(), gen_random_uuid()::text, NOW() + INTERVAL '7 days')
       RETURNING *;
     `,
       [conversation_id, authUserId, receiver_email]
     );
 
     await client.query("COMMIT");
-    // idealmente enviar un email con el enlace que incluya la id de invitación o token
-    res.status(201).json(insertInv.rows[0]);
+    
+    const invitation = insertInv.rows[0];
+    const inviteLink = `${process.env.APP_URL || 'http://localhost:5173'}/chat/invite/${invitation.token}`;
+    
+    res.status(201).json({ ...invitation, invite_link: inviteLink });
     return;
   } catch (err) {
     await client.query("ROLLBACK");
@@ -606,6 +875,62 @@ router.delete("/conversations/:conversationId", isAuthenticated, async (req: Req
     return;
   } finally {
     client.release();
+  }
+});
+
+/* -----------------------
+   Endpoint público para validar token de invitación
+   ----------------------- */
+router.get("/invites/validate/:token", async (req: Request, res: Response) => {
+  const { token } = req.params;
+
+  if (!token) {
+    res.status(400).json({ error: "Token requerido" });
+    return;
+  }
+
+  try {
+    const inviteResult = await pool.query(
+      `SELECT ci.*, c.title as conversation_title, c.type as conversation_type
+       FROM conversation_invitations ci
+       LEFT JOIN conversations c ON c.id = ci.conversation_id
+       WHERE ci.token = $1`,
+      [token]
+    );
+
+    if (inviteResult.rowCount === 0) {
+      res.status(404).json({ error: "Invitación no encontrada" });
+      return;
+    }
+
+    const invite = inviteResult.rows[0];
+
+    if (invite.status !== "pending") {
+      res.status(400).json({ error: "Invitación ya no está activa" });
+      return;
+    }
+
+    if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
+      res.status(400).json({ error: "Invitación expirada" });
+      return;
+    }
+
+    res.json({
+      valid: true,
+      invitation: {
+        id: invite.id,
+        receiver_email: invite.receiver_email,
+        conversation_id: invite.conversation_id,
+        conversation_title: invite.conversation_title,
+        conversation_type: invite.conversation_type,
+        expires_at: invite.expires_at,
+      }
+    });
+    return;
+  } catch (err) {
+    console.error("Error validar invitación:", err);
+    res.status(500).json({ error: "Error al validar invitación" });
+    return;
   }
 });
 

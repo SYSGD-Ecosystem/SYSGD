@@ -78,6 +78,11 @@ export function useChat() {
 	const [messagesMap, setMessagesMap] = useState<Record<string, Message[]>>({});
 	const [invitations, setInvitations] = useState<Invitation[]>([]);
 	const [loading, setLoading] = useState<boolean>(false);
+	const [loadingConversations, setLoadingConversations] =
+		useState<boolean>(false);
+	const [loadingMessagesMap, setLoadingMessagesMap] = useState<
+		Record<string, boolean>
+	>({});
 	const [error, setError] = useState<string | null>(null);
 
 	const abortControllers = useRef<Record<string, AbortController>>({});
@@ -87,6 +92,7 @@ export function useChat() {
 	// -----------------------
 
 	const fetchConversations = useCallback(async () => {
+		setLoadingConversations(true);
 		setLoading(true);
 		setError(null);
 		try {
@@ -99,6 +105,7 @@ export function useChat() {
 			throw err;
 		} finally {
 			setLoading(false);
+			setLoadingConversations(false);
 		}
 	}, []);
 
@@ -109,6 +116,7 @@ export function useChat() {
 	const fetchMessages = useCallback(async (conversationId: string) => {
 		if (!conversationId) return;
 
+		setLoadingMessagesMap((prev) => ({ ...prev, [conversationId]: true }));
 		setLoading(true);
 		setError(null);
 
@@ -139,6 +147,7 @@ export function useChat() {
 			}
 		} finally {
 			setLoading(false);
+			setLoadingMessagesMap((prev) => ({ ...prev, [conversationId]: false }));
 			delete abortControllers.current[conversationId];
 		}
 	}, []);
@@ -358,6 +367,156 @@ export function useChat() {
 	}, []);
 
 	// -----------------------
+	// Actualizar conversación
+	// -----------------------
+	const updateConversationTitle = useCallback(
+		async (conversationId: string, title: string | null) => {
+			setError(null);
+			if (!conversationId) throw new Error("conversationId requerido");
+
+			try {
+				const { data } = await api.put<{ id: string; title: string | null }>(
+					`/api/chat/conversations/${conversationId}`,
+					{ title },
+				);
+
+				setConversations((prev) =>
+					prev.map((c) => (c.id === conversationId ? { ...c, title: data.title } : c)),
+				);
+
+				return data;
+			} catch (err: any) {
+				const msg = getErrorMessage(err, "Error al actualizar conversación");
+				setError(msg);
+				throw err;
+			}
+		},
+		[],
+	);
+
+	const addConversationMember = useCallback(
+		async (conversationId: string, email: string) => {
+			setError(null);
+			if (!conversationId || !email) {
+				throw new Error("conversationId y email requeridos");
+			}
+
+			try {
+				const { data } = await api.post<{
+					conversation_id: string;
+					member: UserShort;
+				}>(`/api/chat/conversations/${conversationId}/members`, { email });
+
+				setConversations((prev) =>
+					prev.map((c) => {
+						if (c.id !== conversationId) return c;
+						const exists =
+							c.members?.some((m) => m.id === data.member.id) ?? false;
+						return {
+							...c,
+							members: exists
+								? c.members
+								: [...(c.members ?? []), data.member],
+						};
+					}),
+				);
+
+				return data.member;
+			} catch (err: any) {
+				const msg = getErrorMessage(err, "Error al añadir miembro");
+				setError(msg);
+				throw err;
+			}
+		},
+		[],
+	);
+
+	const removeConversationMember = useCallback(
+		async (conversationId: string, userId: string) => {
+			setError(null);
+			if (!conversationId || !userId) {
+				throw new Error("conversationId y userId requeridos");
+			}
+
+			try {
+				await api.delete(
+					`/api/chat/conversations/${conversationId}/members/${userId}`,
+				);
+
+				setConversations((prev) =>
+					prev.map((c) =>
+						c.id === conversationId
+							? {
+									...c,
+									members: (c.members ?? []).filter((m) => m.id !== userId),
+								}
+							: c,
+					),
+				);
+
+				return true;
+			} catch (err: any) {
+				const msg = getErrorMessage(err, "Error al eliminar miembro");
+				setError(msg);
+				throw err;
+			}
+		},
+		[],
+	);
+
+	// -----------------------
+	// Eliminar mensaje
+	// -----------------------
+	const deleteMessage = useCallback(
+		async (conversationId: string, messageId: string) => {
+			setError(null);
+
+			if (!conversationId || !messageId) {
+				throw new Error("conversationId y messageId requeridos");
+			}
+
+			try {
+				await api.delete(`/api/chat/messages/${messageId}`);
+
+				let nextList: Message[] = [];
+				setMessagesMap((prev) => {
+					const list = prev[conversationId] ?? [];
+					nextList = list.filter((m) => String(m.id) !== String(messageId));
+					return { ...prev, [conversationId]: nextList };
+				});
+
+				if (nextList) {
+					setConversations((prev) =>
+						prev.map((c) => {
+							if (c.id !== conversationId) return c;
+							if (c.last_message?.id !== messageId) return c;
+							const last = nextList[nextList.length - 1];
+							return {
+								...c,
+								last_message: last
+									? {
+											id: last.id,
+											content: last.content ?? null,
+											sender_id: last.sender_id ?? null,
+											created_at: last.created_at ?? null,
+										}
+									: null,
+							};
+						}),
+					);
+				}
+
+				return true;
+			} catch (err: any) {
+				const msg = getErrorMessage(err, "Error al eliminar mensaje");
+				setError(msg);
+				throw err;
+			}
+		},
+		[],
+	);
+
+	// -----------------------
 	// Utilidades y helpers
 	// -----------------------
 	const setMessagesForConversation = useCallback(
@@ -398,16 +557,22 @@ export function useChat() {
 		messagesMap,
 		invitations,
 		loading,
+		loadingConversations,
+		loadingMessagesMap,
 		error,
 
 		// conversation actions
 		fetchConversations,
 		createConversation,
 		deleteConversation,
+		updateConversationTitle,
+		addConversationMember,
+		removeConversationMember,
 
 		// message actions
 		fetchMessages,
 		sendMessage,
+		deleteMessage,
 		setMessagesForConversation,
 
 		// invitations

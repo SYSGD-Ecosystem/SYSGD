@@ -5,7 +5,13 @@ import Replicate from "replicate";
 import https from "https";
 import { promisify } from "util";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+function getGeminiClient(customToken?: string) {
+	const token = customToken || process.env.GEMINI_API_KEY;
+	if (!token) {
+		throw new Error("No se encontró token de Gemini (usuario ni sistema)");
+	}
+	return new GoogleGenerativeAI(token);
+}
 
 // Configuración de S3 (usando AWS SDK v2 como en upload.controller.ts)
 const s3 = new AWS.S3({
@@ -182,7 +188,9 @@ export interface AgentResponse {
  */
 export async function analyzeRequest(
 	prompt: string,
+ 	customToken?: string,
 ): Promise<{ type: "text" | "image"; confidence: number; reasoning: string }> {
+	const genAI = getGeminiClient(customToken);
 	const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 	const fullPrompt = `${SYSTEM_PROMPTS.analyzer}\n\nMensaje del usuario: "${prompt}"`;
@@ -219,7 +227,9 @@ export async function analyzeRequest(
 export async function generateTextResponse(
 	prompt: string,
 	model: string = "gemini-2.5-flash",
+ 	customToken?: string,
 ): Promise<string> {
+	const genAI = getGeminiClient(customToken);
 	const genModel = genAI.getGenerativeModel({
 		model: model,
 		systemInstruction: SYSTEM_PROMPTS.text,
@@ -331,7 +341,7 @@ const generateImageFromReveCreate = async (prompt: string): Promise<string> => {
 export async function processAgentRequest(
 	request: AgentRequest,
 ): Promise<AgentResponse> {
-	const { prompt, model, forse_text_response } = request;
+	const { prompt, model, forse_text_response, customToken } = request;
 
 	if (!prompt) {
 		throw new Error("El prompt es requerido");
@@ -341,7 +351,7 @@ export async function processAgentRequest(
 		// 1. Analizar la petición
 		const analysis = forse_text_response
 			? { type: "text", confidence: 1.0, reasoning: "Forced text response" }
-			: await analyzeRequest(prompt);
+			: await analyzeRequest(prompt, customToken);
 		console.log("Análisis de la petición:", analysis);
 
 		let response: string;
@@ -360,6 +370,7 @@ export async function processAgentRequest(
 			response = await generateTextResponse(
 				prompt,
 				model || "gemini-2.5-flash",
+				customToken,
 			);
 			responseType = "text";
 			attachment_type = null;

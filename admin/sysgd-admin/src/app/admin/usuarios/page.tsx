@@ -200,7 +200,7 @@ export default function UsersPage() {
         </div>
         <Button onClick={() => handleOpenDialog()}>
           <UserPlus className="w-4 h-4 mr-2" />
-          Nuevo Usuario
+          <span className="hidden md:inline">Nuevo Usuario</span>
         </Button>
       </div>
 

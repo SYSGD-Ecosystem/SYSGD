@@ -10,6 +10,15 @@ if (!process.env.JWT_SECRET) {
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+export function verifyToken(token: string) {
+	try {
+		return jwt.verify(token, JWT_SECRET);
+	} catch (err) {
+		console.error("Token verification error:", err);
+		return null;
+	}
+}
+
 export const isAuthenticated = (
 	req: Request,
 	res: Response,

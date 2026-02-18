@@ -33,7 +33,7 @@ export class TokenController {
 			return;
 		}
 
-		if (!["github", "gemini", "replicate"].includes(tokenType)) {
+		if (!["github", "gemini", "replicate", "openrouter"].includes(tokenType)) {
 			res.status(400).json({ error: "Tipo de token no soportado" });
 			return;
 		}
