@@ -19,6 +19,27 @@ export const canUseAccountingDocuments = (tier?: string): boolean => {
 	return PREMIUM_TIERS.has(tier);
 };
 
+
+export const getUserBillingTier = async (userId: string): Promise<string | null> => {
+	const { rows } = await pool.query<{ user_data: { billing?: { tier?: string } } | null }>(
+		"SELECT user_data FROM users WHERE id = $1",
+		[userId],
+	);
+	if (rows.length === 0) return null;
+	const tier = rows[0].user_data?.billing?.tier;
+	return typeof tier === "string" ? tier : null;
+};
+
+export const userHasAccountingAccess = async (userId: string): Promise<boolean> => {
+	try {
+		const tier = await getUserBillingTier(userId);
+		return canUseAccountingDocuments(tier ?? undefined);
+	} catch (error) {
+		console.error("Error validando acceso contable:", error);
+		return false;
+	}
+};
+
 export const listAccountingDocumentsByUser = async (
 	userId: string,
 ): Promise<AccountingDocumentRecord[]> => {

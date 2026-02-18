@@ -22,6 +22,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
@@ -489,6 +490,9 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogDescription className="sr-only">
+          Información del perfil del usuario, sus créditos y uso del plan.
+        </DialogDescription>
         {loading ? <LoadingContent /> : !user ? <NoUserContent /> : <ProfileContent />}
       </DialogContent>
     </Dialog>

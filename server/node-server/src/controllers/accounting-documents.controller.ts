@@ -1,20 +1,12 @@
 import type { Request, Response } from "express";
 import { getCurrentUserData } from "./users";
 import {
-	canUseAccountingDocuments,
 	createAccountingDocument,
 	getAccountingDocumentById,
 	listAccountingDocumentsByUser,
 	updateAccountingDocumentPayload,
+	userHasAccountingAccess,
 } from "../services/accounting-documents.service";
-
-const getUserTier = (req: Request): string | undefined => {
-	const user = getCurrentUserData(req);
-	return user?.user_data?.billing?.tier;
-};
-
-const hasPremiumAccess = (req: Request): boolean =>
-	canUseAccountingDocuments(getUserTier(req));
 
 export const listAccountingDocuments = async (req: Request, res: Response) => {
 	const user = getCurrentUserData(req);
@@ -23,7 +15,7 @@ export const listAccountingDocuments = async (req: Request, res: Response) => {
 		return;
 	}
 
-	if (!hasPremiumAccess(req)) {
+	if (!(await userHasAccountingAccess(user.id))) {
 		res.status(403).json({
 			error: "Esta función está disponible solo para planes Pro y VIP",
 		});
@@ -49,7 +41,7 @@ export const createAccountingDocumentController = async (
 		return;
 	}
 
-	if (!hasPremiumAccess(req)) {
+	if (!(await userHasAccountingAccess(user.id))) {
 		res.status(403).json({
 			error: "Esta función está disponible solo para planes Pro y VIP",
 		});
@@ -81,7 +73,7 @@ export const getAccountingDocumentController = async (
 		return;
 	}
 
-	if (!hasPremiumAccess(req)) {
+	if (!(await userHasAccountingAccess(user.id))) {
 		res.status(403).json({
 			error: "Esta función está disponible solo para planes Pro y VIP",
 		});
@@ -117,7 +109,7 @@ export const saveAccountingDocumentController = async (
 		return;
 	}
 
-	if (!hasPremiumAccess(req)) {
+	if (!(await userHasAccountingAccess(user.id))) {
 		res.status(403).json({
 			error: "Esta función está disponible solo para planes Pro y VIP",
 		});

@@ -44,6 +44,7 @@ import { Progress } from "@/components/ui/progress";
 import {
 	Dialog,
 	DialogContent,
+	DialogDescription,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
@@ -1211,6 +1212,9 @@ const SystemDashboard: FC = () => {
 						<DialogTitle className="text-gray-900 dark:text-white">
 							{editingProjectId ? "Editar proyecto" : "Crear Nuevo Proyecto"}
 						</DialogTitle>
+						<DialogDescription className="sr-only">
+							Formulario para crear o editar un proyecto.
+						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4">
 						<div>
@@ -1269,6 +1273,9 @@ const SystemDashboard: FC = () => {
 						<DialogTitle className="text-gray-900 dark:text-white">
 							Crear Nuevo Documento
 						</DialogTitle>
+						<DialogDescription className="sr-only">
+							Selecciona tipo y datos del documento a crear.
+						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4">
 						<div>

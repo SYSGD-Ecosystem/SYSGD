@@ -1,4 +1,4 @@
-import  { type FC, useState, useEffect } from "react";
+import  { type FC, useState, useEffect, useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import useBillingData from "@/hooks/connection/useBillingData";
@@ -54,9 +54,9 @@ const Purchase: FC = () => {
 	const { billing } = useBillingData();
 	const [priority, setPriority] = useState("bonus,plan,purchased");
 
-	const loadOrdersWrapper = async () => {
+	const loadOrdersWrapper = useCallback(async () => {
 		await loadOrders();
-	};
+	}, [loadOrders]);
 
 	useEffect(() => {
 		const buckets = billing?.credit_spending_priority;
@@ -70,7 +70,7 @@ const Purchase: FC = () => {
 		try {
 			await api.put("/api/users/me/credit-priority", { priority: value.split(",") });
 			toast.success("Prioridad de gasto actualizada");
-		} catch (error) {
+		} catch {
 			toast.error("No se pudo actualizar la prioridad de gasto");
 		}
 	};
@@ -78,9 +78,9 @@ const Purchase: FC = () => {
 	// Cargar órdenes al conectar wallet
 	useEffect(() => {
 		if (isConnected && address) {
-			loadOrders();
+			void loadOrders();
 		}
-	}, [isConnected, address]);
+	}, [isConnected, address, loadOrders]);
 
 	const navItems = [
 		{ id: "credits", label: "Comprar Créditos", icon: Zap },
@@ -103,19 +103,19 @@ const Purchase: FC = () => {
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Atención</AlertDialogTitle>
-						<AlertDialogDescription className="space-y-2">
-							<p>
-								Las funciones de pago y compra de créditos están en fase de
-								prueba. Por el momento, solo es posible utilizarlas mediante un
-								token de prueba en la red Testnet Sepolia.
-							</p>
-							<p>
-								Si deseas probar estas funcionalidades, envía un correo
-								electrónico al administrador de la plataforma a{" "}
-								<strong>lazaroyunier96@outlook.es</strong> para recibir créditos
-								de prueba.
-							</p>
-						</AlertDialogDescription>
+													<AlertDialogDescription className="space-y-2">
+								<div>
+									Las funciones de pago y compra de créditos están en fase de
+									prueba. Por el momento, solo es posible utilizarlas mediante un
+									token de prueba en la red Testnet Sepolia.
+								</div>
+								<div>
+									Si deseas probar estas funcionalidades, envía un correo
+									electrónico al administrador de la plataforma a {" "}
+									<strong>lazaroyunier96@outlook.es</strong> para recibir créditos
+									de prueba.
+								</div>
+							</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogAction onClick={() => setShowTestnetAlert(false)}>
