@@ -36,6 +36,7 @@ const getErrorMessage = (err: unknown, fallback: string): string => {
 
 export const useAgents = () => {
 	const [agents, setAgents] = useState<Agent[]>([]);
+	const [publicAgents, setPublicAgents] = useState<Agent[]>([]);
 	const [loading, setLoading] = useState<boolean>(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -90,6 +91,9 @@ export const useAgents = () => {
 			setAgents((prev) =>
 				prev.map((agent) => (agent.id === id ? data : agent)),
 			);
+			setPublicAgents((prev) =>
+				prev.map((agent) => (agent.id === id ? data : agent)),
+			);
 			return data;
 		} catch (err: unknown) {
 			if (err instanceof Error) {
@@ -109,6 +113,7 @@ export const useAgents = () => {
 		try {
 			await api.delete<void>(`/api/agents/${id}`);
 			setAgents((prev) => prev.filter((agent) => agent.id !== id));
+			setPublicAgents((prev) => prev.filter((agent) => agent.id !== id));
 			return true;
 		} catch (err: unknown) {
 			if (err instanceof Error) {
@@ -117,6 +122,34 @@ export const useAgents = () => {
 				setError("Error desconocido");
 			}
 			return false;
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const fetchPublicAgents = async (
+		search = "",
+		support = "",
+	): Promise<Agent[]> => {
+		setLoading(true);
+		setError(null);
+		try {
+			const { data } = await api.get<Agent[]>("/api/agents/public", {
+				params: {
+					...(search.trim() ? { q: search.trim() } : {}),
+					...(support.trim() ? { support: support.trim() } : {}),
+				},
+			});
+			const safeData = Array.isArray(data) ? data : [];
+			setPublicAgents(safeData);
+			return safeData;
+		} catch (err: unknown) {
+			const message = getErrorMessage(
+				err,
+				"Error al obtener agentes públicos",
+			);
+			setError(message);
+			throw err;
 		} finally {
 			setLoading(false);
 		}
@@ -147,9 +180,11 @@ export const useAgents = () => {
 
 	return {
 		agents,
+		publicAgents,
 		loading,
 		error,
 		fetchAgents,
+		fetchPublicAgents,
 		createAgent,
 		updateAgent,
 		deleteAgent,

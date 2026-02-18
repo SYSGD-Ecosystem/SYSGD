@@ -3,6 +3,7 @@ import { isAuthenticated } from '../middlewares/auth-jwt';
 import {
   createAgent,
   getAgents,
+  getPublicAgents,
   getAgentById,
   updateAgent,
   deleteAgent,
@@ -18,6 +19,9 @@ router.post('/', isAuthenticated, async (req: Request, res: Response) => {
 });
 router.get('/', isAuthenticated, async (req: Request, res: Response) => {
   await getAgents(req, res);
+});
+router.get('/public', isAuthenticated, async (req: Request, res: Response) => {
+  await getPublicAgents(req, res);
 });
 router.get('/:id', isAuthenticated, async (req: Request, res: Response) => {
   await getAgentById(req, res);

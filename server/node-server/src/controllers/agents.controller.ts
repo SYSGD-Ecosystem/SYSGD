@@ -6,7 +6,7 @@ import { consumeAICredits } from '../middlewares/usageLimits.middleware';
 
 export const createAgent = async (req: Request, res: Response) => {
   try {
-    const { name, url, support, description, systemPrompt } = req.body as CreateAgentRequest;
+    const { name, url, support, description, systemPrompt, is_public } = req.body as CreateAgentRequest;
     const userId = (req as any).user?.id;
 
     if (!userId) {
@@ -20,15 +20,63 @@ export const createAgent = async (req: Request, res: Response) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO agents (name, url, support, description, system_prompt, created_by) 
-       VALUES ($1, $2, $3, $4, $5, $6) 
+      `INSERT INTO agents (name, url, support, description, system_prompt, created_by, is_public) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) 
        RETURNING *`,
-      [name, url, support, description || null, systemPrompt || null, userId]
+      [name, url, support, description || null, systemPrompt || null, userId, is_public ?? false]
     );
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Error creating agent:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+export const getPublicAgents = async (req: Request, res: Response) => {
+  try {
+    const queryText = String(req.query.q || '').trim();
+    const support = String(req.query.support || '').trim().toLowerCase();
+    const userId = (req as any).user?.id;
+
+    if (!userId) {
+      res.status(401).json({ error: 'Usuario no autenticado' });
+      return;
+    }
+
+    const values: unknown[] = [userId];
+    const whereClauses = [
+      `a.is_active = true`,
+      `a.is_public = true`,
+      `a.created_by <> $1`,
+    ];
+    let paramCount = 2;
+
+    if (queryText) {
+      whereClauses.push(`(a.name ILIKE $${paramCount} OR a.description ILIKE $${paramCount})`);
+      values.push(`%${queryText}%`);
+      paramCount++;
+    }
+
+    if (support) {
+      whereClauses.push(`$${paramCount} = ANY(a.support)`);
+      values.push(support);
+      paramCount++;
+    }
+
+    const result = await pool.query(
+      `SELECT a.*, u.name AS creator_name, u.email AS creator_email
+       FROM agents a
+       LEFT JOIN users u ON u.id = a.created_by
+       WHERE ${whereClauses.join(' AND ')}
+       ORDER BY a.created_at DESC
+       LIMIT 50`,
+      values,
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching public agents:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
@@ -44,7 +92,7 @@ export const getAgents = async (req: Request, res: Response) => {
 
     const result = await pool.query(
       `SELECT * FROM agents 
-       WHERE created_by = $1 AND is_active = true 
+       WHERE created_by = $1
        ORDER BY created_at DESC`,
       [userId]
     );
@@ -68,7 +116,8 @@ export const getAgentById = async (req: Request, res: Response) => {
 
     const result = await pool.query(
       `SELECT * FROM agents 
-       WHERE id = $1 AND created_by = $2`,
+       WHERE id = $1
+         AND (created_by = $2 OR is_public = true)`,
       [id, userId]
     );
 
@@ -135,6 +184,11 @@ export const updateAgent = async (req: Request, res: Response) => {
     if (updates.is_active !== undefined) {
       updateFields.push(`is_active = $${paramCount++}`);
       values.push(updates.is_active);
+    }
+
+    if (updates.is_public !== undefined) {
+      updateFields.push(`is_public = $${paramCount++}`);
+      values.push(updates.is_public);
     }
 
     if (updateFields.length === 0) {
@@ -220,7 +274,9 @@ export const sendMessageToAgent = async (req: Request, res: Response) => {
     const agentResult = await pool.query(
       `SELECT id, name, url, system_prompt
        FROM agents
-       WHERE id = $1 AND created_by = $2 AND is_active = true`,
+       WHERE id = $1
+         AND is_active = true
+         AND (created_by = $2 OR is_public = true)`,
       [agent_id, userId]
     );
 

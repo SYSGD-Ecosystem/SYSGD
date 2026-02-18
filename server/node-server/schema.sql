@@ -324,10 +324,13 @@ CREATE TABLE IF NOT EXISTS agents (
   description TEXT,
   created_by UUID REFERENCES users(id) ON DELETE CASCADE,
   is_active BOOLEAN DEFAULT true,
+  is_public BOOLEAN DEFAULT false,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
   system_prompt TEXT NULL
 );
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT false;
+CREATE INDEX IF NOT EXISTS idx_agents_is_public_active_created_at ON agents(is_public, is_active, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS agent_conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

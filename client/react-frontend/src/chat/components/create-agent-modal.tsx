@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
 	Card,
@@ -114,6 +115,7 @@ export const CreateAgentModal: FC<CreateAgentModalProps> = ({
 		support: ["text"],
 		description: "",
 		systemPrompt: "",
+		is_public: false,
 	});
 	const [agentType, setAgentType] = useState<"openrouter" | "gemini" | "custom">(
 		"openrouter",
@@ -186,6 +188,7 @@ export const CreateAgentModal: FC<CreateAgentModalProps> = ({
 			support: ["text"],
 			description: "",
 			systemPrompt: "",
+			is_public: false,
 		});
 		setAgentType("openrouter");
 		setCurrentStep(1);
@@ -428,6 +431,21 @@ export const CreateAgentModal: FC<CreateAgentModalProps> = ({
 					}
 					placeholder="Breve descripción de las capacidades del agente..."
 					rows={2}
+				/>
+			</div>
+
+			<div className="flex items-center justify-between rounded-lg border p-3">
+				<div>
+					<p className="text-sm font-medium">Hacer agente público</p>
+					<p className="text-xs text-muted-foreground">
+						Otros usuarios podrán encontrarlo y usarlo.
+					</p>
+				</div>
+				<Switch
+					checked={Boolean(formData.is_public)}
+					onCheckedChange={(checked) =>
+						setFormData((prev) => ({ ...prev, is_public: checked }))
+					}
 				/>
 			</div>
 		</div>

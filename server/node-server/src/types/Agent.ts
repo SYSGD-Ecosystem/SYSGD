@@ -6,9 +6,12 @@ export interface Agent {
   description?: string;
   created_by: number;
   is_active: boolean;
+  is_public: boolean;
   created_at: string;
   updated_at: string;
   system_prompt?: string;
+  creator_name?: string;
+  creator_email?: string;
 }
 
 export type AgentSupport = 'text' | 'image' | 'audio' | 'video';
@@ -19,6 +22,7 @@ export interface CreateAgentRequest {
   support: AgentSupport[];
   description?: string;
   systemPrompt?: string;
+  is_public?: boolean;
 }
 
 export interface UpdateAgentRequest {
@@ -28,6 +32,7 @@ export interface UpdateAgentRequest {
   description?: string;
   is_active?: boolean;
   systemPrompt?: string;
+  is_public?: boolean;
 }
 
 export interface AgentConversation {
