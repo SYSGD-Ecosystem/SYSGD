@@ -1,5 +1,5 @@
 import { ArrowLeft, FileSpreadsheet, Printer } from "lucide-react";
-import { type ChangeEvent, type FC, useMemo, useState } from "react";
+import { type ChangeEvent, type Dispatch, type FC, type SetStateAction, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -139,6 +139,21 @@ const parseCurrency = (value: string): number => {
 const getMonthTotal = (entries: MonthEntry[]): number =>
 	entries.reduce((acc, curr) => acc + parseCurrency(curr.importe), 0);
 
+const monthNameToCode: Record<string, MonthCode> = {
+	Enero: "ENE",
+	Febrero: "FEB",
+	Marzo: "MAR",
+	Abril: "ABR",
+	Mayo: "MAY",
+	Junio: "JUN",
+	Julio: "JUL",
+	Agosto: "AGO",
+	Septiembre: "SEP",
+	Octubre: "OCT",
+	Noviembre: "NOV",
+	Diciembre: "DIC",
+};
+
 const TcpIncomeExpenseRegisterPage: FC = () => {
 	const [activeSheet, setActiveSheet] = useState<SheetTab>("GENERALES");
 	const [pageSize, setPageSize] = useState<"A4" | "Carta">("A4");
@@ -178,6 +193,11 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 			p: "",
 		})),
 	);
+	const [quickForm, setQuickForm] = useState({
+		anio: "",
+		mes: "Enero",
+		importe: "",
+	});
 	const { exportToXlsx } = useExportTable();
 
 	const monthTotalsIngresos = useMemo(
@@ -197,7 +217,7 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 	};
 
 	const handleMonthCellChange = (
-		setter: React.Dispatch<React.SetStateAction<MonthEntries>>,
+		setter: Dispatch<SetStateAction<MonthEntries>>,
 		month: MonthCode,
 		rowIndex: number,
 		field: keyof MonthEntry,
@@ -208,6 +228,28 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 			nextRows[rowIndex] = { ...nextRows[rowIndex], [field]: value };
 			return { ...prev, [month]: nextRows };
 		});
+	};
+
+	const handleQuickInsert = () => {
+		const monthCode = monthNameToCode[quickForm.mes];
+		if (!monthCode || !quickForm.importe) return;
+
+		const setter = activeSheet === "INGRESOS" ? setIngresos : setGastos;
+		setter((prev) => {
+			const rows = [...prev[monthCode]];
+			const firstEmptyIndex = rows.findIndex((row) => !row.importe);
+			const targetIndex = firstEmptyIndex >= 0 ? firstEmptyIndex : 0;
+			rows[targetIndex] = {
+				dia: rows[targetIndex].dia || "1",
+				importe: quickForm.importe,
+			};
+			return { ...prev, [monthCode]: rows };
+		});
+
+		if (quickForm.anio) {
+			handleGeneralChange("anio", quickForm.anio);
+		}
+		setQuickForm((prev) => ({ ...prev, importe: "" }));
 	};
 
 	const handleTributoChange = (rowIndex: number, field: keyof TributosEntry, value: string) => {
@@ -266,7 +308,7 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 		entries: MonthEntries,
 		totals: number[],
 		annual: number,
-		setter: React.Dispatch<React.SetStateAction<MonthEntries>>,
+		setter: Dispatch<SetStateAction<MonthEntries>>,
 	) => (
 		<table id="myTable" className="w-full min-w-[1100px] border-collapse text-xs md:text-sm">
 			<thead>
@@ -408,6 +450,20 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 
 	return (
 		<div className="min-h-screen bg-slate-100 dark:bg-slate-950 p-4 md:p-6">
+			<style>{`
+				@media print {
+					@page { size: landscape; margin: 10mm; }
+					body * { visibility: hidden !important; }
+					#print-area, #print-area * { visibility: visible !important; }
+					#print-area {
+						position: absolute;
+						left: 0;
+						top: 0;
+						width: 100%;
+						background: white;
+					}
+				}
+			`}</style>
 			<div className="mx-auto max-w-[1600px]">
 				<div className="mb-4 flex flex-wrap items-center justify-between gap-3">
 					<div className="flex items-center gap-2">
@@ -437,18 +493,56 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 					</Card>
 
 					<div className="space-y-4">
-						<Card>
-							<CardHeader className="pb-2"><CardTitle className="text-sm">Formulario rápido</CardTitle></CardHeader>
-							<CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
-								<div><Label>Año fiscal</Label><Input value={generalData.anio} onChange={(e) => handleGeneralChange("anio", e.target.value)} /></div>
-								<div><Label>Contribuyente</Label><Input value={generalData.nombre} onChange={(e) => handleGeneralChange("nombre", e.target.value)} /></div>
-								<div><Label>NIT</Label><Input value={generalData.nit} onChange={(e) => handleGeneralChange("nit", e.target.value)} /></div>
-								<div className="md:col-span-2"><Label>Actividad</Label><Input value={generalData.actividad} onChange={(e) => handleGeneralChange("actividad", e.target.value)} /></div>
-								<div><Label>Código</Label><Input value={generalData.codigo} onChange={(e) => handleGeneralChange("codigo", e.target.value)} /></div>
-							</CardContent>
-						</Card>
+						{(activeSheet === "INGRESOS" || activeSheet === "GASTOS") && (
+							<Card>
+								<CardHeader className="pb-2">
+									<CardTitle className="text-sm">Formulario rápido</CardTitle>
+								</CardHeader>
+								<CardContent className="grid grid-cols-1 md:grid-cols-4 gap-3">
+									<div>
+										<Label>Año</Label>
+										<Input
+											value={quickForm.anio}
+											onChange={(event) =>
+												setQuickForm((prev) => ({ ...prev, anio: event.target.value }))
+											}
+										/>
+									</div>
+									<div>
+										<Label>Mes</Label>
+										<Select
+											value={quickForm.mes}
+											onValueChange={(value) =>
+												setQuickForm((prev) => ({ ...prev, mes: value }))
+											}
+										>
+											<SelectTrigger><SelectValue /></SelectTrigger>
+											<SelectContent>
+												{tributosMonths.map((month) => (
+													<SelectItem key={month} value={month}>{month}</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+									<div>
+										<Label>{activeSheet === "INGRESOS" ? "Ingreso" : "Gasto"}</Label>
+										<Input
+											value={quickForm.importe}
+											onChange={(event) =>
+												setQuickForm((prev) => ({ ...prev, importe: event.target.value }))
+											}
+										/>
+									</div>
+									<div className="flex items-end">
+										<Button className="w-full" onClick={handleQuickInsert}>
+											Insertar dato
+										</Button>
+									</div>
+								</CardContent>
+							</Card>
+						)}
 
-						<Card>
+						<Card id="print-area">
 							<CardHeader className="pb-2"><CardTitle className="text-sm">Vista previa imprimible ({pageSize})</CardTitle></CardHeader>
 							<CardContent>
 								<div className="overflow-x-auto">
