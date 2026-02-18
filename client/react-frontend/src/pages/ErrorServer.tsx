@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import useServerStatus from "@/hooks/connection/useServerStatus";
+import { canContinueOffline } from "@/utils/offline-access";
 
 interface ErrorServerProps {
 	serverUrl?: string;
@@ -39,6 +40,7 @@ const ErrorServer: React.FC<ErrorServerProps> = ({
 	const [connectionStatus, setConnectionStatus] = useState<
 		"checking" | "offline" | "online"
 	>("checking");
+	const [offlineEligible, setOfflineEligible] = useState(false);
 	const { status: apiStatus, checkServerStatus } = useServerStatus(serverUrl);
 
 	// Check API status and network connectivity
@@ -61,6 +63,10 @@ const ErrorServer: React.FC<ErrorServerProps> = ({
 	}, [serverUrl, apiStatus]);
 
 	// Auto-retry countdown
+	useEffect(() => {
+		setOfflineEligible(canContinueOffline());
+	}, []);
+
 	useEffect(() => {
 		if (countdown > 0) {
 			const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
@@ -106,6 +112,10 @@ const ErrorServer: React.FC<ErrorServerProps> = ({
 
 	const goBack = () => {
 		navigate(-1);
+	};
+
+	const continueOffline = () => {
+		navigate("/dashboard");
 	};
 
 	const getStatusColor = () => {
@@ -253,6 +263,15 @@ const ErrorServer: React.FC<ErrorServerProps> = ({
 								Volver atrás
 							</Button>
 						</div>
+
+						{offlineEligible && (
+							<Button
+								onClick={continueOffline}
+								className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+							>
+								Continuar offline con datos guardados
+							</Button>
+						)}
 
 						<Separator className="bg-slate-700" />
 

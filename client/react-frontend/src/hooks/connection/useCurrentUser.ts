@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { readCachedUser, writeCachedUser } from "@/utils/offline-access";
 
 interface User {
 	id: string;
@@ -27,10 +28,18 @@ const useCurrentUser = () => {
 				}
 
 				setUser(userData);
+				writeCachedUser(userData);
 				setIsAuthenticated(true);
 			} catch {
-				setUser(null);
-				setIsAuthenticated(false);
+				const token = localStorage.getItem("token");
+				const cachedUser = readCachedUser();
+				if (token && cachedUser) {
+					setUser(cachedUser);
+					setIsAuthenticated(true);
+				} else {
+					setUser(null);
+					setIsAuthenticated(false);
+				}
 			} finally {
 				setLoading(false);
 			}
