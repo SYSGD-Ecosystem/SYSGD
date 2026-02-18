@@ -1,4 +1,9 @@
 import  { type FC, useState, useEffect } from "react";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import useBillingData from "@/hooks/connection/useBillingData";
+import api from "@/lib/api";
+import { toast } from "sonner";
 import {
 	History,
 	Package,
@@ -46,9 +51,28 @@ const Purchase: FC = () => {
 		useWeb3(usdtAddress, paymentGatewayAddress);
 
 	const { orders, loadOrders } = useOrders(address);
+	const { billing } = useBillingData();
+	const [priority, setPriority] = useState("bonus,plan,purchased");
 
 	const loadOrdersWrapper = async () => {
 		await loadOrders();
+	};
+
+	useEffect(() => {
+		const buckets = billing?.credit_spending_priority;
+		if (buckets && buckets.length === 3) {
+			setPriority(buckets.join(","));
+		}
+	}, [billing]);
+
+	const savePriority = async (value: string) => {
+		setPriority(value);
+		try {
+			await api.put("/api/users/me/credit-priority", { priority: value.split(",") });
+			toast.success("Prioridad de gasto actualizada");
+		} catch (error) {
+			toast.error("No se pudo actualizar la prioridad de gasto");
+		}
 	};
 
 	// Cargar órdenes al conectar wallet
@@ -62,7 +86,7 @@ const Purchase: FC = () => {
 		{ id: "credits", label: "Comprar Créditos", icon: Zap },
 		{ id: "plans", label: "Planes Suscripción", icon: Package },
 		{ id: "transactions", label: "Historial", icon: History },
-		{ id: "categories", label: "Categorías", icon: LayoutDashboard },
+		{ id: "categories", label: "Uso de Créditos", icon: LayoutDashboard },
 	];
 
 	// Nombre de la red
@@ -135,7 +159,7 @@ const Purchase: FC = () => {
 							{activeSection === "credits" && "Comprar Créditos"}
 							{activeSection === "plans" && "Planes de Suscripción"}
 							{activeSection === "transactions" && "Historial de Compras"}
-							{activeSection === "categories" && "Categorías"}
+							{activeSection === "categories" && "Uso de Créditos"}
 						</h1>
 					</div>
 
@@ -199,11 +223,41 @@ const Purchase: FC = () => {
 							<PurchaseOrders orders={orders} loadOrders={loadOrdersWrapper} />
 						)}
 
-						{/* Categorías (placeholder) */}
+						{/* Uso de créditos */}
 						{activeSection === "categories" && (
-							<div className="p-8 text-center text-muted-foreground">
-								<LayoutDashboard className="h-16 w-16 mx-auto mb-4 opacity-30" />
-								<p>Administrador de categorías próximamente...</p>
+							<div className="space-y-6">
+								<div className="p-5 border rounded-lg bg-card space-y-2">
+									<h3 className="font-semibold">Cómo se consumen tus créditos</h3>
+									<p className="text-sm text-muted-foreground">Los créditos del plan se renuevan cada 30 días. Los bonos expiran según su fecha, y los comprados no se reinician.</p>
+									<ul className="text-sm list-disc pl-5 space-y-1 text-muted-foreground">
+										<li>Plan gratuito: 10 créditos mensuales.</li>
+										<li>Prioridad configurable: bonos, plan o comprados.</li>
+										<li>Los bonos se consumen según disponibilidad y expiración.</li>
+									</ul>
+								</div>
+								<div className="p-5 border rounded-lg bg-card space-y-4">
+									<h3 className="font-semibold">Prioridad de gasto</h3>
+									<div className="space-y-2 max-w-md">
+										<Label>Selecciona el orden de consumo</Label>
+										<Select value={priority} onValueChange={savePriority}>
+											<SelectTrigger>
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="bonus,plan,purchased">Bonos → Plan → Comprados</SelectItem>
+												<SelectItem value="plan,bonus,purchased">Plan → Bonos → Comprados</SelectItem>
+												<SelectItem value="purchased,bonus,plan">Comprados → Bonos → Plan</SelectItem>
+											</SelectContent>
+										</Select>
+									</div>
+									{billing && (
+										<div className="text-sm text-muted-foreground space-y-1">
+											<div>Créditos plan: {billing.plan_credits ?? 0}</div>
+											<div>Créditos comprados: {billing.purchased_credits ?? 0}</div>
+											<div>Bonos: {(billing.bonus_credits ?? []).reduce((acc, item) => acc + item.amount, 0)}</div>
+										</div>
+									)}
+								</div>
 							</div>
 						)}
 

@@ -1,5 +1,6 @@
 import { pool } from "../db";
 import { isValidTier, TIER_CREDITS, TIER_LIMITS } from "../utils/billing";
+import { maybeRenewPlanCredits, normalizeBillingState } from "./billing-credits.service";
 
 interface PaymentOrderRecord {
 	order_id: string;
@@ -21,8 +22,8 @@ const parsePlanProduct = (
 
 	if (!isValidTier(tier)) return null;
 	if (period !== "monthly" && period !== "yearly") return null;
-
 	if (tier === "free") return null;
+
 	return { tier, period };
 };
 
@@ -45,67 +46,51 @@ export const fulfillOrderIfNeeded = async (
 			"SELECT order_id FROM crypto_payment_fulfillments WHERE order_id = $1",
 			[order.order_id],
 		);
-
 		if (existing.rows.length > 0) {
 			await client.query("COMMIT");
 			return { fulfilled: false, reason: "already_fulfilled" };
 		}
 
+		const userRows = await client.query<{ user_data: { billing?: unknown } }>(
+			"SELECT user_data FROM users WHERE id = $1 FOR UPDATE",
+			[order.user_id],
+		);
+		if (userRows.rows.length === 0) {
+			throw new Error("Usuario no encontrado para cumplimiento de orden");
+		}
+
+		const currentBilling = maybeRenewPlanCredits(
+			normalizeBillingState(userRows.rows[0].user_data?.billing),
+		);
+
 		const credits = parseCreditsProduct(order.product_id);
 		if (credits !== null) {
-			await client.query(
-				`UPDATE users
-				 SET user_data = jsonb_set(
-				   jsonb_set(
-				     COALESCE(user_data, '{}'::jsonb),
-				     '{billing,ai_task_credits}',
-				     to_jsonb(COALESCE((user_data->'billing'->>'ai_task_credits')::int, 0) + $1)
-				   ),
-				   '{billing,purchased_credits}',
-				   to_jsonb(COALESCE((user_data->'billing'->>'purchased_credits')::int, 0) + $1)
-				 )
-				 WHERE id = $2`,
-				[credits, order.user_id],
-			);
+			currentBilling.purchased_credits += credits;
 		} else {
 			const plan = parsePlanProduct(order.product_id);
 			if (!plan) {
 				throw new Error(`Producto no soportado: ${order.product_id}`);
 			}
 
-			const nextReset = new Date();
-			if (plan.period === "monthly") {
-				nextReset.setMonth(nextReset.getMonth() + 1);
-			} else {
-				nextReset.setFullYear(nextReset.getFullYear() + 1);
-			}
+			const now = new Date();
+			const nextReset = new Date(now);
+			if (plan.period === "monthly") nextReset.setDate(nextReset.getDate() + 30);
+			else nextReset.setFullYear(nextReset.getFullYear() + 1);
 
-			const initialCredits = TIER_CREDITS[plan.tier];
-			const tierLimits = TIER_LIMITS[plan.tier];
-
-			await client.query(
-				`UPDATE users
-				 SET user_data = jsonb_set(
-				   jsonb_set(
-				     jsonb_set(
-				       jsonb_set(
-				         COALESCE(user_data, '{}'::jsonb),
-				         '{billing,tier}',
-				         to_jsonb($1::text)
-				       ),
-				       '{billing,ai_task_credits}',
-				       to_jsonb($2::int)
-				     ),
-				     '{billing,billing_cycle,next_reset}',
-				     to_jsonb($3::text)
-				   ),
-				   '{billing,limits}',
-				   $4::jsonb
-				 )
-				 WHERE id = $5`,
-				[plan.tier, initialCredits, nextReset.toISOString(), JSON.stringify(tierLimits), order.user_id],
-			);
+			currentBilling.tier = plan.tier;
+			currentBilling.plan_credits = TIER_CREDITS[plan.tier];
+			currentBilling.limits = TIER_LIMITS[plan.tier];
+			currentBilling.billing_cycle.last_reset = now.toISOString();
+			currentBilling.billing_cycle.next_reset = nextReset.toISOString();
 		}
+
+		const normalizedAfter = normalizeBillingState(currentBilling);
+		await client.query(
+			`UPDATE users
+			 SET user_data = jsonb_set(COALESCE(user_data, '{}'::jsonb), '{billing}', $1::jsonb)
+			 WHERE id = $2`,
+			[JSON.stringify(normalizedAfter), order.user_id],
+		);
 
 		await client.query(
 			`INSERT INTO crypto_payment_fulfillments (order_id, user_id, product_id)

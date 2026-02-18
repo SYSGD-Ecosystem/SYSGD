@@ -229,9 +229,19 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
                     </span>
                   </div>
                   <Progress value={creditsPercentage} className="h-2" />
+                  {(billing.plan_credits ?? 0) > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {billing.plan_credits} créditos del plan
+                    </p>
+                  )}
                   {billing.purchased_credits > 0 && (
                     <p className="text-xs text-muted-foreground">
                       {billing.purchased_credits} créditos comprados
+                    </p>
+                  )}
+                  {(billing.bonus_credits ?? []).length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {(billing.bonus_credits ?? []).reduce((acc, item) => acc + item.amount, 0)} créditos bono
                     </p>
                   )}
                 </div>

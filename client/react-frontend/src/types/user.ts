@@ -199,10 +199,22 @@ export interface BillingCycle {
   next_reset: string; // ISO date string
 }
 
+export interface BonusCreditItem {
+  id: string;
+  amount: number;
+  expires_at: string;
+  source?: string;
+}
+
+export type CreditBucket = "bonus" | "plan" | "purchased";
+
 export interface BillingData {
   tier: UserTier;
   ai_task_credits: number;
+  plan_credits?: number;
   purchased_credits: number;
+  bonus_credits?: BonusCreditItem[];
+  credit_spending_priority?: CreditBucket[];
   limits: BillingLimits;
   billing_cycle: BillingCycle;
 }
