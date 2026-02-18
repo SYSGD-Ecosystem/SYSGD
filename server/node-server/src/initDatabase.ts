@@ -55,6 +55,19 @@ export async function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_accounting_documents_user_id ON accounting_documents(user_id);
     CREATE INDEX IF NOT EXISTS idx_accounting_documents_created_at ON accounting_documents(created_at DESC);
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS crypto_payment_fulfillments (
+      order_id TEXT PRIMARY KEY,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      product_id TEXT NOT NULL,
+      fulfilled_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_crypto_payment_fulfillments_user_id ON crypto_payment_fulfillments(user_id);
+  `);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS updates (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
