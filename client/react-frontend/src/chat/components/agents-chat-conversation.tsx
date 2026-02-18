@@ -35,6 +35,37 @@ interface ChatConversationProps {
 	onRequestAgentSelection?: () => void;
 }
 
+const getSendErrorMessage = (err: unknown): string => {
+	type ErrorWithResponse = {
+		message?: string;
+		response?: {
+			data?: {
+				error?: string;
+				message?: string;
+				details?: string;
+			};
+		};
+	};
+	const candidate = err as ErrorWithResponse;
+	if (
+		typeof candidate === "object" &&
+		candidate !== null &&
+		typeof candidate.response === "object" &&
+		candidate.response !== null
+	) {
+		const data = candidate.response.data;
+		return (
+			data?.error ||
+			data?.message ||
+			data?.details ||
+			candidate.message ||
+			"No se pudo enviar el mensaje."
+		);
+	}
+	if (err instanceof Error) return err.message;
+	return "No se pudo enviar el mensaje.";
+};
+
 export interface ExtendedMessage extends Message {
 	attachment?: {
 		type: "image" | "audio" | "video" | "file";
@@ -88,7 +119,6 @@ export function AgentsChatConversation({
 	const [waitingForAgent, setWaitingForAgent] = useState(false);
 	const [messageToDelete, setMessageToDelete] =
 		useState<ExtendedMessage | null>(null);
-	const [anErrorOcurred, setAnErrorOcurred] = useState(false);
 	const { toast } = useToast();
 
 	const scrollRef = useRef<HTMLDivElement>(null);
@@ -308,32 +338,36 @@ export function AgentsChatConversation({
 		}
 
 		setSending(true);
-
-		setAnErrorOcurred(false);
+		let sendSucceeded = false;
+		const messageToSend = newMessage;
+		const attachmentToSend = attachment;
+		const attachmentPreviewToSend = attachmentPreview;
+		const replyingToMessage = replyingTo;
 
 		// optimistic message (temporary id)
 		const tempId = "tmp-" + Date.now().toString();
 		const optimistic: ExtendedMessage = {
 			id: tempId,
-			content: newMessage || "",
+			content: messageToSend || "",
 			sender: "me",
 			timestamp: new Date().toLocaleTimeString("es-ES", {
 				hour: "2-digit",
 				minute: "2-digit",
 			}),
-			...(attachment && {
+			...(attachmentToSend && {
 				attachment: {
-					type: getAttachmentType(attachment),
-					url: attachmentPreview || URL.createObjectURL(attachment),
-					name: attachment.name,
-					size: formatFileSize(attachment.size),
+					type: getAttachmentType(attachmentToSend),
+					url:
+						attachmentPreviewToSend || URL.createObjectURL(attachmentToSend),
+					name: attachmentToSend.name,
+					size: formatFileSize(attachmentToSend.size),
 				},
 			}),
-			...(replyingTo && {
+			...(replyingToMessage && {
 				replyTo: {
-					id: replyingTo.id,
-					content: replyingTo.content,
-					senderName: replyingTo.senderName,
+					id: replyingToMessage.id,
+					content: replyingToMessage.content,
+					senderName: replyingToMessage.senderName,
 				},
 			}),
 		};
@@ -348,18 +382,18 @@ export function AgentsChatConversation({
 				attachment_name?: string;
 				attachment_size?: string;
 			} = {};
-			if (attachment) {
+			if (attachmentToSend) {
 				try {
-					const uploaded = await uploadFile(attachment);
+					const uploaded = await uploadFile(attachmentToSend);
 					// normalize expected fields
 					attachment_payload.attachment_url =
 						uploaded.url || uploaded.attachment_url || uploaded.fileUrl;
 					attachment_payload.attachment_type =
-						uploaded.attachment_type || getAttachmentType(attachment);
+						uploaded.attachment_type || getAttachmentType(attachmentToSend);
 					attachment_payload.attachment_name =
-						uploaded.attachment_name || attachment.name;
+						uploaded.attachment_name || attachmentToSend.name;
 					attachment_payload.attachment_size =
-						uploaded.attachment_size || formatFileSize(attachment.size);
+						uploaded.attachment_size || formatFileSize(attachmentToSend.size);
 				} catch (err) {
 					// if upload fails, remove optimistic attachment preview but still attempt to send text
 					console.warn(
@@ -382,7 +416,7 @@ export function AgentsChatConversation({
 				const agentPayload = {
 					agent_id: selectedAgent.id,
 					conversation_id: chat.id,
-					content: newMessage || "",
+					content: messageToSend || "",
 					...(attachment_payload.attachment_type && {
 						attachment_type: attachment_payload.attachment_type as
 							| "image"
@@ -461,32 +495,34 @@ export function AgentsChatConversation({
 					} catch (err) {
 						console.error(err);
 					}
+					sendSucceeded = true;
 			} else {
 					// Agent failed, remove optimistic message
 					setMessages((prev) => prev.filter((m) => m.id !== tempId));
 					toast({
-						title: "Error",
+						variant: "destructive",
+						title: "No se pudo enviar",
 						description: "No se pudo conectar con el agente. Intenta de nuevo.",
 					});
-				setAnErrorOcurred(true);
 			}
 		} catch (err) {
 			console.error("Error sending message:", err);
 			setMessages((prev) => prev.filter((m) => m.id !== tempId));
+			const message = getSendErrorMessage(err);
 			toast({
-				title: "Error",
-				description: "No se pudo enviar el mensaje. Intenta de nuevo."
+				variant: "destructive",
+				title: "No se pudo enviar",
+				description: message,
 			});
-			setAnErrorOcurred(true);
 		} finally {
 			setSending(false);
 			setWaitingForAgent(false);
-			setNewMessage("");
-			setAttachment(null);
-			setAttachmentPreview(null);
-			setReplyingTo(null);
-			if (fileInputRef.current) {
-				if (!anErrorOcurred) {
+			if (sendSucceeded) {
+				setNewMessage("");
+				setAttachment(null);
+				setAttachmentPreview(null);
+				setReplyingTo(null);
+				if (fileInputRef.current) {
 					fileInputRef.current.value = "";
 				}
 			}

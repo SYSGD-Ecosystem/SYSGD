@@ -29,6 +29,27 @@ const imageQuestionKeywords = [
 
 const API_BASE = "https://openrouter.ai/api/v1";
 
+export class AgentProviderError extends Error {
+	statusCode: number;
+	userMessage: string;
+	details?: string;
+	code?: string;
+
+	constructor(params: {
+		statusCode: number;
+		userMessage: string;
+		details?: string;
+		code?: string;
+	}) {
+		super(params.userMessage);
+		this.name = "AgentProviderError";
+		this.statusCode = params.statusCode;
+		this.userMessage = params.userMessage;
+		this.details = params.details;
+		this.code = params.code;
+	}
+}
+
 /**
  * Llama a OpenRouter para texto (chat completion)
  */
@@ -174,7 +195,25 @@ export async function processAgentRequest(
 		};
 	} catch (error) {
 		console.error("Error en OpenRouter Agent:", error);
-		throw new Error("Error procesando con OpenRouter");
+		const details =
+			error instanceof Error ? error.message : "Error desconocido en OpenRouter";
+
+		if (details.includes("OpenRouter error: 429")) {
+			throw new AgentProviderError({
+				statusCode: 429,
+				code: "OPENROUTER_RATE_LIMIT",
+				userMessage:
+					"El proveedor del agente está temporalmente saturado (límite de peticiones). Intenta nuevamente en unos segundos.",
+				details,
+			});
+		}
+
+		throw new AgentProviderError({
+			statusCode: 502,
+			code: "OPENROUTER_UPSTREAM_ERROR",
+			userMessage: "No se pudo obtener respuesta del proveedor del agente.",
+			details,
+		});
 	}
 }
 

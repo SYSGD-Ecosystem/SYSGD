@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { pool } from '../db';
 import { CreateAgentRequest, UpdateAgentRequest } from '../types/Agent';
-import { openRouterAgent } from '../openRouterAgent';
+import { AgentProviderError, openRouterAgent } from '../openRouterAgent';
 import { consumeAICredits } from '../middlewares/usageLimits.middleware';
 
 export const createAgent = async (req: Request, res: Response) => {
@@ -329,6 +329,15 @@ export const sendMessageToAgent = async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Error saving agent messages:', error);
+    if (error instanceof AgentProviderError) {
+      res.status(error.statusCode).json({
+        error: error.userMessage,
+        details: error.details,
+        code: error.code,
+      });
+      return;
+    }
+
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };

@@ -7,6 +7,33 @@ import type {
 } from "../../types/Agent";
 import api from "@/lib/api";
 
+const getErrorMessage = (err: unknown, fallback: string): string => {
+	type ErrorWithResponse = {
+		message?: string;
+		response?: {
+			data?: {
+				message?: string;
+				error?: string;
+				details?: string;
+			};
+		};
+	};
+	const candidate = err as ErrorWithResponse;
+	if (
+		typeof candidate === "object" &&
+		candidate !== null &&
+		typeof candidate.response === "object" &&
+		candidate.response !== null
+	) {
+		const data = candidate.response.data;
+		return (
+			data?.message || data?.error || data?.details || candidate.message || fallback
+		);
+	}
+	if (err instanceof Error) return err.message;
+	return fallback;
+};
+
 export const useAgents = () => {
 	const [agents, setAgents] = useState<Agent[]>([]);
 	const [loading, setLoading] = useState<boolean>(false);
@@ -106,12 +133,9 @@ export const useAgents = () => {
 
 			return serverResult;
 		} catch (err: unknown) {
-			if (err instanceof Error) {
-				setError(err.message);
-			} else {
-				setError("Error desconocido");
-			}
-			return null;
+			const message = getErrorMessage(err, "Error al enviar mensaje al agente");
+			setError(message);
+			throw err;
 		} finally {
 			setLoading(false);
 		}
