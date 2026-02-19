@@ -1,3 +1,9 @@
+# AGENTS.md - sysgd-cont (Versión Gratuita)
+
+> **Nota**: Este es el proyecto de **sysgd-cont (versión gratuita)**. Para contexto general del ecosistema, ver `AGENTS.md` en la raíz del proyecto.
+
+---
+
 # PROMPT: Sistema de Registro de Ingresos y Gastos para Trabajo por Cuenta Propia (TCP) en Cuba
 
 ## CONTEXTO GENERAL
