@@ -405,15 +405,15 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 			</colgroup>
 			<thead>
 				<tr>
-					<th colSpan={24} className="border p-2 text-center bg-slate-200 dark:bg-slate-700 font-bold text-[10px]">
+					<th colSpan={24} className="border py-1 px-0 text-center bg-slate-200 dark:bg-slate-700 font-bold text-[10px]">
 						{title}
 					</th>
 				</tr>
 				<tr>
 					{monthCodes.map((month, idx) => (
 						<>
-							<th key={`${month}-day`} className="border p-1 bg-slate-100 dark:bg-slate-800 text-[10px]">D</th>
-							<th key={`${month}-amount`} className="border p-1 bg-slate-100 dark:bg-slate-800 text-[10px]">{monthCodes[idx]}</th>
+							<th key={`${month}-day`} className="border py-0.5 px-0 bg-slate-100 dark:bg-slate-800 text-[10px]">D</th>
+							<th key={`${month}-amount`} className="border py-0.5 px-0 bg-slate-100 dark:bg-slate-800 text-[10px]">{monthCodes[idx]}</th>
 						</>
 					))}
 				</tr>
@@ -429,7 +429,7 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 										onChange={(event: ChangeEvent<HTMLInputElement>) =>
 											handleMonthCellChange(setter, month, rowIndex, "dia", event.target.value)
 										}
-										className="h-8 rounded-none border-0 text-center text-[12px]"
+										className="h-7 rounded-none border-0 px-0 py-0 text-center text-[12px] leading-none"
 									/>
 								</td>
 								<td key={`${month}-amount-${rowIndex + 1}`} className="border p-0">
@@ -438,7 +438,7 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 										onChange={(event: ChangeEvent<HTMLInputElement>) =>
 											handleMonthCellChange(setter, month, rowIndex, "importe", event.target.value)
 										}
-										className="h-8 rounded-none border-0 text-right text-[12px]"
+										className="h-7 rounded-none border-0 px-0 py-0 text-right text-[12px] leading-none"
 									/>
 								</td>
 							</>
