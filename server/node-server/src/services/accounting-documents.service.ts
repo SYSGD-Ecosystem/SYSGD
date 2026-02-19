@@ -1,4 +1,10 @@
 import { pool } from "../db";
+import { createDefaultUserData } from "../utils/billing";
+import {
+	consumeCreditsByPriority,
+	maybeRenewPlanCredits,
+	normalizeBillingState,
+} from "./billing-credits.service";
 
 export type AccountingDocumentPayload = Record<string, unknown>;
 
@@ -166,4 +172,73 @@ export const updateAccountingDocumentPayload = async (
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
 	};
+};
+
+export const getUserAvailableCredits = async (userId: string): Promise<number> => {
+	const { rows } = await pool.query<{ user_data: { billing?: unknown } | null }>(
+		"SELECT user_data FROM users WHERE id = $1",
+		[userId],
+	);
+
+	if (rows.length === 0) return 0;
+
+	const billing = maybeRenewPlanCredits(
+		normalizeBillingState(rows[0].user_data?.billing ?? createDefaultUserData().billing),
+	);
+
+	return billing.ai_task_credits;
+};
+
+export const consumePdfGenerationCredit = async (
+	userId: string,
+): Promise<{ consumed: boolean; remainingCredits: number }> => {
+	const client = await pool.connect();
+
+	try {
+		await client.query("BEGIN");
+		const { rows } = await client.query<{ user_data: { billing?: unknown } | null }>(
+			"SELECT user_data FROM users WHERE id = $1 FOR UPDATE",
+			[userId],
+		);
+
+		if (rows.length === 0) {
+			await client.query("ROLLBACK");
+			return { consumed: false, remainingCredits: 0 };
+		}
+
+		const currentBilling = maybeRenewPlanCredits(
+			normalizeBillingState(rows[0].user_data?.billing ?? createDefaultUserData().billing),
+		);
+		const consumedBilling = consumeCreditsByPriority(currentBilling, 1);
+
+		if (!consumedBilling) {
+			await client.query("ROLLBACK");
+			return {
+				consumed: false,
+				remainingCredits: currentBilling.ai_task_credits,
+			};
+		}
+
+		await client.query(
+			`UPDATE users
+			 SET user_data = jsonb_set(
+			   COALESCE(user_data, '{}'::jsonb),
+			   '{billing}',
+			   $1::jsonb
+			 )
+			 WHERE id = $2`,
+			[JSON.stringify(consumedBilling), userId],
+		);
+		await client.query("COMMIT");
+
+		return {
+			consumed: true,
+			remainingCredits: consumedBilling.ai_task_credits,
+		};
+	} catch (error) {
+		await client.query("ROLLBACK");
+		throw error;
+	} finally {
+		client.release();
+	}
 };

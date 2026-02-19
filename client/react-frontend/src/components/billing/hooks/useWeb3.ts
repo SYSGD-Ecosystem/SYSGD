@@ -1,4 +1,5 @@
-// src/hooks/useWeb3.ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 

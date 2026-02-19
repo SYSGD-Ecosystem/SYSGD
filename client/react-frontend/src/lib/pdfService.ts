@@ -62,6 +62,12 @@ export type TcpDocumentData = {
 	tributos: TributosEntry[];
 };
 
+type PageBreakPosition = "before" | "after";
+type PdfSectionContent = {
+	stack: Content[];
+	pageBreak?: PageBreakPosition;
+};
+
 const monthCodes: MonthCode[] = [
 	"ENE",
 	"FEB",
@@ -89,143 +95,60 @@ const formatCurrency = (value: number): string => {
 const getMonthTotal = (entries: MonthEntry[]): number =>
 	entries.reduce((acc, curr) => acc + parseCurrency(curr.importe), 0);
 
-const generateGeneralesContent = (data: GeneralData): Content => {
+const DAY_COLUMN_WIDTH = 16;
+const MONTH_COLUMN_WIDTH = 36;
+
+const generateGeneralesContent = (data: GeneralData): PdfSectionContent => {
+	const headerCell = (text: string): TableCell => ({
+		text,
+		bold: true,
+		fontSize: 9,
+		fillColor: "#e2e8f0",
+	});
+
+	const valueCell = (text: string): TableCell => ({
+		text,
+		fontSize: 9,
+	});
+
 	return {
-		table: {
-			widths: ["*", "*", "*", "*", "*", "*", "*", "*"],
-			body: [
-				[
-					{ rowSpan: 2, text: "", border: [true, true, false, true] },
-					{ rowSpan: 2, colSpan: 5, text: "REGISTRO DE INGRESOS Y GASTOS\nPARA EL TRABAJO POR CUENTA PROPIA", bold: true, fontSize: 12, alignment: "center", border: [false, true, false, true] },
-					{ colSpan: 2, text: "Año", alignment: "center", fontSize: 10, border: [false, true, true, false] },
-					{ text: "", border: [false, true, true, true] },
-				],
-				[
-					{ text: "", border: [true, false, false, true] },
-					{ text: "", border: [false, false, false, true] },
-					{ text: "", border: [false, false, false, true] },
-					{ text: "", border: [false, false, false, true] },
-					{ text: "", border: [false, false, false, true] },
-					{ text: "", border: [false, false, false, true] },
-					{ text: data.anio || "", alignment: "center", bold: true, fontSize: 11, border: [false, false, true, false] },
-					{ text: "", border: [false, false, true, true] },
-				],
-				[
-					{ colSpan: 6, text: "Nombre(s) y Apellidos del Contribuyente", fontSize: 9, border: [true, true, false, true] },
-					{ text: "", border: [false, true, false, true] },
-					{ text: "", border: [false, true, false, true] },
-					{ text: "", border: [false, true, false, true] },
-					{ text: "", border: [false, true, false, true] },
-					{ text: "", border: [false, true, false, true] },
-					{ colSpan: 2, text: "NIT", fontSize: 9, border: [false, true, true, true] },
-					{ text: "", border: [false, true, true, true] },
-				],
-				[
-					{ colSpan: 6, text: data.nombre || "", alignment: "left", fontSize: 10, border: [true, false, false, true], margin: [2, 2, 2, 2] as [number, number, number, number] },
-					{ text: "", border: [false, false, false, true] },
-					{ text: "", border: [false, false, false, true] },
-					{ text: "", border: [false, false, false, true] },
-					{ text: "", border: [false, false, false, true] },
-					{ text: "", border: [false, false, false, true] },
-					{ colSpan: 2, text: data.nit || "", alignment: "left", fontSize: 10, border: [false, false, true, true], margin: [2, 2, 2, 2] as [number, number, number, number] },
-					{ text: "", border: [false, false, true, true] },
-				],
-				[
-					{ colSpan: 8, text: "Domicilio fiscal: (lugar donde desarrolla la actividad): calle, No, apto, entre calles:", fontSize: 9, border: [true, true, true, false] },
-					{ text: "", border: [true, false, true, false] },
-					{ text: "", border: [true, false, true, false] },
-					{ text: "", border: [true, false, true, false] },
-					{ text: "", border: [true, false, true, false] },
-					{ text: "", border: [true, false, true, false] },
-					{ text: "", border: [true, false, true, false] },
-					{ text: "", border: [true, false, true, false] },
-				],
-				[
-					{ colSpan: 8, text: data.fiscalCalle || "", alignment: "left", fontSize: 10, border: [true, false, true, true], margin: [2, 2, 2, 2] as [number, number, number, number] },
-					{ text: "", border: [false, false, true, true] },
-					{ text: "", border: [false, false, true, true] },
-					{ text: "", border: [false, false, true, true] },
-					{ text: "", border: [false, false, true, true] },
-					{ text: "", border: [false, false, true, true] },
-					{ text: "", border: [false, false, true, true] },
-					{ text: "", border: [false, false, true, true] },
-				],
-				[
-					{ colSpan: 2, text: "Municipio:", fontSize: 9, border: [true, true, false, true] },
-					{ colSpan: 2, text: data.fiscalMunicipio || "", alignment: "left", fontSize: 10, border: [false, true, false, true], margin: [2, 2, 2, 2] as [number, number, number, number] },
-					{ colSpan: 2, text: "Provincia:", fontSize: 9, border: [false, true, false, true] },
-					{ colSpan: 2, text: data.fiscalProvincia || "", alignment: "left", fontSize: 10, border: [false, true, true, true], margin: [2, 2, 2, 2] as [number, number, number, number] },
-					{ text: "", border: [false, true, true, true] },
-					{ text: "", border: [false, true, true, true] },
-					{ text: "", border: [false, true, true, true] },
-					{ text: "", border: [false, true, true, true] },
-				],
-				[
-					{ colSpan: 8, text: "Domicilio legal: (según Carnet de Identidad): calle, No, Apto, entre calles.", fontSize: 9, border: [true, true, true, false] },
-					{ text: "", border: [true, false, true, false] },
-					{ text: "", border: [true, false, true, false] },
-					{ text: "", border: [true, false, true, false] },
-					{ text: "", border: [true, false, true, false] },
-					{ text: "", border: [true, false, true, false] },
-					{ text: "", border: [true, false, true, false] },
-					{ text: "", border: [true, false, true, false] },
-				],
-				[
-					{ colSpan: 8, text: data.legalCalle || "", alignment: "left", fontSize: 10, border: [true, false, true, true], margin: [2, 2, 2, 2] as [number, number, number, number] },
-					{ text: "", border: [false, false, true, true] },
-					{ text: "", border: [false, false, true, true] },
-					{ text: "", border: [false, false, true, true] },
-					{ text: "", border: [false, false, true, true] },
-					{ text: "", border: [false, false, true, true] },
-					{ text: "", border: [false, false, true, true] },
-					{ text: "", border: [false, false, true, true] },
-				],
-				[
-					{ colSpan: 2, text: "Municipio:", fontSize: 9, border: [true, true, false, true] },
-					{ colSpan: 2, text: data.legalMunicipio || "", alignment: "left", fontSize: 10, border: [false, true, false, true], margin: [2, 2, 2, 2] as [number, number, number, number] },
-					{ colSpan: 2, text: "Provincia:", fontSize: 9, border: [false, true, false, true] },
-					{ colSpan: 2, text: data.legalProvincia || "", alignment: "left", fontSize: 10, border: [false, true, true, true], margin: [2, 2, 2, 2] as [number, number, number, number] },
-					{ text: "", border: [false, true, true, true] },
-					{ text: "", border: [false, true, true, true] },
-					{ text: "", border: [false, true, true, true] },
-					{ text: "", border: [false, true, true, true] },
-				],
-				[
-					{ colSpan: 1, text: "Actividad:", fontSize: 9, border: [true, true, false, true] },
-					{ colSpan: 5, text: data.actividad || "", alignment: "left", fontSize: 10, border: [false, true, false, true], margin: [2, 2, 2, 2] as [number, number, number, number] },
-					{ colSpan: 1, text: "Código:", fontSize: 9, border: [false, true, false, true] },
-					{ colSpan: 1, text: data.codigo || "", alignment: "left", fontSize: 10, border: [false, true, true, true], margin: [2, 2, 2, 2] as [number, number, number, number] },
-					{ text: "", border: [false, true, true, true] },
-					{ text: "", border: [false, true, true, true] },
-					{ text: "", border: [false, true, true, true] },
-					{ text: "", border: [false, true, true, true] },
-				],
-				[
-					{ text: "D", fontSize: 8, alignment: "center", border: [true, true, false, true] },
-					{ text: "M", fontSize: 8, alignment: "center", border: [false, true, false, true] },
-					{ text: "A", fontSize: 8, alignment: "center", border: [false, true, false, true] },
-					{ text: data.firmaDia || "", alignment: "center", fontSize: 10, border: [false, true, false, true] },
-					{ text: data.firmaMes || "", alignment: "center", fontSize: 10, border: [false, true, false, true] },
-					{ text: data.firmaAnio || "", alignment: "center", fontSize: 10, border: [false, true, true, true] },
-					{ colSpan: 2, text: "Firma del contribuyente", alignment: "center", fontSize: 9, border: [false, true, true, true] },
-					{ text: "", border: [false, true, true, true] },
-				],
-			],
-		},
-		layout: {
-			hLineWidth: () => 0.5,
-			vLineWidth: () => 0.5,
-		},
+		stack: [
+			{
+				text: "REGISTRO DE INGRESOS Y GASTOS PARA EL TRABAJO POR CUENTA PROPIA",
+				bold: true,
+				fontSize: 12,
+				alignment: "center",
+				margin: [0, 0, 0, 6] as [number, number, number, number],
+			},
+			{
+				table: {
+					widths: [110, "*", 70, 90],
+					body: [
+						[headerCell("Nombre y Apellidos"), valueCell(data.nombre || ""), headerCell("Año"), valueCell(data.anio || "")],
+						[headerCell("NIT"), valueCell(data.nit || ""), headerCell("Código"), valueCell(data.codigo || "")],
+						[headerCell("Actividad"), valueCell(data.actividad || ""), headerCell("Municipio fiscal"), valueCell(data.fiscalMunicipio || "")],
+						[headerCell("Provincia fiscal"), valueCell(data.fiscalProvincia || ""), headerCell("Municipio legal"), valueCell(data.legalMunicipio || "")],
+						[headerCell("Provincia legal"), valueCell(data.legalProvincia || ""), headerCell("Firma (D/M/A)"), valueCell(`${data.firmaDia || ""}/${data.firmaMes || ""}/${data.firmaAnio || ""}`)],
+						[headerCell("Domicilio fiscal"), { text: data.fiscalCalle || "", colSpan: 3, fontSize: 9 }, {}, {}],
+						[headerCell("Domicilio legal"), { text: data.legalCalle || "", colSpan: 3, fontSize: 9 }, {}, {}],
+					],
+				},
+				layout: {
+					hLineWidth: () => 0.5,
+					vLineWidth: () => 0.5,
+				},
+			},
+		],
 	};
 };
 
 const generateMonthEntriesContent = (
 	title: string,
 	entries: MonthEntries,
-): Content => {
+): PdfSectionContent => {
 	const headerRow: TableCell[] = [];
 	monthCodes.forEach((month) => {
-		headerRow.push({ text: "D", bold: true, fontSize: 7, alignment: "center", fillColor: "#e2e8f0" });
+		headerRow.push({ text: "D", bold: true, fontSize: 6, alignment: "center", fillColor: "#e2e8f0" });
 		headerRow.push({ text: month, bold: true, fontSize: 7, alignment: "center", fillColor: "#e2e8f0" });
 	});
 
@@ -236,7 +159,7 @@ const generateMonthEntriesContent = (
 		monthCodes.forEach((month) => {
 			row.push({
 				text: entries[month][rowIdx]?.dia || "",
-				fontSize: 7,
+				fontSize: 6,
 				alignment: "center",
 			});
 			row.push({
@@ -249,13 +172,12 @@ const generateMonthEntriesContent = (
 	}
 
 	const totals = monthCodes.map((month) => getMonthTotal(entries[month]));
+
 	const totalRow: TableCell[] = [];
 	monthCodes.forEach((_, idx) => {
-		totalRow.push({ text: "", border: [false, true, false, false] });
-		totalRow.push({ text: formatCurrency(totals[idx]), bold: true, fontSize: 7, alignment: "right", border: [false, true, false, true] });
+		totalRow.push({ text: "", fontSize: 7, alignment: "center" });
+		totalRow.push({ text: formatCurrency(totals[idx]), bold: true, fontSize: 7, alignment: "right" });
 	});
-
-	const annualTotal = totals.reduce((acc, val) => acc + val, 0);
 
 	return {
 		stack: [
@@ -269,83 +191,38 @@ const generateMonthEntriesContent = (
 			},
 			{
 				table: {
-					widths: Array(24).fill(20),
-					body,
+					widths: monthCodes.flatMap(() => [DAY_COLUMN_WIDTH, MONTH_COLUMN_WIDTH]),
+					body: [...body, totalRow],
 				},
 				layout: {
 					hLineWidth: () => 0.3,
 					vLineWidth: () => 0.3,
 				},
 			},
-			{
-				table: {
-					widths: Array(24).fill(20),
-					body: [
-						[
-							{ colSpan: 12, text: "Total", bold: true, alignment: "right", border: [true, true, false, true] },
-							{ text: "", border: [false, true, false, true] },
-							{ text: "", border: [false, true, false, true] },
-							{ text: "", border: [false, true, false, true] },
-							{ text: "", border: [false, true, false, true] },
-							{ text: "", border: [false, true, false, true] },
-							{ text: "", border: [false, true, false, true] },
-							{ text: "", border: [false, true, false, true] },
-							{ text: "", border: [false, true, false, true] },
-							{ text: "", border: [false, true, false, true] },
-							{ text: "", border: [false, true, false, true] },
-							{ text: "", border: [false, true, false, true] },
-							{ colSpan: 12, text: formatCurrency(annualTotal), bold: true, alignment: "right", border: [false, true, true, true] },
-							{ text: "", border: [false, true, true, true] },
-							{ text: "", border: [false, true, true, true] },
-							{ text: "", border: [false, true, true, true] },
-							{ text: "", border: [false, true, true, true] },
-							{ text: "", border: [false, true, true, true] },
-							{ text: "", border: [false, true, true, true] },
-							{ text: "", border: [false, true, true, true] },
-							{ text: "", border: [false, true, true, true] },
-							{ text: "", border: [false, true, true, true] },
-							{ text: "", border: [false, true, true, true] },
-							{ text: "", border: [false, true, true, true] },
-						],
-					],
-				},
-				layout: {
-					hLineWidth: () => 0.5,
-					vLineWidth: () => 0.5,
-				},
-			},
 		],
 	};
 };
 
-const generateTributosContent = (tributos: TributosEntry[]): Content => {
+const generateTributosContent = (tributos: TributosEntry[]): PdfSectionContent => {
 	const body: TableCell[][] = [];
 
 	const headerRow1: TableCell[] = [
-		{ rowSpan: 3, text: "Mes", bold: true, fontSize: 9, alignment: "center", fillColor: "#e2e8f0" },
-		{ colSpan: 9, text: "TRIBUTOS PAGADOS DEDUCIBLES EN LA DECLARACIÓN JURADA", bold: true, fontSize: 9, alignment: "center", fillColor: "#e2e8f0" },
-		{ rowSpan: 2, text: "Subtotal", bold: true, fontSize: 9, alignment: "center", fillColor: "#e2e8f0" },
-		{ colSpan: 4, text: "Otros gastos deducibles", bold: true, fontSize: 9, alignment: "center", fillColor: "#e2e8f0" },
-		{ rowSpan: 2, text: "Cuota Mensual (5%)", bold: true, fontSize: 9, alignment: "center", fillColor: "#e2e8f0" },
-	];
-	const headerRow2: TableCell[] = Array(9).fill(null).map(() => ({ text: "", rowSpan: 2, bold: true, fontSize: 8, alignment: "center", fillColor: "#e2e8f0" }));
-	const headerRow3: TableCell[] = [
-		{ text: "1", bold: true, fontSize: 8, alignment: "center", fillColor: "#e2e8f0" },
-		{ text: "2", bold: true, fontSize: 8, alignment: "center", fillColor: "#e2e8f0" },
-		{ text: "3", bold: true, fontSize: 8, alignment: "center", fillColor: "#e2e8f0" },
-		{ text: "4", bold: true, fontSize: 8, alignment: "center", fillColor: "#e2e8f0" },
-		{ text: "5", bold: true, fontSize: 8, alignment: "center", fillColor: "#e2e8f0" },
-		{ text: "6", bold: true, fontSize: 8, alignment: "center", fillColor: "#e2e8f0" },
-		{ text: "7", bold: true, fontSize: 8, alignment: "center", fillColor: "#e2e8f0" },
-		{ text: "8", bold: true, fontSize: 8, alignment: "center", fillColor: "#e2e8f0" },
-		{ text: "9", bold: true, fontSize: 8, alignment: "center", fillColor: "#e2e8f0" },
-		{ text: "10", bold: true, fontSize: 8, alignment: "center", fillColor: "#e2e8f0" },
-		{ text: "", bold: true, fontSize: 8, alignment: "center", fillColor: "#e2e8f0" },
-		{ text: "11", bold: true, fontSize: 8, alignment: "center", fillColor: "#e2e8f0" },
-		{ text: "12", bold: true, fontSize: 8, alignment: "center", fillColor: "#e2e8f0" },
-		{ text: "13", bold: true, fontSize: 8, alignment: "center", fillColor: "#e2e8f0" },
-		{ text: "14", bold: true, fontSize: 8, alignment: "center", fillColor: "#e2e8f0" },
-		{ text: "15", bold: true, fontSize: 8, alignment: "center", fillColor: "#e2e8f0" },
+		{ text: "Mes", bold: true, fontSize: 8, alignment: "center", fillColor: "#e2e8f0" },
+		{ text: "1", bold: true, fontSize: 7, alignment: "center", fillColor: "#e2e8f0" },
+		{ text: "2", bold: true, fontSize: 7, alignment: "center", fillColor: "#e2e8f0" },
+		{ text: "3", bold: true, fontSize: 7, alignment: "center", fillColor: "#e2e8f0" },
+		{ text: "4", bold: true, fontSize: 7, alignment: "center", fillColor: "#e2e8f0" },
+		{ text: "5", bold: true, fontSize: 7, alignment: "center", fillColor: "#e2e8f0" },
+		{ text: "6", bold: true, fontSize: 7, alignment: "center", fillColor: "#e2e8f0" },
+		{ text: "7", bold: true, fontSize: 7, alignment: "center", fillColor: "#e2e8f0" },
+		{ text: "8", bold: true, fontSize: 7, alignment: "center", fillColor: "#e2e8f0" },
+		{ text: "9", bold: true, fontSize: 7, alignment: "center", fillColor: "#e2e8f0" },
+		{ text: "10", bold: true, fontSize: 7, alignment: "center", fillColor: "#e2e8f0" },
+		{ text: "11", bold: true, fontSize: 7, alignment: "center", fillColor: "#e2e8f0" },
+		{ text: "12", bold: true, fontSize: 7, alignment: "center", fillColor: "#e2e8f0" },
+		{ text: "13", bold: true, fontSize: 7, alignment: "center", fillColor: "#e2e8f0" },
+		{ text: "14", bold: true, fontSize: 7, alignment: "center", fillColor: "#e2e8f0" },
+		{ text: "15", bold: true, fontSize: 7, alignment: "center", fillColor: "#e2e8f0" },
 	];
 
 	const calculateRow = (row: TributosEntry) => {
@@ -366,7 +243,7 @@ const generateTributosContent = (tributos: TributosEntry[]): Content => {
 
 	processedTributos.forEach((row) => {
 		body.push([
-			{ text: row.mes, fontSize: 8, alignment: "left" },
+			{ text: row.mes, fontSize: 7, alignment: "left" },
 			{ text: row.b || "", fontSize: 7, alignment: "right" },
 			{ text: row.c || "", fontSize: 7, alignment: "right" },
 			{ text: row.d || "", fontSize: 7, alignment: "right" },
@@ -453,7 +330,7 @@ const generateTributosContent = (tributos: TributosEntry[]): Content => {
 			{
 				table: {
 					widths: [40, 25, 25, 25, 25, 25, 30, 30, 30, 30, 35, 30, 30, 30, 30, 35],
-					body: [headerRow1, headerRow2, headerRow3, ...body, totalRow],
+					body: [headerRow1, ...body, totalRow],
 				},
 				layout: {
 					hLineWidth: () => 0.3,
@@ -465,15 +342,24 @@ const generateTributosContent = (tributos: TributosEntry[]): Content => {
 };
 
 export const generateTcpPdf = (data: TcpDocumentData): void => {
+	const generalesContent = generateGeneralesContent(data.generalData);
+	const ingresosContent = generateMonthEntriesContent("INGRESOS", data.ingresos);
+	const gastosContent = generateMonthEntriesContent("GASTOS", data.gastos);
+	const tributosContent = generateTributosContent(data.tributos);
+
+	generalesContent.pageBreak = "after";
+	ingresosContent.pageBreak = "after";
+	gastosContent.pageBreak = "after";
+
 	const docDefinition: TDocumentDefinitions = {
 		pageSize: "A4",
 		pageOrientation: "landscape",
 		pageMargins: [10, 10, 10, 10],
 		content: [
-			generateGeneralesContent(data.generalData),
-			generateMonthEntriesContent("INGRESOS", data.ingresos),
-			generateMonthEntriesContent("GASTOS", data.gastos),
-			generateTributosContent(data.tributos),
+			generalesContent,
+			ingresosContent,
+			gastosContent,
+			tributosContent,
 		],
 		defaultStyle: {
 			font: "Roboto",

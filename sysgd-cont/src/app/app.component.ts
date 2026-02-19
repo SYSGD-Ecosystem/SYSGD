@@ -213,6 +213,11 @@ import { RegistroSyncService } from './services/registro-sync.service';
 
       <section class="card summary" *ngIf="activeTab === 'resumen'">
         <h2>Resumen fiscal {{ report.year }}</h2>
+        <div class="actions full summary-actions">
+          <button type="button" (click)="downloadPdf()" [disabled]="pdfLoading">
+            {{ pdfLoading ? 'Generando PDF...' : 'Descargar PDF (servidor)' }}
+          </button>
+        </div>
         <div class="grid">
           <div><strong>Ingresos:</strong> {{ report.totalIngresos | currency:'CUP':'symbol':'1.2-2' }}</div>
           <div><strong>Gastos:</strong> {{ report.totalGastos | currency:'CUP':'symbol':'1.2-2' }}</div>
@@ -289,6 +294,7 @@ export class AppComponent implements OnInit {
   authError = '';
   offlineRecoveryAvailable = false;
   currentUser: AuthUser | null = null;
+  pdfLoading = false;
   selectedMonth: MonthKey = 'ENE';
   registro: RegistroTCP = this.ledger.getRegistro();
   report: AnnualReport = this.ledger.getAnnualReport();
@@ -477,6 +483,41 @@ export class AppComponent implements OnInit {
     this.refreshReport();
     void this.syncToServer();
     this.activeTab = 'resumen';
+  }
+
+  async downloadPdf(): Promise<void> {
+    const token = this.auth.token;
+    if (!token) {
+      this.authError = 'Debes iniciar sesión para generar el PDF';
+      return;
+    }
+
+    this.pdfLoading = true;
+    this.authError = '';
+    try {
+      const response = await this.registroSync.generateTcpPdf(token, this.registro);
+      const disposition = response.headers.get('content-disposition') ?? '';
+      const match = disposition.match(/filename=\"?([^"]+)\"?/);
+      const filename = match?.[1] ?? `Registro_TCP_${this.report.year}.pdf`;
+
+      const blob = response.body;
+      if (!blob) {
+        throw new Error('La respuesta del servidor no contiene archivo PDF');
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      this.authError = this.formatError(error, 'No se pudo generar el PDF');
+    } finally {
+      this.pdfLoading = false;
+    }
   }
 
   private refreshReport(): void {

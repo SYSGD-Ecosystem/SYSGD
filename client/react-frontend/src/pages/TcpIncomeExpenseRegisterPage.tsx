@@ -13,6 +13,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import useExportTable from "@/hooks/useExportTable";
+import useBillingData from "@/hooks/connection/useBillingData";
 import api from "@/lib/api";
 import { generateTcpPdf } from "@/lib/pdfService";
 import { useToast } from "@/hooks/use-toast";
@@ -170,6 +171,7 @@ type TcpDocumentPayload = {
 const TcpIncomeExpenseRegisterPage: FC = () => {
 	const { documentId } = useParams<{ documentId?: string }>();
 	const { toast } = useToast();
+	const { billing, loading: billingLoading } = useBillingData();
 	const [isSaving, setIsSaving] = useState(false);
 	const [activeSheet, setActiveSheet] = useState<SheetTab>("GENERALES");
 	const [pageSize, setPageSize] = useState<"A4" | "Carta">("A4");
@@ -284,13 +286,78 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 		}
 	};
 
-	const handleGeneratePdf = () => {
-		generateTcpPdf({
+	const handleGeneratePdf = async () => {
+		const payload: TcpDocumentPayload = {
 			generalData,
 			ingresos,
 			gastos,
 			tributos,
-		});
+		};
+
+		if (billingLoading) {
+			toast({
+				title: "Espera un momento",
+				description: "Estamos verificando tu plan para generar el PDF",
+			});
+			return;
+		}
+
+		if (billing?.tier === "pro") {
+			generateTcpPdf(payload);
+			return;
+		}
+
+		try {
+			const response = await api.post<Blob>(
+				"/api/accounting-documents/pdf/tcp",
+				payload,
+				{ responseType: "blob" },
+			);
+
+			const disposition = response.headers["content-disposition"];
+			const filenameMatch =
+				typeof disposition === "string"
+					? disposition.match(/filename=\"?([^"]+)\"?/)
+					: null;
+			const filename =
+				filenameMatch?.[1] ??
+				`Registro_TCP_${generalData.anio || new Date().getFullYear()}.pdf`;
+
+			const blobUrl = window.URL.createObjectURL(response.data);
+			const link = document.createElement("a");
+			link.href = blobUrl;
+			link.download = filename;
+			document.body.appendChild(link);
+			link.click();
+			link.remove();
+			window.URL.revokeObjectURL(blobUrl);
+		} catch (error) {
+			const status =
+				typeof error === "object" &&
+				error !== null &&
+				"response" in error &&
+				typeof error.response === "object" &&
+				error.response !== null &&
+				"status" in error.response &&
+				typeof error.response.status === "number"
+					? error.response.status
+					: null;
+
+			if (status === 402) {
+				toast({
+					title: "Créditos insuficientes",
+					description: "No tienes créditos para generar el PDF desde el servidor",
+					variant: "destructive",
+				});
+				return;
+			}
+
+			toast({
+				title: "Error",
+				description: "No se pudo generar el PDF",
+				variant: "destructive",
+			});
+		}
 	};
 
 	const monthTotalsIngresos = useMemo(
