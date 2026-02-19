@@ -307,6 +307,20 @@ const SystemDashboard: FC = () => {
 		setIsProjectDialogOpen(true);
 	};
 
+	const openDocument = (doc: DocumentFile) => {
+		if (doc.document_kind === "tcp") {
+			navigate(`/tcp-registro/${doc.id}`);
+			return;
+		}
+
+		setArchive(doc.id, {
+			name: doc.name,
+			company: doc.company,
+			code: doc.code,
+		});
+		navigate("/archives");
+	};
+
 	const deleteProject = (projectId: string) => {
 		if (!window.confirm("¿Deseas eliminar este proyecto? Esta acción no se puede deshacer.")) {
 			return;
@@ -640,14 +654,7 @@ const SystemDashboard: FC = () => {
 							{documents.slice(0, 3).map((doc) => (
 								<div
 									key={doc.id}
-									onClick={() => {
-										setArchive(doc.id, {
-											name: doc.name,
-											company: doc.company,
-											code: doc.code,
-										});
-										navigate("/archives");
-									}}
+									onClick={() => openDocument(doc)}
 									className="flex items-center cursor-pointer justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
 								>
 									<div className="flex-1">
@@ -908,14 +915,7 @@ const SystemDashboard: FC = () => {
 
 							<div className="flex gap-2 pt-2">
 								<Button
-									onClick={() => {
-										setArchive(doc.id, {
-											name: doc.name,
-											company: doc.company,
-											code: doc.code,
-										});
-										navigate("/archives");
-									}}
+									onClick={() => openDocument(doc)}
 									variant="ghost"
 									size="sm"
 									className="flex-1 cursor-pointer"
