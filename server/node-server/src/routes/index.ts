@@ -24,6 +24,7 @@ import veri from "./verification.routes";
 import updates from "./updates.routes";
 import timeEntries from "./time-entries";
 import contLedger from "./cont-ledger";
+import accountingDocuments from "./accounting-documents.routes";
 
 const router = Router();
 
@@ -51,6 +52,7 @@ router.use("/verification", veri);
 router.use("/", taskConfig);
 router.use("/time-entries", timeEntries);
 router.use("/cont-ledger", contLedger);
+router.use("/accounting-documents", accountingDocuments);
 
 router.use(updates);
 

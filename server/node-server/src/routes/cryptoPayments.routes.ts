@@ -4,7 +4,7 @@ import { isAuthenticated } from "../middlewares/auth-jwt";
 import { getCurrentUserData } from "../controllers/users";
 import { createCryptoPaymentService } from "../services/cryptoPayment.service";
 import { getBlockchainListener } from "../services/blockchainListener.service";
-import { isValidTier, TIER_CREDITS, TIER_LIMITS } from "../utils/billing";
+import { fulfillOrderIfNeeded } from "../services/payment-fulfillment.service";
 
 const router = Router();
 
@@ -233,10 +233,11 @@ router.get("/orders/:orderId", async (req, res) => {
         );
         order.status = "completed";
         order.completed_at = new Date();
-
-        // Procesar el pago (agregar créditos o actualizar plan)
-        await processCompletedPayment(order);
       }
+    }
+
+    if (order.status === "completed") {
+      await processCompletedPayment(order);
     }
 
     res.json(order);
@@ -277,89 +278,29 @@ router.get("/orders", async (req, res) => {
 /**
  * Procesa un pago completado y otorga créditos o actualiza plan
  */
-async function processCompletedPayment(order: any) {
-  const { user_id, product_id, amount } = order;
-
+async function processCompletedPayment(order: {
+  user_id: string;
+  product_id: string;
+  order_id: string;
+}) {
   try {
-    // Determinar qué hacer según el productId
-    if (product_id.startsWith("credits_")) {
-      // Es compra de créditos
-      const credits = parseInt(product_id.split("_")[1]);
-      
-      await pool.query(
-        `UPDATE users 
-         SET user_data = jsonb_set(
-           jsonb_set(
-             user_data,
-             '{billing,ai_task_credits}',
-             to_jsonb(COALESCE((user_data->'billing'->>'ai_task_credits')::int, 0) + $1)
-           ),
-           '{billing,purchased_credits}',
-           to_jsonb(COALESCE((user_data->'billing'->>'purchased_credits')::int, 0) + $1)
-         )
-         WHERE id = $2`,
-        [credits, user_id]
-      );
+    const result = await fulfillOrderIfNeeded({
+      user_id: order.user_id,
+      product_id: order.product_id,
+      order_id: order.order_id,
+    });
 
-      console.log(`✅ Agregados ${credits} créditos al usuario ${user_id}`);
-      
-    } else if (product_id.startsWith("plan_")) {
-      // Es compra de plan
-      const [, tier, period] = product_id.split("_");
-
-      if (!isValidTier(tier)) {
-        throw new Error(`Tier inválido: ${tier}`);
-      }
-      
-      // Calcular fecha de renovación
-      const nextReset = new Date();
-      if (period === "monthly") {
-        nextReset.setMonth(nextReset.getMonth() + 1);
-      } else if (period === "yearly") {
-        nextReset.setFullYear(nextReset.getFullYear() + 1);
-      }
-
-      // Determinar créditos iniciales y límites según tier
-      const initialCredits = TIER_CREDITS[tier];
-      const tierLimits = TIER_LIMITS[tier];
-
-      await pool.query(
-        `UPDATE users 
-         SET user_data = jsonb_set(
-           jsonb_set(
-             jsonb_set(
-               COALESCE(user_data, '{}'::jsonb),
-               '{billing,tier}',
-               $1
-             ),
-             '{billing,ai_task_credits}',
-             to_jsonb($2)
-           ),
-           '{billing,billing_cycle,next_reset}',
-           to_jsonb($3)
-         )
-         WHERE id = $4`,
-        [JSON.stringify(tier), initialCredits, nextReset.toISOString(), user_id]
-      );
-
-      await pool.query(
-        `UPDATE users
-         SET user_data = jsonb_set(
-           COALESCE(user_data, '{}'::jsonb),
-           '{billing,limits}',
-           $1::jsonb
-         )
-         WHERE id = $2`,
-        [JSON.stringify(tierLimits), user_id],
-      );
-
-      console.log(`✅ Plan ${tier} activado para usuario ${user_id}`);
+    if (result.reason === "already_fulfilled") {
+      console.log(`ℹ️ Orden ${order.order_id} ya estaba aplicada`);
+      return;
     }
 
+    console.log(`✅ Orden ${order.order_id} aplicada correctamente`);
   } catch (error) {
     console.error("Error procesando pago completado:", error);
     throw error;
   }
 }
+
 
 export default router;

@@ -2,6 +2,12 @@ import { Request, Response, NextFunction } from "express";
 import { pool } from "../db";
 import { getCurrentUserData } from "../controllers/users";
 import { createDefaultUserData } from "../utils/billing";
+import {
+  consumeCreditsByPriority,
+  maybeRenewPlanCredits,
+  normalizeBillingState,
+  persistBilling,
+} from "../services/billing-credits.service";
 
 // ============================================
 // INTERFACES
@@ -69,7 +75,15 @@ async function getUserBillingData(userId: string): Promise<UserData | null> {
 			return fallback as UserData;
 		}
 
-		return userData;
+		const normalized = maybeRenewPlanCredits(normalizeBillingState(userData.billing));
+		if (JSON.stringify(normalized) !== JSON.stringify(userData.billing)) {
+			await persistBilling(userId, normalized);
+		}
+
+		return {
+			...userData,
+			billing: normalized,
+		};
 	} catch (error) {
 		console.error("Error obteniendo datos de billing:", error);
 		return null;
@@ -203,21 +217,39 @@ export async function consumeAICredits(
     await pool.query('BEGIN');
 
     const { rows } = await pool.query(
-      `UPDATE users 
-       SET user_data = jsonb_set(
-         user_data,
-         '{billing,ai_task_credits}',
-         to_jsonb(GREATEST(0, COALESCE((user_data->'billing'->>'ai_task_credits')::int, 0) - 1))
-       )
-       WHERE id = $1
-       RETURNING user_data->'billing'->>'ai_task_credits' as credits`,
-      [user.id]
+      `SELECT user_data FROM users WHERE id = $1 FOR UPDATE`,
+      [user.id],
     );
 
+    if (rows.length === 0) {
+      await pool.query('ROLLBACK');
+      res.status(404).json({ error: "Usuario no encontrado" });
+      return;
+    }
+
+    const userData = rows[0].user_data as UserData | null;
+    const current = maybeRenewPlanCredits(
+      normalizeBillingState(userData?.billing ?? createDefaultUserData().billing),
+    );
+
+    const consumed = consumeCreditsByPriority(current, 1);
+
+    if (!consumed) {
+      await pool.query('ROLLBACK');
+      res.status(402).json({
+        error: "Créditos insuficientes",
+        message: "No quedan créditos disponibles para consumir",
+      });
+      return;
+    }
+
+    await persistBilling(user.id, consumed);
     await pool.query('COMMIT');
 
-    console.log(`✅ Crédito consumido. Créditos restantes: ${rows[0]?.credits || 0}`);
-    
+    (req as any).creditConsumption = {
+      fromPriority: consumed.credit_spending_priority,
+      remaining: consumed.ai_task_credits,
+    };
     next();
   } catch (error) {
     await pool.query('ROLLBACK');

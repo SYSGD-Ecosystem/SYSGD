@@ -1,7 +1,7 @@
 // src/services/blockchainListener.service.ts
 import { CryptoPaymentService } from "./cryptoPayment.service";
 import { pool } from "../db";
-import { isValidTier, TIER_CREDITS, TIER_LIMITS } from "../utils/billing";
+import { fulfillOrderIfNeeded } from "./payment-fulfillment.service";
 
 export class BlockchainListenerService {
   private cryptoService: CryptoPaymentService;
@@ -236,85 +236,20 @@ export class BlockchainListenerService {
   /**
    * Procesa una orden completada y otorga créditos o plan
    */
-  private async fulfillOrder(order: any) {
-    const { user_id, product_id, amount, order_id } = order;
-
+  private async fulfillOrder(order: { user_id: string; product_id: string; order_id: string }) {
     try {
-      // Determinar qué hacer según el productId
-      if (product_id.startsWith("credits_")) {
-        // Es compra de créditos
-        const credits = parseInt(product_id.split("_")[1]);
-        
-        await pool.query(
-          `UPDATE users 
-           SET user_data = jsonb_set(
-             jsonb_set(
-               user_data,
-               '{billing,ai_task_credits}',
-               to_jsonb(COALESCE((user_data->'billing'->>'ai_task_credits')::int, 0) + $1)
-             ),
-             '{billing,purchased_credits}',
-             to_jsonb(COALESCE((user_data->'billing'->>'purchased_credits')::int, 0) + $1)
-           )
-           WHERE id = $2`,
-          [credits, user_id]
-        );
+      const result = await fulfillOrderIfNeeded({
+        user_id: order.user_id,
+        product_id: order.product_id,
+        order_id: order.order_id,
+      });
 
-        console.log(`✅ Agregados ${credits} créditos al usuario ${user_id} (Orden: ${order_id})`);
-        
-      } else if (product_id.startsWith("plan_")) {
-        // Es compra de plan
-        const [, tier, period] = product_id.split("_");
-
-        if (!isValidTier(tier)) {
-          throw new Error(`Tier inválido: ${tier}`);
-        }
-        
-        // Calcular fecha de renovación
-        const nextReset = new Date();
-        if (period === "monthly") {
-          nextReset.setMonth(nextReset.getMonth() + 1);
-        } else if (period === "yearly") {
-          nextReset.setFullYear(nextReset.getFullYear() + 1);
-        }
-
-        // Determinar créditos iniciales y límites según tier
-        const initialCredits = TIER_CREDITS[tier];
-        const tierLimits = TIER_LIMITS[tier];
-
-        await pool.query(
-          `UPDATE users 
-           SET user_data = jsonb_set(
-             jsonb_set(
-               jsonb_set(
-                 COALESCE(user_data, '{}'::jsonb),
-                 '{billing,tier}',
-                 $1
-               ),
-               '{billing,ai_task_credits}',
-               to_jsonb($2)
-             ),
-             '{billing,billing_cycle,next_reset}',
-             to_jsonb($3)
-           )
-           WHERE id = $4`,
-          [JSON.stringify(tier), initialCredits, nextReset.toISOString(), user_id]
-        );
-
-        await pool.query(
-          `UPDATE users
-           SET user_data = jsonb_set(
-             COALESCE(user_data, '{}'::jsonb),
-             '{billing,limits}',
-             $1::jsonb
-           )
-           WHERE id = $2`,
-          [JSON.stringify(tierLimits), user_id],
-        );
-
-        console.log(`✅ Plan ${tier} activado para usuario ${user_id} (Orden: ${order_id})`);
+      if (result.reason === "already_fulfilled") {
+        console.log(`ℹ️ Orden ${order.order_id} ya estaba aplicada`);
+        return;
       }
 
+      console.log(`✅ Orden ${order.order_id} aplicada correctamente (listener)`);
     } catch (error) {
       console.error("❌ Error cumpliendo orden:", error);
       throw error;

@@ -38,10 +38,13 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDate } from "@/utils/util";
 import useConnection from "@/hooks/connection/useConnection";
 import useProjectConnection from "@/hooks/connection/useProjectConnection";
+import useBillingData from "@/hooks/connection/useBillingData";
+import useAccountingDocuments from "@/hooks/connection/useAccountingDocuments";
 import { Progress } from "@/components/ui/progress";
 import {
 	Dialog,
 	DialogContent,
+	DialogDescription,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
@@ -68,6 +71,7 @@ interface DocumentFile {
 	tipo: "document";
 	creator_name: string;
 	created_at: string;
+	document_kind: "management" | "tcp";
 }
 
 interface Project {
@@ -153,6 +157,12 @@ const SystemDashboard: FC = () => {
 
 	const navigate = useNavigate();
 	const { user, loading: loadingUser } = useCurrentUser();
+	const { billing } = useBillingData();
+	const {
+		documents: accountingDocuments,
+		reloadDocuments: reloadAccountingDocuments,
+		createDocument: createAccountingDocument,
+	} = useAccountingDocuments();
 	const { projects: mProjects = [], reloadProjects } = useProjects();
 	const { archives = [] } = useArchives();
 	const setProjectId = useSelectionStore((state) => state.setProjectId);
@@ -169,6 +179,7 @@ const SystemDashboard: FC = () => {
 		name: "",
 		company: "",
 		code: "",
+		documentType: "management" as "management" | "tcp",
 	});
 
 	// const unreadCount =
@@ -177,7 +188,7 @@ const SystemDashboard: FC = () => {
 	const filteredProjects = projects.filter((p) =>
 		p.name.toLowerCase().includes(searchTerm.toLowerCase()),
 	);
-	const filteredDocuments = archives.filter((d) =>
+	const filteredDocuments = documents.filter((d) =>
 		d.name.toLowerCase().includes(searchTerm.toLowerCase()),
 	);
 
@@ -296,6 +307,20 @@ const SystemDashboard: FC = () => {
 		setIsProjectDialogOpen(true);
 	};
 
+	const openDocument = (doc: DocumentFile) => {
+		if (doc.document_kind === "tcp") {
+			navigate(`/tcp-registro/${doc.id}`);
+			return;
+		}
+
+		setArchive(doc.id, {
+			name: doc.name,
+			company: doc.company,
+			code: doc.code,
+		});
+		navigate("/archives");
+	};
+
 	const deleteProject = (projectId: string) => {
 		if (!window.confirm("¿Deseas eliminar este proyecto? Esta acción no se puede deshacer.")) {
 			return;
@@ -322,6 +347,39 @@ const SystemDashboard: FC = () => {
 
 	const { handleNewArchiving } = useConnection();
 	const handleCreateDocument = () => {
+		if (newDocument.documentType === "tcp") {
+			const tier = billing?.tier ?? user?.user_data?.billing?.tier ?? "free";
+			if (tier === "free") {
+				toast({
+					title: "Función premium",
+					description:
+						"La creación de registros de ingresos y gastos está disponible para planes Pro o VIP",
+					variant: "destructive",
+				});
+				navigate("/billing/purchase");
+				return;
+			}
+
+			createAccountingDocument(newDocument.name || "Registro TCP")
+				.then((created) => {
+					void reloadAccountingDocuments();
+					setIsDocumentDialogOpen(false);
+					navigate(`/tcp-registro/${created.id}`);
+				})
+				.catch((error: unknown) => {
+					const message =
+						error instanceof Error && error.message
+							? error.message
+							: "No se pudo crear el registro contable";
+					toast({
+						title: "Error al crear el registro",
+						description: message,
+						variant: "destructive",
+					});
+				});
+			return;
+		}
+
 		handleNewArchiving(
 			newDocument.code,
 			newDocument.company,
@@ -332,6 +390,12 @@ const SystemDashboard: FC = () => {
 					description: "Archivo creado, por favor refresque la página",
 				});
 				setIsDocumentDialogOpen(false);
+				setNewDocument({
+					name: "",
+					company: "",
+					code: "",
+					documentType: "management",
+				});
 			},
 			() => {
 				toast({
@@ -371,7 +435,7 @@ const SystemDashboard: FC = () => {
 	}, [mProjects]);
 
 	useEffect(() => {
-		const docs: DocumentFile[] = archives.map((archive) => ({
+		const managementDocs: DocumentFile[] = archives.map((archive) => ({
 			id: archive.id,
 			name: archive.name,
 			company: archive.company,
@@ -379,12 +443,22 @@ const SystemDashboard: FC = () => {
 			creator_name: archive.creator_name,
 			created_at: archive.created_at,
 			tipo: "document",
+			document_kind: "management",
 		}));
 
-		if (docs !== null) {
-			setDocument(docs);
-		}
-	}, [archives]);
+		const tcpDocs: DocumentFile[] = accountingDocuments.map((document) => ({
+			id: document.id,
+			name: document.name,
+			company: "Contabilidad",
+			code: "TCP",
+			creator_name: user?.name ?? "",
+			created_at: document.createdAt,
+			tipo: "document",
+			document_kind: "tcp",
+		}));
+
+		setDocument([...tcpDocs, ...managementDocs]);
+	}, [archives, accountingDocuments, user?.name]);
 
 	useEffect(() => {
 		if (typeof window === "undefined") return;
@@ -580,14 +654,7 @@ const SystemDashboard: FC = () => {
 							{documents.slice(0, 3).map((doc) => (
 								<div
 									key={doc.id}
-									onClick={() => {
-										setArchive(doc.id, {
-											name: doc.name,
-											company: doc.company,
-											code: doc.code,
-										});
-										navigate("/archives");
-									}}
+									onClick={() => openDocument(doc)}
 									className="flex items-center cursor-pointer justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
 								>
 									<div className="flex-1">
@@ -807,7 +874,7 @@ const SystemDashboard: FC = () => {
 								</Button>
 							</div>
 							<Badge className="w-fit bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-								EGDyA
+								{doc.document_kind === "tcp" ? "Contabilidad" : "EGDyA"}
 							</Badge>
 						</CardHeader>
 
@@ -848,14 +915,7 @@ const SystemDashboard: FC = () => {
 
 							<div className="flex gap-2 pt-2">
 								<Button
-									onClick={() => {
-										setArchive(doc.id, {
-											name: doc.name,
-											company: doc.company,
-											code: doc.code,
-										});
-										navigate("/archives");
-									}}
+									onClick={() => openDocument(doc)}
 									variant="ghost"
 									size="sm"
 									className="flex-1 cursor-pointer"
@@ -1152,6 +1212,9 @@ const SystemDashboard: FC = () => {
 						<DialogTitle className="text-gray-900 dark:text-white">
 							{editingProjectId ? "Editar proyecto" : "Crear Nuevo Proyecto"}
 						</DialogTitle>
+						<DialogDescription className="sr-only">
+							Formulario para crear o editar un proyecto.
+						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4">
 						<div>
@@ -1208,10 +1271,31 @@ const SystemDashboard: FC = () => {
 				<DialogContent className="max-w-sm mx-4 dark:bg-gray-800 dark:border-gray-700">
 					<DialogHeader>
 						<DialogTitle className="text-gray-900 dark:text-white">
-							Crear Nuevo Archivo de Gestión
+							Crear Nuevo Documento
 						</DialogTitle>
+						<DialogDescription className="sr-only">
+							Selecciona tipo y datos del documento a crear.
+						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4">
+						<div>
+							<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+								Tipo de documento
+							</Label>
+							<select
+								value={newDocument.documentType}
+								onChange={(event) =>
+									setNewDocument({
+										...newDocument,
+										documentType: event.target.value as "management" | "tcp",
+									})
+								}
+								className="w-full h-10 px-3 rounded-md border border-input bg-background dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+							>
+								<option value="management">Archivo de Gestión</option>
+								<option value="tcp">Registro de ingresos y gastos (TCP)</option>
+							</select>
+						</div>
 						<div>
 							<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
 								Nombre del archivo
@@ -1225,32 +1309,36 @@ const SystemDashboard: FC = () => {
 								className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
 							/>
 						</div>
-						<div>
-							<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-								Empresa:
-							</Label>
-							<Input
-								value={newDocument.company}
-								onChange={(e) =>
-									setNewDocument({ ...newDocument, company: e.target.value })
-								}
-								placeholder="Ej: SYSGD Inc"
-								className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-							/>
-						</div>
-						<div>
-							<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-								código:
-							</Label>
-							<Input
-								value={newDocument.code}
-								onChange={(e) =>
-									setNewDocument({ ...newDocument, code: e.target.value })
-								}
-								placeholder="Ej: OC37.1.1"
-								className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-							/>
-						</div>
+						{newDocument.documentType === "management" && (
+							<>
+								<div>
+									<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+										Empresa:
+									</Label>
+									<Input
+										value={newDocument.company}
+										onChange={(e) =>
+											setNewDocument({ ...newDocument, company: e.target.value })
+										}
+										placeholder="Ej: SYSGD Inc"
+										className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+									/>
+								</div>
+								<div>
+									<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+										código:
+									</Label>
+									<Input
+										value={newDocument.code}
+										onChange={(e) =>
+											setNewDocument({ ...newDocument, code: e.target.value })
+										}
+										placeholder="Ej: OC37.1.1"
+										className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+									/>
+								</div>
+							</>
+						)}
 						<div className="flex justify-end gap-2">
 							<Button
 								variant="outline"
@@ -1258,7 +1346,7 @@ const SystemDashboard: FC = () => {
 							>
 								Cancelar
 							</Button>
-							<Button onClick={handleCreateDocument}>Crear Archivo</Button>
+							<Button onClick={handleCreateDocument}>{newDocument.documentType === "management" ? "Crear Archivo" : "Crear Registro TCP"}</Button>
 						</div>
 					</div>
 				</DialogContent>

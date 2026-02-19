@@ -1,6 +1,8 @@
 // src/pages/SettingsPage.tsx
 import { FC, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
+	ArrowLeft,
 	Bell,
 	ChevronDown,
 	Copy,
@@ -309,6 +311,7 @@ const TokensSection: FC = () => {
 };
 
 const SettingsPage: FC = () => {
+	const navigate = useNavigate();
 	const [activeCategory, setActiveCategory] = useState("appearance");
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -628,7 +631,16 @@ const SettingsPage: FC = () => {
 			{/* Topbar */}
 			<header className="fixed top-0 left-0 right-0 h-16 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
 				<div className="flex items-center justify-between px-4 h-full">
-					<div className="flex items-center gap-4">
+					<div className="flex items-center gap-2 md:gap-4">
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => navigate(-1)}
+							className="gap-1"
+						>
+							<ArrowLeft className="h-4 w-4" />
+							<span className="hidden sm:inline">Volver</span>
+						</Button>
 						<Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
 							<SheetTrigger asChild>
 								<Button variant="ghost" size="icon" className="md:hidden">
