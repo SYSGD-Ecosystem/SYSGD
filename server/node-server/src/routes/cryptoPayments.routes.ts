@@ -5,6 +5,7 @@ import { getCurrentUserData } from "../controllers/users";
 import { createCryptoPaymentService } from "../services/cryptoPayment.service";
 import { getBlockchainListener } from "../services/blockchainListener.service";
 import { fulfillOrderIfNeeded } from "../services/payment-fulfillment.service";
+import type { ProductId } from "../constants/plans";
 
 const router = Router();
 
@@ -155,34 +156,12 @@ router.post("/orders", async (req, res) => {
   const { productId, walletAddress } = req.body;
 
   if (!productId || !walletAddress) {
-    res.status(400).json({ error: "productId y walletAddress son requeridos" });
+    res.status(400).json({ error: "Faltan campos requeridos" });
     return;
   }
 
   try {
-    // Crear orden en el servicio crypto
-    const order = await cryptoService.createPaymentOrder(
-      user!.id,
-      walletAddress,
-      productId
-    );
-
-    // Guardar orden en la base de datos
-    const { rows } = await pool.query(
-      `INSERT INTO crypto_payment_orders 
-       (order_id, user_id, wallet_address, product_id, amount, status, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING *`,
-      [
-        order.orderId,
-        order.userId,
-        order.userWallet,
-        order.productId,
-        order.amount,
-        order.status,
-        order.createdAt
-      ]
-    );
+    const order = await cryptoService.createOrder(productId as ProductId, user!.id, walletAddress);
 
     // ✨ ACTIVAR POLLING TEMPORAL
     const listener = getBlockchainListener();
@@ -191,7 +170,7 @@ router.post("/orders", async (req, res) => {
       console.log("🔄 Polling temporal activado para nueva orden");
     }
 
-    res.status(201).json(rows[0]);
+    res.status(201).json(order);
   } catch (error: any) {
     console.error("Error creando orden:", error);
     res.status(400).json({ 

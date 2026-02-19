@@ -1,5 +1,6 @@
 package cu.lazaroysr96.sysgdcont.viewmodel
 
+import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cu.lazaroysr96.sysgdcont.data.model.*
@@ -17,7 +18,10 @@ data class LedgerUiState(
     val isSyncing: Boolean = false,
     val syncError: String? = null,
     val syncSuccess: Boolean = false,
-    val syncMessage: String? = null
+    val syncMessage: String? = null,
+    val isDownloadingPdf: Boolean = false,
+    val pdfError: String? = null,
+    val pdfIntent: Intent? = null
 )
 
 @HiltViewModel
@@ -127,5 +131,23 @@ class LedgerViewModel @Inject constructor(
 
     fun clearSyncStatus() {
         _uiState.update { it.copy(syncError = null, syncSuccess = false) }
+    }
+
+    fun downloadPdf() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isDownloadingPdf = true, pdfError = null, pdfIntent = null) }
+
+            ledgerRepository.downloadPdf()
+                .onSuccess { intent ->
+                    _uiState.update { it.copy(isDownloadingPdf = false, pdfIntent = intent) }
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isDownloadingPdf = false, pdfError = e.message) }
+                }
+        }
+    }
+
+    fun clearPdfIntent() {
+        _uiState.update { it.copy(pdfIntent = null) }
     }
 }

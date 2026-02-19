@@ -74,6 +74,8 @@ const PurchaseModal: FC<PurchaseModalProps> = ({
     return null;
   }
 
+  const normalizedDescription = product.description.replace("AI Credits", "Credits");
+
   const price = parseFloat(product.price);
   const balance = parseFloat(usdtBalance);
   const hasEnoughBalance = balance >= price;
@@ -81,11 +83,9 @@ const PurchaseModal: FC<PurchaseModalProps> = ({
   const handleApprove = async () => {
     setProcessing(true);
     try {
-      await approveUSDT(product.price);
-
       toast({
-        title: "Aprobación exitosa",
-        description: "Ahora puedes confirmar el pago",
+        title: "Confirmación lista",
+        description: "En el siguiente paso se crea la orden y se solicita la aprobación exacta",
       });
       setStep("pay");
     } catch (error: any) {
@@ -135,8 +135,11 @@ const PurchaseModal: FC<PurchaseModalProps> = ({
 
       const order = orderResponse.data;
 
-      // 2. Ejecutar pago en blockchain
-      const hash = await processPayment(product.productId, order.order_id);
+      // 2. Aprobar monto exacto de la orden
+      await approveUSDT(order.amount);
+
+      // 3. Ejecutar pago en blockchain
+      const hash = await processPayment(product.productId, order.orderId, order.amount);
 
       setTxHash(hash);
       setProcessing(false);
@@ -148,7 +151,7 @@ const PurchaseModal: FC<PurchaseModalProps> = ({
       });
 
       // 3. Verificar confirmación
-      const completed = await verifyOrderCompletion(order.order_id);
+      const completed = await verifyOrderCompletion(order.orderId);
 
       setIsVerifying(false);
 
@@ -203,7 +206,7 @@ const PurchaseModal: FC<PurchaseModalProps> = ({
               ✕
             </Button>
           </CardTitle>
-          <CardDescription>{product.description}</CardDescription>
+          <CardDescription>{normalizedDescription}</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">

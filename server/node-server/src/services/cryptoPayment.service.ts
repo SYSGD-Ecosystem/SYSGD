@@ -1,5 +1,6 @@
 import { ethers } from "ethers";
-import { randomUUID } from "crypto";
+import { pool } from "../db";
+import { PRODUCTS, type ProductId } from "../constants/plans";
 
 // ABIs de los contratos
 const TESTUSDT_ABI = [
@@ -13,19 +14,12 @@ const TESTUSDT_ABI = [
 ];
 
 const PAYMENT_GATEWAY_ABI = [
-	"function processPayment(string memory _productId, string memory _orderId) external",
-	"function getProduct(string memory _productId) view returns (string memory productId, uint256 price, bool active, string memory description)",
-	"function getAllProducts() view returns (string[] memory)",
+	"function processPayment(string memory _productId, string memory _orderId, uint256 _amount) external",
 	"function getPayment(string memory _orderId) view returns (address user, string memory productId, uint256 amount, uint256 timestamp)",
 	"function isOrderProcessed(string memory _orderId) view returns (bool)",
 	"function getUserPayments(address _user, uint256 _limit) view returns (string[] memory)",
 	"event PaymentProcessed(address indexed user, string indexed orderId, string productId, uint256 amount, uint256 timestamp)",
 ];
-
-let productsCache: Product[] | null = null;
-let productsCacheTime = 0;
-const PRODUCTS_TTL = 60_000; // 1 minuto
-
 
 interface CryptoConfig {
 	rpcUrl: string;
@@ -36,21 +30,9 @@ interface CryptoConfig {
 
 interface Product {
 	productId: string;
-	price: string; // En USDT (ej: "10.50")
+	price: number; // En micro USDT (6 decimales)
 	active: boolean;
 	description: string;
-}
-
-interface PaymentOrder {
-	orderId: string;
-	productId: string;
-	userId: string;
-	userWallet: string;
-	amount: string;
-	status: "pending" | "processing" | "completed" | "failed";
-	txHash?: string;
-	createdAt: Date;
-	completedAt?: Date;
 }
 
 export class CryptoPaymentService {
@@ -109,135 +91,38 @@ export class CryptoPaymentService {
 	/**
 	 * Obtiene todos los productos disponibles
 	 */
-	// async getProducts(): Promise<Product[]> {
-	//   try {
-	//     const productIds = await this.paymentGatewayContract.getAllProducts();
-	//     const products: Product[] = [];
-
-	//     for (const productId of productIds) {
-	//       const product = await this.paymentGatewayContract.getProduct(productId);
-	//       products.push({
-	//         productId: product.productId,
-	//         price: ethers.formatUnits(product.price, 6),
-	//         active: product.active,
-	//         description: product.description
-	//       });
-	//     }
-
-	//     return products;
-	//   } catch (error) {
-	//     console.error("Error obteniendo productos:", error);
-	//     throw new Error("Error al obtener productos");
-	//   }
-	// }
-
 	async getProducts(): Promise<Product[]> {
-		try {
-			// Cache hit
-			if (productsCache && Date.now() - productsCacheTime < PRODUCTS_TTL) {
-				return productsCache;
-			}
-
-			const productIds: string[] =
-				await this.paymentGatewayContract.getAllProducts();
-			const products: Product[] = [];
-
-			for (const productId of productIds) {
-				const product = await this.paymentGatewayContract.getProduct(productId);
-
-				products.push({
-					productId: product.productId,
-					price: ethers.formatUnits(product.price, 6),
-					active: product.active,
-					description: product.description,
-				});
-			}
-
-			productsCache = products;
-			productsCacheTime = Date.now();
-
-			return products;
-		} catch (error) {
-			console.error("Error obteniendo productos:", error);
-			throw new Error("Error al obtener productos");
-		}
+		return Object.entries(PRODUCTS)
+			.filter(([, product]) => product.active)
+			.map(([productId, product]) => ({ productId, ...product }));
 	}
 
 	/**
 	 * Obtiene información de un producto específico
 	 */
 	async getProduct(productId: string): Promise<Product | null> {
-		try {
-			const product = await this.paymentGatewayContract.getProduct(productId);
-
-			if (!product.productId) {
-				return null;
-			}
-
-			return {
-				productId: product.productId,
-				price: ethers.formatUnits(product.price, 6),
-				active: product.active,
-				description: product.description,
-			};
-		} catch (error) {
-			console.error("Error obteniendo producto:", error);
-			return null;
-		}
+		const product = PRODUCTS[productId as ProductId];
+		if (!product) return null;
+		return { productId, ...product };
 	}
 
 	/**
-	 * Crea una orden de pago
+	 * Crea una orden en base de datos
 	 */
-	async createPaymentOrder(
-		userId: string,
-		userWallet: string,
-		productId: string,
-	): Promise<PaymentOrder> {
-		try {
-			// Verificar que el producto existe
-			const product = await this.getProduct(productId);
-			if (!product) {
-				throw new Error("Producto no encontrado");
-			}
+	async createOrder(productId: ProductId, userId: string, walletAddress: string) {
+		const product = PRODUCTS[productId];
+		if (!product || !product.active) throw new Error("Producto no válido");
 
-			if (!product.active) {
-				throw new Error("Producto no disponible");
-			}
+		const orderId = `order_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
-			// Verificar que el usuario tiene suficiente balance
-			const balance = await this.getUSDTBalance(userWallet);
-			if (parseFloat(balance) < parseFloat(product.price)) {
-				throw new Error("Balance insuficiente de USDT");
-			}
+		await pool.query(
+			`INSERT INTO crypto_payment_orders
+			 (order_id, user_id, wallet_address, product_id, amount, status)
+			 VALUES ($1, $2, $3, $4, $5, 'pending')`,
+			[orderId, userId, walletAddress, productId, product.price],
+		);
 
-			console.log("User Balance:", balance);
-
-			// Verificar allowance
-			const allowance = await this.checkAllowance(userWallet);
-			console.log("User Allowance:", allowance);
-			if (parseFloat(allowance) < parseFloat(product.price)) {
-				throw new Error("Debes aprobar el gasto de USDT primero");
-			}
-
-			// Generar orderId único
-			const orderId = `ORDER_${Date.now()}_${randomUUID()}`;
-
-			const order: PaymentOrder = {
-				orderId,
-				productId,
-				userId,
-				userWallet,
-				amount: product.price,
-				status: "pending",
-				createdAt: new Date(),
-			};
-
-			return order;
-		} catch (error) {
-			console.error("Error creando orden:", error);
-			throw error;
-		}
+		return { orderId, amount: product.price, productId };
 	}
 
 	/**
@@ -262,6 +147,7 @@ export class CryptoPaymentService {
 			return {
 				user: payment.user,
 				productId: payment.productId,
+				amountRaw: payment.amount.toString(),
 				amount: ethers.formatUnits(payment.amount, 6),
 				timestamp: Number(payment.timestamp) * 1000, // Convertir a ms
 			};
@@ -300,10 +186,10 @@ export class CryptoPaymentService {
 					user,
 					orderId,
 					productId,
-					amount: ethers.formatUnits(amount, 6),
+					amount,
 					timestamp: Number(timestamp) * 1000,
-					txHash: event.log.transactionHash,
-					blockNumber: event.log.blockNumber,
+					txHash: event?.transactionHash ?? event?.log?.transactionHash,
+					blockNumber: event?.blockNumber ?? event?.log?.blockNumber,
 				});
 			},
 		);

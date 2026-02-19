@@ -39,6 +39,16 @@ export interface Product {
 	description: string;
 }
 
+const normalizePrice = (price: string | number) => {
+	const value = Number(price);
+	if (!Number.isFinite(value)) return String(price);
+	const display = value >= 100000 ? value / 1_000_000 : value;
+	return display.toFixed(2);
+};
+
+const normalizeDescription = (description: string) =>
+	description.replace("AI Credits", "Credits");
+
 export interface NetworkInfo {
 	chainId: number;
 	name: string;
@@ -101,7 +111,12 @@ const CryptoPurchase: React.FC = () => {
 			const response = await api.get<Product[]>(
 				"/api/crypto-payments/products",
 			);
-			setProducts(response.data);
+			setProducts(
+				response.data.map((product) => ({
+					...product,
+					price: normalizePrice(product.price),
+				})),
+			);
 		} catch (error) {
 			console.error("Error loading products:", error);
 			toast({
@@ -152,13 +167,9 @@ const CryptoPurchase: React.FC = () => {
 
 		setProcessing(true);
 		try {
-			// Simular aprobación de USDT
-			//await new Promise(resolve => setTimeout(resolve, 2000));
-			await approveUSDT(selectedProduct.price);
-
 			toast({
-				title: "Aprobación exitosa",
-				description: "Puedes proceder con el pago",
+				title: "Confirmación lista",
+				description: "Ahora se creará la orden y se solicitará la aprobación exacta",
 			});
 
 			setPurchaseStep("pay");
@@ -236,10 +247,14 @@ const CryptoPurchase: React.FC = () => {
 
 			const order = orderResponse.data;
 
-			// 2. Procesar pago en blockchain
+			// 2. Aprobar monto exacto de la orden
+			await approveUSDT(order.amount);
+
+			// 3. Procesar pago en blockchain
 			const txHash = await processPayment(
 				selectedProduct.productId,
-				order.order_id,
+				order.orderId,
+				order.amount,
 			);
 
 			setTxHash(txHash);
@@ -251,8 +266,8 @@ const CryptoPurchase: React.FC = () => {
 				description: "Verificando confirmación en blockchain...",
 			});
 
-			// 3. Verificar que el pago se complete
-			const completed = await verifyOrderCompletion(order.order_id);
+			// 4. Verificar que el pago se complete
+			const completed = await verifyOrderCompletion(order.orderId);
 
 			setIsVerifying(false);
 
@@ -332,7 +347,7 @@ const CryptoPurchase: React.FC = () => {
 							<div className="text-xs text-muted-foreground">USDT</div>
 						</div>
 					</div>
-					<CardDescription>{product.description}</CardDescription>
+					<CardDescription>{normalizeDescription(product.description)}</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<div className="space-y-2">
@@ -340,11 +355,11 @@ const CryptoPurchase: React.FC = () => {
 							<>
 								<div className="flex items-center gap-2 text-sm">
 									<Check className="h-4 w-4 text-green-500" />
-									<span>{credits} peticiones a IA</span>
+									<span>{credits} créditos disponibles</span>
 								</div>
 								<div className="flex items-center gap-2 text-sm">
 									<Check className="h-4 w-4 text-green-500" />
-									<span>Válidos por 1 año</span>
+									<span>Uso flexible en distintos servicios</span>
 								</div>
 								<div className="flex items-center gap-2 text-sm">
 									<Check className="h-4 w-4 text-green-500" />
@@ -369,7 +384,7 @@ const CryptoPurchase: React.FC = () => {
 								<div className="flex items-center gap-2 text-sm">
 									<Check className="h-4 w-4 text-green-500" />
 									<span>
-										{tier === "pro" ? "100" : "500"} créditos AI/
+										{tier === "pro" ? "100" : "500"} créditos incluidos/
 										{period === "monthly" ? "mes" : "año"}
 									</span>
 								</div>
@@ -720,10 +735,10 @@ const CryptoPurchase: React.FC = () => {
 
 					<Tabs defaultValue="credits">
 						<TabsList className="grid w-full grid-cols-3 max-w-md">
-							<TabsTrigger value="credits">
-								<Zap className="mr-2 h-4 w-4" />
-								Créditos AI
-							</TabsTrigger>
+								<TabsTrigger value="credits">
+									<Zap className="mr-2 h-4 w-4" />
+									Créditos
+								</TabsTrigger>
 							<TabsTrigger value="plans">
 								<Star className="mr-2 h-4 w-4" />
 								Planes

@@ -5,6 +5,13 @@ import { AlertCircle } from "lucide-react";
 import api from "@/lib/api";
 import ProductCard, { Product } from "./components/ProductCard";
 
+const normalizePrice = (price: string | number) => {
+  const value = Number(price);
+  if (!Number.isFinite(value)) return String(price);
+  const display = value >= 100000 ? value / 1_000_000 : value;
+  return display.toFixed(2);
+};
+
 const PurchaseCredits: FC<{
   onPurchaseStart: (product: Product) => void;
   isConnected: boolean;
@@ -17,9 +24,9 @@ const PurchaseCredits: FC<{
     const loadProducts = async () => {
       try {
         const response = await api.get<Product[]>("/api/crypto-payments/products");
-        const creditProducts = response.data.filter(p =>
-          p.productId.startsWith("credits_") && p.active
-        );
+        const creditProducts = response.data
+          .filter((p) => p.productId.startsWith("credits_") && p.active)
+          .map((p) => ({ ...p, price: normalizePrice(p.price) }));
         setProducts(creditProducts);
       } catch (err) {
         setError("No se pudieron cargar los paquetes de créditos");
@@ -53,9 +60,9 @@ const PurchaseCredits: FC<{
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold mb-2">Comprar Créditos AI</h2>
+        <h2 className="text-2xl font-bold mb-2">Comprar Créditos</h2>
         <p className="text-muted-foreground">
-          Elige el paquete que mejor se adapte a tus necesidades
+          Elige el paquete que mejor se adapte a tus necesidades y usos
         </p>
       </div>
 

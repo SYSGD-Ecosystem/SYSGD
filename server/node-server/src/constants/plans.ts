@@ -1,39 +1,44 @@
-// server/node-server/src/constants/plans.ts
-export const PLANS = {
-  free: {
-    name: 'free',
-    displayName: 'Gratis',
-    limits: {
-      projects: 3,
-      documents: 10,
-      tasks: 50,
-      team: 1,
-      aiCredits: 10
-    }
-  },
-  pro: {
-    name: 'pro',
-    displayName: 'Profesional',
-    limits: {
-      projects: 20,
-      documents: 100,
-      tasks: 500,
-      team: 10,
-      aiCredits: 500
-    }
-  },
-  vip: {
-    name: 'vip',
-    displayName: 'VIP',
-    limits: {
-      projects: 100,
-      documents: 1000,
-      tasks: 10000,
-      team: 50,
-      aiCredits: 5000
-    }
-  }
+export const PRODUCTS = {
+	credits_10: {
+		price: 5_000_000,
+		description: "10 AI Credits",
+		active: true,
+	},
+	credits_50: {
+		price: 20_000_000,
+		description: "50 AI Credits",
+		active: true,
+	},
+	credits_100: {
+		price: 35_000_000,
+		description: "100 AI Credits",
+		active: true,
+	},
+	credits_500: {
+		price: 150_000_000,
+		description: "500 AI Credits",
+		active: true,
+	},
+	plan_pro_monthly: {
+		price: 10_000_000,
+		description: "Pro Plan - Monthly",
+		active: true,
+	},
+	plan_vip_monthly: {
+		price: 25_000_000,
+		description: "VIP Plan - Monthly",
+		active: true,
+	},
+	plan_pro_yearly: {
+		price: 100_000_000,
+		description: "Pro Plan - Yearly",
+		active: true,
+	},
+	plan_vip_yearly: {
+		price: 250_000_000,
+		description: "VIP Plan - Yearly",
+		active: true,
+	},
 } as const;
 
-export type PlanName = keyof typeof PLANS;
-export type Plan = typeof PLANS[PlanName];
+export type ProductId = keyof typeof PRODUCTS;

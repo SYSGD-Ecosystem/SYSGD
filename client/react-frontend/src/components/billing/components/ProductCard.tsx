@@ -34,6 +34,7 @@ const ProductCard: FC<ProductCardProps> = ({
 }) => {
   const isCredit = product.productId.startsWith("credits_");
   const isPlan = product.productId.startsWith("plan_");
+  const normalizedDescription = product.description.replace("AI Credits", "Credits");
 
   const credits = isCredit ? product.productId.split("_")[1] : null;
   const [, tier, period] = isPlan ? product.productId.split("_") : ["", "", ""];
@@ -66,7 +67,7 @@ const ProductCard: FC<ProductCardProps> = ({
             <div className="text-xs text-muted-foreground">USDT</div>
           </div>
         </div>
-        <CardDescription>{product.description}</CardDescription>
+        <CardDescription>{normalizedDescription}</CardDescription>
       </CardHeader>
 
       <CardContent>
@@ -75,15 +76,15 @@ const ProductCard: FC<ProductCardProps> = ({
             <>
               <div className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-green-500" />
-                <span>{credits} peticiones a IA</span>
+                <span>{credits} créditos disponibles</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-green-500" />
-                <span>Válidos por 1 año</span>
+                <span>Uso flexible en distintos servicios</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-green-500" />
-                <span>Nunca expiran</span>
+                <span>Sin expiración</span>
               </div>
             </>
           )}
@@ -105,7 +106,7 @@ const ProductCard: FC<ProductCardProps> = ({
               <div className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-green-500" />
                 <span>
-                  {tier === "pro" ? "100" : "500"} créditos AI/
+                  {tier === "pro" ? "100" : "500"} créditos incluidos/
                   {period === "monthly" ? "mes" : "año"}
                 </span>
               </div>

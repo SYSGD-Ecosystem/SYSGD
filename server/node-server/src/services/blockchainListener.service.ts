@@ -1,7 +1,7 @@
 // src/services/blockchainListener.service.ts
 import { CryptoPaymentService } from "./cryptoPayment.service";
 import { pool } from "../db";
-import { fulfillOrderIfNeeded } from "./payment-fulfillment.service";
+import { handlePaymentEvent } from "./payment-fulfillment.service";
 
 export class BlockchainListenerService {
   private cryptoService: CryptoPaymentService;
@@ -114,40 +114,15 @@ export class BlockchainListenerService {
    * Procesa un evento de pago desde blockchain
    */
   private async processPaymentEvent(event: any) {
-    const { orderId, txHash, user, productId, amount, timestamp } = event;
+    const { orderId, txHash, productId, amount } = event;
 
     try {
-      // Buscar la orden en la base de datos
-      const { rows } = await pool.query(
-        "SELECT * FROM crypto_payment_orders WHERE order_id = $1",
-        [orderId]
-      );
-
-      if (rows.length === 0) {
-        console.log(`⚠️  Orden ${orderId} no encontrada en BD`);
-        return;
-      }
-
-      const order = rows[0];
-
-      // Si ya está completada, no hacer nada
-      if (order.status === "completed") {
-        console.log(`✅ Orden ${orderId} ya estaba completada`);
-        return;
-      }
-
-      // Actualizar orden en BD
-      await pool.query(
-        `UPDATE crypto_payment_orders 
-         SET status = $1, tx_hash = $2, completed_at = NOW()
-         WHERE order_id = $3`,
-        ["completed", txHash, orderId]
-      );
-
-      console.log(`✅ Orden ${orderId} marcada como completada`);
-
-      // Procesar el pago y dar créditos/plan al usuario
-      await this.fulfillOrder(order);
+      await handlePaymentEvent({
+        orderId,
+        productId,
+        amount: BigInt(amount),
+        txHash,
+      });
 
       // Registrar en log de webhooks
       await pool.query(
@@ -159,7 +134,10 @@ export class BlockchainListenerService {
           "PaymentProcessed",
           txHash,
           event.blockNumber,
-          JSON.stringify(event),
+          JSON.stringify({
+            ...event,
+            amount: String(amount),
+          }),
           true
         ]
       );
@@ -212,47 +190,20 @@ export class BlockchainListenerService {
       const isProcessed = await this.cryptoService.verifyPayment(order.order_id);
       
       if (isProcessed && order.status !== "completed") {
-        // Obtener info del pago
         const paymentInfo = await this.cryptoService.getPaymentInfo(order.order_id);
-        
-        // Actualizar orden
-        await pool.query(
-          `UPDATE crypto_payment_orders 
-           SET status = $1, completed_at = NOW()
-           WHERE order_id = $2`,
-          ["completed", order.order_id]
-        );
+        if (!paymentInfo) return;
 
-        console.log(`✅ Orden ${order.order_id} verificada y completada (polling)`);
+        await handlePaymentEvent({
+          orderId: order.order_id,
+          productId: paymentInfo.productId,
+          amount: BigInt(paymentInfo.amountRaw),
+          txHash: order.tx_hash ?? "",
+        });
 
-        // Cumplir la orden
-        await this.fulfillOrder(order);
+        console.log(`✅ Orden ${order.order_id} verificada y procesada (polling)`);
       }
     } catch (error) {
       console.error(`❌ Error verificando orden ${order.order_id}:`, error);
-    }
-  }
-
-  /**
-   * Procesa una orden completada y otorga créditos o plan
-   */
-  private async fulfillOrder(order: { user_id: string; product_id: string; order_id: string }) {
-    try {
-      const result = await fulfillOrderIfNeeded({
-        user_id: order.user_id,
-        product_id: order.product_id,
-        order_id: order.order_id,
-      });
-
-      if (result.reason === "already_fulfilled") {
-        console.log(`ℹ️ Orden ${order.order_id} ya estaba aplicada`);
-        return;
-      }
-
-      console.log(`✅ Orden ${order.order_id} aplicada correctamente (listener)`);
-    } catch (error) {
-      console.error("❌ Error cumpliendo orden:", error);
-      throw error;
     }
   }
 

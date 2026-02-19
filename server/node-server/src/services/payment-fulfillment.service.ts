@@ -8,6 +8,13 @@ interface PaymentOrderRecord {
 	product_id: string;
 }
 
+interface PaymentEventPayload {
+	orderId: string;
+	productId: string;
+	amount: bigint;
+	txHash: string;
+}
+
 const parsePlanProduct = (
 	productId: string,
 ): { tier: "pro" | "vip"; period: "monthly" | "yearly" } | null => {
@@ -107,3 +114,46 @@ export const fulfillOrderIfNeeded = async (
 		client.release();
 	}
 };
+
+export async function handlePaymentEvent(evento: PaymentEventPayload) {
+	const { rows } = await pool.query(
+		"SELECT * FROM crypto_payment_orders WHERE order_id = $1",
+		[evento.orderId],
+	);
+	const order = rows[0];
+
+	if (!order) return;
+	if (order.status !== "pending") return;
+
+	if (order.product_id !== evento.productId) {
+		await pool.query(
+			"UPDATE crypto_payment_orders SET status = 'failed' WHERE order_id = $1",
+			[evento.orderId],
+		);
+		console.error("FRAUDE: productId no coincide", evento.orderId);
+		return;
+	}
+
+	const dbAmountAsStored = BigInt(Math.round(Number(order.amount)));
+	const dbAmountScaled = BigInt(Math.round(Number(order.amount) * 1_000_000));
+	const eventAmount = BigInt(evento.amount);
+	if (eventAmount !== dbAmountAsStored && eventAmount !== dbAmountScaled) {
+		await pool.query(
+			"UPDATE crypto_payment_orders SET status = 'failed' WHERE order_id = $1",
+			[evento.orderId],
+		);
+		console.error("FRAUDE: amount manipulado", evento.orderId);
+		return;
+	}
+
+	await fulfillOrderIfNeeded({
+		order_id: order.order_id,
+		user_id: order.user_id,
+		product_id: order.product_id,
+	});
+
+	await pool.query(
+		"UPDATE crypto_payment_orders SET status = 'completed', tx_hash = $1, completed_at = NOW() WHERE order_id = $2",
+		[evento.txHash, evento.orderId],
+	);
+}

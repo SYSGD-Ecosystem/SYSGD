@@ -5,6 +5,13 @@ import { AlertCircle } from "lucide-react";
 import api from "@/lib/api";
 import ProductCard, { Product } from "./components/ProductCard";
 
+const normalizePrice = (price: string | number) => {
+  const value = Number(price);
+  if (!Number.isFinite(value)) return String(price);
+  const display = value >= 100000 ? value / 1_000_000 : value;
+  return display.toFixed(2);
+};
+
 const PurchasePlans: FC<{
   onPurchaseStart: (product: Product | null) => void;
   isConnected: boolean;
@@ -16,9 +23,9 @@ const PurchasePlans: FC<{
     const loadPlans = async () => {
       try {
         const response = await api.get<Product[]>("/api/crypto-payments/products");
-        const planProducts = response.data.filter(p =>
-          p.productId.startsWith("plan_") && p.active
-        );
+        const planProducts = response.data
+          .filter((p) => p.productId.startsWith("plan_") && p.active)
+          .map((p) => ({ ...p, price: normalizePrice(p.price) }));
         setProducts(planProducts);
       } catch (err) {
         console.error("Error cargando planes:", err);

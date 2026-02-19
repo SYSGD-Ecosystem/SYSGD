@@ -11,7 +11,7 @@ const ERC20_ABI = [
 ];
 
 const PAYMENT_GATEWAY_ABI = [
-  'function processPayment(string memory _productId, string memory _orderId) external',
+  'function processPayment(string memory _productId, string memory _orderId, uint256 _amount) external',
   'event PaymentProcessed(address indexed user, string indexed orderId, string productId, uint256 amount, uint256 timestamp)',
 ];
 
@@ -30,8 +30,8 @@ export interface UseWeb3Return {
   switchNetwork: (chainId: number) => Promise<void>;
   
   // Transacciones
-  approveUSDT: (amount: string) => Promise<string>;
-  processPayment: (productId: string, orderId: string) => Promise<string>;
+  approveUSDT: (amount: string | number | bigint) => Promise<string>;
+  processPayment: (productId: string, orderId: string, amount: string | number | bigint) => Promise<string>;
   checkAllowance: () => Promise<string>;
 }
 
@@ -194,14 +194,21 @@ export const useWeb3 = (
     }
   };
 
-  const approveUSDT = async (amount: string): Promise<string> => {
+  const toRawUsdtAmount = (amount: string | number | bigint): bigint => {
+    if (typeof amount === 'bigint') return amount;
+    if (typeof amount === 'number') return BigInt(Math.trunc(amount));
+    if (amount.includes('.')) return ethers.parseUnits(amount, 6);
+    return BigInt(amount);
+  };
+
+  const approveUSDT = async (amount: string | number | bigint): Promise<string> => {
     if (!signer || !usdtAddress || !paymentGatewayAddress) {
       throw new Error('Wallet no conectado o direcciones no configuradas');
     }
 
     try {
       const usdtContract = new ethers.Contract(usdtAddress, ERC20_ABI, signer);
-      const amountWei = ethers.parseUnits(amount, 6); // USDT tiene 6 decimales
+      const amountWei = toRawUsdtAmount(amount);
       
       const tx = await usdtContract.approve(paymentGatewayAddress, amountWei);
       await tx.wait();
@@ -228,7 +235,11 @@ export const useWeb3 = (
     }
   };
 
-  const processPayment = async (productId: string, orderId: string): Promise<string> => {
+  const processPayment = async (
+    productId: string,
+    orderId: string,
+    amount: string | number | bigint
+  ): Promise<string> => {
     if (!signer || !paymentGatewayAddress) {
       throw new Error('Wallet no conectado o dirección de gateway no configurada');
     }
@@ -240,7 +251,11 @@ export const useWeb3 = (
         signer
       );
       
-      const tx = await gatewayContract.processPayment(productId, orderId);
+      const tx = await gatewayContract.processPayment(
+        productId,
+        orderId,
+        toRawUsdtAmount(amount)
+      );
       await tx.wait();
       
       return tx.hash;

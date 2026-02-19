@@ -216,7 +216,7 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <KeyRound className="h-4 w-4" />
-                  Créditos AI
+                  Créditos
                 </CardTitle>
               </CardHeader>
               <CardContent>

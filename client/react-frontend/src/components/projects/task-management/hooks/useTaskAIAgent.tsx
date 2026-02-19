@@ -64,7 +64,7 @@ export const useGemini = (): UseGeminiReturn => {
         type: 'no_credits',
         message: hasCustomToken 
           ? 'No tienes créditos disponibles. Aunque tienes un token configurado, ha alcanzado su límite.'
-          : 'Te has quedado sin créditos AI. Compra más créditos o configura tu propio token de Gemini.',
+          : 'Te has quedado sin créditos. Compra más créditos o configura tu propio token de Gemini.',
         statusCode,
         details: errorData,
         canRetry: false,
@@ -128,7 +128,7 @@ export const useGemini = (): UseGeminiReturn => {
       no_credits: () => {
         toast({
           variant: "destructive",
-          title: "Sin créditos AI",
+          title: "Sin créditos",
           description: geminiError.message,
           action: geminiError.actionRequired === 'configure_token' ? (
             <Button

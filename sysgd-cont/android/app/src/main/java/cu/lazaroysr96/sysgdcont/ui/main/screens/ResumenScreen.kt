@@ -1,10 +1,15 @@
 package cu.lazaroysr96.sysgdcont.ui.main.screens
 
+import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
@@ -13,6 +18,18 @@ import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
 fun ResumenScreen(viewModel: LedgerViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val report = uiState.annualReport
+    val context = LocalContext.current
+
+    LaunchedEffect(uiState.pdfIntent) {
+        uiState.pdfIntent?.let { intent ->
+            try {
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                // Handle error - no PDF viewer app
+            }
+            viewModel.clearPdfIntent()
+        }
+    }
 
     if (report == null) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -58,6 +75,44 @@ fun ResumenScreen(viewModel: LedgerViewModel) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Tributos")
                 Text("${String.format("%.2f", report.totalTributos)} CUP")
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(
+                onClick = { viewModel.downloadPdf() },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isDownloadingPdf
+            ) {
+                if (uiState.isDownloadingPdf) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Generando PDF...")
+                } else {
+                    Icon(Icons.Default.Download, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Descargar PDF")
+                }
+            }
+        }
+
+        uiState.pdfError?.let { error ->
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                ) {
+                    Text(
+                        text = error,
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
             }
         }
     }

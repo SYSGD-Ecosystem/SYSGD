@@ -1,6 +1,9 @@
 package cu.lazaroysr96.sysgdcont.data.repository
 
 import android.content.Context
+import android.content.Intent
+import android.os.Environment
+import androidx.core.content.FileProvider
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -11,9 +14,13 @@ import com.google.gson.reflect.TypeToken
 import cu.lazaroysr96.sysgdcont.data.api.ApiService
 import cu.lazaroysr96.sysgdcont.data.model.*
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -473,6 +480,51 @@ class LedgerRepository @Inject constructor(
             emptyMonthEntries,
             emptyTributos
         )
+    }
+
+    suspend fun downloadPdf(): Result<Intent> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val token = authRepository.getToken() ?: return@withContext Result.failure(Exception("No token"))
+                val registro = getRegistro()
+
+                val response = apiService.downloadPdf("Bearer $token", registro)
+
+                if (!response.isSuccessful) {
+                    return@withContext Result.failure(Exception("Error al generar PDF: ${response.code()}"))
+                }
+
+                val body = response.body()
+                if (body == null) {
+                    return@withContext Result.failure(Exception("Respuesta vacía del servidor"))
+                }
+
+                val fileName = "Registro_TCP_${registro.generales.anio}.pdf"
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val file = File(downloadsDir, fileName)
+
+                FileOutputStream(file).use { output ->
+                    body.byteStream().use { input ->
+                        input.copyTo(output)
+                    }
+                }
+
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file
+                )
+
+                val shareIntent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "application/pdf")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+
+                Result.success(Intent.createChooser(shareIntent, "Abrir PDF"))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
     }
 }
 

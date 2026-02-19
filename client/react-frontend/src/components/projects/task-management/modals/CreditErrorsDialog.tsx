@@ -64,7 +64,7 @@ export const CreditsErrorDialog: React.FC<CreditsErrorDialogProps> = ({
                 </div>
               </div>
               <DialogTitle className="text-center text-xl">
-                Te has quedado sin créditos AI
+                Te has quedado sin créditos
               </DialogTitle>
               <DialogDescription className="text-center">
                 {error.message}
@@ -75,8 +75,8 @@ export const CreditsErrorDialog: React.FC<CreditsErrorDialogProps> = ({
               <Alert>
                 <Sparkles className="h-4 w-4" />
                 <AlertDescription>
-                  Los créditos AI te permiten usar nuestro asistente inteligente para mejorar 
-                  tus tareas, generar contenido y mucho más.
+                  Los créditos te permiten usar funciones de la plataforma como asistentes,
+                  generación de contenido y otros servicios.
                 </AlertDescription>
               </Alert>
 

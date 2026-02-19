@@ -1,6 +1,7 @@
 package cu.lazaroysr96.sysgdcont.data.api
 
 import cu.lazaroysr96.sysgdcont.data.model.*
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -22,4 +23,11 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body registro: RegistroTCP
     ): Response<Unit>
+
+    @POST("api/accounting-documents/pdf/tcp")
+    @Streaming
+    suspend fun downloadPdf(
+        @Header("Authorization") token: String,
+        @Body registro: RegistroTCP
+    ): Response<ResponseBody>
 }
