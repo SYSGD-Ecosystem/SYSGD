@@ -1,4 +1,4 @@
-import { ArrowLeft, FileSpreadsheet, Printer } from "lucide-react";
+import { ArrowLeft, FileSpreadsheet, FileText, Printer } from "lucide-react";
 import { type ChangeEvent, type Dispatch, type FC, type SetStateAction, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import useExportTable from "@/hooks/useExportTable";
 import api from "@/lib/api";
+import { generateTcpPdf } from "@/lib/pdfService";
 import { useToast } from "@/hooks/use-toast";
 
 type SheetTab = "GENERALES" | "INGRESOS" | "GASTOS" | "TRIBUTOS";
@@ -281,6 +282,15 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 		} finally {
 			setIsSaving(false);
 		}
+	};
+
+	const handleGeneratePdf = () => {
+		generateTcpPdf({
+			generalData,
+			ingresos,
+			gastos,
+			tributos,
+		});
 	};
 
 	const monthTotalsIngresos = useMemo(
@@ -575,6 +585,7 @@ const TcpIncomeExpenseRegisterPage: FC = () => {
 								</Button>
 							)}
 							<Button variant="outline" onClick={exportToXlsx}><FileSpreadsheet className="w-4 h-4 mr-1" />Exportar Excel</Button>
+							<Button variant="outline" onClick={handleGeneratePdf}><FileText className="w-4 h-4 mr-1" />Exportar PDF</Button>
 						<Button onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" />Imprimir</Button>
 					</div>
 				</div>
