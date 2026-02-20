@@ -11,6 +11,7 @@ import javax.inject.Inject
 
 data class AuthUiState(
     val isLoading: Boolean = false,
+    val isSessionResolved: Boolean = false,
     val isAuthenticated: Boolean = false,
     val currentUser: AuthUser? = null,
     val error: String? = null
@@ -27,7 +28,7 @@ class AuthViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             authRepository.isAuthenticated.collect { isAuth ->
-                _uiState.update { it.copy(isAuthenticated = isAuth) }
+                _uiState.update { it.copy(isAuthenticated = isAuth, isSessionResolved = true) }
             }
         }
         viewModelScope.launch {
