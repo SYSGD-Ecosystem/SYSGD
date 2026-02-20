@@ -10,7 +10,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
 }
 
 sealed class MainTab(val route: String, val title: String, val icon: ImageVector) {
-    object Generales : MainTab("generales", "Generales", Icons.Default.Person)
+    object Generales : MainTab("generales", "General", Icons.Default.Person)
     object Ingresos : MainTab("ingresos", "Ingresos", Icons.Default.TrendingUp)
     object Gastos : MainTab("gastos", "Gastos", Icons.Default.TrendingDown)
     object Tributos : MainTab("tributos", "Tributos", Icons.Default.AccountBalance)

@@ -66,7 +66,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Sistema de Registro de Ingresos y Gastos para TCP",
+                text = "Registro de Ingresos y Gastos para TCP",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -74,7 +74,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "SYSGD CONT\nCopyright 2026",
+                text = "SYSGD\nCopyright 2026",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center

@@ -15,10 +15,13 @@ import cu.lazaroysr96.sysgdcont.data.api.ApiService
 import cu.lazaroysr96.sysgdcont.data.model.*
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import okhttp3.ResponseBody
+import retrofit2.Response
 import java.io.File
 import java.io.FileOutputStream
 import javax.inject.Inject
@@ -108,6 +111,71 @@ class LedgerRepository @Inject constructor(
 
     suspend fun addGasto(month: String, dia: Int, importe: Double) {
         addEntry("gastos", month, dia, importe)
+    }
+
+    suspend fun deleteIngreso(month: String, dia: Int) {
+        deleteEntry("ingresos", month, dia)
+    }
+
+    suspend fun deleteGasto(month: String, dia: Int) {
+        deleteEntry("gastos", month, dia)
+    }
+
+    suspend fun updateIngreso(month: String, oldDia: Int, newDia: Int, importe: Double) {
+        updateEntry("ingresos", month, oldDia, newDia, importe)
+    }
+
+    suspend fun updateGasto(month: String, oldDia: Int, newDia: Int, importe: Double) {
+        updateEntry("gastos", month, oldDia, newDia, importe)
+    }
+
+    private suspend fun updateEntry(type: String, month: String, oldDia: Int, newDia: Int, importe: Double) {
+        val current = getRegistro()
+        val entries = when (type) {
+            "ingresos" -> current.ingresos.toMutableMap()
+            "gastos" -> current.gastos.toMutableMap()
+            else -> return
+        }
+
+        val monthEntries = entries[month]?.toMutableList() ?: mutableListOf()
+        
+        // Remove old entry
+        monthEntries.removeAll { it.dia == oldDia.toString() }
+        
+        // Add new entry with new day
+        if (newDia in 1..31 && importe > 0) {
+            monthEntries.add(DayAmountRow(newDia.toString(), String.format("%.2f", importe)))
+        }
+
+        entries[month] = monthEntries
+
+        val updated = when (type) {
+            "ingresos" -> current.copy(ingresos = entries)
+            "gastos" -> current.copy(gastos = entries)
+            else -> current
+        }
+        saveRegistro(updated)
+    }
+
+    private suspend fun deleteEntry(type: String, month: String, dia: Int) {
+        val current = getRegistro()
+        val entries = when (type) {
+            "ingresos" -> current.ingresos.toMutableMap()
+            "gastos" -> current.gastos.toMutableMap()
+            else -> return
+        }
+
+        val monthEntries = entries[month]?.toMutableList() ?: mutableListOf()
+        monthEntries.removeAll { it.dia == dia.toString() }
+
+        entries[month] = monthEntries
+
+        val updated = when (type) {
+            "ingresos" -> current.copy(ingresos = entries)
+            "gastos" -> current.copy(gastos = entries)
+            else -> current
+        }
+        saveRegistro(updated)
     }
 
     private suspend fun addEntry(type: String, month: String, dia: Int, importe: Double) {
@@ -482,48 +550,99 @@ class LedgerRepository @Inject constructor(
         )
     }
 
-    suspend fun downloadPdf(): Result<Intent> {
+    suspend fun downloadPdf(onRetryMessage: (String) -> Unit): Result<Intent> {
         return withContext(Dispatchers.IO) {
             try {
                 val token = authRepository.getToken() ?: return@withContext Result.failure(Exception("No token"))
                 val registro = getRegistro()
 
-                val response = apiService.downloadPdf("Bearer $token", registro)
-
-                if (!response.isSuccessful) {
-                    return@withContext Result.failure(Exception("Error al generar PDF: ${response.code()}"))
-                }
-
-                val body = response.body()
-                if (body == null) {
-                    return@withContext Result.failure(Exception("Respuesta vacía del servidor"))
-                }
-
-                val fileName = "Registro_TCP_${registro.generales.anio}.pdf"
-                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val file = File(downloadsDir, fileName)
-
-                FileOutputStream(file).use { output ->
-                    body.byteStream().use { input ->
-                        input.copyTo(output)
+                val pdfPayload = TcpPdfPayload(
+                    generalData = PdfGeneralData(
+                        anio = registro.generales.anio.toString(),
+                        nombre = registro.generales.nombre,
+                        nit = registro.generales.nit,
+                        fiscalCalle = registro.generales.fiscalCalle,
+                        fiscalMunicipio = registro.generales.fiscalMunicipio,
+                        fiscalProvincia = registro.generales.fiscalProvincia,
+                        legalCalle = registro.generales.legalCalle,
+                        legalMunicipio = registro.generales.legalMunicipio,
+                        legalProvincia = registro.generales.legalProvincia,
+                        actividad = registro.generales.actividad,
+                        codigo = registro.generales.codigo
+                    ),
+                    ingresos = registro.ingresos,
+                    gastos = registro.gastos,
+                    tributos = registro.tributos.map { row ->
+                        TributoPdfRow(
+                            mes = row.mes,
+                            b = row.ventas,
+                            c = row.fuerza,
+                            d = row.sellos,
+                            e = row.anuncios,
+                            f = row.css20,
+                            h = row.css14,
+                            i = row.otros,
+                            j = row.restauracion,
+                            l = row.arrendamiento,
+                            m = row.exonerado,
+                            n = row.otrosMFP,
+                            o = row.cuotaMensual,
+                            p = ""
+                        )
                     }
-                }
-
-                val uri = FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.fileprovider",
-                    file
                 )
 
-                val shareIntent = Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(uri, "application/pdf")
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
+                val response = apiService.downloadPdf("Bearer $token", pdfPayload)
 
-                Result.success(Intent.createChooser(shareIntent, "Abrir PDF"))
+                if (response.code() == 502) {
+                    onRetryMessage("Servidor dormido. Reintentando en 15 segundos...")
+                    delay(15000)
+                    val retryResponse = apiService.downloadPdf("Bearer $token", pdfPayload)
+                    if (!retryResponse.isSuccessful) {
+                        return@withContext Result.failure(Exception("Error al generar PDF: ${retryResponse.code()}"))
+                    }
+                    processPdfResponse(retryResponse)
+                } else if (!response.isSuccessful) {
+                    return@withContext Result.failure(Exception("Error al generar PDF: ${response.code()}"))
+                } else {
+                    processPdfResponse(response)
+                }
             } catch (e: Exception) {
                 Result.failure(e)
             }
+        }
+    }
+
+    private suspend fun processPdfResponse(response: Response<ResponseBody>): Result<Intent> {
+        return withContext(Dispatchers.IO) {
+            val body = response.body()
+            if (body == null) {
+                return@withContext Result.failure(Exception("Respuesta vacía del servidor"))
+            }
+
+            val registro = getRegistro()
+            val fileName = "Registro_TCP_${registro.generales.anio}.pdf"
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val file = File(downloadsDir, fileName)
+
+            FileOutputStream(file).use { output ->
+                body.byteStream().use { input ->
+                    input.copyTo(output)
+                }
+            }
+
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+
+            val shareIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/pdf")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+
+            Result.success(Intent.createChooser(shareIntent, "Abrir PDF"))
         }
     }
 }

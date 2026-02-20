@@ -42,6 +42,47 @@ data class RegistroTCP(
     val tributos: List<TributoRow> = emptyList()
 )
 
+data class TcpPdfPayload(
+    val generalData: PdfGeneralData,
+    val ingresos: Map<String, List<DayAmountRow>>,
+    val gastos: Map<String, List<DayAmountRow>>,
+    val tributos: List<TributoPdfRow>
+)
+
+data class PdfGeneralData(
+    val anio: String,
+    val nombre: String,
+    val nit: String,
+    val fiscalCalle: String,
+    val fiscalMunicipio: String,
+    val fiscalProvincia: String,
+    val legalCalle: String,
+    val legalMunicipio: String,
+    val legalProvincia: String,
+    val actividad: String,
+    val codigo: String,
+    val firmaDia: String = "",
+    val firmaMes: String = "",
+    val firmaAnio: String = ""
+)
+
+data class TributoPdfRow(
+    val mes: String,
+    val b: String,
+    val c: String,
+    val d: String,
+    val e: String,
+    val f: String,
+    val h: String,
+    val i: String,
+    val j: String,
+    val l: String,
+    val m: String,
+    val n: String,
+    val o: String,
+    val p: String
+)
+
 data class VersionInfo(
     val serverVersion: String = "",
     val lastDownloadedVersion: String = "",

@@ -28,6 +28,6 @@ interface ApiService {
     @Streaming
     suspend fun downloadPdf(
         @Header("Authorization") token: String,
-        @Body registro: RegistroTCP
+        @Body payload: TcpPdfPayload
     ): Response<ResponseBody>
 }

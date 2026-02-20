@@ -1,6 +1,11 @@
 package cu.lazaroysr96.sysgdcont.ui.main.screens
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -11,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
 
@@ -19,13 +25,22 @@ fun ResumenScreen(viewModel: LedgerViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val report = uiState.annualReport
     val context = LocalContext.current
+    var hasStoragePermission by remember { mutableStateOf(false) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasStoragePermission = isGranted
+        if (isGranted) {
+            viewModel.downloadPdf()
+        }
+    }
 
     LaunchedEffect(uiState.pdfIntent) {
         uiState.pdfIntent?.let { intent ->
             try {
                 context.startActivity(intent)
             } catch (e: Exception) {
-                // Handle error - no PDF viewer app
             }
             viewModel.clearPdfIntent()
         }
@@ -81,7 +96,22 @@ fun ResumenScreen(viewModel: LedgerViewModel) {
         item {
             Spacer(modifier = Modifier.height(24.dp))
             Button(
-                onClick = { viewModel.downloadPdf() },
+                onClick = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        viewModel.downloadPdf()
+                    } else {
+                        hasStoragePermission = ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE
+                        ) == PackageManager.PERMISSION_GRANTED
+
+                        if (hasStoragePermission) {
+                            viewModel.downloadPdf()
+                        } else {
+                            permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        }
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !uiState.isDownloadingPdf
             ) {
@@ -97,6 +127,21 @@ fun ResumenScreen(viewModel: LedgerViewModel) {
                     Icon(Icons.Default.Download, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Descargar PDF")
+                }
+            }
+        }
+
+        uiState.pdfRetryMessage?.let { message ->
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+                ) {
+                    Text(
+                        text = message,
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
                 }
             }
         }

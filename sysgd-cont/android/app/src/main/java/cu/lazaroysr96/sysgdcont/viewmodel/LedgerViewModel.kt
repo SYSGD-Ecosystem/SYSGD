@@ -21,7 +21,8 @@ data class LedgerUiState(
     val syncMessage: String? = null,
     val isDownloadingPdf: Boolean = false,
     val pdfError: String? = null,
-    val pdfIntent: Intent? = null
+    val pdfIntent: Intent? = null,
+    val pdfRetryMessage: String? = null
 )
 
 @HiltViewModel
@@ -61,6 +62,30 @@ class LedgerViewModel @Inject constructor(
     fun addGasto(month: String, dia: Int, importe: Double) {
         viewModelScope.launch {
             ledgerRepository.addGasto(month, dia, importe)
+        }
+    }
+
+    fun editIngreso(month: String, oldDia: Int, newDia: Int, importe: Double) {
+        viewModelScope.launch {
+            ledgerRepository.updateIngreso(month, oldDia, newDia, importe)
+        }
+    }
+
+    fun editGasto(month: String, oldDia: Int, newDia: Int, importe: Double) {
+        viewModelScope.launch {
+            ledgerRepository.updateGasto(month, oldDia, newDia, importe)
+        }
+    }
+
+    fun deleteIngreso(month: String, dia: Int) {
+        viewModelScope.launch {
+            ledgerRepository.deleteIngreso(month, dia)
+        }
+    }
+
+    fun deleteGasto(month: String, dia: Int) {
+        viewModelScope.launch {
+            ledgerRepository.deleteGasto(month, dia)
         }
     }
 
@@ -135,14 +160,16 @@ class LedgerViewModel @Inject constructor(
 
     fun downloadPdf() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isDownloadingPdf = true, pdfError = null, pdfIntent = null) }
+            _uiState.update { it.copy(isDownloadingPdf = true, pdfError = null, pdfIntent = null, pdfRetryMessage = null) }
 
-            ledgerRepository.downloadPdf()
+            ledgerRepository.downloadPdf { message ->
+                _uiState.update { it.copy(pdfRetryMessage = message) }
+            }
                 .onSuccess { intent ->
-                    _uiState.update { it.copy(isDownloadingPdf = false, pdfIntent = intent) }
+                    _uiState.update { it.copy(isDownloadingPdf = false, pdfIntent = intent, pdfRetryMessage = null) }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isDownloadingPdf = false, pdfError = e.message) }
+                    _uiState.update { it.copy(isDownloadingPdf = false, pdfError = e.message, pdfRetryMessage = null) }
                 }
         }
     }
