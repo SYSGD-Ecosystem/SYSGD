@@ -69,6 +69,11 @@ export interface Order {
 	completed_at?: string;
 }
 
+interface PendingOrder {
+	amount: string;
+	orderId: string;
+}
+
 const CryptoPurchase: React.FC = () => {
 	const [error, setError] = useState<string | null>(null);
 	const [products, setProducts] = useState<Product[]>([]);
@@ -83,12 +88,13 @@ const CryptoPurchase: React.FC = () => {
 	const [copied, setCopied] = useState(false);
 	const [orders, setOrders] = useState<Order[]>([]);
 	const [isVerifying, setIsVerifying] = useState(false);
+	const [pendingOrder, setPendingOrder] = useState<PendingOrder | null>(null);
 	// const [verifyingOrderId, setVerifyingOrderId] = useState<string | null>(null);
 	const { toast } = useToast();
 
 	// const { address, isConnected, balance, connect, disconnect } = useWeb3Mock();
-	const usdtAddress = "0xbf1d573d4ce347b7ba0f198028cca36df7aeaf9b";
-	const paymentGatewayAddress = "0x484cad0b7237dfda563f976ce54a53af1b515a5c";
+	const usdtAddress = networkInfo?.testUsdtAddress ?? "";
+	const paymentGatewayAddress = networkInfo?.paymentGatewayAddress ?? "";
 
 	const {
 		address,
@@ -164,16 +170,38 @@ const CryptoPurchase: React.FC = () => {
 
 	const handleApprove = async () => {
 		if (!selectedProduct || !address) return;
+		if (!usdtAddress || !paymentGatewayAddress) {
+			toast({
+				variant: "destructive",
+				title: "Configuración incompleta",
+				description: "No se encontraron direcciones de contrato para esta red",
+			});
+			return;
+		}
 
 		setProcessing(true);
 		try {
+			// 1. Crear orden en backend antes de aprobar
+			const orderResponse = await api.post("/api/crypto-payments/orders", {
+				productId: selectedProduct.productId,
+				walletAddress: address,
+			});
+			const order = orderResponse.data;
+
+			// 2. Aprobar monto exacto para esa orden
+			await approveUSDT(order.amount);
+			setPendingOrder({
+				amount: order.amount,
+				orderId: order.orderId,
+			});
+
 			toast({
-				title: "Confirmación lista",
-				description: "Ahora se creará la orden y se solicitará la aprobación exacta",
+				title: "USDT aprobado",
+				description: "Ahora puedes proceder con el pago final",
 			});
 
 			setPurchaseStep("pay");
-		} catch (error) {
+		} catch {
 			toast({
 				variant: "destructive",
 				title: "Error",
@@ -195,6 +223,7 @@ const CryptoPurchase: React.FC = () => {
 		setSelectedProduct(null);
 		setPurchaseStep("select");
 		setTxHash("");
+		setPendingOrder(null);
 	};
 
 	/**
@@ -234,27 +263,24 @@ const CryptoPurchase: React.FC = () => {
 	// Actualizar la función handlePay
 	const handlePay = async () => {
 		if (!selectedProduct || !address) return;
+		if (!pendingOrder) {
+			toast({
+				variant: "destructive",
+				title: "Orden no disponible",
+				description: "Primero debes completar la aprobación de USDT",
+			});
+			return;
+		}
 
 		setProcessing(true);
 		setIsVerifying(false);
 
 		try {
-			// 1. Crear orden en backend
-			const orderResponse = await api.post("/api/crypto-payments/orders", {
-				productId: selectedProduct.productId,
-				walletAddress: address,
-			});
-
-			const order = orderResponse.data;
-
-			// 2. Aprobar monto exacto de la orden
-			await approveUSDT(order.amount);
-
-			// 3. Procesar pago en blockchain
+			// 3. Procesar pago final con la orden ya aprobada
 			const txHash = await processPayment(
 				selectedProduct.productId,
-				order.orderId,
-				order.amount,
+				pendingOrder.orderId,
+				pendingOrder.amount,
 			);
 
 			setTxHash(txHash);
@@ -267,7 +293,7 @@ const CryptoPurchase: React.FC = () => {
 			});
 
 			// 4. Verificar que el pago se complete
-			const completed = await verifyOrderCompletion(order.orderId);
+			const completed = await verifyOrderCompletion(pendingOrder.orderId);
 
 			setIsVerifying(false);
 

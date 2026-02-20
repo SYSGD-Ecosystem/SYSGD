@@ -45,8 +45,12 @@ import api from "@/lib/api";
 
 type Theme = "classic" | "red" | "green" | "fire" | "purple" | "pink";
 
-const usdtAddress = "0xbf1d573d4ce347b7ba0f198028cca36df7aeaf9b";
-const paymentGatewayAddress = "0x484cad0b7237dfda563f976ce54a53af1b515a5c";
+interface NetworkInfo {
+	chainId: number;
+	name: string;
+	testUsdtAddress: string;
+	paymentGatewayAddress: string;
+}
 
 const themes = [
 	{ id: "classic", name: "Clásico", colors: ["#3b82f6", "#1e40af"] },
@@ -314,12 +318,27 @@ const SettingsPage: FC = () => {
 	const navigate = useNavigate();
 	const [activeCategory, setActiveCategory] = useState("appearance");
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+	const [networkInfo, setNetworkInfo] = useState<NetworkInfo | null>(null);
 
 	const { theme, setTheme, isDark, setIsDark } = useTheme();
 	const { toggleUserPublic } = useUsers();
+	const usdtAddress = networkInfo?.testUsdtAddress ?? "";
+	const paymentGatewayAddress = networkInfo?.paymentGatewayAddress ?? "";
 
 	const { address, isConnected, usdtBalance, connect, disconnect, chainId } =
 		useWeb3(usdtAddress, paymentGatewayAddress);
+
+	useEffect(() => {
+		const loadNetworkInfo = async () => {
+			try {
+				const response = await api.get<NetworkInfo>("/api/crypto-payments/network");
+				setNetworkInfo(response.data);
+			} catch {
+				toast.error("No se pudo cargar la configuración de red");
+			}
+		};
+		void loadNetworkInfo();
+	}, []);
 
 	const networkName =
 		chainId === 11155111

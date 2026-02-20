@@ -39,13 +39,22 @@ import PurchaseCredits from "@/components/billing/PurchaseCredist";
 // Definición de las secciones
 type Section = "credits" | "plans" | "transactions" | "categories";
 
+interface NetworkInfo {
+	chainId: number;
+	name: string;
+	testUsdtAddress: string;
+	paymentGatewayAddress: string;
+}
+
 const Purchase: FC = () => {
-	const usdtAddress = "0xbf1d573d4ce347b7ba0f198028cca36df7aeaf9b";
-	const paymentGatewayAddress = "0x484cad0b7237dfda563f976ce54a53af1b515a5c";
+	const [networkInfo, setNetworkInfo] = useState<NetworkInfo | null>(null);
 
 	const [activeSection, setActiveSection] = useState<Section>("credits");
 	const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 	const [showTestnetAlert, setShowTestnetAlert] = useState(true);
+
+	const usdtAddress = networkInfo?.testUsdtAddress ?? "";
+	const paymentGatewayAddress = networkInfo?.paymentGatewayAddress ?? "";
 
 	const { address, isConnected, usdtBalance, chainId, connect, disconnect } =
 		useWeb3(usdtAddress, paymentGatewayAddress);
@@ -57,6 +66,18 @@ const Purchase: FC = () => {
 	const loadOrdersWrapper = useCallback(async () => {
 		await loadOrders();
 	}, [loadOrders]);
+
+	useEffect(() => {
+		const loadNetworkInfo = async () => {
+			try {
+				const response = await api.get<NetworkInfo>("/api/crypto-payments/network");
+				setNetworkInfo(response.data);
+			} catch {
+				toast.error("No se pudo cargar la configuración de red de pagos");
+			}
+		};
+		void loadNetworkInfo();
+	}, []);
 
 	useEffect(() => {
 		const buckets = billing?.credit_spending_priority;
@@ -103,19 +124,21 @@ const Purchase: FC = () => {
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Atención</AlertDialogTitle>
-													<AlertDialogDescription className="space-y-2">
-								<div>
+						<AlertDialogDescription asChild>
+							<div className="space-y-2">
+								<p>
 									Las funciones de pago y compra de créditos están en fase de
 									prueba. Por el momento, solo es posible utilizarlas mediante un
 									token de prueba en la red Testnet Sepolia.
-								</div>
-								<div>
+								</p>
+								<p>
 									Si deseas probar estas funcionalidades, envía un correo
-									electrónico al administrador de la plataforma a {" "}
+									electrónico al administrador de la plataforma a{" "}
 									<strong>lazaroyunier96@outlook.es</strong> para recibir créditos
 									de prueba.
-								</div>
-							</AlertDialogDescription>
+								</p>
+							</div>
+						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogAction onClick={() => setShowTestnetAlert(false)}>
@@ -286,6 +309,8 @@ const Purchase: FC = () => {
 					usdtBalance={usdtBalance}
 					isConnected={isConnected}
 					address={address}
+					usdtAddress={usdtAddress}
+					paymentGatewayAddress={paymentGatewayAddress}
 					onPurchaseComplete={async () => {
 						await loadOrders();
 						// Opcional: aquí podrías recargar otros datos si es necesario
