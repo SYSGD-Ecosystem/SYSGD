@@ -8,4 +8,5 @@ gradle/wrapper/gradle-wrapper.jar
 local.properties
 *.iml
 .DS_Store
+firma/
 
