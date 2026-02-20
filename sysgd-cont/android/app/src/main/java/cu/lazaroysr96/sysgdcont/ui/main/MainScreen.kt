@@ -9,7 +9,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -29,12 +28,21 @@ fun MainScreen(
 ) {
     val navController = rememberNavController()
     val ledgerState by ledgerViewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("SYSGD Cont") },
                 actions = {
+                    if (ledgerState.hasLocalChanges && !ledgerState.isSyncing) {
+                        Icon(
+                            Icons.Default.CloudOff,
+                            contentDescription = "Cambios locales sin sincronizar",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
                     if (ledgerState.isSyncing) {
                         CircularProgressIndicator(
                             modifier = Modifier
@@ -98,16 +106,68 @@ fun MainScreen(
     }
 
     // Show sync result
-    if (ledgerState.syncSuccess) {
-        LaunchedEffect(Unit) {
+    ledgerState.syncMessage?.let { message ->
+        LaunchedEffect(message) {
+            snackbarHostState.showSnackbar(message)
             ledgerViewModel.clearSyncStatus()
         }
     }
 
     ledgerState.syncError?.let { error ->
         LaunchedEffect(error) {
-            // Could show a snackbar here
+            snackbarHostState.showSnackbar("Error de sincronización: $error")
             ledgerViewModel.clearSyncStatus()
         }
+    }
+
+    ledgerState.pendingSyncDecision?.let { decision ->
+        val conflictText = decision.conflictInfo?.conflictMessage.orEmpty()
+        val isConflict = decision.action == cu.lazaroysr96.sysgdcont.data.model.SyncAction.CONFLICT_DETECTED ||
+            (decision.conflictInfo?.hasConflict == true)
+
+        AlertDialog(
+            onDismissRequest = { ledgerViewModel.dismissSyncDecision() },
+            title = {
+                Text(
+                    if (isConflict) "Conflicto de sincronización"
+                    else "Confirmar sincronización"
+                )
+            },
+            text = {
+                Text(
+                    buildString {
+                        append(decision.message)
+                        if (conflictText.isNotBlank()) {
+                            append("\n\n")
+                            append(conflictText)
+                        }
+                    }
+                )
+            },
+            dismissButton = {
+                TextButton(onClick = { ledgerViewModel.dismissSyncDecision() }) {
+                    Text("Cancelar")
+                }
+            },
+            confirmButton = {
+                Row {
+                    if (decision.remoteRegistro != null) {
+                        TextButton(onClick = { ledgerViewModel.confirmUseRemote() }) {
+                            Text("Usar nube")
+                        }
+                    }
+                    if (decision.action == cu.lazaroysr96.sysgdcont.data.model.SyncAction.PUSH_ONLY || isConflict) {
+                        TextButton(onClick = { ledgerViewModel.confirmUseLocal() }) {
+                            Text("Usar local")
+                        }
+                    }
+                    if (!isConflict && decision.mergedRegistro != null) {
+                        TextButton(onClick = { ledgerViewModel.confirmUseMerge() }) {
+                            Text("Merge")
+                        }
+                    }
+                }
+            }
+        )
     }
 }

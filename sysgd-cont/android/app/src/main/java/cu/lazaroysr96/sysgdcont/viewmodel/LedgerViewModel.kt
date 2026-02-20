@@ -15,10 +15,12 @@ data class LedgerUiState(
     val registro: RegistroTCP = RegistroTCP(),
     val annualReport: AnnualReport? = null,
     val lastSync: String? = null,
+    val hasLocalChanges: Boolean = false,
     val isSyncing: Boolean = false,
     val syncError: String? = null,
     val syncSuccess: Boolean = false,
     val syncMessage: String? = null,
+    val pendingSyncDecision: SyncResult? = null,
     val isDownloadingPdf: Boolean = false,
     val pdfError: String? = null,
     val pdfIntent: Intent? = null,
@@ -43,6 +45,11 @@ class LedgerViewModel @Inject constructor(
         viewModelScope.launch {
             ledgerRepository.lastSync.collect { sync ->
                 _uiState.update { it.copy(lastSync = sync) }
+            }
+        }
+        viewModelScope.launch {
+            ledgerRepository.localModified.collect { modified ->
+                _uiState.update { it.copy(hasLocalChanges = modified) }
             }
         }
     }
@@ -129,18 +136,28 @@ class LedgerViewModel @Inject constructor(
             
             ledgerRepository.sync()
                 .onSuccess { result ->
-                    // Forzar actualización del registro en la UI
-                    val updatedRegistro = ledgerRepository.getRegistro()
-                    val updatedReport = ledgerRepository.calculateAnnualReport(updatedRegistro)
-                    
-                    _uiState.update { 
-                        it.copy(
-                            isSyncing = false, 
-                            syncSuccess = true,
-                            syncMessage = result.message,
-                            registro = updatedRegistro,
-                            annualReport = updatedReport
-                        ) 
+                    if (result.needsUserDecision) {
+                        _uiState.update {
+                            it.copy(
+                                isSyncing = false,
+                                syncMessage = result.message,
+                                pendingSyncDecision = result
+                            )
+                        }
+                    } else {
+                        val updatedRegistro = ledgerRepository.getRegistro()
+                        val updatedReport = ledgerRepository.calculateAnnualReport(updatedRegistro)
+
+                        _uiState.update {
+                            it.copy(
+                                isSyncing = false,
+                                syncSuccess = true,
+                                syncMessage = result.message,
+                                pendingSyncDecision = null,
+                                registro = updatedRegistro,
+                                annualReport = updatedReport
+                            )
+                        }
                     }
                 }
                 .onFailure { e ->
@@ -154,8 +171,65 @@ class LedgerViewModel @Inject constructor(
         }
     }
 
+    fun dismissSyncDecision() {
+        _uiState.update { it.copy(pendingSyncDecision = null) }
+    }
+
+    fun confirmUseRemote() {
+        val decision = _uiState.value.pendingSyncDecision ?: return
+        val remote = decision.remoteRegistro ?: return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSyncing = true, syncError = null, pendingSyncDecision = null) }
+            ledgerRepository.resolveWithRemote(remote, decision.remoteVersion)
+                .onSuccess { result -> applySyncResult(result) }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isSyncing = false, syncError = e.message) }
+                }
+        }
+    }
+
+    fun confirmUseLocal() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSyncing = true, syncError = null, pendingSyncDecision = null) }
+            ledgerRepository.resolveWithLocal()
+                .onSuccess { result -> applySyncResult(result) }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isSyncing = false, syncError = e.message) }
+                }
+        }
+    }
+
+    fun confirmUseMerge() {
+        val merged = _uiState.value.pendingSyncDecision?.mergedRegistro ?: return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSyncing = true, syncError = null, pendingSyncDecision = null) }
+            ledgerRepository.resolveWithMerge(merged)
+                .onSuccess { result -> applySyncResult(result) }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isSyncing = false, syncError = e.message) }
+                }
+        }
+    }
+
+    private suspend fun applySyncResult(result: SyncResult) {
+        val updatedRegistro = ledgerRepository.getRegistro()
+        val updatedReport = ledgerRepository.calculateAnnualReport(updatedRegistro)
+        _uiState.update {
+            it.copy(
+                isSyncing = false,
+                syncSuccess = true,
+                syncMessage = result.message,
+                pendingSyncDecision = null,
+                registro = updatedRegistro,
+                annualReport = updatedReport
+            )
+        }
+    }
+
     fun clearSyncStatus() {
-        _uiState.update { it.copy(syncError = null, syncSuccess = false) }
+        _uiState.update { it.copy(syncError = null, syncSuccess = false, syncMessage = null) }
     }
 
     fun downloadPdf() {

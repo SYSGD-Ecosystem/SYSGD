@@ -93,6 +93,7 @@ data class VersionInfo(
 data class ConflictInfo(
     val hasConflict: Boolean,
     val conflictMessage: String,
+    val mergePossible: Boolean = false,
     val localNewEntries: List<DayAmountRow> = emptyList(),
     val remoteNewEntries: List<DayAmountRow> = emptyList()
 )
@@ -102,7 +103,10 @@ data class SyncResult(
     val message: String,
     val action: SyncAction,
     val conflictInfo: ConflictInfo? = null,
-    val needsUserDecision: Boolean = false
+    val needsUserDecision: Boolean = false,
+    val remoteRegistro: RegistroTCP? = null,
+    val remoteVersion: String = "",
+    val mergedRegistro: RegistroTCP? = null
 )
 
 enum class SyncAction {

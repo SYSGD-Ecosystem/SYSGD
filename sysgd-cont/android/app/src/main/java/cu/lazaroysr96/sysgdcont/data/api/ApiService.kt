@@ -21,8 +21,8 @@ interface ApiService {
     @PUT("api/cont-ledger")
     suspend fun updateLedger(
         @Header("Authorization") token: String,
-        @Body registro: RegistroTCP
-    ): Response<Unit>
+        @Body request: UpdateLedgerRequest
+    ): Response<UpdateLedgerResponse>
 
     @POST("api/accounting-documents/pdf/tcp")
     @Streaming

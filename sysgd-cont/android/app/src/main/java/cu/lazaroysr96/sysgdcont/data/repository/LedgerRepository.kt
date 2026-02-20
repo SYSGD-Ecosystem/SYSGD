@@ -10,7 +10,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import cu.lazaroysr96.sysgdcont.data.api.ApiService
 import cu.lazaroysr96.sysgdcont.data.model.*
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -24,6 +23,7 @@ import okhttp3.ResponseBody
 import retrofit2.Response
 import java.io.File
 import java.io.FileOutputStream
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -41,6 +41,7 @@ class LedgerRepository @Inject constructor(
         private val LOCAL_MODIFIED_KEY = stringPreferencesKey("local_modified")
         private val SERVER_VERSION_KEY = stringPreferencesKey("server_version")
         private val LAST_DOWNLOADED_VERSION_KEY = stringPreferencesKey("last_downloaded_version")
+        private val BASELINE_REGISTRO_KEY = stringPreferencesKey("baseline_registro")
     }
 
     private val gson = Gson()
@@ -62,18 +63,112 @@ class LedgerRepository @Inject constructor(
         prefs[LAST_SYNC_KEY]
     }
 
+    val localModified: Flow<Boolean> = context.ledgerDataStore.data.map { prefs ->
+        prefs[LOCAL_MODIFIED_KEY] == "true"
+    }
+
     suspend fun getRegistro(): RegistroTCP = registro.first()
 
-    suspend fun saveRegistro(registro: RegistroTCP) {
+    private suspend fun saveRegistro(registro: RegistroTCP, modifiedByUser: Boolean) {
         context.ledgerDataStore.edit { prefs ->
             prefs[REGISTRO_KEY] = gson.toJson(registro)
-            prefs[LOCAL_MODIFIED_KEY] = "true"
+            prefs[LOCAL_MODIFIED_KEY] = if (modifiedByUser) "true" else "false"
         }
     }
 
-    suspend fun markAsSynced() {
+    private suspend fun saveBaseline(registro: RegistroTCP, serverVersion: String) {
+        val resolvedVersion = if (serverVersion.isNotBlank()) {
+            serverVersion
+        } else {
+            java.time.Instant.now().toString()
+        }
         context.ledgerDataStore.edit { prefs ->
+            prefs[BASELINE_REGISTRO_KEY] = gson.toJson(registro)
+            prefs[LAST_DOWNLOADED_VERSION_KEY] = resolvedVersion
+            prefs[SERVER_VERSION_KEY] = resolvedVersion
             prefs[LOCAL_MODIFIED_KEY] = "false"
+            prefs[LAST_SYNC_KEY] = java.time.Instant.now().toString()
+        }
+    }
+
+    suspend fun saveUserEditedRegistro(registro: RegistroTCP) {
+        saveRegistro(registro, modifiedByUser = true)
+    }
+
+    suspend fun replaceLocalWithRemote(registro: RegistroTCP, serverVersion: String): Result<SyncResult> {
+        return try {
+            saveRegistro(registro, modifiedByUser = false)
+            saveBaseline(registro, serverVersion)
+            Result.success(
+                SyncResult(
+                    success = true,
+                    message = "Datos locales actualizados desde la nube",
+                    action = SyncAction.PULL_ONLY
+                )
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun uploadLocalToRemote(): Result<SyncResult> {
+        return try {
+            val token = authRepository.getToken() ?: return Result.failure(Exception("No token"))
+            val localRegistro = getRegistro()
+            val updateResponse = apiService.updateLedger(
+                "Bearer $token",
+                UpdateLedgerRequest(registro = localRegistro)
+            )
+            if (!updateResponse.isSuccessful) {
+                return Result.failure(Exception("Error al subir datos: ${updateResponse.code()}"))
+            }
+
+            val refreshedRemote = fetchRemote(token)
+            val refreshedVersion = refreshedRemote.updatedAt.orEmpty()
+            val registroFinal = refreshedRemote.registro ?: localRegistro
+
+            saveRegistro(registroFinal, modifiedByUser = false)
+            saveBaseline(registroFinal, refreshedVersion)
+
+            Result.success(
+                SyncResult(
+                    success = true,
+                    message = "Datos en la nube actualizados correctamente",
+                    action = SyncAction.PUSH_ONLY
+                )
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun uploadMergedToRemote(mergedRegistro: RegistroTCP): Result<SyncResult> {
+        return try {
+            val token = authRepository.getToken() ?: return Result.failure(Exception("No token"))
+            val updateResponse = apiService.updateLedger(
+                "Bearer $token",
+                UpdateLedgerRequest(registro = mergedRegistro)
+            )
+            if (!updateResponse.isSuccessful) {
+                return Result.failure(Exception("Error al subir merge: ${updateResponse.code()}"))
+            }
+
+            val refreshedRemote = fetchRemote(token)
+            val refreshedVersion = refreshedRemote.updatedAt.orEmpty()
+            val registroFinal = refreshedRemote.registro ?: mergedRegistro
+
+            saveRegistro(registroFinal, modifiedByUser = false)
+            saveBaseline(registroFinal, refreshedVersion)
+
+            Result.success(
+                SyncResult(
+                    success = true,
+                    message = "Merge aplicado y sincronizado",
+                    action = SyncAction.MERGED
+                )
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
@@ -81,28 +176,29 @@ class LedgerRepository @Inject constructor(
         return context.ledgerDataStore.data.first()[LOCAL_MODIFIED_KEY] == "true"
     }
 
-    suspend fun getServerVersion(): String {
-        return context.ledgerDataStore.data.first()[SERVER_VERSION_KEY] ?: ""
-    }
-
-    suspend fun getLastDownloadedVersion(): String {
+    private suspend fun getLastDownloadedVersion(): String {
         return context.ledgerDataStore.data.first()[LAST_DOWNLOADED_VERSION_KEY] ?: ""
     }
 
-    private suspend fun updateVersions(serverVersion: String, lastDownloaded: String) {
-        context.ledgerDataStore.edit { prefs ->
-            prefs[SERVER_VERSION_KEY] = serverVersion
-            prefs[LAST_DOWNLOADED_VERSION_KEY] = lastDownloaded
-        }
+    private suspend fun hasBaselineVersion(): Boolean {
+        return getLastDownloadedVersion().isNotEmpty()
     }
 
-    suspend fun generateLocalVersion(): String {
-        return System.currentTimeMillis().toString()
+    private suspend fun hasLocalSnapshot(): Boolean {
+        return context.ledgerDataStore.data.first()[REGISTRO_KEY] != null
+    }
+
+    private suspend fun fetchRemote(token: String): ContLedgerResponse {
+        val response = apiService.getLedger("Bearer $token")
+        if (!response.isSuccessful) {
+            throw Exception("Error al obtener datos remotos: ${response.code()}")
+        }
+        return response.body() ?: ContLedgerResponse(registro = null, updatedAt = "")
     }
 
     suspend fun updateGenerales(data: GeneralesData) {
         val current = getRegistro()
-        saveRegistro(current.copy(generales = data))
+        saveUserEditedRegistro(current.copy(generales = data))
     }
 
     suspend fun addIngreso(month: String, dia: Int, importe: Double) {
@@ -154,7 +250,7 @@ class LedgerRepository @Inject constructor(
             "gastos" -> current.copy(gastos = entries)
             else -> current
         }
-        saveRegistro(updated)
+        saveUserEditedRegistro(updated)
     }
 
     private suspend fun deleteEntry(type: String, month: String, dia: Int) {
@@ -175,7 +271,7 @@ class LedgerRepository @Inject constructor(
             "gastos" -> current.copy(gastos = entries)
             else -> current
         }
-        saveRegistro(updated)
+        saveUserEditedRegistro(updated)
     }
 
     private suspend fun addEntry(type: String, month: String, dia: Int, importe: Double) {
@@ -196,7 +292,7 @@ class LedgerRepository @Inject constructor(
             "gastos" -> current.copy(gastos = entries)
             else -> current
         }
-        saveRegistro(updated)
+        saveUserEditedRegistro(updated)
     }
 
     suspend fun updateTributos(month: String, values: TributoRow) {
@@ -213,197 +309,210 @@ class LedgerRepository @Inject constructor(
             }
             newTributos.add(values)
         }
-        saveRegistro(current.copy(tributos = newTributos))
+        saveUserEditedRegistro(current.copy(tributos = newTributos))
     }
 
     suspend fun pull(): Result<RegistroTCP> {
         return try {
             val token = authRepository.getToken() ?: return Result.failure(Exception("No token"))
-            val response = apiService.getLedger("Bearer $token")
-            if (response.isSuccessful) {
-                val body = response.body()
-                if (body?.registro != null) {
-                    saveRegistro(body.registro)
-                    context.ledgerDataStore.edit { prefs ->
-                        prefs[LAST_SYNC_KEY] = body.updatedAt ?: ""
-                    }
-                    Result.success(body.registro)
-                } else {
-                    Result.success(getRegistro())
-                }
-            } else {
-                Result.failure(Exception("Pull failed: ${response.code()}"))
-            }
+            val remote = fetchRemote(token)
+            val remoteRegistro = remote.registro ?: return Result.success(getRegistro())
+            replaceLocalWithRemote(remoteRegistro, remote.updatedAt.orEmpty())
+                .map { remoteRegistro }
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
     suspend fun push(): Result<Unit> {
-        return try {
-            val token = authRepository.getToken() ?: return Result.failure(Exception("No token"))
-            val registro = getRegistro()
-            val response = apiService.updateLedger("Bearer $token", registro)
-            if (response.isSuccessful) {
-                context.ledgerDataStore.edit { prefs ->
-                    prefs[LAST_SYNC_KEY] = java.time.Instant.now().toString()
-                    prefs[LOCAL_MODIFIED_KEY] = "false"
-                }
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Push failed: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        return uploadLocalToRemote().map { Unit }
     }
 
     suspend fun sync(): Result<SyncResult> {
         return try {
             val token = authRepository.getToken() ?: return Result.failure(Exception("No token"))
+            val localRegistro = getRegistro()
             val localModified = isLocalModified()
-            val lastDownloadedVersion = getLastDownloadedVersion()
-            
-            // Paso 1: Obtener datos actuales del servidor
-            val response = apiService.getLedger("Bearer $token")
-            if (!response.isSuccessful) {
-                return Result.failure(Exception("Error al obtener datos: ${response.code()}"))
-            }
-            
-            val body = response.body()
-            val currentServerVersion = body?.updatedAt ?: ""
-            val remoteRegistro = body?.registro
-            
-            // Paso 2: Verificar si el servidor cambió desde la última descarga
-            val serverChanged = currentServerVersion != lastDownloadedVersion && lastDownloadedVersion.isNotEmpty()
-            
+            val hasBaseline = hasBaselineVersion()
+            val hasLocalData = hasLocalSnapshot()
+            val baselineVersion = getLastDownloadedVersion()
+            val remote = fetchRemote(token)
+            val remoteRegistro = remote.registro
+            val remoteVersion = remote.updatedAt.orEmpty()
+            val serverChanged = hasBaseline && remoteVersion != baselineVersion
+
             when {
-                // Caso 1: No hay cambios locales y no hay datos remotos
-                !localModified && remoteRegistro == null -> {
-                    Result.success(SyncResult(true, "Sin cambios", SyncAction.NO_CHANGES))
+                remoteRegistro == null && !localModified -> {
+                    Result.success(SyncResult(true, "No hay datos para sincronizar", SyncAction.NO_CHANGES))
                 }
-                
-                // Caso 2: Hay cambios locales pero el servidor no cambió
-                localModified && !serverChanged -> {
-                    // Subir datos locales
-                    val registro = getRegistro()
-                    val updateResponse = apiService.updateLedger("Bearer $token", registro)
-                    if (updateResponse.isSuccessful) {
-                        // Siempre descargar datos del servidor después de subir
-                        if (remoteRegistro != null) {
-                            saveRegistro(remoteRegistro)
-                            updateVersions(currentServerVersion, currentServerVersion)
-                        }
-                        markAsSynced()
-                        Result.success(SyncResult(true, "Cambios subidos y datos actualizados", SyncAction.MERGED))
+
+                remoteRegistro == null && localModified -> {
+                    Result.success(
+                        SyncResult(
+                            success = true,
+                            message = "No hay datos en la nube. ¿Deseas subir tus cambios locales?",
+                            action = SyncAction.PUSH_ONLY,
+                            needsUserDecision = true
+                        )
+                    )
+                }
+
+                !localModified && (!hasBaseline || !hasLocalData || serverChanged) -> {
+                    Result.success(
+                        SyncResult(
+                            success = true,
+                            message = "Se encontraron cambios en la nube. ¿Deseas actualizar tus datos locales?",
+                            action = SyncAction.PULL_ONLY,
+                            needsUserDecision = true,
+                            remoteRegistro = remoteRegistro,
+                            remoteVersion = remoteVersion
+                        )
+                    )
+                }
+
+                !localModified && hasBaseline && !serverChanged -> {
+                    Result.success(SyncResult(true, "Ya estás sincronizado con la nube", SyncAction.NO_CHANGES))
+                }
+
+                localModified && !hasBaseline && remoteRegistro != null -> {
+                    val conflictInfo = checkForConflicts(localRegistro, remoteRegistro)
+                    val merged = if (!conflictInfo.hasConflict) {
+                        mergeVersions(localRegistro, remoteRegistro)
                     } else {
-                        Result.failure(Exception("Error al subir: ${updateResponse.code()}"))
+                        null
                     }
+                    val message = if (conflictInfo.hasConflict) {
+                        "Ya existen datos en nube y también cambios locales. Elige cómo resolver."
+                    } else {
+                        "Hay datos locales y remotos sin conflicto. Puedes hacer merge."
+                    }
+                    Result.success(
+                        SyncResult(
+                            success = true,
+                            message = message,
+                            action = if (conflictInfo.hasConflict) SyncAction.CONFLICT_DETECTED else SyncAction.MERGED,
+                            conflictInfo = conflictInfo,
+                            needsUserDecision = true,
+                            remoteRegistro = remoteRegistro,
+                            remoteVersion = remoteVersion,
+                            mergedRegistro = merged
+                        )
+                    )
                 }
-                
-                // Caso 3: Hay cambios locales Y el servidor cambió = CONFLICTO
+
+                localModified && hasBaseline && !serverChanged -> {
+                    Result.success(
+                        SyncResult(
+                            success = true,
+                            message = "Tus cambios locales están listos. ¿Deseas subirlos a la nube?",
+                            action = SyncAction.PUSH_ONLY,
+                            needsUserDecision = true
+                        )
+                    )
+                }
+
                 localModified && serverChanged -> {
-                    // Verificar si hay conflictos reales (mismo día con valores distintos)
-                    val localRegistro = getRegistro()
-                    val conflictInfo = checkForConflicts(localRegistro, remoteRegistro!!)
-                    
-                    Result.success(SyncResult(
-                        success = true,
-                        message = "Conflicto detectado: cambios locales y remotos",
-                        action = SyncAction.CONFLICT_DETECTED,
-                        conflictInfo = conflictInfo,
-                        needsUserDecision = true
-                    ))
-                }
-                
-                // Caso 4: No hay cambios locales pero el servidor cambió
-                !localModified && serverChanged -> {
-                    // Descargar datos del servidor
-                    if (remoteRegistro != null) {
-                        saveRegistro(remoteRegistro)
-                        updateVersions(currentServerVersion, currentServerVersion)
-                        markAsSynced()
-                        Result.success(SyncResult(true, "Datos descargados del servidor", SyncAction.PULL_ONLY))
+                    val conflictInfo = checkForConflicts(localRegistro, remoteRegistro)
+                    val merged = if (!conflictInfo.hasConflict && remoteRegistro != null) {
+                        mergeVersions(localRegistro, remoteRegistro)
                     } else {
-                        Result.success(SyncResult(true, "Sin cambios", SyncAction.NO_CHANGES))
+                        null
                     }
-                }
-                
-                else -> {
-                    // En cualquier caso, siempre guardar datos remotos si existen
-                    if (remoteRegistro != null) {
-                        saveRegistro(remoteRegistro)
-                        updateVersions(currentServerVersion, currentServerVersion)
+                    val message = if (conflictInfo.hasConflict) {
+                        "Hay conflictos entre nube y teléfono. Elige cómo resolver."
+                    } else {
+                        "Hay cambios en nube y teléfono sin conflicto por día. Puedes hacer merge."
                     }
-                    Result.success(SyncResult(true, "Sincronizado", SyncAction.MERGED))
+                    Result.success(
+                        SyncResult(
+                            success = true,
+                            message = message,
+                            action = if (conflictInfo.hasConflict) SyncAction.CONFLICT_DETECTED else SyncAction.MERGED,
+                            conflictInfo = conflictInfo,
+                            needsUserDecision = true,
+                            remoteRegistro = remoteRegistro,
+                            remoteVersion = remoteVersion,
+                            mergedRegistro = merged
+                        )
+                    )
                 }
+
+                else -> Result.success(SyncResult(true, "Sin cambios", SyncAction.NO_CHANGES))
             }
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    private fun checkForConflicts(local: RegistroTCP, remote: RegistroTCP): ConflictInfo {
+    suspend fun resolveWithRemote(remoteRegistro: RegistroTCP, remoteVersion: String): Result<SyncResult> {
+        return replaceLocalWithRemote(remoteRegistro, remoteVersion)
+    }
+
+    suspend fun resolveWithLocal(): Result<SyncResult> {
+        return uploadLocalToRemote()
+    }
+
+    suspend fun resolveWithMerge(mergedRegistro: RegistroTCP): Result<SyncResult> {
+        return uploadMergedToRemote(mergedRegistro)
+    }
+
+    private fun checkForConflicts(local: RegistroTCP, remote: RegistroTCP?): ConflictInfo {
+        if (remote == null) {
+            return ConflictInfo(
+                hasConflict = false,
+                mergePossible = true,
+                conflictMessage = "No hay datos remotos, se puede subir versión local."
+            )
+        }
+
         val conflicts = mutableListOf<String>()
         
-        // Verificar conflictos en ingresos
         LedgerConstants.MONTHS.forEach { month ->
             val localIngresos = local.ingresos[month] ?: emptyList()
             val remoteIngresos = remote.ingresos[month] ?: emptyList()
             
             localIngresos.forEach { localEntry ->
                 val remoteEntry = remoteIngresos.find { it.dia == localEntry.dia }
-                if (remoteEntry != null && remoteEntry.importe != localEntry.importe) {
+                if (remoteEntry != null && normalizeAmount(remoteEntry.importe) != normalizeAmount(localEntry.importe)) {
                     conflicts.add("Ingreso día ${localEntry.dia}/$month: local=${localEntry.importe}, remoto=${remoteEntry.importe}")
                 }
             }
         }
         
-        // Verificar conflictos en gastos
         LedgerConstants.MONTHS.forEach { month ->
             val localGastos = local.gastos[month] ?: emptyList()
             val remoteGastos = remote.gastos[month] ?: emptyList()
             
             localGastos.forEach { localEntry ->
                 val remoteEntry = remoteGastos.find { it.dia == localEntry.dia }
-                if (remoteEntry != null && remoteEntry.importe != localEntry.importe) {
+                if (remoteEntry != null && normalizeAmount(remoteEntry.importe) != normalizeAmount(localEntry.importe)) {
                     conflicts.add("Gasto día ${localEntry.dia}/$month: local=${localEntry.importe}, remoto=${remoteEntry.importe}")
                 }
             }
+        }
+
+        if (local.generales != remote.generales) {
+            conflicts.add("Conflicto en datos generales")
+        }
+
+        if (local.tributos != remote.tributos) {
+            conflicts.add("Conflicto en tributos")
         }
         
         return if (conflicts.isNotEmpty()) {
             ConflictInfo(
                 hasConflict = true,
                 conflictMessage = conflicts.joinToString("\n"),
+                mergePossible = false,
                 localNewEntries = emptyList(),
                 remoteNewEntries = emptyList()
             )
         } else {
             ConflictInfo(
                 hasConflict = false,
+                mergePossible = true,
                 conflictMessage = "No hay conflictos, se puede hacer merge automático"
             )
-        }
-    }
-
-    suspend fun resolveConflict(useLocal: Boolean, remoteRegistro: RegistroTCP) {
-        val token = authRepository.getToken() ?: return
-        
-        val registroToSave = if (useLocal) {
-            getRegistro()
-        } else {
-            remoteRegistro
-        }
-        
-        val response = apiService.updateLedger("Bearer $token", registroToSave)
-        if (response.isSuccessful) {
-            val newServerVersion = response.body()?.let {
-                java.time.Instant.now().toString()
-            } ?: ""
-            saveRegistro(registroToSave)
-            updateVersions(newServerVersion, newServerVersion)
-            markAsSynced()
         }
     }
 
@@ -443,8 +552,8 @@ class LedgerRepository @Inject constructor(
                 val remoteEntry = remoteEntries.find { it.dia.toIntOrNull() == dia }
                 
                 when {
-                    remoteEntry != null -> remoteEntry
-                    localEntry != null -> localEntry
+                    remoteEntry != null -> remoteEntry.copy(importe = normalizeAmount(remoteEntry.importe))
+                    localEntry != null -> localEntry.copy(importe = normalizeAmount(localEntry.importe))
                     else -> null
                 }
             }.sortedBy { it.dia }
@@ -453,6 +562,11 @@ class LedgerRepository @Inject constructor(
         }
         
         return merged
+    }
+
+    private fun normalizeAmount(value: String): String {
+        val number = value.toDoubleOrNull() ?: 0.0
+        return String.format(Locale.US, "%.2f", number)
     }
 
     fun calculateAnnualReport(registro: RegistroTCP): AnnualReport {

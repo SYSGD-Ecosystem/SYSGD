@@ -27,3 +27,12 @@ data class ContLedgerResponse(
     val registro: RegistroTCP?,
     val updatedAt: String?
 )
+
+data class UpdateLedgerRequest(
+    val registro: RegistroTCP
+)
+
+data class UpdateLedgerResponse(
+    val message: String? = null,
+    val updatedAt: String? = null
+)
