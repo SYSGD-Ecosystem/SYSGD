@@ -40,7 +40,6 @@ import { RegistroSyncService } from './services/registro-sync.service';
       <section class="card auth-card" *ngIf="sessionReady && !currentUser">
         <h2>{{ authMode === 'login' ? 'Iniciar sesión' : 'Crear cuenta' }}</h2>
         <p class="subtitle">Tus datos se guardan localmente y se sincronizan con el servidor.</p>
-
         <form [formGroup]="authForm" (ngSubmit)="submitAuth()" class="form-grid">
           <label *ngIf="authMode === 'register'">Nombre completo <input type="text" formControlName="name" /></label>
           <label>Email <input type="email" formControlName="email" /></label>
@@ -241,6 +240,17 @@ import { RegistroSyncService } from './services/registro-sync.service';
         <pre class="dj">{{ djPreview }}</pre>
       </section>
       </ng-container>
+
+      <section class="promo-banner promo-banner-bottom">
+        <p class="promo-tag">Nuevo en Apklis</p>
+        <div>
+          <h2>Gestor Contable TCP ya está disponible por 50 CUP</h2>
+          <p>Descarga la app SYSGD Cont para llevar tu registro fiscal desde Android, incluso cuando no tengas conexión.</p>
+        </div>
+        <a href="https://apklis.cu/application/cu.lazaroysr96.sysgdcont" target="_blank" rel="noopener noreferrer">
+          Ver en Apklis
+        </a>
+      </section>
     </main>
   `,
   styleUrl: './app.component.css'
