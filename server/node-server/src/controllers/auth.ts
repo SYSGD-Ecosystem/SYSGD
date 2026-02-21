@@ -28,6 +28,8 @@ export function generateJWT(user: {
 	name: string;
 	privileges: string;
 }) {
+	const expiresIn = user.privileges === "admin" ? "30m" : "7d";
+	
 	return jwt.sign(
 		{
 			id: user.id,
@@ -36,7 +38,7 @@ export function generateJWT(user: {
 			privileges: user.privileges,
 		},
 		JWT_SECRET as string, 
-		{ expiresIn: "7d" },
+		{ expiresIn },
 	);
 }
 
