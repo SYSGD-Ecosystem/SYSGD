@@ -1,6 +1,6 @@
 "use client";
 //import useTheme from "@/hooks/useTheme";
-import { ChevronRight, Home } from "lucide-react";
+import { ChevronRight, Home, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
 	Select,
@@ -20,6 +20,8 @@ interface TopNavigationProps {
 	onMobileSidebarToggle: () => void;
 	isHomePage?: boolean;
 	onTimeTrackingClick?: () => void;
+	onProjectChatToggle?: () => void;
+	isProjectChatOpen?: boolean;
 }
 
 export function TopNavigation({
@@ -28,6 +30,8 @@ export function TopNavigation({
 	onHomeClick,
 	onMobileSidebarToggle,
 	onTimeTrackingClick,
+	onProjectChatToggle,
+	isProjectChatOpen = false,
 }: TopNavigationProps) {
 	const { projects } = useProjects();
 
@@ -105,6 +109,24 @@ export function TopNavigation({
 				</div>
 
 				<div className="flex items-center gap-1 md:gap-2">
+					{onProjectChatToggle && (
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={onProjectChatToggle}
+							className="hidden lg:inline-flex"
+							title={
+								isProjectChatOpen
+									? "Ocultar chat del proyecto"
+									: "Mostrar chat del proyecto"
+							}
+						>
+							<MessageCircle className="w-4 h-4" />
+							<span className="ml-2 hidden xl:inline">
+								{isProjectChatOpen ? "Ocultar chat" : "Abrir chat"}
+							</span>
+						</Button>
+					)}
 					<TimeTrackingIndicator onOpen={onTimeTrackingClick} />
 					{/* <Button variant="ghost" size="sm" className="hidden sm:flex">
 						<Bell className="w-4 h-4" />

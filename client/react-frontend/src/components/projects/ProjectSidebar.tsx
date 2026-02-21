@@ -49,7 +49,7 @@ export function ProjectSidebar({
         fixed md:relative top-0 left-0 h-full w-64
         bg-gray-50 dark:bg-gray-800
         border-r border-gray-200 dark:border-gray-700
-        p-4 z-50 transition-transform duration-300 ease-in-out
+        p-4 z-50 md:z-20 transition-transform duration-300 ease-in-out
         ${isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         md:h-auto md:min-h-full
       `}
