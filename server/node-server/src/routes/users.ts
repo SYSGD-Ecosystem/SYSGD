@@ -91,7 +91,7 @@ router.post("/register", async (req, res) => {
 
   // Verificar origen del registro (sysgd-cont vs plataforma principal)
   const appSource = req.headers["x-app-source"] as string;
-  const isFromSysgdCont = appSource === "sysgd-cont" || !appSource;
+  const isFromSysgdCont = appSource === "web" || appSource === "android";
 
   // Validar IP solo para sysgd-cont
   if (isFromSysgdCont) {

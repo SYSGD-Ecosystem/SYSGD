@@ -26,6 +26,12 @@ object NetworkModule {
         }
 
         return OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val request = chain.request().newBuilder()
+                    .addHeader("X-App-Source", "android")
+                    .build()
+                chain.proceed(request)
+            }
             .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)

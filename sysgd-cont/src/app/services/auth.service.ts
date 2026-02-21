@@ -51,12 +51,13 @@ export class AuthService {
   }
 
   async register(name: string, email: string, password: string): Promise<void> {
+    const headers = new HttpHeaders({ 'X-App-Source': 'web' });
     await firstValueFrom(
       this.http.post(`${this.apiBaseUrl}/api/users/register`, {
         name,
         email,
         password
-      })
+      }, { headers })
     );
   }
 
