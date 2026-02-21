@@ -6,6 +6,7 @@ import { getCurrentUserData } from "../controllers/users";
 import { getCurrentUser } from "../controllers/auth";
 import { getUsageSummary } from "../middlewares/usageLimits.middleware";
 import { maybeRenewPlanCredits, normalizeBillingState } from "../services/billing-credits.service";
+import { getClientIp, isIpFromCuba } from "../utils/ip";
 
 const router = Router();
 
@@ -86,6 +87,22 @@ router.post("/register", async (req, res) => {
   if (!name || !email || !password) {
     res.status(400).json({ error: "Datos incompletos" });
     return;
+  }
+
+  // Verificar origen del registro (sysgd-cont vs plataforma principal)
+  const appSource = req.headers["x-app-source"] as string;
+  const isFromSysgdCont = appSource === "sysgd-cont" || !appSource;
+
+  // Validar IP solo para sysgd-cont
+  if (isFromSysgdCont) {
+    const clientIp = getClientIp(req);
+    if (!isIpFromCuba(clientIp)) {
+      res.status(403).json({ 
+        error: "Servicio disponible solo para Cuba",
+        message: "Este servicio de contabilidad está disponible exclusivamente para usuarios en Cuba. Si estás usando una VPN, por favor desactívala antes de intentar crear una cuenta."
+      });
+      return;
+    }
   }
 
   try {
