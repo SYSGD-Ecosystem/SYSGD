@@ -6,6 +6,7 @@ import { findUserByemail, logUserLogin } from "../services/authService";
 import { pool } from "../db";
 import { createDefaultUserData } from "../utils/billing";
 import { request } from "node:http";
+import { getClientIp, isIpFromCuba } from "../utils/ip";
 
 dotenv.config();
 
@@ -77,6 +78,17 @@ export const login = async (req: Request, res: Response) => {
 		if (!match) {
 			res.status(402).json({ message: "Contraseña incorrecta" });
 			return;
+		}
+
+		if (user.privileges === "admin") {
+			const clientIp = getClientIp(req);
+			if (!isIpFromCuba(clientIp)) {
+				res.status(403).json({ 
+					message: "Acceso denegado. El administrador solo puede iniciar sesión desde Cuba.",
+					ip: clientIp 
+				});
+				return;
+			}
 		}
 
 		// Generamos el token usando el helper
