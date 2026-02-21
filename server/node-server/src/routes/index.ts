@@ -25,6 +25,7 @@ import updates from "./updates.routes";
 import timeEntries from "./time-entries";
 import contLedger from "./cont-ledger";
 import accountingDocuments from "./accounting-documents.routes";
+import adminRoutes from "./admin.routes";
 
 const router = Router();
 
@@ -53,6 +54,7 @@ router.use("/", taskConfig);
 router.use("/time-entries", timeEntries);
 router.use("/cont-ledger", contLedger);
 router.use("/accounting-documents", accountingDocuments);
+router.use("/admin", adminRoutes);
 
 router.use(updates);
 
