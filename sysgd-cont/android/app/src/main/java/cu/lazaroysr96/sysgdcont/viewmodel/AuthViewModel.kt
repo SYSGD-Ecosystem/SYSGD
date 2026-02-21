@@ -13,8 +13,11 @@ data class AuthUiState(
     val isLoading: Boolean = false,
     val isSessionResolved: Boolean = false,
     val isAuthenticated: Boolean = false,
+    val availableCredits: Int? = null,
     val currentUser: AuthUser? = null,
-    val error: String? = null
+    val error: String? = null,
+    val infoMessage: String? = null,
+    val registerCompleted: Boolean = false
 )
 
 @HiltViewModel
@@ -28,7 +31,16 @@ class AuthViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             authRepository.isAuthenticated.collect { isAuth ->
-                _uiState.update { it.copy(isAuthenticated = isAuth, isSessionResolved = true) }
+                _uiState.update {
+                    it.copy(
+                        isAuthenticated = isAuth,
+                        isSessionResolved = true,
+                        availableCredits = if (isAuth) it.availableCredits else null
+                    )
+                }
+                if (isAuth) {
+                    loadAvailableCredits()
+                }
             }
         }
         viewModelScope.launch {
@@ -39,8 +51,9 @@ class AuthViewModel @Inject constructor(
     }
 
     fun login(email: String, password: String) {
+        if (_uiState.value.isLoading) return
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, infoMessage = null) }
             
             authRepository.login(email, password)
                 .onSuccess { user ->
@@ -53,12 +66,19 @@ class AuthViewModel @Inject constructor(
     }
 
     fun register(name: String, email: String, password: String) {
+        if (_uiState.value.isLoading) return
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, infoMessage = null, registerCompleted = false) }
             
             authRepository.register(name, email, password)
                 .onSuccess {
-                    _uiState.update { it.copy(isLoading = false) }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            registerCompleted = true,
+                            infoMessage = "Cuenta creada correctamente. Ahora inicia sesión."
+                        )
+                    }
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isLoading = false, error = e.message ?: "Registration failed") }
@@ -77,7 +97,16 @@ class AuthViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) }
     }
 
+    fun clearInfoMessage() {
+        _uiState.update { it.copy(infoMessage = null) }
+    }
+
+    fun consumeRegisterCompleted() {
+        _uiState.update { it.copy(registerCompleted = false) }
+    }
+
     fun setManualToken(token: String) {
+        if (_uiState.value.isLoading) return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             
@@ -87,6 +116,18 @@ class AuthViewModel @Inject constructor(
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isLoading = false, error = e.message ?: "Token inválido") }
+                }
+        }
+    }
+
+    fun loadAvailableCredits() {
+        viewModelScope.launch {
+            authRepository.getAvailableCredits()
+                .onSuccess { credits ->
+                    _uiState.update { it.copy(availableCredits = credits) }
+                }
+                .onFailure {
+                    // No bloqueamos la app si falla la consulta de créditos.
                 }
         }
     }

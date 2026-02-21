@@ -15,6 +15,9 @@ interface ApiService {
     @GET("api/auth/me")
     suspend fun me(@Header("Authorization") token: String): Response<AuthUser>
 
+    @GET("api/users/plan")
+    suspend fun getUserPlan(@Header("Authorization") token: String): Response<UserPlanResponse>
+
     @GET("api/cont-ledger")
     suspend fun getLedger(@Header("Authorization") token: String): Response<ContLedgerResponse>
 

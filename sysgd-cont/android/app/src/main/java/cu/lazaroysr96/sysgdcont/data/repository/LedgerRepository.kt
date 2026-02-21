@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import okhttp3.ResponseBody
+import org.json.JSONObject
 import retrofit2.Response
 import java.io.File
 import java.io.FileOutputStream
@@ -28,6 +29,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private val Context.ledgerDataStore: DataStore<Preferences> by preferencesDataStore(name = "ledger_prefs")
+
+class InsufficientCreditsException(message: String) : Exception(message)
 
 @Singleton
 class LedgerRepository @Inject constructor(
@@ -713,11 +716,11 @@ class LedgerRepository @Inject constructor(
                     delay(15000)
                     val retryResponse = apiService.downloadPdf("Bearer $token", pdfPayload)
                     if (!retryResponse.isSuccessful) {
-                        return@withContext Result.failure(Exception("Error al generar PDF: ${retryResponse.code()}"))
+                        return@withContext Result.failure(buildPdfError(retryResponse))
                     }
                     processPdfResponse(retryResponse)
                 } else if (!response.isSuccessful) {
-                    return@withContext Result.failure(Exception("Error al generar PDF: ${response.code()}"))
+                    return@withContext Result.failure(buildPdfError(response))
                 } else {
                     processPdfResponse(response)
                 }
@@ -757,6 +760,29 @@ class LedgerRepository @Inject constructor(
             }
 
             Result.success(Intent.createChooser(shareIntent, "Abrir PDF"))
+        }
+    }
+
+    private fun buildPdfError(response: Response<ResponseBody>): Exception {
+        val code = response.code()
+        val errorBody = response.errorBody()?.string()
+        val message = if (!errorBody.isNullOrBlank()) {
+            try {
+                val json = JSONObject(errorBody)
+                json.optString("message")
+                    .ifBlank { json.optString("error") }
+                    .ifBlank { "Error al generar PDF: $code" }
+            } catch (_: Exception) {
+                "Error al generar PDF: $code"
+            }
+        } else {
+            "Error al generar PDF: $code"
+        }
+
+        return if (code == 402) {
+            InsufficientCreditsException(message)
+        } else {
+            Exception(message)
         }
     }
 }

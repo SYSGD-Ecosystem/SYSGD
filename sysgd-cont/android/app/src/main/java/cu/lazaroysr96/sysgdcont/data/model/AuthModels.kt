@@ -36,3 +36,11 @@ data class UpdateLedgerResponse(
     val message: String? = null,
     val updatedAt: String? = null
 )
+
+data class UserPlanCredits(
+    val available: Int = 0
+)
+
+data class UserPlanResponse(
+    val credits: UserPlanCredits = UserPlanCredits()
+)

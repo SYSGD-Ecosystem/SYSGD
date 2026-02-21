@@ -14,6 +14,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import org.json.JSONObject
+import retrofit2.Response
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -51,6 +53,21 @@ class AuthRepository @Inject constructor(
 
     suspend fun getToken(): String? = context.authDataStore.data.first()[TOKEN_KEY]
 
+    suspend fun getAvailableCredits(): Result<Int> {
+        return try {
+            val token = getToken() ?: return Result.failure(Exception("No autenticado"))
+            val response = apiService.getUserPlan("Bearer $token")
+            if (response.isSuccessful) {
+                val available = response.body()?.credits?.available ?: 0
+                Result.success(available)
+            } else {
+                Result.failure(Exception(extractApiError(response, "No se pudieron obtener los créditos")))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     fun getApiBaseUrl(): String {
         return "https://sysgd-production.up.railway.app"
     }
@@ -75,7 +92,7 @@ class AuthRepository @Inject constructor(
                 }
                 Result.success(body.user)
             } else {
-                Result.failure(Exception("Login failed: ${response.code()}"))
+                Result.failure(Exception(extractApiError(response, "Error al iniciar sesión")))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -88,7 +105,7 @@ class AuthRepository @Inject constructor(
             if (response.isSuccessful) {
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("Registration failed: ${response.code()}"))
+                Result.failure(Exception(extractApiError(response, "No se pudo crear la cuenta")))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -124,5 +141,20 @@ class AuthRepository @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private fun extractApiError(response: Response<*>, fallback: String): String {
+        val errorBody = response.errorBody()?.string()
+        if (!errorBody.isNullOrBlank()) {
+            return try {
+                val json = JSONObject(errorBody)
+                json.optString("message")
+                    .ifBlank { json.optString("error") }
+                    .ifBlank { "$fallback (${response.code()})" }
+            } catch (_: Exception) {
+                "$fallback (${response.code()})"
+            }
+        }
+        return "$fallback (${response.code()})"
     }
 }

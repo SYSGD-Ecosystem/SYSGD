@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cu.lazaroysr96.sysgdcont.data.model.*
+import cu.lazaroysr96.sysgdcont.data.repository.InsufficientCreditsException
 import cu.lazaroysr96.sysgdcont.data.repository.LedgerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -24,7 +25,9 @@ data class LedgerUiState(
     val isDownloadingPdf: Boolean = false,
     val pdfError: String? = null,
     val pdfIntent: Intent? = null,
-    val pdfRetryMessage: String? = null
+    val pdfRetryMessage: String? = null,
+    val showNoCreditsDialog: Boolean = false,
+    val noCreditsMessage: String? = null
 )
 
 @HiltViewModel
@@ -234,7 +237,16 @@ class LedgerViewModel @Inject constructor(
 
     fun downloadPdf() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isDownloadingPdf = true, pdfError = null, pdfIntent = null, pdfRetryMessage = null) }
+            _uiState.update {
+                it.copy(
+                    isDownloadingPdf = true,
+                    pdfError = null,
+                    pdfIntent = null,
+                    pdfRetryMessage = null,
+                    showNoCreditsDialog = false,
+                    noCreditsMessage = null
+                )
+            }
 
             ledgerRepository.downloadPdf { message ->
                 _uiState.update { it.copy(pdfRetryMessage = message) }
@@ -243,12 +255,27 @@ class LedgerViewModel @Inject constructor(
                     _uiState.update { it.copy(isDownloadingPdf = false, pdfIntent = intent, pdfRetryMessage = null) }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isDownloadingPdf = false, pdfError = e.message, pdfRetryMessage = null) }
+                    if (e is InsufficientCreditsException) {
+                        _uiState.update {
+                            it.copy(
+                                isDownloadingPdf = false,
+                                pdfRetryMessage = null,
+                                showNoCreditsDialog = true,
+                                noCreditsMessage = e.message
+                            )
+                        }
+                    } else {
+                        _uiState.update { it.copy(isDownloadingPdf = false, pdfError = e.message, pdfRetryMessage = null) }
+                    }
                 }
         }
     }
 
     fun clearPdfIntent() {
         _uiState.update { it.copy(pdfIntent = null) }
+    }
+
+    fun dismissNoCreditsDialog() {
+        _uiState.update { it.copy(showNoCreditsDialog = false, noCreditsMessage = null) }
     }
 }
