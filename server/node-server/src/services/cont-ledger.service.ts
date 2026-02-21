@@ -1,4 +1,5 @@
 import { pool } from "../db";
+import { LedgerEncryptionService, type EncryptedData } from "./ledger-encryption.service";
 
 export interface ContLedgerRecord {
 	userId: string;
@@ -24,9 +25,23 @@ export const getContLedgerByUser = async (
 		return null;
 	}
 
+	const rawRegistro = rows[0].registro;
+	let decryptedRegistro: unknown = null;
+
+	if (LedgerEncryptionService.isEncryptedData(rawRegistro)) {
+		try {
+			decryptedRegistro = LedgerEncryptionService.decryptLedger(rawRegistro as EncryptedData);
+		} catch (error) {
+			console.error('Error decrypting ledger:', error);
+			decryptedRegistro = null;
+		}
+	} else {
+		decryptedRegistro = rawRegistro;
+	}
+
 	return {
 		userId: rows[0].user_id,
-		registro: rows[0].registro,
+		registro: decryptedRegistro,
 		updatedAt: rows[0].updated_at,
 	};
 };
@@ -35,6 +50,8 @@ export const upsertContLedgerByUser = async (
 	userId: string,
 	registro: unknown,
 ): Promise<ContLedgerRecord> => {
+	const encryptedData = LedgerEncryptionService.encryptLedger(registro);
+
 	const { rows } = await pool.query<{
 		user_id: string;
 		registro: unknown;
@@ -45,7 +62,7 @@ export const upsertContLedgerByUser = async (
 		 ON CONFLICT (user_id)
 		 DO UPDATE SET registro = EXCLUDED.registro, updated_at = NOW()
 		 RETURNING user_id, registro, updated_at`,
-		[userId, JSON.stringify(registro)],
+		[userId, JSON.stringify(encryptedData)],
 	);
 
 	return {
