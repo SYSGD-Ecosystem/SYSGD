@@ -765,7 +765,7 @@ router.post("/register", async (req: Request, res: Response) => {
 			[email],
 		);
 		if (userExists.rows.length > 0) {
-			res.status(409).send("Usuario ya existe");
+			res.status(409).json({ error: "El email ya está registrado" });
 			return;
 		}
 

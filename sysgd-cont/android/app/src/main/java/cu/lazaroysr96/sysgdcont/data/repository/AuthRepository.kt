@@ -148,11 +148,18 @@ class AuthRepository @Inject constructor(
         if (!errorBody.isNullOrBlank()) {
             return try {
                 val json = JSONObject(errorBody)
+                // Priorizar el mensaje detallado (message), luego el error genérico
                 json.optString("message")
                     .ifBlank { json.optString("error") }
-                    .ifBlank { "$fallback (${response.code()})" }
+                    .ifBlank { 
+                        // Si es 403, dar un contexto adicional
+                        if (response.code() == 403) "Verifica tu conexión a internet e intenta nuevamente" 
+                        else "$fallback (${response.code()})" 
+                    }
             } catch (_: Exception) {
-                "$fallback (${response.code()})"
+                // Si no es JSON, usar el texto tal cual
+                if (errorBody.length < 100) errorBody
+                else "$fallback (${response.code()})"
             }
         }
         return "$fallback (${response.code()})"
