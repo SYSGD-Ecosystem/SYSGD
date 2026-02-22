@@ -4,17 +4,21 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,6 +35,7 @@ import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,10 +55,13 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Modifier
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -63,8 +71,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import cu.lazaroysr96.sysgdcont.data.model.SyncAction
 import cu.lazaroysr96.sysgdcont.R
+import cu.lazaroysr96.sysgdcont.data.model.SyncAction
 import cu.lazaroysr96.sysgdcont.ui.main.screens.GastosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.GeneralesScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.IngresosScreen
@@ -112,264 +120,307 @@ private fun getAppVersionName(context: android.content.Context): String {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    onLogout: () -> Unit,
-    authViewModel: AuthViewModel = hiltViewModel(),
-    ledgerViewModel: LedgerViewModel = hiltViewModel()
+        onLogout: () -> Unit,
+        authViewModel: AuthViewModel = hiltViewModel(),
+        ledgerViewModel: LedgerViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
     val navController = rememberNavController()
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
     val ledgerState by ledgerViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val drawerState = rememberDrawerState(initialValue = androidx.compose.material3.DrawerValue.Closed)
+    val drawerState =
+            rememberDrawerState(initialValue = androidx.compose.material3.DrawerValue.Closed)
     val drawerScope = rememberCoroutineScope()
+    var showCreditsInfoDialog by remember { mutableStateOf(false) }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                modifier = Modifier.fillMaxWidth(0.8f)
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Box(
+    val drawerWidthFraction = if (isLandscape) 0.5f else 0.8f
+
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        ModalNavigationDrawer(
+                drawerState = drawerState,
+                drawerContent = {
+                    ModalDrawerSheet(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp)
-                                .background(
-                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                                    shape = RoundedCornerShape(16.dp)
-                                )
-                                .padding(12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
+                                    .fillMaxWidth(drawerWidthFraction)
+                                    .widthIn(max = if (isLandscape) 300.dp else Float.POSITIVE_INFINITY.dp)
+                                    .statusBarsPadding()
+                                    .navigationBarsPadding()
+                    ) {
+                    Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Box(
+                                    modifier =
+                                            Modifier.fillMaxWidth()
+                                                    .padding(horizontal = 12.dp)
+                                                    .background(
+                                                            color =
+                                                                    MaterialTheme.colorScheme
+                                                                            .surfaceVariant.copy(
+                                                                            alpha = 0.35f
+                                                                    ),
+                                                            shape = RoundedCornerShape(16.dp)
+                                                    )
+                                                    .padding(12.dp)
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(52.dp)
-                                        .background(MaterialTheme.colorScheme.surface, CircleShape),
-                                    contentAlignment = Alignment.Center
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Image(
-                                        painter = painterResource(id = R.drawable.ic_launcher),
-                                        contentDescription = "Icono de la app",
-                                        modifier = Modifier.size(36.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(end = 4.dp)
-                                ) {
-                                    Text(
-                                        text = authState.currentUser?.name ?: "Usuario",
-                                        style = MaterialTheme.typography.titleSmall
-                                    )
-                                    Text(
-                                        text = authState.currentUser?.email ?: "Sin correo",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "Créditos: ${authState.availableCredits ?: "--"}",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
+                                    Box(
+                                            modifier =
+                                                    Modifier.size(52.dp)
+                                                            .background(
+                                                                    MaterialTheme.colorScheme
+                                                                            .surface,
+                                                                    CircleShape
+                                                            ),
+                                            contentAlignment = Alignment.Center
+                                    ) {
+                                        Image(
+                                                painter =
+                                                        painterResource(
+                                                                id = R.drawable.ic_launcher
+                                                        ),
+                                                contentDescription = "Icono de la app",
+                                                modifier = Modifier.size(36.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.fillMaxWidth().padding(end = 4.dp)) {
+                                        Text(
+                                                text = authState.currentUser?.name ?: "Usuario",
+                                                style = MaterialTheme.typography.titleSmall
+                                        )
+                                        Text(
+                                                text = authState.currentUser?.email ?: "Sin correo",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                    text =
+                                                            "Créditos: ${authState.availableCredits ?: "--"}",
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    color = MaterialTheme.colorScheme.primary
+                                            )
+                                            IconButton(
+                                                    onClick = { showCreditsInfoDialog = true },
+                                                    modifier = Modifier.size(24.dp)
+                                            ) {
+                                                Icon(
+                                                        imageVector = Icons.Default.Info,
+                                                        contentDescription =
+                                                                "Información de créditos",
+                                                        modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                            IconButton(
+                                                    onClick = {
+                                                        authViewModel.loadAvailableCredits()
+                                                    },
+                                                    modifier = Modifier.size(24.dp)
+                                            ) {
+                                                Icon(
+                                                        imageVector = Icons.Default.Refresh,
+                                                        contentDescription = "Actualizar créditos",
+                                                        modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Divider()
+                            Divider()
+                            NavigationDrawerItem(
+                                    label = { Text("Acerca de") },
+                                    selected = currentRoute == ABOUT_ROUTE,
+                                    icon = { Icon(Icons.Default.Info, contentDescription = null) },
+                                    onClick = {
+                                        navController.navigate(ABOUT_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+                            NavigationDrawerItem(
+                                    label = { Text("Ayuda (llenado)") },
+                                    selected = currentRoute == HELP_ROUTE,
+                                    icon = {
+                                        Icon(Icons.Default.Description, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        navController.navigate(HELP_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
                         }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Divider()
-                        Spacer(modifier = Modifier.height(8.dp))
-                        NavigationDrawerItem(
-                            label = { Text("Actualizar créditos") },
-                            selected = false,
-                            icon = { Icon(Icons.Default.Refresh, contentDescription = null) },
-                            onClick = {
-                                authViewModel.loadAvailableCredits()
-                                drawerScope.launch { drawerState.close() }
-                            }
-                        )
-                        Divider()
-                        NavigationDrawerItem(
-                            label = { Text("Acerca de") },
-                            selected = currentRoute == ABOUT_ROUTE,
-                            icon = { Icon(Icons.Default.Info, contentDescription = null) },
-                            onClick = {
-                                navController.navigate(ABOUT_ROUTE) {
-                                    launchSingleTop = true
-                                }
-                                drawerScope.launch { drawerState.close() }
-                            }
-                        )
-                        NavigationDrawerItem(
-                            label = { Text("Ayuda (llenado)") },
-                            selected = currentRoute == HELP_ROUTE,
-                            icon = { Icon(Icons.Default.Description, contentDescription = null) },
-                            onClick = {
-                                navController.navigate(HELP_ROUTE) {
-                                    launchSingleTop = true
-                                }
-                                drawerScope.launch { drawerState.close() }
-                            }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                    Column {
-                        Divider()
-                        NavigationDrawerItem(
-                            label = { Text("Cerrar sesión") },
-                            selected = false,
-                            icon = { Icon(Icons.Default.Logout, contentDescription = null) },
-                            onClick = {
-                                authViewModel.logout()
-                                onLogout()
-                            }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Column {
+                            Divider()
+                            NavigationDrawerItem(
+                                    label = { Text("Cerrar sesión") },
+                                    selected = false,
+                                    icon = {
+                                        Icon(Icons.Default.Logout, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        authViewModel.logout()
+                                        onLogout()
+                                    }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                     }
                 }
             }
-        }
     ) {
         Scaffold(
-            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Text(
-                            when (currentRoute) {
-                                ABOUT_ROUTE -> "Acerca de"
-                                HELP_ROUTE -> "Ayuda de llenado"
-                                else -> "Gestor Contable TCP"
-                            }
-                        )
-                    },
-                    navigationIcon = {
-                        if (currentRoute == ABOUT_ROUTE || currentRoute == HELP_ROUTE) {
-                            IconButton(onClick = { navController.popBackStack() }) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = "Regresar")
-                            }
-                        } else {
-                            IconButton(onClick = { drawerScope.launch { drawerState.open() } }) {
-                                Icon(Icons.Default.Menu, contentDescription = "Abrir menú")
-                            }
-                        }
-                    },
-                    actions = {
-                        if (currentRoute != ABOUT_ROUTE && currentRoute != HELP_ROUTE) {
-                            if (ledgerState.hasLocalChanges && !ledgerState.isSyncing) {
-                                Icon(
-                                    Icons.Default.CloudOff,
-                                    contentDescription = "Cambios locales sin sincronizar",
-                                    tint = MaterialTheme.colorScheme.error
+                modifier = Modifier.statusBarsPadding(),
+                snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+                topBar = {
+                    TopAppBar(
+                            title = {
+                                Text(
+                                        when (currentRoute) {
+                                            ABOUT_ROUTE -> "Acerca de"
+                                            HELP_ROUTE -> "Ayuda de llenado"
+                                            else -> "Gestor Contable TCP"
+                                        }
                                 )
-                            }
-                            if (ledgerState.isSyncing) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier
-                                        .padding(end = 8.dp)
-                                        .size(24.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                IconButton(onClick = { ledgerViewModel.sync() }) {
-                                    Icon(Icons.Default.Sync, contentDescription = "Sincronizar")
+                            },
+                            navigationIcon = {
+                                if (currentRoute == ABOUT_ROUTE || currentRoute == HELP_ROUTE) {
+                                    IconButton(onClick = { navController.popBackStack() }) {
+                                        Icon(
+                                                Icons.Default.ArrowBack,
+                                                contentDescription = "Regresar"
+                                        )
+                                    }
+                                } else {
+                                    IconButton(
+                                            onClick = { drawerScope.launch { drawerState.open() } }
+                                    ) {
+                                        Icon(Icons.Default.Menu, contentDescription = "Abrir menú")
+                                    }
+                                }
+                            },
+                            actions = {
+                                if (currentRoute != ABOUT_ROUTE && currentRoute != HELP_ROUTE) {
+                                    if (ledgerState.hasLocalChanges && !ledgerState.isSyncing) {
+                                        Icon(
+                                                Icons.Default.CloudOff,
+                                                contentDescription =
+                                                        "Cambios locales sin sincronizar",
+                                                tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                    if (ledgerState.isSyncing) {
+                                        CircularProgressIndicator(
+                                                modifier = Modifier.padding(end = 8.dp).size(24.dp),
+                                                strokeWidth = 2.dp
+                                        )
+                                    } else {
+                                        IconButton(onClick = { ledgerViewModel.sync() }) {
+                                            Icon(
+                                                    Icons.Default.Sync,
+                                                    contentDescription = "Sincronizar"
+                                            )
+                                        }
+                                    }
                                 }
                             }
-                        }
-                    }
-                )
-            },
-            bottomBar = {
-                NavigationBar {
-                    mainTabs.forEach { tab ->
-                        NavigationBarItem(
-                            icon = { Icon(tab.icon, contentDescription = tab.title) },
-                            label = { Text(tab.title) },
-                            selected = currentRoute == tab.route,
-                            onClick = {
-                                navController.navigate(tab.route) {
-                                    popUpTo(navController.graph.startDestinationId)
-                                    launchSingleTop = true
-                                }
+                    )
+                },
+                bottomBar = {
+                    if (currentRoute in mainTabs.map { it.route }) {
+                        NavigationBar {
+                            mainTabs.forEach { tab ->
+                                NavigationBarItem(
+                                        icon = { Icon(tab.icon, contentDescription = tab.title) },
+                                        label = { Text(tab.title) },
+                                        selected = currentRoute == tab.route,
+                                        onClick = {
+                                            navController.navigate(tab.route) {
+                                                popUpTo(navController.graph.startDestinationId)
+                                                launchSingleTop = true
+                                            }
+                                        }
+                                )
                             }
-                        )
+                        }
                     }
                 }
-            }
         ) { padding ->
             NavHost(
-                navController = navController,
-                startDestination = MainTab.Generales.route,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
+                    navController = navController,
+                    startDestination = MainTab.Generales.route,
+                    modifier = Modifier.fillMaxSize().padding(padding)
             ) {
-                composable(MainTab.Generales.route) {
-                    GeneralesScreen(ledgerViewModel)
-                }
-                composable(MainTab.Ingresos.route) {
-                    IngresosScreen(ledgerViewModel)
-                }
-                composable(MainTab.Gastos.route) {
-                    GastosScreen(ledgerViewModel)
-                }
-                composable(MainTab.Tributos.route) {
-                    TributosScreen(ledgerViewModel)
-                }
-                composable(MainTab.Resumen.route) {
-                    ResumenScreen(ledgerViewModel)
-                }
+                composable(MainTab.Generales.route) { GeneralesScreen(ledgerViewModel) }
+                composable(MainTab.Ingresos.route) { IngresosScreen(ledgerViewModel) }
+                composable(MainTab.Gastos.route) { GastosScreen(ledgerViewModel) }
+                composable(MainTab.Tributos.route) { TributosScreen(ledgerViewModel) }
+                composable(MainTab.Resumen.route) { ResumenScreen(ledgerViewModel) }
                 composable(ABOUT_ROUTE) {
                     AboutScreen(
-                        onContactWhatsApp = {
-                            val opened = openWhatsAppContact(
-                                context,
-                                "Hola, necesito ayuda con Gestor Contable TCP."
-                            )
-                            if (!opened) {
-                                drawerScope.launch {
-                                    snackbarHostState.showSnackbar("No se pudo abrir WhatsApp en este dispositivo")
+                            onContactWhatsApp = {
+                                val opened =
+                                        openWhatsAppContact(
+                                                context,
+                                                "Hola, necesito ayuda con Gestor Contable TCP."
+                                        )
+                                if (!opened) {
+                                    drawerScope.launch {
+                                        snackbarHostState.showSnackbar(
+                                                "No se pudo abrir WhatsApp en este dispositivo"
+                                        )
+                                    }
                                 }
-                            }
-                        },
-                        onOpenUrl = { url ->
-                            val opened = openExternalUrl(context, url)
-                            if (!opened) {
-                                drawerScope.launch {
-                                    snackbarHostState.showSnackbar("No se pudo abrir el enlace")
+                            },
+                            onOpenUrl = { url ->
+                                val opened = openExternalUrl(context, url)
+                                if (!opened) {
+                                    drawerScope.launch {
+                                        snackbarHostState.showSnackbar("No se pudo abrir el enlace")
+                                    }
                                 }
-                            }
-                        },
+                            },
                     )
                 }
                 composable(HELP_ROUTE) {
                     HelpFillScreen(
-                        onContactWhatsApp = {
-                            val opened = openWhatsAppContact(
-                                context,
-                                "Hola, necesito ayuda para llenar correctamente el registro impreso."
-                            )
-                            if (!opened) {
-                                drawerScope.launch {
-                                    snackbarHostState.showSnackbar("No se pudo abrir WhatsApp en este dispositivo")
+                            onContactWhatsApp = {
+                                val opened =
+                                        openWhatsAppContact(
+                                                context,
+                                                "Hola, necesito ayuda para llenar correctamente el registro impreso."
+                                        )
+                                if (!opened) {
+                                    drawerScope.launch {
+                                        snackbarHostState.showSnackbar(
+                                                "No se pudo abrir WhatsApp en este dispositivo"
+                                        )
+                                    }
                                 }
-                            }
-                        },
+                            },
                     )
                 }
             }
         }
+    }
     }
 
     ledgerState.syncMessage?.let { message ->
@@ -394,162 +445,193 @@ fun MainScreen(
 
     ledgerState.pendingSyncDecision?.let { decision ->
         val conflictText = decision.conflictInfo?.conflictMessage.orEmpty()
-        val isConflict = decision.action == SyncAction.CONFLICT_DETECTED ||
-            (decision.conflictInfo?.hasConflict == true)
+        val isConflict =
+                decision.action == SyncAction.CONFLICT_DETECTED ||
+                        (decision.conflictInfo?.hasConflict == true)
 
         AlertDialog(
-            onDismissRequest = { ledgerViewModel.dismissSyncDecision() },
-            title = {
-                Text(
-                    if (isConflict) "Conflicto de sincronización"
-                    else "Confirmar sincronización"
-                )
-            },
-            text = {
-                Text(
-                    buildString {
-                        append(decision.message)
-                        if (conflictText.isNotBlank()) {
-                            append("\n\n")
-                            append(conflictText)
+                onDismissRequest = { ledgerViewModel.dismissSyncDecision() },
+                title = {
+                    Text(
+                            if (isConflict) "Conflicto de sincronización"
+                            else "Confirmar sincronización"
+                    )
+                },
+                text = {
+                    Text(
+                            buildString {
+                                append(decision.message)
+                                if (conflictText.isNotBlank()) {
+                                    append("\n\n")
+                                    append(conflictText)
+                                }
+                            }
+                    )
+                },
+                dismissButton = {
+                    TextButton(onClick = { ledgerViewModel.dismissSyncDecision() }) {
+                        Text("Cancelar")
+                    }
+                },
+                confirmButton = {
+                    androidx.compose.foundation.layout.Row {
+                        if (decision.remoteRegistro != null) {
+                            TextButton(onClick = { ledgerViewModel.confirmUseRemote() }) {
+                                Text("Usar nube")
+                            }
+                        }
+                        if (decision.action == SyncAction.PUSH_ONLY || isConflict) {
+                            TextButton(onClick = { ledgerViewModel.confirmUseLocal() }) {
+                                Text("Usar local")
+                            }
+                        }
+                        if (!isConflict && decision.mergedRegistro != null) {
+                            TextButton(onClick = { ledgerViewModel.confirmUseMerge() }) {
+                                Text("Merge")
+                            }
                         }
                     }
-                )
-            },
-            dismissButton = {
-                TextButton(onClick = { ledgerViewModel.dismissSyncDecision() }) {
-                    Text("Cancelar")
                 }
-            },
-            confirmButton = {
-                androidx.compose.foundation.layout.Row {
-                    if (decision.remoteRegistro != null) {
-                        TextButton(onClick = { ledgerViewModel.confirmUseRemote() }) {
-                            Text("Usar nube")
-                        }
-                    }
-                    if (decision.action == SyncAction.PUSH_ONLY || isConflict) {
-                        TextButton(onClick = { ledgerViewModel.confirmUseLocal() }) {
-                            Text("Usar local")
-                        }
-                    }
-                    if (!isConflict && decision.mergedRegistro != null) {
-                        TextButton(onClick = { ledgerViewModel.confirmUseMerge() }) {
-                            Text("Merge")
-                        }
-                    }
-                }
-            }
         )
     }
 
     if (ledgerState.showNoCreditsDialog) {
         AlertDialog(
-            onDismissRequest = { ledgerViewModel.dismissNoCreditsDialog() },
-            title = { Text("Créditos agotados") },
-            text = {
-                Text(
-                    ledgerState.noCreditsMessage
-                        ?: "No te quedan créditos disponibles para generar más informes. Ponte en contacto con el administrador para adquirir más créditos."
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        ledgerViewModel.dismissNoCreditsDialog()
-                        val opened = openWhatsAppContact(
-                            context,
-                            "Hola, necesito adquirir más créditos para generar informes en Gestor Contable TCP."
-                        )
-                        if (!opened) {
-                            drawerScope.launch {
-                                snackbarHostState.showSnackbar("No se pudo abrir WhatsApp en este dispositivo")
+                onDismissRequest = { ledgerViewModel.dismissNoCreditsDialog() },
+                title = { Text("Créditos agotados") },
+                text = {
+                    Text(
+                            "No te quedan créditos disponibles para generar nuevos informes.\n\n" +
+                                    "Actualmente, el sistema de monetización de la app se encuentra en desarrollo. El uso de funcionalidades premium ha sido limitado para evitar un uso abusivo de nuestros servidores.\n\n" +
+                                    "Actualmente no hay costos extras asociados al servicio más allá del pago inicial en APKLIS.\n\n" +
+                                    "Si deseas seguir utilizando esta funcionalidad, puede ponerse en contacto con nosotros vía WhatsApp para habilitarle una prueba premium del sistema, con acceso a más recursos. \n\n" +
+                                    "Gracias por formar parte de SYSGD Ecosystem."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                            onClick = {
+                                ledgerViewModel.dismissNoCreditsDialog()
+                                val opened =
+                                        openWhatsAppContact(
+                                                context,
+                                                "Hola, necesito adquirir más créditos para generar informes en Gestor Contable TCP."
+                                        )
+                                if (!opened) {
+                                    drawerScope.launch {
+                                        snackbarHostState.showSnackbar(
+                                                "No se pudo abrir WhatsApp en este dispositivo"
+                                        )
+                                    }
+                                }
                             }
-                        }
+                    ) { Text("Contactar por WhatsApp") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { ledgerViewModel.dismissNoCreditsDialog() }) {
+                        Text("Entendido")
                     }
-                ) {
-                    Text("Contactar por WhatsApp")
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { ledgerViewModel.dismissNoCreditsDialog() }) {
-                    Text("Cerrar")
+        )
+    }
+
+    if (showCreditsInfoDialog) {
+        AlertDialog(
+                onDismissRequest = { showCreditsInfoDialog = false },
+                title = { Text("Información de créditos") },
+                text = {
+                    Text(
+                            "Actualmente, el sistema de venta de créditos se encuentra en construcción.\n\n" +
+                                    "Para proteger la estabilidad de la plataforma durante esta etapa, cada usuario dispone de una cantidad limitada de créditos, lo que nos permite evitar abusos del servicio.\n\n" +
+                                    "Por ahora, no existen costos adicionales más allá del pago de descarga en APKLIS.\n\n" +
+                                    "Si necesitas más créditos, contáctame por WhatsApp y podré habilitarte acceso premium con una bonificación durante la fase de desarrollo."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                            onClick = {
+                                showCreditsInfoDialog = false
+                                val opened =
+                                        openWhatsAppContact(
+                                                context,
+                                                "Hola, me interesa acceso premium con bonificación de créditos en Gestor Contable TCP."
+                                        )
+                                if (!opened) {
+                                    drawerScope.launch {
+                                        snackbarHostState.showSnackbar(
+                                                "No se pudo abrir WhatsApp en este dispositivo"
+                                        )
+                                    }
+                                }
+                            }
+                    ) { Text("Contactar por WhatsApp") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCreditsInfoDialog = false }) { Text("Cerrar") }
                 }
-            }
         )
     }
 }
 
 @Composable
-private fun AboutScreen(
-    onContactWhatsApp: () -> Unit,
-    onOpenUrl: (String) -> Unit
-) {
+private fun AboutScreen(onContactWhatsApp: () -> Unit, onOpenUrl: (String) -> Unit) {
     val context = LocalContext.current
     val appVersion = remember { getAppVersionName(context) }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                    shape = RoundedCornerShape(16.dp)
-                )
-                .padding(16.dp)
+                modifier =
+                        Modifier.fillMaxWidth()
+                                .background(
+                                        color =
+                                                MaterialTheme.colorScheme.surfaceVariant.copy(
+                                                        alpha = 0.35f
+                                                ),
+                                        shape = RoundedCornerShape(16.dp)
+                                )
+                                .padding(16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
-                    painter = painterResource(id = R.drawable.ic_launcher),
-                    contentDescription = "Icono de la app",
-                    modifier = Modifier.size(56.dp)
+                        painter = painterResource(id = R.drawable.ic_launcher),
+                        contentDescription = "Icono de la app",
+                        modifier = Modifier.size(56.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
+                    Text(text = "Gestor Contable TCP", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        text = "Gestor Contable TCP",
-                        style = MaterialTheme.typography.titleMedium
+                            text = "Versión $appVersion",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "Versión $appVersion",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = "Desarrollador",
+                            style = MaterialTheme.typography.labelMedium,
                     )
                     Text(
-                        text = "Desarrollador",
-                        style = MaterialTheme.typography.labelMedium,
+                            text = "Licenciado en Contabilidad y Finanzas",
+                            style = MaterialTheme.typography.bodySmall
                     )
                     Text(
-                        text = "Licenciado en Contabilidad y Finanzas",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Text(
-                        text = "Lázaro Yunier Salazar Rodríguez",
-                        style = MaterialTheme.typography.bodySmall
+                            text = "Lázaro Yunier Salazar Rodríguez",
+                            style = MaterialTheme.typography.bodySmall
                     )
                 }
             }
         }
 
-        TextButton(onClick = onContactWhatsApp) {
-            Text("Contactar por WhatsApp (+53 51158544)")
-        }
+        TextButton(onClick = onContactWhatsApp) { Text("Contactar por WhatsApp (+53 51158544)") }
 
         Divider()
 
+        Text(text = "Plataforma SYSGD Ecosystem", style = MaterialTheme.typography.titleMedium)
         Text(
-            text = "Plataforma SYSGD Ecosystem",
-            style = MaterialTheme.typography.titleMedium
-        )
-        Text(
-            text = "Conoce más servicios y accesos oficiales de SYSGD:",
-            style = MaterialTheme.typography.bodyMedium
+                text = "Conoce más servicios y accesos oficiales de SYSGD:",
+                style = MaterialTheme.typography.bodyMedium
         )
         TextButton(onClick = { onOpenUrl("https://www.ecosysgd.com") }) {
             Text("Web institucional: www.ecosysgd.com")
@@ -567,47 +649,49 @@ private fun AboutScreen(
 }
 
 @Composable
-private fun HelpFillScreen(
-    onContactWhatsApp: () -> Unit
-) {
+private fun HelpFillScreen(onContactWhatsApp: () -> Unit) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "Guía de llenado del registro impreso",
-            style = MaterialTheme.typography.titleMedium
+                text = "Guía de llenado del registro impreso",
+                style = MaterialTheme.typography.titleMedium
         )
         Text(
-            text = "Sigue estas indicaciones al imprimir y llenar el documento generado por la app:",
-            style = MaterialTheme.typography.bodyMedium
+                text =
+                        "Sigue estas indicaciones al imprimir y llenar el documento generado por la app:",
+                style = MaterialTheme.typography.bodyMedium
         )
         Text(
-            text = "1. Conservación: el registro debe mantenerse limpio, legible y en buen estado. Conserva comprobantes y facturas por 5 años.",
-            style = MaterialTheme.typography.bodySmall
+                text =
+                        "1. Conservación: el registro debe mantenerse limpio, legible y en buen estado. Conserva comprobantes y facturas por 5 años.",
+                style = MaterialTheme.typography.bodySmall
         )
         Text(
-            text = "2. Ingresos/Gastos diarios: anota el importe del día en la columna correspondiente al mes y día. Al cierre de mes, totaliza.",
-            style = MaterialTheme.typography.bodySmall
+                text =
+                        "2. Ingresos/Gastos diarios: anota el importe del día en la columna correspondiente al mes y día. Al cierre de mes, totaliza.",
+                style = MaterialTheme.typography.bodySmall
         )
         Text(
-            text = "3. Correcciones: en caso de error, tacha de forma legible y corrige; evita borrar o tapar la información original.",
-            style = MaterialTheme.typography.bodySmall
+                text =
+                        "3. Correcciones: en caso de error, tacha de forma legible y corrige; evita borrar o tapar la información original.",
+                style = MaterialTheme.typography.bodySmall
         )
         Text(
-            text = "4. Tributos pagados: registra los importes mensuales por cada concepto en su columna (ventas, fuerza, sellos, anuncios, CSS, otros).",
-            style = MaterialTheme.typography.bodySmall
+                text =
+                        "4. Tributos pagados: registra los importes mensuales por cada concepto en su columna (ventas, fuerza, sellos, anuncios, CSS, otros).",
+                style = MaterialTheme.typography.bodySmall
         )
         Text(
-            text = "5. Declaración jurada: utiliza los totales mensuales/anuales del registro para preparar correctamente la DJ.",
-            style = MaterialTheme.typography.bodySmall
+                text =
+                        "5. Declaración jurada: utiliza los totales mensuales/anuales del registro para preparar correctamente la DJ.",
+                style = MaterialTheme.typography.bodySmall
         )
         Text(
-            text = "6. Revisión final: antes de presentar, verifica que fechas, importes y totales estén consistentes con tus comprobantes.",
-            style = MaterialTheme.typography.bodySmall
+                text =
+                        "6. Revisión final: antes de presentar, verifica que fechas, importes y totales estén consistentes con tus comprobantes.",
+                style = MaterialTheme.typography.bodySmall
         )
         Divider()
         TextButton(onClick = onContactWhatsApp) {

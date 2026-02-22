@@ -20,6 +20,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import cu.lazaroysr96.sysgdcont.ui.components.TermsAndConditionsDialog
 import cu.lazaroysr96.sysgdcont.viewmodel.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,6 +40,8 @@ fun LoginScreen(
     var name by remember { mutableStateOf("") }
     var showAdvancedDialog by remember { mutableStateOf(false) }
     var manualToken by remember { mutableStateOf("") }
+    var showTermsDialog by remember { mutableStateOf(false) }
+    var termsAccepted by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.isAuthenticated) {
         if (uiState.isAuthenticated) {
@@ -68,10 +71,12 @@ fun LoginScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(modifier = Modifier.height(16.dp))
+
             Text(
                 text = "GESTOR CONTABLE",
                 style = MaterialTheme.typography.headlineLarge,
@@ -176,7 +181,11 @@ fun LoginScreen(
             Button(
                 onClick = {
                     if (isRegisterMode) {
-                        viewModel.register(name, email, password)
+                        if (termsAccepted) {
+                            viewModel.register(name, email, password)
+                        } else {
+                            showTermsDialog = true
+                        }
                     } else {
                         viewModel.login(email, password)
                     }
@@ -199,6 +208,7 @@ fun LoginScreen(
             TextButton(
                 onClick = {
                     isRegisterMode = !isRegisterMode
+                    termsAccepted = false
                     viewModel.clearError()
                 }
             ) {
@@ -215,6 +225,8 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Método avanzado (token)")
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 
@@ -260,6 +272,19 @@ fun LoginScreen(
                 TextButton(onClick = { showAdvancedDialog = false }) {
                     Text("Cancelar")
                 }
+            }
+        )
+    }
+
+    if (showTermsDialog) {
+        TermsAndConditionsDialog(
+            onAccept = {
+                termsAccepted = true
+                showTermsDialog = false
+                viewModel.register(name, email, password)
+            },
+            onDismiss = {
+                showTermsDialog = false
             }
         )
     }

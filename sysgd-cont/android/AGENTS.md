@@ -10,6 +10,27 @@ export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
 ./gradlew assembleDebug
 ```
 
+## Compilar APK Release (firmado)
+
+```bash
+cd android
+
+# Leer contraseña desde archivo seguro (NUNCA poner contraseñas en código)
+PASS=$(tr -d '\r\n' < firma/password.txt)
+
+# Compilar APK release firmado
+JAVA_HOME=/usr/lib/jvm/java-17-openjdk ./gradlew :app:assembleRelease \
+  -Pandroid.injected.signing.store.file="$(pwd)/firma/firma-release.p12" \
+  -Pandroid.injected.signing.store.password="$PASS" \
+  -Pandroid.injected.signing.key.alias="lázaro yunier" \
+  -Pandroid.injected.signing.key.password="$PASS"
+```
+
+**IMPORTANTE**: 
+- NUNCA añadir contraseñas al build.gradle
+- Siempre usar variables de entorno o archivos externos
+- El archivo `firma/password.txt` contiene la contraseña y debe mantenerse privado
+
 ## Instalar APK en dispositivo
 
 ```bash

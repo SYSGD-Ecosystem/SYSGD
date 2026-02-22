@@ -4,9 +4,13 @@
 	"scripts": {
 		"dev": "concurrently \"npm run dev-client\" \"npm run dev-server\"",
 		"build": "concurrently \"npm run build-client\" \"npm run build-server\"",
+		"all": "concurrently \"npm run dev-client\" \"npm run dev-server\" \"npm run dev-admin\" \"npm run dev-web\" \"npm run dev-cont\"",
 		"install-all": "npm install --workspaces",
 		"dev-client": "cd client/react-frontend && npm run dev",
 		"dev-server": "cd server/node-server && npm run dev",
+		"dev-admin": "cd admin/sysgd-admin && npm run dev",
+		"dev-web": "cd web/sysgd-web && npm run dev",
+		"dev-cont": "cd sysgd-cont && npm start",
 		"build-client": "cd client/react-frontend && npm run build",
 		"build-server": "cd server/node-server && npm run build",
 		"start-server": "cd server/node-server && npm start"
