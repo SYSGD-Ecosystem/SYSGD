@@ -190,17 +190,30 @@ fun LoginScreen(
                         viewModel.login(email, password)
                     }
                 },
-                enabled = !uiState.isLoading && email.isNotBlank() && password.isNotBlank(),
+                enabled = !uiState.isLoading && !uiState.isWakingUp && email.isNotBlank() && password.isNotBlank(),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                if (uiState.isLoading) {
+                if (uiState.isLoading || uiState.isWakingUp) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(if (uiState.isWakingUp) "Conectando..." else "Cargando...")
                 } else {
                     Text(if (isRegisterMode) "Registrarse" else "Iniciar Sesión")
                 }
+            }
+
+            val wakeUpMessage = uiState.wakeUpProgress
+            if (uiState.isWakingUp && wakeUpMessage != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = wakeUpMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))

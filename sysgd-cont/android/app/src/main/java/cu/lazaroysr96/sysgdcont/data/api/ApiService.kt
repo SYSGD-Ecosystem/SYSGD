@@ -6,6 +6,9 @@ import retrofit2.Response
 import retrofit2.http.*
 
 interface ApiService {
+    @GET("api/status")
+    suspend fun checkServerStatus(): Response<Unit>
+
     @POST("api/auth/login")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
 

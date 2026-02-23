@@ -11,6 +11,8 @@ import javax.inject.Inject
 
 data class AuthUiState(
     val isLoading: Boolean = false,
+    val isWakingUp: Boolean = false,
+    val wakeUpProgress: String? = null,
     val isSessionResolved: Boolean = false,
     val isAuthenticated: Boolean = false,
     val availableCredits: Int? = null,
@@ -53,7 +55,15 @@ class AuthViewModel @Inject constructor(
     fun login(email: String, password: String) {
         if (_uiState.value.isLoading) return
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, infoMessage = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, infoMessage = null, isWakingUp = true, wakeUpProgress = "Despertando servidor...") }
+            
+            authRepository.wakeUpServer()
+                .onSuccess {
+                    _uiState.update { it.copy(isWakingUp = false, wakeUpProgress = null) }
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isWakingUp = false, wakeUpProgress = null) }
+                }
             
             authRepository.login(email, password)
                 .onSuccess { user ->
@@ -68,7 +78,15 @@ class AuthViewModel @Inject constructor(
     fun register(name: String, email: String, password: String) {
         if (_uiState.value.isLoading) return
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, infoMessage = null, registerCompleted = false) }
+            _uiState.update { it.copy(isLoading = true, error = null, infoMessage = null, registerCompleted = false, isWakingUp = true, wakeUpProgress = "Despertando servidor...") }
+            
+            authRepository.wakeUpServer()
+                .onSuccess {
+                    _uiState.update { it.copy(isWakingUp = false, wakeUpProgress = null) }
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isWakingUp = false, wakeUpProgress = null) }
+                }
             
             authRepository.register(name, email, password)
                 .onSuccess {

@@ -53,6 +53,24 @@ class AuthRepository @Inject constructor(
 
     suspend fun getToken(): String? = context.authDataStore.data.first()[TOKEN_KEY]
 
+    suspend fun wakeUpServer(maxRetries: Int = 5, delayMs: Long = 10000): Result<Unit> {
+        for (attempt in 0 until maxRetries) {
+            val isSuccess = try {
+                val response = apiService.checkServerStatus()
+                response.isSuccessful
+            } catch (e: Exception) {
+                false
+            }
+            if (isSuccess) {
+                return Result.success(Unit)
+            }
+            if (attempt < maxRetries - 1) {
+                kotlinx.coroutines.delay(delayMs)
+            }
+        }
+        return Result.failure(Exception("Servidor no disponible después de $maxRetries intentos"))
+    }
+
     suspend fun getAvailableCredits(): Result<Int> {
         return try {
             val token = getToken() ?: return Result.failure(Exception("No autenticado"))
