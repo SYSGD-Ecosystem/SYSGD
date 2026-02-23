@@ -195,8 +195,8 @@ class LedgerViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isSyncing = false,
-                                syncSuccess = true,
-                                syncMessage = result.message,
+                                syncSuccess = result.action != cu.lazaroysr96.sysgdcont.data.model.SyncAction.NO_CHANGES,
+                                syncMessage = if (result.action == cu.lazaroysr96.sysgdcont.data.model.SyncAction.NO_CHANGES) null else result.message,
                                 pendingSyncDecision = null,
                                 registro = updatedRegistro,
                                 annualReport = updatedReport
