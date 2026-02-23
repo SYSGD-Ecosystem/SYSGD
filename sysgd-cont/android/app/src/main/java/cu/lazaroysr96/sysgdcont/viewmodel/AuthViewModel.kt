@@ -19,7 +19,8 @@ data class AuthUiState(
     val currentUser: AuthUser? = null,
     val error: String? = null,
     val infoMessage: String? = null,
-    val registerCompleted: Boolean = false
+    val registerCompleted: Boolean = false,
+    val needsAutoSync: Boolean = false
 )
 
 @HiltViewModel
