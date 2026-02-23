@@ -125,8 +125,8 @@ fun MainScreen(
         ledgerViewModel: LedgerViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val configuration = LocalConfiguration.current
-    val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
+    // val configuration = LocalConfiguration.current
+    // val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
     val navController = rememberNavController()
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
@@ -137,7 +137,7 @@ fun MainScreen(
     val drawerScope = rememberCoroutineScope()
     var showCreditsInfoDialog by remember { mutableStateOf(false) }
 
-    val drawerWidthFraction = if (isLandscape) 0.5f else 0.8f
+    // val drawerWidthFraction = if (isLandscape) 0.5f else 0.8f
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         ModalNavigationDrawer(
@@ -145,8 +145,6 @@ fun MainScreen(
                 drawerContent = {
                     ModalDrawerSheet(
                             modifier = Modifier
-                                    .fillMaxWidth(drawerWidthFraction)
-                                    .widthIn(max = if (isLandscape) 300.dp else Float.POSITIVE_INFINITY.dp)
                                     .statusBarsPadding()
                                     .navigationBarsPadding()
                     ) {
@@ -421,6 +419,12 @@ fun MainScreen(
             }
         }
     }
+    }
+
+    LaunchedEffect(authState.isAuthenticated) {
+        if (authState.isAuthenticated) {
+            ledgerViewModel.autoSyncOnFirstLogin()
+        }
     }
 
     ledgerState.syncMessage?.let { message ->

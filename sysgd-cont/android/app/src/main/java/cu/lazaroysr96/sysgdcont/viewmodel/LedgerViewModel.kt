@@ -174,6 +174,47 @@ class LedgerViewModel @Inject constructor(
         }
     }
 
+    fun autoSyncOnFirstLogin() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSyncing = true, syncError = null, syncSuccess = false, syncMessage = null) }
+            
+            ledgerRepository.autoSyncOnFirstLogin()
+                .onSuccess { result ->
+                    if (result.needsUserDecision) {
+                        _uiState.update {
+                            it.copy(
+                                isSyncing = false,
+                                syncMessage = result.message,
+                                pendingSyncDecision = result
+                            )
+                        }
+                    } else {
+                        val updatedRegistro = ledgerRepository.getRegistro()
+                        val updatedReport = ledgerRepository.calculateAnnualReport(updatedRegistro)
+
+                        _uiState.update {
+                            it.copy(
+                                isSyncing = false,
+                                syncSuccess = true,
+                                syncMessage = result.message,
+                                pendingSyncDecision = null,
+                                registro = updatedRegistro,
+                                annualReport = updatedReport
+                            )
+                        }
+                    }
+                }
+                .onFailure { e ->
+                    _uiState.update { 
+                        it.copy(
+                            isSyncing = false, 
+                            syncError = e.message
+                        ) 
+                    }
+                }
+        }
+    }
+
     fun dismissSyncDecision() {
         _uiState.update { it.copy(pendingSyncDecision = null) }
     }

@@ -33,6 +33,7 @@ class AuthRepository @Inject constructor(
         private val USER_NAME_KEY = stringPreferencesKey("user_name")
         private val USER_EMAIL_KEY = stringPreferencesKey("user_email")
         private val USER_PRIVILEGES_KEY = stringPreferencesKey("user_privileges")
+        private val FIRST_LOGIN_KEY = stringPreferencesKey("first_login_sync")
     }
 
     val isAuthenticated: Flow<Boolean> = context.authDataStore.data.map { prefs ->
@@ -52,6 +53,17 @@ class AuthRepository @Inject constructor(
     }
 
     suspend fun getToken(): String? = context.authDataStore.data.first()[TOKEN_KEY]
+
+    suspend fun shouldAutoSyncOnFirstLogin(): Boolean {
+        val firstLogin = context.authDataStore.data.first()[FIRST_LOGIN_KEY]
+        return firstLogin == null || firstLogin == "true"
+    }
+
+    suspend fun markFirstLoginSyncComplete() {
+        context.authDataStore.edit { prefs ->
+            prefs[FIRST_LOGIN_KEY] = "false"
+        }
+    }
 
     suspend fun wakeUpServer(maxRetries: Int = 5, delayMs: Long = 10000): Result<Unit> {
         for (attempt in 0 until maxRetries) {

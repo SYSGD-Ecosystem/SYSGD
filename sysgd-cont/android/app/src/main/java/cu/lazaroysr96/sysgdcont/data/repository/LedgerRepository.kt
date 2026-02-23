@@ -331,6 +331,25 @@ class LedgerRepository @Inject constructor(
         return uploadLocalToRemote().map { Unit }
     }
 
+    suspend fun autoSyncOnFirstLogin(): Result<SyncResult> {
+        return try {
+            val shouldSync = authRepository.shouldAutoSyncOnFirstLogin()
+            if (!shouldSync) {
+                return Result.success(SyncResult(true, "Sincronización automática omitida", SyncAction.NO_CHANGES))
+            }
+
+            val result = sync()
+
+            if (result.isSuccess) {
+                authRepository.markFirstLoginSyncComplete()
+            }
+
+            result
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun sync(): Result<SyncResult> {
         return try {
             val token = authRepository.getToken() ?: return Result.failure(Exception("No token"))
