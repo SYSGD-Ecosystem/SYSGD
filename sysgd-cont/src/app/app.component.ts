@@ -1,6 +1,6 @@
-import { CommonModule, CurrencyPipe } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { Component, OnInit, ViewEncapsulation } from '@angular/core';
+import { FormBuilder, Validators } from '@angular/forms';
 import {
   AlertMessage,
   AnnualReport,
@@ -10,6 +10,12 @@ import {
   RegistroTCP,
   SIMPLIFIED_THRESHOLD_CUP
 } from './models/ledger-entry.model';
+import { AuthSectionComponent } from './features/auth-section/auth-section.component';
+import { GeneralesSectionComponent } from './features/generales-section/generales-section.component';
+import { MovimientosSectionComponent } from './features/movimientos-section/movimientos-section.component';
+import { ResourcesSectionComponent } from './features/resources-section/resources-section.component';
+import { ResumenSectionComponent } from './features/resumen-section/resumen-section.component';
+import { TributosSectionComponent } from './features/tributos-section/tributos-section.component';
 import { LedgerService } from './services/ledger.service';
 import { AuthService, type AuthUser } from './services/auth.service';
 import { RegistroSyncService } from './services/registro-sync.service';
@@ -17,245 +23,24 @@ import { RegistroSyncService } from './services/registro-sync.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, CurrencyPipe],
-  template: `
-    <main class="container">
-      <header class="header" *ngIf="sessionReady && currentUser">
-        <div>
-          <h1>Registro TCP: Ingresos y Gastos</h1>
-          <p class="subtitle">Sistema para control fiscal y pre-cálculo de Declaración Jurada en Cuba</p>
-        </div>
-        <div class="session-box">
-          <span class="badge" [class.offline]="!isOnline">{{ isOnline ? 'Conectado' : 'Offline' }}</span>
-          <span class="user-pill">{{ currentUser.name }}</span>
-          <button type="button" class="logout-btn" (click)="logout()">Salir</button>
-        </div>
-      </header>
-
-      <section class="card auth-card" *ngIf="!sessionReady">
-        <h2>Conectando...</h2>
-        <p class="subtitle">Comprobando sesión y sincronización de datos.</p>
-      </section>
-
-      <section class="card auth-card" *ngIf="sessionReady && !currentUser">
-        <h2>{{ authMode === 'login' ? 'Iniciar sesión' : 'Crear cuenta' }}</h2>
-        <p class="subtitle">Tus datos se guardan localmente y se sincronizan con el servidor.</p>
-        <form [formGroup]="authForm" (ngSubmit)="submitAuth()" class="form-grid">
-          <label *ngIf="authMode === 'register'">Nombre completo <input type="text" formControlName="name" /></label>
-          <label>Email <input type="email" formControlName="email" /></label>
-          <label>Contraseña <input type="password" formControlName="password" /></label>
-          <div class="actions full">
-            <button type="submit" [disabled]="authLoading || authForm.invalid">
-              {{ authLoading ? 'Procesando...' : authMode === 'login' ? 'Entrar' : 'Crear cuenta' }}
-            </button>
-            <button type="button" class="secondary-btn" [disabled]="authLoading" (click)="toggleAuthMode()">
-              {{ authMode === 'login' ? 'No tengo cuenta' : 'Ya tengo cuenta' }}
-            </button>
-          </div>
-          <p class="full auth-error" *ngIf="authError">{{ authError }}</p>
-          <div class="actions full" *ngIf="offlineRecoveryAvailable">
-            <button type="button" class="secondary-btn" (click)="continueOffline()">Continuar en modo offline</button>
-          </div>
-        </form>
-      </section>
-
-      <ng-container *ngIf="sessionReady && currentUser">
-      <nav class="tabs">
-        <button [class.active]="activeTab === 'generales'" (click)="activeTab = 'generales'">1. Generales</button>
-        <button [class.active]="activeTab === 'movimientos'" (click)="activeTab = 'movimientos'">2-3. Ingresos/Gastos</button>
-        <button [class.active]="activeTab === 'tributos'" (click)="activeTab = 'tributos'">4. Tributos</button>
-        <button [class.active]="activeTab === 'resumen'" (click)="activeTab = 'resumen'">Resumen DJ</button>
-      </nav>
-
-      <section class="card" *ngIf="activeTab === 'generales'">
-        <h2>Datos Generales del Contribuyente</h2>
-        <form [formGroup]="generalesForm" (ngSubmit)="saveGenerales()" class="form-grid">
-          <label>Nombre completo <input type="text" formControlName="nombre" /></label>
-          <label>Año fiscal <input type="number" formControlName="anio" /></label>
-          <label>NIT <input type="text" formControlName="nit" /></label>
-          <label>Código de actividad <input type="text" formControlName="codigo" /></label>
-          <label class="full">Actividad económica <input type="text" formControlName="actividad" /></label>
-          <label class="full subtitle2">Domicilio fiscal</label>
-          <label class="full">Calle / número <input type="text" formControlName="fiscalCalle" /></label>
-          <label>Provincia
-            <select formControlName="fiscalProvincia">
-              <option value="">Seleccione provincia</option>
-              <option *ngFor="let prov of provinces" [value]="prov">{{ prov }}</option>
-            </select>
-          </label>
-          <label>Municipio
-            <select formControlName="fiscalMunicipio">
-              <option value="">Seleccione municipio</option>
-              <option *ngFor="let mun of fiscalMunicipios" [value]="mun">{{ mun }}</option>
-            </select>
-          </label>
-          <label class="full subtitle2">Domicilio legal</label>
-          <label class="full">Calle / número <input type="text" formControlName="legalCalle" /></label>
-          <label>Provincia
-            <select formControlName="legalProvincia">
-              <option value="">Seleccione provincia</option>
-              <option *ngFor="let prov of provinces" [value]="prov">{{ prov }}</option>
-            </select>
-          </label>
-          <label>Municipio
-            <select formControlName="legalMunicipio">
-              <option value="">Seleccione municipio</option>
-              <option *ngFor="let mun of legalMunicipios" [value]="mun">{{ mun }}</option>
-            </select>
-          </label>
-          <div class="actions full"><button type="submit" [disabled]="generalesForm.invalid">Guardar generales</button></div>
-        </form>
-      </section>
-
-      <section class="card" *ngIf="activeTab === 'movimientos'">
-        <h2>Registro mensual de ingresos y gastos</h2>
-        <form [formGroup]="movForm" (ngSubmit)="saveMovement()" class="form-grid">
-          <label>Tipo
-            <select formControlName="tipo">
-              <option value="ingreso">Ingreso</option>
-              <option value="gasto">Gasto</option>
-            </select>
-          </label>
-          <label>Mes
-            <select formControlName="mes">
-              <option *ngFor="let m of months" [value]="m">{{ m }}</option>
-            </select>
-          </label>
-          <label>Día <input type="number" min="1" max="31" formControlName="dia" /></label>
-          <label>Importe CUP <input type="number" min="0.01" step="0.01" formControlName="importe" /></label>
-          <label>Divisa (opcional) <input type="number" min="0" step="0.01" formControlName="montoDivisa" /></label>
-          <label>Tasa BCC (opcional) <input type="number" min="0" step="0.01" formControlName="tasaDivisa" /></label>
-          <div class="actions full">
-            <button type="submit" [disabled]="movForm.invalid">Registrar</button>
-          </div>
-        </form>
-
-        <div class="table-section">
-          <h3>Movimientos del mes {{ selectedMonth }}</h3>
-          <div class="split-tables">
-            <article class="movement-card">
-              <h4>Ingresos</h4>
-              <div class="table-wrapper">
-                <table class="mov-table">
-                  <thead>
-                    <tr>
-                      <th>Día</th>
-                      <th>Ingreso</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr *ngFor="let row of registro.ingresos[selectedMonth]; trackBy: trackByDayAmount">
-                      <td>{{ row.dia }}</td>
-                      <td>{{ row.importe | currency:'CUP':'symbol':'1.2-2' }}</td>
-                    </tr>
-                    <tr *ngIf="registro.ingresos[selectedMonth].length === 0">
-                      <td colspan="2" class="empty-cell">Sin ingresos en este mes.</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </article>
-
-            <article class="movement-card">
-              <h4>Gastos</h4>
-              <div class="table-wrapper">
-                <table class="mov-table">
-                  <thead>
-                    <tr>
-                      <th>Día</th>
-                      <th>Gasto</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr *ngFor="let row of registro.gastos[selectedMonth]; trackBy: trackByDayAmount">
-                      <td>{{ row.dia }}</td>
-                      <td>{{ row.importe | currency:'CUP':'symbol':'1.2-2' }}</td>
-                    </tr>
-                    <tr *ngIf="registro.gastos[selectedMonth].length === 0">
-                      <td colspan="2" class="empty-cell">Sin gastos en este mes.</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </article>
-          </div>
-          <div class="movement-totals">
-            <span>Total ingresos: <strong>{{ selectedMonthIngresosTotal | currency:'CUP':'symbol':'1.2-2' }}</strong></span>
-            <span>Total gastos: <strong>{{ selectedMonthGastosTotal | currency:'CUP':'symbol':'1.2-2' }}</strong></span>
-          </div>
-        </div>
-      </section>
-
-      <section class="card" *ngIf="activeTab === 'tributos'">
-        <h2>Tributos y otros gastos deducibles</h2>
-        <form [formGroup]="tributoForm" (ngSubmit)="saveTributos()" class="form-grid">
-          <label>Mes
-            <select formControlName="mes">
-              <option *ngFor="let m of months" [value]="m">{{ m }}</option>
-            </select>
-          </label>
-          <label>Imp. Ventas/Servicios (011402) <input type="number" min="0" step="0.01" formControlName="ventas" /></label>
-          <label>Fuerza de trabajo (061032) <input type="number" min="0" step="0.01" formControlName="fuerza" /></label>
-          <label>Documentos/sellos (073012) <input type="number" min="0" step="0.01" formControlName="sellos" /></label>
-          <label>Anuncios (090012) <input type="number" min="0" step="0.01" formControlName="anuncios" /></label>
-          <label>CSS 20% (082013) <input type="number" min="0" step="0.01" formControlName="css20" /></label>
-          <label>CSS 14% (081013) <input type="number" min="0" step="0.01" formControlName="css14" /></label>
-          <label>Otros tributos <input type="number" min="0" step="0.01" formControlName="otros" /></label>
-          <label>Restauración <input type="number" min="0" step="0.01" formControlName="restauracion" /></label>
-          <label>Arrendamiento <input type="number" min="0" step="0.01" formControlName="arrendamiento" /></label>
-          <label>Exonerado <input type="number" min="0" step="0.01" formControlName="exonerado" /></label>
-          <label>Otros MFP <input type="number" min="0" step="0.01" formControlName="otrosMFP" /></label>
-          <label>Cuota mensual 5% (051012) <input type="number" min="0" step="0.01" formControlName="cuotaMensual" /></label>
-          <div class="actions full"><button type="submit">Guardar tributos</button></div>
-        </form>
-      </section>
-
-      <section class="card summary" *ngIf="activeTab === 'resumen'">
-        <h2>Resumen fiscal {{ report.year }}</h2>
-        <div class="actions full summary-actions">
-          <button type="button" (click)="downloadPdf()" [disabled]="pdfLoading">
-            {{ pdfLoading ? 'Generando PDF...' : 'Descargar PDF (servidor)' }}
-          </button>
-        </div>
-        <div class="grid">
-          <div><strong>Ingresos:</strong> {{ report.totalIngresos | currency:'CUP':'symbol':'1.2-2' }}</div>
-          <div><strong>Gastos:</strong> {{ report.totalGastos | currency:'CUP':'symbol':'1.2-2' }}</div>
-          <div><strong>Tributos:</strong> {{ report.totalTributos | currency:'CUP':'symbol':'1.2-2' }}</div>
-          <div><strong>Otros deducibles:</strong> {{ report.totalOtrosDeducibles | currency:'CUP':'symbol':'1.2-2' }}</div>
-          <div><strong>Base imponible:</strong> {{ report.baseImponible | currency:'CUP':'symbol':'1.2-2' }}</div>
-          <div><strong>Impuesto estimado:</strong> {{ report.impuestoEstimado | currency:'CUP':'symbol':'1.2-2' }}</div>
-          <div><strong>Umbral 500,000:</strong>
-            <span [class.warn]="report.totalIngresos > threshold" [class.ok]="report.totalIngresos <= threshold">
-              {{ report.totalIngresos <= threshold ? 'Dentro de régimen simplificado' : 'Supera umbral simplificado' }}
-            </span>
-          </div>
-        </div>
-
-        <h3>Alertas inteligentes</h3>
-        <ul class="alerts">
-          <li *ngFor="let a of alerts" [class.warn]="a.level === 'warning'" [class.ok]="a.level === 'ok'">{{ a.message }}</li>
-        </ul>
-
-        <h3>Pre-llenado Declaración Jurada</h3>
-        <pre class="dj">{{ djPreview }}</pre>
-      </section>
-      </ng-container>
-
-      <section class="promo-banner promo-banner-bottom">
-        <p class="promo-tag">Nuevo en Apklis</p>
-        <div>
-          <h2>Gestor Contable TCP ya está disponible por 50 CUP</h2>
-          <p>Descarga la app SYSGD Cont para llevar tu registro fiscal desde Android, incluso cuando no tengas conexión.</p>
-        </div>
-        <a href="https://apklis.cu/application/cu.lazaroysr96.sysgdcont" target="_blank" rel="noopener noreferrer">
-          Ver en Apklis
-        </a>
-      </section>
-    </main>
-  `,
+  imports: [
+    CommonModule,
+    AuthSectionComponent,
+    GeneralesSectionComponent,
+    MovimientosSectionComponent,
+    ResourcesSectionComponent,
+    TributosSectionComponent,
+    ResumenSectionComponent
+  ],
+  encapsulation: ViewEncapsulation.None,
+  templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
 export class AppComponent implements OnInit {
+  private readonly today = new Date();
+  private readonly currentMonth: MonthKey = MONTHS[this.today.getMonth()];
+  private readonly currentDay = this.today.getDate();
+
   readonly provinces = [
     'Pinar del Río',
     'Artemisa',
@@ -294,7 +79,7 @@ export class AppComponent implements OnInit {
     'Isla de la Juventud': ['Isla de la Juventud']
   };
 
-  activeTab: 'generales' | 'movimientos' | 'tributos' | 'resumen' = 'generales';
+  activeTab: 'generales' | 'movimientos' | 'tributos' | 'resumen' | 'recursos' = 'generales';
   months = MONTHS;
   threshold = SIMPLIFIED_THRESHOLD_CUP;
   isOnline = navigator.onLine;
@@ -305,7 +90,9 @@ export class AppComponent implements OnInit {
   offlineRecoveryAvailable = false;
   currentUser: AuthUser | null = null;
   pdfLoading = false;
-  selectedMonth: MonthKey = 'ENE';
+  showPromoBanner = true;
+  backupMessage = '';
+  selectedMonth: MonthKey = this.currentMonth;
   registro: RegistroTCP = this.ledger.getRegistro();
   report: AnnualReport = this.ledger.getAnnualReport();
   alerts: AlertMessage[] = this.ledger.buildAlerts();
@@ -345,27 +132,27 @@ export class AppComponent implements OnInit {
 
   movForm = this.fb.nonNullable.group({
     tipo: ['ingreso' as 'ingreso' | 'gasto', Validators.required],
-    mes: ['ENE' as MonthKey, Validators.required],
-    dia: [1, [Validators.required, Validators.min(1), Validators.max(31)]],
-    importe: [0, [Validators.required, Validators.min(0.01)]],
-    montoDivisa: [0],
-    tasaDivisa: [0]
+    mes: [this.currentMonth, Validators.required],
+    dia: [this.currentDay, [Validators.required, Validators.min(1), Validators.max(31)]],
+    importe: [null as number | null, [Validators.required, Validators.min(0.01)]],
+    montoDivisa: [null as number | null],
+    tasaDivisa: [null as number | null]
   });
 
   tributoForm = this.fb.nonNullable.group({
-    mes: ['ENE' as MonthKey, Validators.required],
-    ventas: [0],
-    fuerza: [0],
-    sellos: [0],
-    anuncios: [0],
-    css20: [0],
-    css14: [0],
-    otros: [0],
-    restauracion: [0],
-    arrendamiento: [0],
-    exonerado: [0],
-    otrosMFP: [0],
-    cuotaMensual: [0]
+    mes: [this.currentMonth, Validators.required],
+    ventas: [null as number | null],
+    fuerza: [null as number | null],
+    sellos: [null as number | null],
+    anuncios: [null as number | null],
+    css20: [null as number | null],
+    css14: [null as number | null],
+    otros: [null as number | null],
+    restauracion: [null as number | null],
+    arrendamiento: [null as number | null],
+    exonerado: [null as number | null],
+    otrosMFP: [null as number | null],
+    cuotaMensual: [null as number | null]
   });
 
   authForm = this.fb.nonNullable.group({
@@ -388,6 +175,9 @@ export class AppComponent implements OnInit {
     void this.initializeSession();
     this.movForm.controls.mes.valueChanges.subscribe((value) => {
       this.selectedMonth = value;
+    });
+    this.tributoForm.controls.mes.valueChanges.subscribe((value) => {
+      this.patchTributoForm(value);
     });
     this.generalesForm.controls.fiscalProvincia.valueChanges.subscribe(() => {
       this.generalesForm.controls.fiscalMunicipio.setValue('');
@@ -457,10 +247,13 @@ export class AppComponent implements OnInit {
   saveMovement(): void {
     if (this.movForm.invalid) return;
     const data = this.movForm.getRawValue();
-    const hasDivisa = data.montoDivisa > 0 && data.tasaDivisa > 0;
+    const montoDivisa = data.montoDivisa ?? 0;
+    const tasaDivisa = data.tasaDivisa ?? 0;
+    const importeInput = data.importe ?? 0;
+    const hasDivisa = montoDivisa > 0 && tasaDivisa > 0;
     const importe = hasDivisa
-      ? this.ledger.convertDivisaToCup(data.montoDivisa, data.tasaDivisa)
-      : data.importe;
+      ? this.ledger.convertDivisaToCup(montoDivisa, tasaDivisa)
+      : importeInput;
 
     if (data.tipo === 'ingreso') {
       this.registro = this.ledger.addIngreso(data.mes, data.dia, importe);
@@ -468,8 +261,11 @@ export class AppComponent implements OnInit {
       this.registro = this.ledger.addGasto(data.mes, data.dia, importe);
     }
 
-    this.movForm.patchValue({ importe: 0, montoDivisa: 0, tasaDivisa: 0 });
+    this.movForm.patchValue({ importe: null, montoDivisa: null, tasaDivisa: null });
     this.selectedMonth = data.mes;
+    if (this.tributoForm.controls.mes.value === data.mes) {
+      this.patchTributoForm(data.mes);
+    }
     this.refreshReport();
     void this.syncToServer();
   }
@@ -477,22 +273,64 @@ export class AppComponent implements OnInit {
   saveTributos(): void {
     const raw = this.tributoForm.getRawValue();
     this.registro = this.ledger.updateTributos(raw.mes, {
-      ventas: raw.ventas.toFixed(2),
-      fuerza: raw.fuerza.toFixed(2),
-      sellos: raw.sellos.toFixed(2),
-      anuncios: raw.anuncios.toFixed(2),
-      css20: raw.css20.toFixed(2),
-      css14: raw.css14.toFixed(2),
-      otros: raw.otros.toFixed(2),
-      restauracion: raw.restauracion.toFixed(2),
-      arrendamiento: raw.arrendamiento.toFixed(2),
-      exonerado: raw.exonerado.toFixed(2),
-      otrosMFP: raw.otrosMFP.toFixed(2),
-      cuotaMensual: raw.cuotaMensual.toFixed(2)
+      ventas: this.moneyInputToString(raw.ventas),
+      fuerza: this.moneyInputToString(raw.fuerza),
+      sellos: this.moneyInputToString(raw.sellos),
+      anuncios: this.moneyInputToString(raw.anuncios),
+      css20: this.moneyInputToString(raw.css20),
+      css14: this.moneyInputToString(raw.css14),
+      otros: this.moneyInputToString(raw.otros),
+      restauracion: this.moneyInputToString(raw.restauracion),
+      arrendamiento: this.moneyInputToString(raw.arrendamiento),
+      exonerado: this.moneyInputToString(raw.exonerado),
+      otrosMFP: this.moneyInputToString(raw.otrosMFP),
+      cuotaMensual: this.moneyInputToString(raw.cuotaMensual)
     });
+    this.patchTributoForm(raw.mes);
     this.refreshReport();
     void this.syncToServer();
     this.activeTab = 'resumen';
+  }
+
+  autoCalculateTributos(): void {
+    const month = this.tributoForm.controls.mes.value;
+    const suggestion = this.calculateTributosSuggestion(month);
+    this.tributoForm.patchValue({
+      ventas: suggestion.ventas,
+      cuotaMensual: suggestion.cuotaMensual
+    });
+  }
+
+  exportRegistroJson(): void {
+    try {
+      const content = this.ledger.exportBackup(this.registro);
+      const filename = `sysgd-cont-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      const blob = new Blob([content], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      this.backupMessage = 'Backup exportado correctamente.';
+    } catch {
+      this.backupMessage = 'No se pudo exportar el backup JSON.';
+    }
+  }
+
+  async importRegistroJson(file: File): Promise<void> {
+    try {
+      const content = await file.text();
+      this.registro = this.ledger.importBackup(content);
+      this.patchForms();
+      this.refreshReport();
+      await this.syncToServer();
+      this.backupMessage = 'Backup importado y restaurado correctamente.';
+    } catch (error) {
+      this.backupMessage = this.formatError(error, 'No se pudo importar el archivo JSON.');
+    }
   }
 
   async downloadPdf(): Promise<void> {
@@ -538,6 +376,7 @@ export class AppComponent implements OnInit {
 
   private patchForms(): void {
     this.generalesForm.patchValue(this.registro.generales);
+    this.patchTributoForm(this.tributoForm.controls.mes.value);
   }
 
   private async initializeSession(): Promise<void> {
@@ -628,6 +467,64 @@ export class AppComponent implements OnInit {
 
   private monthTotal(rows: DayAmountRow[]): number {
     return rows.reduce((acc, row) => acc + this.toNumber(row.importe), 0);
+  }
+
+  private patchTributoForm(month: MonthKey): void {
+    const monthIndex = MONTHS.findIndex((item) => item === month);
+    const row = this.registro.tributos[monthIndex];
+    if (!row) return;
+
+    this.tributoForm.patchValue(
+      {
+        ventas: this.parseTributoValue(row.ventas),
+        fuerza: this.parseTributoValue(row.fuerza),
+        sellos: this.parseTributoValue(row.sellos),
+        anuncios: this.parseTributoValue(row.anuncios),
+        css20: this.parseTributoValue(row.css20),
+        css14: this.parseTributoValue(row.css14),
+        otros: this.parseTributoValue(row.otros),
+        restauracion: this.parseTributoValue(row.restauracion),
+        arrendamiento: this.parseTributoValue(row.arrendamiento),
+        exonerado: this.parseTributoValue(row.exonerado),
+        otrosMFP: this.parseTributoValue(row.otrosMFP),
+        cuotaMensual: this.parseTributoValue(row.cuotaMensual)
+      },
+      { emitEvent: false }
+    );
+    this.applyTributoSuggestionIfEmpty(month);
+  }
+
+  private parseTributoValue(value: string): number | null {
+    if (!value.trim()) return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private moneyInputToString(value: number | null): string {
+    const parsed = Number(value ?? 0);
+    if (!Number.isFinite(parsed) || parsed <= 0) return '';
+    return parsed.toFixed(2);
+  }
+
+  private applyTributoSuggestionIfEmpty(month: MonthKey): void {
+    const suggestion = this.calculateTributosSuggestion(month);
+    const raw = this.tributoForm.getRawValue();
+    this.tributoForm.patchValue({
+      ventas: raw.ventas == null || raw.ventas === 0 ? suggestion.ventas : raw.ventas,
+      cuotaMensual: raw.cuotaMensual == null || raw.cuotaMensual === 0 ? suggestion.cuotaMensual : raw.cuotaMensual
+    });
+  }
+
+  private calculateTributosSuggestion(month: MonthKey): { ventas: number; cuotaMensual: number } {
+    const ingresos = this.monthTotal(this.registro.ingresos[month]);
+    return {
+      ventas: this.roundMoney(ingresos * 0.1),
+      cuotaMensual: this.roundMoney(ingresos * 0.05)
+    };
+  }
+
+  private roundMoney(value: number): number {
+    return Math.round(value * 100) / 100;
   }
 
   private toNumber(value: string): number {

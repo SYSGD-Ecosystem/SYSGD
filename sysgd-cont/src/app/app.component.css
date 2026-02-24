@@ -12,7 +12,7 @@
 
 .promo-banner {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   align-items: center;
   gap: 12px;
   background: linear-gradient(135deg, #0f172a, #1d4ed8);
@@ -49,6 +49,12 @@
   border-radius: 8px;
   padding: 8px 12px;
   font-weight: 600;
+}
+
+.promo-close-btn {
+  background: transparent;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.55);
 }
 
 .promo-banner-bottom {
@@ -145,6 +151,24 @@ h1 {
   background: #2563eb;
   color: #ffffff;
   border-color: #2563eb;
+}
+
+.instructions-card summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.instructions-card p {
+  margin: 10px 0 8px;
+}
+
+.instructions-card ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.instructions-card li {
+  margin-bottom: 6px;
 }
 
 .card {

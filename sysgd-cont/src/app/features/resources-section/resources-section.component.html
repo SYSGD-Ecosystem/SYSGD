@@ -1,0 +1,12 @@
+<section class="card resources-card">
+  <h2>Recursos útiles para cuentapropistas</h2>
+  <p class="subtitle">Sitios de interés para consultar normativas, modelos oficiales y materiales de apoyo contable.</p>
+
+  <div class="resources-grid">
+    <article class="resource-item" *ngFor="let item of resources">
+      <h3>{{ item.title }}</h3>
+      <p>{{ item.description }}</p>
+      <a [href]="item.url" target="_blank" rel="noopener noreferrer">Abrir recurso</a>
+    </article>
+  </div>
+</section>

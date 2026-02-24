@@ -1,0 +1,58 @@
+:host {
+  display: block;
+}
+
+.tributos-form-wrap {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.tributo-actions {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.desktop-tributos-preview {
+  margin-top: 16px;
+}
+
+.desktop-tributos-preview summary {
+  cursor: pointer;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.tributos-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1500px;
+}
+
+.tributos-table th,
+.tributos-table td {
+  border: 1px solid #d1d5db;
+  padding: 8px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.tributos-table th {
+  background: #f8fafc;
+  font-weight: 700;
+}
+
+.tributos-table td:first-child,
+.tributos-table th:first-child {
+  text-align: left;
+}
+
+.tributos-table .subtotal {
+  font-weight: 700;
+  background: #f9fafb;
+}

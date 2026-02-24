@@ -32,12 +32,22 @@ const monthLabel: Record<MonthKey, string> = {
 };
 
 const taxBrackets = [
-  { limit: 10000, rate: 0, base: 0 },
-  { limit: 20000, rate: 0.25, base: 0 },
-  { limit: 30000, rate: 0.3, base: 2500 },
-  { limit: 50000, rate: 0.35, base: 5500 },
-  { limit: Number.POSITIVE_INFINITY, rate: 0.4, base: 12500 }
+  { limit: 10000, rate: 0.15, base: 0 },
+  { limit: 20000, rate: 0.2, base: 1500 },
+  { limit: 30000, rate: 0.3, base: 3500 },
+  { limit: 50000, rate: 0.4, base: 6500 },
+  { limit: Number.POSITIVE_INFINITY, rate: 0.5, base: 14500 }
 ];
+
+const MIN_EXEMPT_ANNUAL_CUP = 39120;
+const BACKUP_SCHEMA_VERSION = 1;
+
+interface RegistroBackupPayload {
+  app: string;
+  schemaVersion: number;
+  exportedAt: string;
+  registro: RegistroTCP;
+}
 
 @Injectable({ providedIn: 'root' })
 export class LedgerService {
@@ -105,6 +115,31 @@ export class LedgerService {
     localStorage.setItem(LEDGER_CACHE_KEY, JSON.stringify(registro));
   }
 
+  exportBackup(registro = this.getRegistro()): string {
+    const payload: RegistroBackupPayload = {
+      app: 'SYSGD Cont',
+      schemaVersion: BACKUP_SCHEMA_VERSION,
+      exportedAt: new Date().toISOString(),
+      registro
+    };
+    return JSON.stringify(payload, null, 2);
+  }
+
+  importBackup(rawJson: string): RegistroTCP {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawJson);
+    } catch {
+      throw new Error('El archivo no contiene JSON válido');
+    }
+
+    const payload = parsed as { registro?: unknown };
+    const source = payload.registro ?? parsed;
+    const normalized = this.normalizeRegistro(source);
+    this.saveRegistro(normalized);
+    return normalized;
+  }
+
   updateGenerales(data: GeneralesData): RegistroTCP {
     const registro = this.getRegistro();
     const next = { ...registro, generales: data };
@@ -158,7 +193,8 @@ export class LedgerService {
     const totalGastos = monthly.reduce((acc, item) => acc + item.gastos, 0);
     const totalTributos = monthly.reduce((acc, item) => acc + item.tributos, 0);
     const totalOtrosDeducibles = monthly.reduce((acc, item) => acc + item.otrosDeducibles, 0);
-    const baseImponible = this.round2(totalIngresos - totalGastos - totalTributos - totalOtrosDeducibles);
+    const netoAntesMinimo = this.round2(totalIngresos - totalGastos - totalTributos - totalOtrosDeducibles);
+    const baseImponible = this.round2(Math.max(netoAntesMinimo - MIN_EXEMPT_ANNUAL_CUP, 0));
     const impuestoEstimado = this.estimateIncomeTax(baseImponible);
 
     return {
@@ -199,10 +235,11 @@ export class LedgerService {
       });
     }
 
-    if (report.baseImponible < 0) {
+    const resultadoNeto = report.totalIngresos - report.totalGastos - report.totalTributos - report.totalOtrosDeducibles;
+    if (resultadoNeto < 0) {
       alerts.push({
         level: 'warning',
-        message: `Resultado anual negativo (${report.baseImponible.toFixed(2)} CUP). Verifica datos y soporte documental.`
+        message: `Resultado anual negativo (${resultadoNeto.toFixed(2)} CUP). Verifica datos y soporte documental.`
       });
     }
 
@@ -282,11 +319,14 @@ export class LedgerService {
   }
 
   private estimateIncomeTax(baseImponible: number): number {
-    if (baseImponible <= 10000) return 0;
+    if (baseImponible <= 0) return 0;
     const value = this.round2(baseImponible);
 
+    if (value <= taxBrackets[0].limit) {
+      return this.round2(value * taxBrackets[0].rate);
+    }
     if (value <= taxBrackets[1].limit) {
-      return this.round2((value - 10000) * taxBrackets[1].rate);
+      return this.round2(taxBrackets[1].base + (value - 10000) * taxBrackets[1].rate);
     }
     if (value <= taxBrackets[2].limit) {
       return this.round2(taxBrackets[2].base + (value - 20000) * taxBrackets[2].rate);
@@ -309,6 +349,73 @@ export class LedgerService {
     const parsed = Number(value || 0);
     if (!Number.isFinite(parsed)) return 0;
     return parsed;
+  }
+
+  private normalizeRegistro(source: unknown): RegistroTCP {
+    if (!source || typeof source !== 'object') {
+      throw new Error('El JSON no contiene una estructura de registro válida');
+    }
+
+    const raw = source as Partial<RegistroTCP>;
+    const year = Number(raw.generales?.anio);
+    const base = this.emptyRegistro(Number.isFinite(year) && year >= 2020 ? year : new Date().getFullYear());
+
+    const generales: GeneralesData = {
+      nombre: String(raw.generales?.nombre ?? base.generales.nombre),
+      anio: Number.isFinite(year) && year >= 2020 ? year : base.generales.anio,
+      nit: String(raw.generales?.nit ?? base.generales.nit),
+      actividad: String(raw.generales?.actividad ?? base.generales.actividad),
+      codigo: String(raw.generales?.codigo ?? base.generales.codigo),
+      fiscalCalle: String(raw.generales?.fiscalCalle ?? base.generales.fiscalCalle),
+      fiscalMunicipio: String(raw.generales?.fiscalMunicipio ?? base.generales.fiscalMunicipio),
+      fiscalProvincia: String(raw.generales?.fiscalProvincia ?? base.generales.fiscalProvincia),
+      legalCalle: String(raw.generales?.legalCalle ?? base.generales.legalCalle),
+      legalMunicipio: String(raw.generales?.legalMunicipio ?? base.generales.legalMunicipio),
+      legalProvincia: String(raw.generales?.legalProvincia ?? base.generales.legalProvincia)
+    };
+
+    const normalizeRows = (rows: unknown): DayAmountRow[] => {
+      if (!Array.isArray(rows)) return [];
+      return rows
+        .map((item) => {
+          const row = item as { dia?: unknown; importe?: unknown };
+          const dia = Number(row?.dia);
+          const importe = Number(row?.importe);
+          if (!Number.isFinite(dia) || dia < 1 || dia > 31) return null;
+          if (!Number.isFinite(importe) || importe <= 0) return null;
+          return { dia: String(Math.trunc(dia)), importe: this.round2(importe).toFixed(2) };
+        })
+        .filter((item): item is DayAmountRow => item !== null)
+        .slice(0, MAX_MONTH_ROWS);
+    };
+
+    const ingresos: MonthEntries = { ...base.ingresos };
+    const gastos: MonthEntries = { ...base.gastos };
+    MONTHS.forEach((month) => {
+      ingresos[month] = normalizeRows((raw.ingresos as Record<string, unknown> | undefined)?.[month]);
+      gastos[month] = normalizeRows((raw.gastos as Record<string, unknown> | undefined)?.[month]);
+    });
+
+    const tributos: TributoRow[] = MONTHS.map((month, index) => {
+      const rawRow = (raw.tributos?.[index] ?? {}) as Partial<TributoRow>;
+      return {
+        mes: monthLabel[month],
+        ventas: String(rawRow.ventas ?? ''),
+        fuerza: String(rawRow.fuerza ?? ''),
+        sellos: String(rawRow.sellos ?? ''),
+        anuncios: String(rawRow.anuncios ?? ''),
+        css20: String(rawRow.css20 ?? ''),
+        css14: String(rawRow.css14 ?? ''),
+        otros: String(rawRow.otros ?? ''),
+        restauracion: String(rawRow.restauracion ?? ''),
+        arrendamiento: String(rawRow.arrendamiento ?? ''),
+        exonerado: String(rawRow.exonerado ?? ''),
+        otrosMFP: String(rawRow.otrosMFP ?? ''),
+        cuotaMensual: String(rawRow.cuotaMensual ?? '')
+      };
+    });
+
+    return { generales, ingresos, gastos, tributos };
   }
 
   private round2(value: number): number {

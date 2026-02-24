@@ -1,6 +1,7 @@
 package cu.lazaroysr96.sysgdcont.viewmodel
 
 import android.content.Intent
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cu.lazaroysr96.sysgdcont.data.model.*
@@ -27,7 +28,9 @@ data class LedgerUiState(
     val pdfIntent: Intent? = null,
     val pdfRetryMessage: String? = null,
     val showNoCreditsDialog: Boolean = false,
-    val noCreditsMessage: String? = null
+    val noCreditsMessage: String? = null,
+    val backupMessage: String? = null,
+    val backupError: String? = null
 )
 
 @HiltViewModel
@@ -274,6 +277,44 @@ class LedgerViewModel @Inject constructor(
 
     fun clearSyncStatus() {
         _uiState.update { it.copy(syncError = null, syncSuccess = false, syncMessage = null) }
+    }
+
+    fun exportBackup(uri: Uri) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, backupMessage = null, backupError = null) }
+            ledgerRepository.exportBackupToUri(uri)
+                .onSuccess {
+                    _uiState.update { it.copy(isLoading = false, backupMessage = "Backup JSON exportado correctamente.") }
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isLoading = false, backupError = e.message ?: "No se pudo exportar el backup.") }
+                }
+        }
+    }
+
+    fun importBackup(uri: Uri) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, backupMessage = null, backupError = null) }
+            ledgerRepository.importBackupFromUri(uri)
+                .onSuccess { registro ->
+                    val report = ledgerRepository.calculateAnnualReport(registro)
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            registro = registro,
+                            annualReport = report,
+                            backupMessage = "Backup JSON importado correctamente."
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isLoading = false, backupError = e.message ?: "No se pudo importar el backup.") }
+                }
+        }
+    }
+
+    fun clearBackupStatus() {
+        _uiState.update { it.copy(backupMessage = null, backupError = null) }
     }
 
     fun downloadPdf() {

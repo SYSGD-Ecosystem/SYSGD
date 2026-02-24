@@ -1,0 +1,32 @@
+:host {
+  display: block;
+}
+
+.resources-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.resource-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.resource-item h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.resource-item p {
+  margin: 0 0 10px;
+  color: #334155;
+  font-size: 14px;
+}
+
+.resource-item a {
+  text-decoration: none;
+  font-weight: 600;
+}

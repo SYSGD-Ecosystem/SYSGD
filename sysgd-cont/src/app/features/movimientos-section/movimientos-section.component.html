@@ -1,0 +1,78 @@
+<section class="card">
+  <h2>Registro mensual de ingresos y gastos</h2>
+  <form [formGroup]="movForm" (ngSubmit)="saveMovement.emit()" class="form-grid">
+    <label>Tipo
+      <select formControlName="tipo">
+        <option value="ingreso">Ingreso</option>
+        <option value="gasto">Gasto</option>
+      </select>
+    </label>
+    <label>Mes
+      <select formControlName="mes">
+        <option *ngFor="let m of months" [value]="m">{{ m }}</option>
+      </select>
+    </label>
+    <label>Día <input type="number" min="1" max="31" formControlName="dia" /></label>
+    <label>Importe CUP <input type="number" min="0.01" step="0.01" formControlName="importe" /></label>
+    <label>Divisa (opcional) <input type="number" min="0" step="0.01" formControlName="montoDivisa" /></label>
+    <label>Tasa BCC (opcional) <input type="number" min="0" step="0.01" formControlName="tasaDivisa" /></label>
+    <div class="actions full">
+      <button type="submit" [disabled]="movForm.invalid">Registrar</button>
+    </div>
+  </form>
+
+  <div class="table-section">
+    <h3>Movimientos del mes {{ selectedMonth }}</h3>
+    <div class="split-tables">
+      <article class="movement-card">
+        <h4>Ingresos</h4>
+        <div class="table-wrapper">
+          <table class="mov-table">
+            <thead>
+              <tr>
+                <th>Día</th>
+                <th>Ingreso</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of registro.ingresos[selectedMonth]; trackBy: trackByDayAmount">
+                <td>{{ row.dia }}</td>
+                <td>{{ row.importe | currency:'CUP':'symbol':'1.2-2' }}</td>
+              </tr>
+              <tr *ngIf="registro.ingresos[selectedMonth].length === 0">
+                <td colspan="2" class="empty-cell">Sin ingresos en este mes.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="movement-card">
+        <h4>Gastos</h4>
+        <div class="table-wrapper">
+          <table class="mov-table">
+            <thead>
+              <tr>
+                <th>Día</th>
+                <th>Gasto</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of registro.gastos[selectedMonth]; trackBy: trackByDayAmount">
+                <td>{{ row.dia }}</td>
+                <td>{{ row.importe | currency:'CUP':'symbol':'1.2-2' }}</td>
+              </tr>
+              <tr *ngIf="registro.gastos[selectedMonth].length === 0">
+                <td colspan="2" class="empty-cell">Sin gastos en este mes.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </div>
+    <div class="movement-totals">
+      <span>Total ingresos: <strong>{{ selectedMonthIngresosTotal | currency:'CUP':'symbol':'1.2-2' }}</strong></span>
+      <span>Total gastos: <strong>{{ selectedMonthGastosTotal | currency:'CUP':'symbol':'1.2-2' }}</strong></span>
+    </div>
+  </div>
+</section>

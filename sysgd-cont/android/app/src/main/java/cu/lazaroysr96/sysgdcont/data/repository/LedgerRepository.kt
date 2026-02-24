@@ -2,6 +2,7 @@ package cu.lazaroysr96.sysgdcont.data.repository
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Environment
 import androidx.core.content.FileProvider
 import androidx.datastore.core.DataStore
@@ -10,6 +11,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.google.gson.Gson
+import com.google.gson.JsonParser
 import cu.lazaroysr96.sysgdcont.data.api.ApiService
 import cu.lazaroysr96.sysgdcont.data.model.*
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -38,6 +40,13 @@ class LedgerRepository @Inject constructor(
     private val apiService: ApiService,
     private val authRepository: AuthRepository
 ) {
+    private data class RegistroBackupPayload(
+        val app: String = "SYSGD Cont Android",
+        val schemaVersion: Int = 1,
+        val exportedAt: String,
+        val registro: RegistroTCP
+    )
+
     companion object {
         private val REGISTRO_KEY = stringPreferencesKey("registro_tcp")
         private val LAST_SYNC_KEY = stringPreferencesKey("last_sync")
@@ -96,6 +105,46 @@ class LedgerRepository @Inject constructor(
 
     suspend fun saveUserEditedRegistro(registro: RegistroTCP) {
         saveRegistro(registro, modifiedByUser = true)
+    }
+
+    suspend fun exportBackupToUri(uri: Uri): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val current = getRegistro()
+            val payload = RegistroBackupPayload(
+                exportedAt = java.time.Instant.now().toString(),
+                registro = current
+            )
+            val json = gson.toJson(payload)
+            context.contentResolver.openOutputStream(uri)?.use { output ->
+                output.write(json.toByteArray(Charsets.UTF_8))
+            } ?: throw Exception("No se pudo abrir el destino para guardar el archivo")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun importBackupFromUri(uri: Uri): Result<RegistroTCP> = withContext(Dispatchers.IO) {
+        try {
+            val rawJson = context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                ?: throw Exception("No se pudo leer el archivo seleccionado")
+
+            val rootElement = JsonParser().parse(rawJson)
+            if (!rootElement.isJsonObject) {
+                throw Exception("El archivo no contiene un JSON de respaldo válido")
+            }
+
+            val rootObject = rootElement.asJsonObject
+            val registroElement = if (rootObject.has("registro")) rootObject.get("registro") else rootElement
+            val imported = gson.fromJson(registroElement.toString(), RegistroTCP::class.java)
+                ?: throw Exception("No se pudo interpretar el registro del archivo")
+
+            val normalized = normalizeImportedRegistro(imported)
+            saveUserEditedRegistro(normalized)
+            Result.success(normalized)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     suspend fun replaceLocalWithRemote(registro: RegistroTCP, serverVersion: String): Result<SyncResult> {
@@ -673,13 +722,77 @@ class LedgerRepository @Inject constructor(
 
     private fun round2(value: Double): Double = Math.round(value * 100) / 100.0
 
-    private fun emptyRegistro(): RegistroTCP {
+    private fun normalizeImportedRegistro(source: RegistroTCP): RegistroTCP {
+        val baseYear = source.generales.anio.takeIf { it >= 2020 } ?: java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+        val base = emptyRegistro().copy(generales = emptyRegistro(baseYear).generales)
+
+        val generales = source.generales.copy(
+            anio = baseYear,
+            nombre = source.generales.nombre.ifBlank { base.generales.nombre },
+            nit = source.generales.nit.ifBlank { base.generales.nit },
+            actividad = source.generales.actividad.ifBlank { base.generales.actividad },
+            codigo = source.generales.codigo.ifBlank { base.generales.codigo },
+            fiscalCalle = source.generales.fiscalCalle.ifBlank { base.generales.fiscalCalle },
+            fiscalMunicipio = source.generales.fiscalMunicipio.ifBlank { base.generales.fiscalMunicipio },
+            fiscalProvincia = source.generales.fiscalProvincia.ifBlank { base.generales.fiscalProvincia },
+            legalCalle = source.generales.legalCalle.ifBlank { base.generales.legalCalle },
+            legalMunicipio = source.generales.legalMunicipio.ifBlank { base.generales.legalMunicipio },
+            legalProvincia = source.generales.legalProvincia.ifBlank { base.generales.legalProvincia }
+        )
+
+        val ingresos = LedgerConstants.MONTHS.associateWith { month ->
+            normalizeMonthRows(source.ingresos[month])
+        }
+        val gastos = LedgerConstants.MONTHS.associateWith { month ->
+            normalizeMonthRows(source.gastos[month])
+        }
+        val tributos = LedgerConstants.MONTHS.mapIndexed { index, month ->
+            val row = source.tributos.getOrNull(index)
+            TributoRow(
+                mes = LedgerConstants.monthLabels[month] ?: month,
+                ventas = row?.ventas.orEmpty(),
+                fuerza = row?.fuerza.orEmpty(),
+                sellos = row?.sellos.orEmpty(),
+                anuncios = row?.anuncios.orEmpty(),
+                css20 = row?.css20.orEmpty(),
+                css14 = row?.css14.orEmpty(),
+                otros = row?.otros.orEmpty(),
+                restauracion = row?.restauracion.orEmpty(),
+                arrendamiento = row?.arrendamiento.orEmpty(),
+                exonerado = row?.exonerado.orEmpty(),
+                otrosMFP = row?.otrosMFP.orEmpty(),
+                cuotaMensual = row?.cuotaMensual.orEmpty()
+            )
+        }
+
+        return RegistroTCP(
+            generales = generales,
+            ingresos = ingresos,
+            gastos = gastos,
+            tributos = tributos
+        )
+    }
+
+    private fun normalizeMonthRows(rows: List<DayAmountRow>?): List<DayAmountRow> {
+        if (rows.isNullOrEmpty()) return emptyList()
+        return rows
+            .mapNotNull { row ->
+                val dia = row.dia.toIntOrNull()
+                val importe = row.importe.toDoubleOrNull()
+                if (dia == null || dia !in 1..31) return@mapNotNull null
+                if (importe == null || importe <= 0.0) return@mapNotNull null
+                DayAmountRow(dia = dia.toString(), importe = String.format(Locale.US, "%.2f", importe))
+            }
+            .take(36)
+    }
+
+    private fun emptyRegistro(year: Int = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)): RegistroTCP {
         val emptyMonthEntries = LedgerConstants.MONTHS.associateWith { emptyList<DayAmountRow>() }
         val emptyTributos = LedgerConstants.MONTHS.map { month ->
             TributoRow(mes = LedgerConstants.monthLabels[month] ?: month)
         }
         return RegistroTCP(
-            GeneralesData(anio = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)),
+            GeneralesData(anio = year),
             emptyMonthEntries,
             emptyMonthEntries,
             emptyTributos

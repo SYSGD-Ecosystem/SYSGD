@@ -2,6 +2,8 @@ package cu.lazaroysr96.sysgdcont.ui.main
 
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -87,6 +89,8 @@ import kotlinx.coroutines.launch
 private const val ADMIN_PHONE = "5351158544"
 private const val ABOUT_ROUTE = "about"
 private const val HELP_ROUTE = "help"
+private const val RESOURCES_ROUTE = "resources"
+private const val BACKUP_ROUTE = "backup_json"
 
 private fun openWhatsAppContact(context: android.content.Context, message: String): Boolean {
     return try {
@@ -136,6 +140,20 @@ fun MainScreen(
             rememberDrawerState(initialValue = androidx.compose.material3.DrawerValue.Closed)
     val drawerScope = rememberCoroutineScope()
     var showCreditsInfoDialog by remember { mutableStateOf(false) }
+    val exportBackupLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            ledgerViewModel.exportBackup(uri)
+        }
+    }
+    val importBackupLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            ledgerViewModel.importBackup(uri)
+        }
+    }
 
     // val drawerWidthFraction = if (isLandscape) 0.5f else 0.8f
 
@@ -264,6 +282,32 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
+                            NavigationDrawerItem(
+                                    label = { Text("Recursos útiles") },
+                                    selected = currentRoute == RESOURCES_ROUTE,
+                                    icon = {
+                                        Icon(Icons.Default.Description, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        navController.navigate(RESOURCES_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+                            NavigationDrawerItem(
+                                    label = { Text("Respaldo JSON") },
+                                    selected = currentRoute == BACKUP_ROUTE,
+                                    icon = {
+                                        Icon(Icons.Default.Description, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        navController.navigate(BACKUP_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                         Column {
@@ -295,12 +339,14 @@ fun MainScreen(
                                         when (currentRoute) {
                                             ABOUT_ROUTE -> "Acerca de"
                                             HELP_ROUTE -> "Ayuda de llenado"
+                                            RESOURCES_ROUTE -> "Recursos útiles"
+                                            BACKUP_ROUTE -> "Respaldo JSON"
                                             else -> "Gestor Contable TCP"
                                         }
                                 )
                             },
                             navigationIcon = {
-                                if (currentRoute == ABOUT_ROUTE || currentRoute == HELP_ROUTE) {
+                                if (currentRoute == ABOUT_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE) {
                                     IconButton(onClick = { navController.popBackStack() }) {
                                         Icon(
                                                 Icons.Default.ArrowBack,
@@ -316,7 +362,7 @@ fun MainScreen(
                                 }
                             },
                             actions = {
-                                if (currentRoute != ABOUT_ROUTE && currentRoute != HELP_ROUTE) {
+                                if (currentRoute in mainTabs.map { it.route }) {
                                     if (ledgerState.hasLocalChanges && !ledgerState.isSyncing) {
                                         Icon(
                                                 Icons.Default.CloudOff,
@@ -416,6 +462,29 @@ fun MainScreen(
                             },
                     )
                 }
+                composable(RESOURCES_ROUTE) {
+                    UsefulResourcesScreen(
+                            onOpenUrl = { url ->
+                                val opened = openExternalUrl(context, url)
+                                if (!opened) {
+                                    drawerScope.launch {
+                                        snackbarHostState.showSnackbar("No se pudo abrir el enlace")
+                                    }
+                                }
+                            },
+                    )
+                }
+                composable(BACKUP_ROUTE) {
+                    BackupJsonScreen(
+                            isLoading = ledgerState.isLoading,
+                            onExportClick = {
+                                exportBackupLauncher.launch("sysgd-cont-backup.json")
+                            },
+                            onImportClick = {
+                                importBackupLauncher.launch(arrayOf("application/json", "text/json"))
+                            },
+                    )
+                }
             }
         }
     }
@@ -444,6 +513,20 @@ fun MainScreen(
     LaunchedEffect(ledgerState.pdfIntent) {
         if (ledgerState.pdfIntent != null) {
             authViewModel.loadAvailableCredits()
+        }
+    }
+
+    ledgerState.backupMessage?.let { message ->
+        LaunchedEffect(message) {
+            snackbarHostState.showSnackbar(message)
+            ledgerViewModel.clearBackupStatus()
+        }
+    }
+
+    ledgerState.backupError?.let { error ->
+        LaunchedEffect(error) {
+            snackbarHostState.showSnackbar(error)
+            ledgerViewModel.clearBackupStatus()
         }
     }
 
@@ -701,5 +784,109 @@ private fun HelpFillScreen(onContactWhatsApp: () -> Unit) {
         TextButton(onClick = onContactWhatsApp) {
             Text("Necesito ayuda para el llenado (WhatsApp)")
         }
+    }
+}
+
+@Composable
+private fun UsefulResourcesScreen(onOpenUrl: (String) -> Unit) {
+    Column(
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+                text = "Recursos útiles para cuentapropistas",
+                style = MaterialTheme.typography.titleMedium
+        )
+        Text(
+                text =
+                        "En esta sección compartimos enlaces de interés para consultar normas, formularios y guías contables.",
+                style = MaterialTheme.typography.bodyMedium
+        )
+
+        Divider()
+
+        Text(
+                text = "ONAT - Legislación tributaria",
+                style = MaterialTheme.typography.titleSmall
+        )
+        Text(
+                text =
+                        "Consulta y descarga gacetas oficiales en PDF con las normas legales vigentes que respaldan la Administración Tributaria cubana.",
+                style = MaterialTheme.typography.bodySmall
+        )
+        TextButton(onClick = { onOpenUrl("https://www.onat.gob.cu/home/legislacion") }) {
+            Text("Abrir legislación ONAT")
+        }
+
+        Text(
+                text = "ONAT - Modelos y Formularios",
+                style = MaterialTheme.typography.titleSmall
+        )
+        Text(
+                text =
+                        "Descarga modelos y formularios en PDF, Excel y Winrar para declarar, pagar tributos y registrar ingresos y gastos.",
+                style = MaterialTheme.typography.bodySmall
+        )
+        TextButton(onClick = { onOpenUrl("https://www.onat.gob.cu/home/modelos-formularios?page=9") }) {
+            Text("Abrir modelos y formularios")
+        }
+
+        Text(
+                text = "Cubadebate - Herramientas y normativas contables TCP",
+                style = MaterialTheme.typography.titleSmall
+        )
+        Text(
+                text =
+                        "Artículo de apoyo con recomendaciones y normativas para trabajadores por cuenta propia.",
+                style = MaterialTheme.typography.bodySmall
+        )
+        TextButton(onClick = { onOpenUrl("http://www.cubadebate.cu/especiales/2025/03/09/herramientas-y-normativas-contables-para-trabajadores-por-cuenta-propia-que-debes-saber/") }) {
+            Text("Abrir artículo en Cubadebate")
+        }
+
+        Divider()
+        Text(
+                text = "Aclaración importante",
+                style = MaterialTheme.typography.titleSmall
+        )
+        Text(
+                text =
+                        "SYSGD Ecosystem no tiene relación, afiliación ni responsabilidad editorial sobre los sitios enlazados en esta sección. Estos recursos se comparten únicamente con fines informativos por su utilidad para la actividad de los cuentapropistas.",
+                style = MaterialTheme.typography.bodySmall
+        )
+    }
+}
+
+@Composable
+private fun BackupJsonScreen(
+        isLoading: Boolean,
+        onExportClick: () -> Unit,
+        onImportClick: () -> Unit
+) {
+    Column(
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+                text = "Backup y restauración JSON",
+                style = MaterialTheme.typography.titleMedium
+        )
+        Text(
+                text =
+                        "Exporta tu registro a un archivo JSON para respaldo, o importa un JSON para restaurar/migrar datos desde otro sistema compatible.",
+                style = MaterialTheme.typography.bodySmall
+        )
+        TextButton(onClick = onExportClick, enabled = !isLoading) {
+            Text(if (isLoading) "Procesando..." else "Exportar backup JSON")
+        }
+        TextButton(onClick = onImportClick, enabled = !isLoading) {
+            Text(if (isLoading) "Procesando..." else "Importar backup JSON")
+        }
+        Divider()
+        Text(
+                text =
+                        "Nota: al importar, los datos locales se reemplazan por los del archivo seleccionado.",
+                style = MaterialTheme.typography.bodySmall
+        )
     }
 }
