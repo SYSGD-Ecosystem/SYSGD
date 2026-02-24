@@ -9,6 +9,9 @@ const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 const APP_NAME = process.env.APP_NAME || 'SYSGD';
 const APP_URL = process.env.APP_URL || 'http://localhost:5173';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'lazaroyunier96@gmail.com';
+const EMAIL_INTERCEPT_ENABLED =
+  process.env.EMAIL_INTERCEPT_ENABLED === 'true' ||
+  (process.env.NODE_ENV !== 'production' && process.env.EMAIL_INTERCEPT_ENABLED !== 'false');
 
 export interface EmailOptions {
   to: string;
@@ -36,30 +39,33 @@ export class EmailService {
    */
   static async sendEmail(options: EmailOptions): Promise<boolean> {
     try {
-      // Modificar el subject para incluir el destinatario original
-      const subject = `[Para: ${options.to}] ${options.subject}`;
-
-      // Agregar banner informativo al inicio del email
-      const htmlWithBanner = `
-        <div style="background: #1e3a8a; color: white; padding: 20px; margin-bottom: 20px; border-radius: 8px;">
-          <h3 style="margin: 0 0 10px 0; color: white;">📧 Notificación del Sistema - ${APP_NAME}</h3>
-          <p style="margin: 0; font-size: 14px;">
-            <strong>Destinatario original:</strong> ${options.to}<br>
-            <strong>Tipo de notificación:</strong> ${this.getEmailType(options.subject)}
-          </p>
-        </div>
-        ${options.html}
-        <div style="margin-top: 30px; padding: 20px; background: #f3f4f6; border-radius: 8px; font-size: 12px; color: #6b7280;">
-          <p style="margin: 0;"><strong>ℹ️ Nota del sistema:</strong></p>
-          <p style="margin: 5px 0 0 0;">Este email fue interceptado por el sistema de monitoreo. En producción, este email se enviaría a: <strong>${options.to}</strong></p>
-        </div>
-      `;
+      const shouldIntercept = EMAIL_INTERCEPT_ENABLED;
+      const subject = shouldIntercept
+        ? `[Para: ${options.to}] ${options.subject}`
+        : options.subject;
+      const html = shouldIntercept
+        ? `
+          <div style="background: #1e3a8a; color: white; padding: 20px; margin-bottom: 20px; border-radius: 8px;">
+            <h3 style="margin: 0 0 10px 0; color: white;">Notificacion del Sistema - ${APP_NAME}</h3>
+            <p style="margin: 0; font-size: 14px;">
+              <strong>Destinatario original:</strong> ${options.to}<br>
+              <strong>Tipo de notificacion:</strong> ${this.getEmailType(options.subject)}
+            </p>
+          </div>
+          ${options.html}
+          <div style="margin-top: 30px; padding: 20px; background: #f3f4f6; border-radius: 8px; font-size: 12px; color: #6b7280;">
+            <p style="margin: 0;"><strong>Nota del sistema:</strong></p>
+            <p style="margin: 5px 0 0 0;">Este email fue interceptado por el sistema de monitoreo. En produccion, este email se enviaria a: <strong>${options.to}</strong></p>
+          </div>
+        `
+        : options.html;
+      const to = shouldIntercept ? ADMIN_EMAIL : options.to;
 
       const { data, error } = await resend.emails.send({
         from: FROM_EMAIL,
-        to: ADMIN_EMAIL,
+        to,
         subject: subject,
-        html: htmlWithBanner,
+        html,
         text: options.text,
       });
 
@@ -68,9 +74,13 @@ export class EmailService {
         return false;
       }
 
-      console.log('✅ Email interceptado y enviado a', ADMIN_EMAIL);
-      console.log('   Destinatario original:', options.to);
-      console.log('   Email ID:', data?.id);
+      if (shouldIntercept) {
+        console.log('Email interceptado y enviado a', ADMIN_EMAIL);
+        console.log('Destinatario original:', options.to);
+      } else {
+        console.log('Email enviado a', options.to);
+      }
+      console.log('Email ID:', data?.id);
       return true;
     } catch (error) {
       console.error('Error sending email:', error);
@@ -632,6 +642,49 @@ Si no creaste una cuenta, puedes ignorar este email.
       to: email,
       subject: `¡Bienvenido a ${APP_NAME}! 🎉`,
       html,
+    });
+  }
+
+  static async sendAdminTwoFactorCode(
+    email: string,
+    userName: string,
+    code: string,
+    expiresInMinutes: number
+  ): Promise<boolean> {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+          .container { background: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 32px; }
+          .logo h1 { color: #3b82f6; text-align: center; margin-bottom: 24px; }
+          .code { background: #111827; color: #fff; padding: 14px 18px; border-radius: 8px; font-family: monospace; font-size: 28px; letter-spacing: 6px; text-align: center; margin: 20px 0; }
+          .alert { background: #fef2f2; border-left: 4px solid #ef4444; padding: 12px; margin: 20px 0; border-radius: 4px; }
+          .footer { margin-top: 24px; font-size: 13px; color: #6b7280; text-align: center; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="logo"><h1>${APP_NAME}</h1></div>
+          <h2>Codigo de acceso de administrador</h2>
+          <p>Hola ${userName},</p>
+          <p>Usa este codigo para completar el inicio de sesion de administrador:</p>
+          <div class="code">${code}</div>
+          <div class="alert"><strong>Importante:</strong> este codigo expira en ${expiresInMinutes} minutos.</div>
+          <p>Si no intentaste iniciar sesion, cambia tu contrasena inmediatamente.</p>
+          <div class="footer"><p>&copy; ${new Date().getFullYear()} ${APP_NAME}</p></div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `Codigo de acceso de administrador - ${APP_NAME}`,
+      html,
+      text: `Tu codigo de acceso es: ${code}. Expira en ${expiresInMinutes} minutos.`,
     });
   }
 }

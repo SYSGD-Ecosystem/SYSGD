@@ -7,6 +7,7 @@ import { getCurrentUser } from "../controllers/auth";
 import { getUsageSummary } from "../middlewares/usageLimits.middleware";
 import { maybeRenewPlanCredits, normalizeBillingState } from "../services/billing-credits.service";
 import { getClientIp, isIpFromCuba } from "../utils/ip";
+import { registerIpRateLimit } from "../middlewares/rate-limit";
 
 const router = Router();
 
@@ -81,7 +82,7 @@ const TIER_LIMITS = {
 router.get("/me", getCurrentUser);
 
 // Registro de nuevo usuario (primero se vuelve admin)
-router.post("/register", async (req, res) => {
+router.post("/register", registerIpRateLimit, async (req, res) => {
   const { name, email, password } = req.body;
   
   if (!name || !email || !password) {

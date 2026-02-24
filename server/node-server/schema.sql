@@ -26,6 +26,20 @@ CREATE TABLE IF NOT EXISTS users_logins (
   user_agent TEXT
 );
 
+CREATE TABLE IF NOT EXISTS admin_login_2fa_codes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  code_hash TEXT NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  used BOOLEAN NOT NULL DEFAULT false,
+  used_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_login_2fa_user_created
+ON admin_login_2fa_codes(user_id, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS cont_ledger_records (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,

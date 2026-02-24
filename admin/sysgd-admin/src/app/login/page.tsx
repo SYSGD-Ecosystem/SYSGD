@@ -17,7 +17,18 @@ import { apiFetch } from "../../lib/api"
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const { login, loading: isLoading, error, success } = useLogin()
+  const [twoFactorCode, setTwoFactorCode] = useState("")
+  const {
+    login,
+    verifyTwoFactor,
+    resendTwoFactor,
+    resetTwoFactor,
+    loading: isLoading,
+    error,
+    info,
+    success,
+    twoFactorRequired,
+  } = useLogin()
   const [accessError, setAccessError] = useState("")
 
   const navigate = useNavigate()
@@ -26,6 +37,12 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setAccessError("")
+
+    if (twoFactorRequired) {
+      await verifyTwoFactor({ code: twoFactorCode })
+      return
+    }
+
     await login({ email, password })
   }
 
@@ -73,35 +90,67 @@ export default function LoginPage() {
 
         <Card className="border-border shadow-lg">
           <CardHeader className="text-center">
-            <CardTitle className="text-xl">Iniciar Sesión</CardTitle>
+            <CardTitle className="text-xl">
+              {twoFactorRequired ? "Verificación 2FA" : "Iniciar Sesión"}
+            </CardTitle>
             <CardDescription>
-              Ingrese sus credenciales para acceder al panel de administración
+              {twoFactorRequired
+                ? "Ingresa el código enviado al correo del administrador"
+                : "Ingrese sus credenciales para acceder al panel de administración"}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="email">Correo electrónico</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="admin@sysgd.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="password">Contraseña</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Ingrese su contraseña"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
+              {!twoFactorRequired ? (
+                <>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="email">Correo electrónico</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="admin@sysgd.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="password">Contraseña</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Ingrese su contraseña"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
+                    Código enviado para: <strong>{email}</strong>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="two-factor-code">Código de verificación</Label>
+                    <Input
+                      id="two-factor-code"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]{6}"
+                      placeholder="000000"
+                      value={twoFactorCode}
+                      onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      required
+                    />
+                  </div>
+                </>
+              )}
+              {info && (
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
+                  <p className="text-sm text-primary">{info}</p>
+                </div>
+              )}
               {(error || accessError) && (
                 <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
                   <p className="text-sm text-destructive">{error}</p>
@@ -114,12 +163,38 @@ export default function LoginPage() {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Iniciando sesión...
+                    {twoFactorRequired ? "Verificando..." : "Iniciando sesión..."}
                   </>
                 ) : (
-                  "Iniciar Sesión"
+                  twoFactorRequired ? "Verificar Código" : "Iniciar Sesión"
                 )}
               </Button>
+              {twoFactorRequired && (
+                <>
+                  <div className="h-px w-full bg-border" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setTwoFactorCode("")
+                        resetTwoFactor()
+                      }}
+                      disabled={isLoading}
+                    >
+                      Volver
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={resendTwoFactor}
+                      disabled={isLoading}
+                    >
+                      Reenviar código
+                    </Button>
+                  </div>
+                </>
+              )}
             </form>
           </CardContent>
         </Card>

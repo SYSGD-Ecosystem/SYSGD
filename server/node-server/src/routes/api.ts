@@ -13,6 +13,7 @@ import { getArchives } from "../controllers/archives.controller";
 import { isAdmin } from "../middlewares/auth";
 import { createDefaultUserData } from "../utils/billing";
 import { getClientIp, isIpFromCuba } from "../utils/ip";
+import { registerIpRateLimit } from "../middlewares/rate-limit";
 
 const router = Router();
 
@@ -728,7 +729,7 @@ router.get("/status", async (_req: Request, res: Response) => {
 
 router.get("/me", getCurrentUser);
 
-router.post("/register", async (req: Request, res: Response) => {
+router.post("/register", registerIpRateLimit, async (req: Request, res: Response) => {
 	//TODO: Implementar verificación de email
 	const { name, email, password } = req.body;
 	if (!name || !email || !password) {

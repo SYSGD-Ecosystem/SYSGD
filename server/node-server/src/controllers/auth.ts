@@ -5,8 +5,8 @@ import dotenv from "dotenv";
 import { findUserByemail, logUserLogin } from "../services/authService";
 import { pool } from "../db";
 import { createDefaultUserData } from "../utils/billing";
-import { request } from "node:http";
 import { getClientIp, isIpFromCuba } from "../utils/ip";
+import { AdminTwoFactorService } from "../services/adminTwoFactor.service";
 
 dotenv.config();
 
@@ -23,6 +23,68 @@ interface UserPayload {
 	privileges: string;
 }
 
+interface PendingTwoFactorPayload extends UserPayload {
+	purpose: "admin-2fa";
+}
+
+const setAuthCookie = (res: Response, token: string, maxAgeMs: number) => {
+	res.cookie("token", token, {
+		httpOnly: true,
+		secure: process.env.NODE_ENV === "production",
+		sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+		maxAge: maxAgeMs,
+	});
+};
+
+const sendAuthSuccess = async (
+	req: Request,
+	res: Response,
+	user: UserPayload,
+	token: string,
+) => {
+	await logUserLogin(
+		user.id,
+		req.ip || "0.0.0.0",
+		req.headers["user-agent"] || "",
+	);
+
+	setAuthCookie(res, token, 1000 * 60 * 60 * 24 * 7);
+
+	res.status(201).json({
+		message: "Login correcto",
+		token,
+		user,
+	});
+};
+
+const createPendingTwoFactorToken = (user: UserPayload) =>
+	jwt.sign(
+		{
+			id: user.id,
+			email: user.email,
+			name: user.name,
+			privileges: user.privileges,
+			purpose: "admin-2fa",
+		},
+		JWT_SECRET as string,
+		{ expiresIn: `${AdminTwoFactorService.getPendingTokenTtlMinutes()}m` },
+	);
+
+const parsePendingTwoFactorToken = (
+	token: string,
+): PendingTwoFactorPayload | null => {
+	try {
+		const decoded = jwt.verify(token, JWT_SECRET as string) as PendingTwoFactorPayload;
+		if (decoded.purpose !== "admin-2fa" || decoded.privileges !== "admin") {
+			return null;
+		}
+		return decoded;
+	} catch (error) {
+		console.error("Invalid pending 2FA token:", error);
+		return null;
+	}
+};
+
 export function generateJWT(user: {
 	id: string;
 	email: string;
@@ -30,7 +92,7 @@ export function generateJWT(user: {
 	privileges: string;
 }) {
 	const expiresIn = user.privileges === "admin" ? "30m" : "7d";
-	
+
 	return jwt.sign(
 		{
 			id: user.id,
@@ -38,7 +100,7 @@ export function generateJWT(user: {
 			name: user.name,
 			privileges: user.privileges,
 		},
-		JWT_SECRET as string, 
+		JWT_SECRET as string,
 		{ expiresIn },
 	);
 }
@@ -58,7 +120,6 @@ export const login = async (req: Request, res: Response) => {
 			return;
 		}
 
-		// Verificar si es un usuario invitado sin contraseña
 		if (user.status === "invited" && !user.password) {
 			res.status(202).json({
 				message: "Usuario invitado detectado",
@@ -80,58 +141,139 @@ export const login = async (req: Request, res: Response) => {
 			return;
 		}
 
+		const authUser: UserPayload = {
+			id: user.id,
+			email: user.email,
+			name: user.name,
+			privileges: user.privileges,
+		};
+
 		if (user.privileges === "admin") {
 			const clientIp = getClientIp(req);
 			if (!isIpFromCuba(clientIp)) {
-				res.status(403).json({ 
-					message: "Acceso denegado. El administrador solo puede iniciar sesión desde Cuba.",
-					ip: clientIp 
+				res.status(403).json({
+					message:
+						"Acceso denegado. El administrador solo puede iniciar sesión desde Cuba.",
+					ip: clientIp,
+				});
+				return;
+			}
+
+			if (AdminTwoFactorService.isRequiredForAdmins()) {
+				const issueResult = await AdminTwoFactorService.issueCode(authUser);
+				if (!issueResult.success) {
+					const status = issueResult.secondsRemaining ? 429 : 500;
+					res.status(status).json({
+						message: issueResult.error || "No se pudo iniciar 2FA",
+						secondsRemaining: issueResult.secondsRemaining,
+					});
+					return;
+				}
+
+				const twoFactorToken = createPendingTwoFactorToken(authUser);
+				res.status(202).json({
+					message: "Se envio un codigo de verificacion al correo del administrador",
+					requiresTwoFactor: true,
+					twoFactorMethod: "email",
+					twoFactorToken,
+					expiresInMinutes: AdminTwoFactorService.getPendingTokenTtlMinutes(),
+					user: authUser,
 				});
 				return;
 			}
 		}
 
-		// Generamos el token usando el helper
-		const token = generateJWT({
-			id: user.id,
-			email: user.email,
-			name: user.name,
-			privileges: user.privileges,
-		});
-
-		// Opcional: registrar el login
-		await logUserLogin(
-			user.id,
-			req.ip || "0.0.0.0",
-			req.headers["user-agent"] || "",
-		);
-
-		// 1. Establecemos Cookie (Respaldo / Compatibilidad Web)
-		res.cookie("token", token, {
-			httpOnly: true,
-			secure: process.env.NODE_ENV === "production",
-			sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-			maxAge: 1000 * 60 * 60 * 24 * 7, // 7 días para coincidir con el token
-		});
-
-		// 2. Enviamos Token en JSON (Para Axios, Mobile, Electron)
-		res.status(201).json({
-			message: "Login correcto",
-			token: token, 
-			user: {
-				id: user.id,
-				email: user.email,
-				name: user.name,
-				privileges: user.privileges,
-			},
-		});
+		const token = generateJWT(authUser);
+		await sendAuthSuccess(req, res, authUser, token);
 	} catch (err) {
 		console.error(err);
 		res.status(500).json({ message: "Error interno del servidor" });
 	}
 };
 
-// Verificación por email para flujo en 2 pasos
+export const verifyAdminTwoFactor = async (req: Request, res: Response) => {
+	const { twoFactorToken, code } = req.body;
+	if (!twoFactorToken || !code) {
+		res.status(400).json({ message: "Token de 2FA y codigo son requeridos" });
+		return;
+	}
+
+	const pending = parsePendingTwoFactorToken(twoFactorToken);
+	if (!pending) {
+		res.status(401).json({ message: "Token de 2FA invalido o expirado" });
+		return;
+	}
+
+	try {
+		const result = await AdminTwoFactorService.verifyCode(pending.id, code);
+		if (!result.success) {
+			res.status(401).json({
+				message: result.error || "Codigo de verificacion invalido",
+				attemptsLeft: result.attemptsLeft,
+			});
+			return;
+		}
+
+		const token = generateJWT({
+			id: pending.id,
+			email: pending.email,
+			name: pending.name,
+			privileges: pending.privileges,
+		});
+
+		await sendAuthSuccess(
+			req,
+			res,
+			{
+				id: pending.id,
+				email: pending.email,
+				name: pending.name,
+				privileges: pending.privileges,
+			},
+			token,
+		);
+	} catch (error) {
+		console.error("Error verifying admin 2FA:", error);
+		res.status(500).json({ message: "Error al verificar el segundo factor" });
+	}
+};
+
+export const resendAdminTwoFactor = async (req: Request, res: Response) => {
+	const { twoFactorToken } = req.body;
+	if (!twoFactorToken) {
+		res.status(400).json({ message: "Token de 2FA requerido" });
+		return;
+	}
+
+	const pending = parsePendingTwoFactorToken(twoFactorToken);
+	if (!pending) {
+		res.status(401).json({ message: "Token de 2FA invalido o expirado" });
+		return;
+	}
+
+	try {
+		const result = await AdminTwoFactorService.issueCode({
+			id: pending.id,
+			email: pending.email,
+			name: pending.name,
+		});
+
+		if (!result.success) {
+			const status = result.secondsRemaining ? 429 : 500;
+			res.status(status).json({
+				message: result.error || "No se pudo reenviar el codigo",
+				secondsRemaining: result.secondsRemaining,
+			});
+			return;
+		}
+
+		res.status(200).json({ message: "Codigo reenviado correctamente" });
+	} catch (error) {
+		console.error("Error resending admin 2FA code:", error);
+		res.status(500).json({ message: "Error al reenviar codigo" });
+	}
+};
+
 export const checkUser = async (req: Request, res: Response) => {
 	const { email } = req.body;
 	if (!email) {
@@ -159,7 +301,6 @@ export const checkUser = async (req: Request, res: Response) => {
 };
 
 export const getCurrentUser = async (req: Request, res: Response) => {
-	// 1. Estrategia Híbrida: Header 'Authorization' O Cookie 'token'
 	const authHeader = req.headers.authorization;
 	const tokenFromHeader = authHeader?.startsWith("Bearer ")
 		? authHeader.split(" ")[1]
@@ -174,7 +315,6 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 	}
 
 	try {
-		// Verificación síncrona sin callback (más limpio y type-safe)
 		const decoded = jwt.verify(token, JWT_SECRET as string) as UserPayload;
 
 		res.json({
@@ -186,7 +326,6 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 		console.log("User decoded:", decoded);
 	} catch (err) {
 		console.error("JWT verification error:", err);
-		// Token inválido o expirado
 		res.status(401).json({ message: "Sesión inválida o expirada" });
 	}
 };
@@ -204,7 +343,6 @@ export const completeInvitedUserRegistration = async (
 
 	try {
 		const defaultUserData = createDefaultUserData();
-		// Verificar que el usuario existe y está en estado 'invited'
 		const userCheck = await findUserByemail(req.body.email);
 		if (!userCheck || userCheck.status !== "invited") {
 			res
@@ -222,7 +360,6 @@ export const completeInvitedUserRegistration = async (
 			[name, hashedPassword, userId, JSON.stringify(defaultUserData)],
 		);
 
-		// Generar token
 		const token = generateJWT({
 			id: userId,
 			email: req.body.email,
@@ -230,18 +367,11 @@ export const completeInvitedUserRegistration = async (
 			privileges: userCheck.privileges,
 		});
 
-		// Cookie de respaldo
-		res.cookie("token", token, {
-			httpOnly: true,
-			secure: process.env.NODE_ENV === "production",
-			sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-			maxAge: 1000 * 60 * 60 * 24 * 7,
-		});
+		setAuthCookie(res, token, 1000 * 60 * 60 * 24 * 7);
 
-		// Respuesta JSON con Token
 		res.status(201).json({
 			message: "Registro completado exitosamente",
-			token: token, // <--- Importante devolverlo aquí también
+			token: token,
 			user: {
 				id: userId,
 				email: req.body.email,
@@ -279,13 +409,11 @@ export const issueExternalToken = async (req: Request, res: Response) => {
 };
 
 export const logout = async (req: Request, res: Response) => {
-	// Limpiamos la cookie del servidor
 	res.clearCookie("token", {
 		httpOnly: true,
 		secure: process.env.NODE_ENV === "production",
 		sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
 	});
 
-	// El frontend se encargará de borrar el localStorage al recibir esta respuesta
 	res.status(200).json({ message: "Sesión cerrada" });
 };
