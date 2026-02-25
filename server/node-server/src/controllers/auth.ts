@@ -7,6 +7,7 @@ import { pool } from "../db";
 import { createDefaultUserData } from "../utils/billing";
 import { getClientIp, isIpFromCuba } from "../utils/ip";
 import { AdminTwoFactorService } from "../services/adminTwoFactor.service";
+import { LoginSecurityService } from "../services/loginSecurity.service";
 
 dotenv.config();
 
@@ -120,6 +121,17 @@ export const login = async (req: Request, res: Response) => {
 			return;
 		}
 
+		const lockStatus = LoginSecurityService.getLockStatus(user.lockout_until);
+		if (lockStatus.isLocked) {
+			res.setHeader("Retry-After", lockStatus.retryAfterSeconds.toString());
+			res.status(423).json({
+				message:
+					"Cuenta bloqueada temporalmente por intentos fallidos. Intenta nuevamente en unos minutos.",
+				retryAfterSeconds: lockStatus.retryAfterSeconds,
+			});
+			return;
+		}
+
 		if (user.status === "invited" && !user.password) {
 			res.status(202).json({
 				message: "Usuario invitado detectado",
@@ -137,9 +149,25 @@ export const login = async (req: Request, res: Response) => {
 		const match = await bcrypt.compare(password, user.password);
 
 		if (!match) {
-			res.status(402).json({ message: "Contraseña incorrecta" });
+			const failed = await LoginSecurityService.registerFailedAttempt(user.id);
+			if (failed.locked) {
+				res.setHeader("Retry-After", (failed.retryAfterSeconds || 0).toString());
+				res.status(423).json({
+					message:
+						"Cuenta bloqueada temporalmente por intentos fallidos. Intenta nuevamente en unos minutos.",
+					retryAfterSeconds: failed.retryAfterSeconds,
+				});
+				return;
+			}
+
+			res.status(402).json({
+				message: "Contraseña incorrecta",
+				attemptsLeft: failed.attemptsLeft,
+			});
 			return;
 		}
+
+		await LoginSecurityService.clearFailedAttempts(user.id);
 
 		const authUser: UserPayload = {
 			id: user.id,

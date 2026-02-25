@@ -11,8 +11,20 @@ export async function initDatabase() {
       is_public BOOLEAN DEFAULT false,
       user_data JSONB,
       status TEXT DEFAULT 'active',
+      failed_login_attempts INTEGER NOT NULL DEFAULT 0,
+      lockout_until TIMESTAMP,
       created_at TIMESTAMP DEFAULT NOW()
     );
+  `);
+
+  await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER NOT NULL DEFAULT 0;
+  `);
+
+  await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS lockout_until TIMESTAMP;
   `);
 
   await pool.query(`

@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS users (
   is_public BOOLEAN DEFAULT false,
   user_data JSONB,
   status TEXT DEFAULT 'active',
+  failed_login_attempts INTEGER NOT NULL DEFAULT 0,
+  lockout_until TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
