@@ -1,6 +1,7 @@
 import type {  Request, Response } from "express";
 import { pool } from "../db";
 import bcrypt from "bcrypt";
+import { normalizeClientSource } from "../utils/client-source";
 
 
 export const register = async (req: Request, res: Response) => {
@@ -12,6 +13,7 @@ export const register = async (req: Request, res: Response) => {
     }
 
     let privileges = "user";
+    const registrationSource = normalizeClientSource(req.headers["x-app-source"], "unknown");
     try {
         const usercount = await pool.query("SELECT id FROM users");
 
@@ -30,8 +32,16 @@ export const register = async (req: Request, res: Response) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
         await pool.query(
-            "INSERT INTO users (name, email, password, privileges) VALUES ($1, $2, $3, $4)",
-            [name, email, hashedPassword, privileges],
+            `INSERT INTO users (name, email, password, privileges, registration_source, registration_meta)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+                name,
+                email,
+                hashedPassword,
+                privileges,
+                registrationSource,
+                JSON.stringify({ rawHeader: req.headers["x-app-source"] ?? null }),
+            ],
         );
 
         res.status(201).send("Usuario registrado");

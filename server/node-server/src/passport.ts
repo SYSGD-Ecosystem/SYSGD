@@ -28,7 +28,7 @@ passport.use(
 				const user = await findUserByemail(email);
 
 				if (user === null) {
-					const result = await createUser(name, email, "", "user");
+					const result = await createUser(name, email, "", "user", "main_web");
 
 					if (!result.success) {
 						console.error("Error al crear usuario:", result.message);

@@ -9,6 +9,7 @@ import {
 	X,
 	Moon,
 	Sun,
+	ChartColumnIncreasing,
 } from "lucide-react";
 
 import { useState } from "react";
@@ -18,6 +19,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 
 const navigation = [
 	{ name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+	{ name: "Analítica", href: "/admin/analytics", icon: ChartColumnIncreasing },
 	{ name: "Usuarios", href: "/admin/usuarios", icon: Users },
 	{ name: "Updates", href: "/admin/updates", icon: FileText },
 ];

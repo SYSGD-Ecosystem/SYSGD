@@ -8,6 +8,7 @@ import { createDefaultUserData } from "../utils/billing";
 import { getClientIp, isIpFromCuba } from "../utils/ip";
 import { AdminTwoFactorService } from "../services/adminTwoFactor.service";
 import { LoginSecurityService } from "../services/loginSecurity.service";
+import { normalizeClientSource, type ClientSource } from "../utils/client-source";
 
 dotenv.config();
 
@@ -42,11 +43,13 @@ const sendAuthSuccess = async (
 	res: Response,
 	user: UserPayload,
 	token: string,
+	loginSource: ClientSource,
 ) => {
 	await logUserLogin(
 		user.id,
 		req.ip || "0.0.0.0",
 		req.headers["user-agent"] || "",
+		loginSource,
 	);
 
 	setAuthCookie(res, token, 1000 * 60 * 60 * 24 * 7);
@@ -108,6 +111,7 @@ export function generateJWT(user: {
 
 export const login = async (req: Request, res: Response) => {
 	const { email, password } = req.body;
+	const loginSource = normalizeClientSource(req.headers["x-app-source"], "unknown");
 	if (!email || !password) {
 		res.status(400).json({ message: "Faltan credenciales" });
 		return;
@@ -212,7 +216,7 @@ export const login = async (req: Request, res: Response) => {
 		}
 
 		const token = generateJWT(authUser);
-		await sendAuthSuccess(req, res, authUser, token);
+		await sendAuthSuccess(req, res, authUser, token, loginSource);
 	} catch (err) {
 		console.error(err);
 		res.status(500).json({ message: "Error interno del servidor" });
@@ -259,6 +263,7 @@ export const verifyAdminTwoFactor = async (req: Request, res: Response) => {
 				privileges: pending.privileges,
 			},
 			token,
+			normalizeClientSource(req.headers["x-app-source"], "unknown"),
 		);
 	} catch (error) {
 		console.error("Error verifying admin 2FA:", error);

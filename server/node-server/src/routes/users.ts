@@ -8,6 +8,7 @@ import { getUsageSummary } from "../middlewares/usageLimits.middleware";
 import { maybeRenewPlanCredits, normalizeBillingState } from "../services/billing-credits.service";
 import { getClientIp, isIpFromCuba } from "../utils/ip";
 import { registerIpRateLimit } from "../middlewares/rate-limit";
+import { isContabilidadSource, normalizeClientSource } from "../utils/client-source";
 
 const router = Router();
 
@@ -91,8 +92,8 @@ router.post("/register", registerIpRateLimit, async (req, res) => {
   }
 
   // Verificar origen del registro (sysgd-cont vs plataforma principal)
-  const appSource = req.headers["x-app-source"] as string;
-  const isFromSysgdCont = appSource === "web" || appSource === "android";
+  const registrationSource = normalizeClientSource(req.headers["x-app-source"], "unknown");
+  const isFromSysgdCont = isContabilidadSource(registrationSource);
 
   // Validar IP solo para sysgd-cont
   if (isFromSysgdCont) {
@@ -112,10 +113,18 @@ router.post("/register", registerIpRateLimit, async (req, res) => {
     const isFirstUser = parseInt(existingUsers[0].count) === 0;
     
     const { rows } = await pool.query(
-      `INSERT INTO users (name, email, password, privileges, status, user_data) 
-       VALUES ($1, $2, crypt($3, gen_salt('bf')), $4, 'active', $5) 
-       RETURNING id, name, email, privileges, status, user_data`,
-      [name, email, password, isFirstUser ? "admin" : "user", JSON.stringify(DEFAULT_USER_DATA)]
+      `INSERT INTO users (name, email, password, privileges, status, user_data, registration_source, registration_meta) 
+       VALUES ($1, $2, crypt($3, gen_salt('bf')), $4, 'active', $5, $6, $7) 
+       RETURNING id, name, email, privileges, status, user_data, registration_source`,
+      [
+        name,
+        email,
+        password,
+        isFirstUser ? "admin" : "user",
+        JSON.stringify(DEFAULT_USER_DATA),
+        registrationSource,
+        JSON.stringify({ rawHeader: req.headers["x-app-source"] ?? null }),
+      ]
     );
 
     res.status(201).json(rows[0]);

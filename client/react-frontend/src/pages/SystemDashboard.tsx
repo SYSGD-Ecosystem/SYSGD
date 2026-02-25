@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import {
 	Activity,
 	Bell,
+	BookMarked,
 	Calendar,
 	CreditCard,
 	Edit,
@@ -61,7 +62,8 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-type ViewMode = "home" | "projects" | "documents";
+type ViewMode = "home" | "projects" | "documents" | "accounting";
+type SidebarItemId = ViewMode | "purchase";
 
 interface DocumentFile {
 	id: string;
@@ -153,13 +155,14 @@ const SystemDashboard: FC = () => {
 		useProjectConnection();
 	const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
 	const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
+	const [isAccountingDialogOpen, setIsAccountingDialogOpen] = useState(false);
 	const { toast } = useToast();
 
 	const navigate = useNavigate();
 	const { user, loading: loadingUser } = useCurrentUser();
 	const { billing } = useBillingData();
 	const {
-		documents: accountingDocuments,
+		documents: accountingDocumentsData,
 		reloadDocuments: reloadAccountingDocuments,
 		createDocument: createAccountingDocument,
 	} = useAccountingDocuments();
@@ -179,8 +182,8 @@ const SystemDashboard: FC = () => {
 		name: "",
 		company: "",
 		code: "",
-		documentType: "management" as "management" | "tcp",
 	});
+	const [newAccountingDocumentName, setNewAccountingDocumentName] = useState("");
 
 	// const unreadCount =
 	// 	invitations?.filter((inv) => inv.status === "pending").length || 0;
@@ -188,11 +191,22 @@ const SystemDashboard: FC = () => {
 	const filteredProjects = projects.filter((p) =>
 		p.name.toLowerCase().includes(searchTerm.toLowerCase()),
 	);
-	const filteredDocuments = documents.filter((d) =>
+	const managementDocuments = documents.filter((d) => d.document_kind === "management");
+	const accountingDocuments = documents.filter((d) => d.document_kind === "tcp");
+	const filteredDocuments = managementDocuments.filter((d) =>
 		d.name.toLowerCase().includes(searchTerm.toLowerCase()),
 	);
+	const filteredAccountingDocuments = accountingDocuments.filter((d) =>
+		d.name.toLowerCase().includes(searchTerm.toLowerCase()),
+	);
+	const hasAccountingFeature = (billing?.tier ?? user?.user_data?.billing?.tier ?? "free") !== "free";
 
-	const sidebarItems = [
+	const sidebarItems: Array<{
+		id: SidebarItemId;
+		label: string;
+		icon: typeof Home;
+		count?: number;
+	}> = [
 		{ id: "home", label: "Inicio", icon: Home },
 		{
 			id: "projects",
@@ -202,9 +216,15 @@ const SystemDashboard: FC = () => {
 		},
 		{
 			id: "documents",
-			label: "Documentos",
+			label: "Gestión Documental",
 			icon: FileText,
-			count: archives.length,
+			count: managementDocuments.length,
+		},
+		{
+			id: "accounting",
+			label: "Registros Contables",
+			icon: BookMarked,
+			count: accountingDocuments.length,
 		},
 		{ id: "purchase", label: "Tienda", icon: CreditCard },
 	];
@@ -347,39 +367,6 @@ const SystemDashboard: FC = () => {
 
 	const { handleNewArchiving } = useConnection();
 	const handleCreateDocument = () => {
-		if (newDocument.documentType === "tcp") {
-			const tier = billing?.tier ?? user?.user_data?.billing?.tier ?? "free";
-			if (tier === "free") {
-				toast({
-					title: "Función premium",
-					description:
-						"La creación de registros de ingresos y gastos está disponible para planes Pro o VIP",
-					variant: "destructive",
-				});
-				navigate("/billing/purchase");
-				return;
-			}
-
-			createAccountingDocument(newDocument.name || "Registro TCP")
-				.then((created) => {
-					void reloadAccountingDocuments();
-					setIsDocumentDialogOpen(false);
-					navigate(`/tcp-registro/${created.id}`);
-				})
-				.catch((error: unknown) => {
-					const message =
-						error instanceof Error && error.message
-							? error.message
-							: "No se pudo crear el registro contable";
-					toast({
-						title: "Error al crear el registro",
-						description: message,
-						variant: "destructive",
-					});
-				});
-			return;
-		}
-
 		handleNewArchiving(
 			newDocument.code,
 			newDocument.company,
@@ -394,7 +381,6 @@ const SystemDashboard: FC = () => {
 					name: "",
 					company: "",
 					code: "",
-					documentType: "management",
 				});
 			},
 			() => {
@@ -406,6 +392,38 @@ const SystemDashboard: FC = () => {
 				});
 			},
 		);
+	};
+
+	const handleCreateAccountingDocument = () => {
+		if (!hasAccountingFeature) {
+			toast({
+				title: "Función premium",
+				description:
+					"La creación de registros de ingresos y gastos está disponible para planes Pro o VIP",
+				variant: "destructive",
+			});
+			navigate("/billing/purchase");
+			return;
+		}
+
+		createAccountingDocument(newAccountingDocumentName || "Registro TCP")
+			.then((created) => {
+				void reloadAccountingDocuments();
+				setIsAccountingDialogOpen(false);
+				setNewAccountingDocumentName("");
+				navigate(`/tcp-registro/${created.id}`);
+			})
+			.catch((error: unknown) => {
+				const message =
+					error instanceof Error && error.message
+						? error.message
+						: "No se pudo crear el registro contable";
+				toast({
+					title: "Error al crear el registro",
+					description: message,
+					variant: "destructive",
+				});
+			});
 	};
 
 	const getProgress = (completed: number, total: number) => {
@@ -446,7 +464,7 @@ const SystemDashboard: FC = () => {
 			document_kind: "management",
 		}));
 
-		const tcpDocs: DocumentFile[] = accountingDocuments.map((document) => ({
+		const tcpDocs: DocumentFile[] = accountingDocumentsData.map((document) => ({
 			id: document.id,
 			name: document.name,
 			company: "Contabilidad",
@@ -458,7 +476,7 @@ const SystemDashboard: FC = () => {
 		}));
 
 		setDocument([...tcpDocs, ...managementDocs]);
-	}, [archives, accountingDocuments, user?.name]);
+	}, [archives, accountingDocumentsData, user?.name]);
 
 	useEffect(() => {
 		if (typeof window === "undefined") return;
@@ -843,15 +861,15 @@ const SystemDashboard: FC = () => {
 			<div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
 				<div>
 					<h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-						Documentos
+						Gestión Documental
 					</h2>
 					<p className="text-gray-600 dark:text-gray-400">
-						{filteredDocuments.length} documentos en total
+						{filteredDocuments.length} expedientes en total
 					</p>
 				</div>
 				<Button variant="outline" onClick={() => setIsDocumentDialogOpen(true)}>
 					<FileText className="w-4 h-4 mr-2" />
-					Nuevo Documento
+					Nuevo Expediente
 				</Button>
 			</div>
 
@@ -874,7 +892,7 @@ const SystemDashboard: FC = () => {
 								</Button>
 							</div>
 							<Badge className="w-fit bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-								{doc.document_kind === "tcp" ? "Contabilidad" : "EGDyA"}
+								EGDyA
 							</Badge>
 						</CardHeader>
 
@@ -946,15 +964,147 @@ const SystemDashboard: FC = () => {
 					<h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
 						No se encontraron documentos
 					</h3>
+						<p className="text-gray-600 dark:text-gray-400 mb-4">
+							{searchTerm
+								? "Intenta cambiar el término de búsqueda"
+								: "Comienza creando tu primer expediente"}
+						</p>
+						{!searchTerm && (
+							<Button onClick={() => setIsDocumentDialogOpen(true)}>
+								<FileText className="w-4 h-4 mr-2" />
+								Crear Expediente
+							</Button>
+						)}
+					</div>
+			)}
+			</>
+		);
+
+	const renderAccounting = () => (
+		<>
+			<div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+				<div>
+					<h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+						Registros Contables
+					</h2>
+					<p className="text-gray-600 dark:text-gray-400">
+						{filteredAccountingDocuments.length} registros en total
+					</p>
+				</div>
+				<Button
+					variant="outline"
+					onClick={() => setIsAccountingDialogOpen(true)}
+					disabled={!hasAccountingFeature}
+				>
+					<BookMarked className="w-4 h-4 mr-2" />
+					Nuevo Registro
+				</Button>
+			</div>
+
+			{!hasAccountingFeature && (
+				<Card className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
+					<CardContent className="py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+						<p className="text-sm text-amber-800 dark:text-amber-300">
+							Este módulo está disponible para planes Pro o VIP.
+						</p>
+						<Button size="sm" onClick={() => navigate("/billing/purchase")}>
+							Actualizar plan
+						</Button>
+					</CardContent>
+				</Card>
+			)}
+
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+				{filteredAccountingDocuments.map((doc) => (
+					<Card
+						key={doc.id}
+						className="hover:shadow-lg transition-shadow dark:bg-gray-800 dark:border-gray-700"
+					>
+						<CardHeader className="pb-3">
+							<div className="flex items-start justify-between">
+								<div className="flex items-center gap-2">
+									<BookMarked className="w-5 h-5 text-violet-600" />
+									<CardTitle className="text-base font-medium text-gray-900 dark:text-white line-clamp-1">
+										{doc.name}
+									</CardTitle>
+								</div>
+								<Button variant="ghost" disabled size="sm">
+									<MoreVertical className="w-4 h-4" />
+								</Button>
+							</div>
+							<Badge className="w-fit bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200">
+								Contabilidad
+							</Badge>
+						</CardHeader>
+
+						<CardContent className="space-y-3 flex flex-col">
+							<div className="space-y-2 text-sm">
+								<div className="flex justify-between">
+									<span className="text-gray-600 dark:text-gray-400">
+										Cliente:
+									</span>
+									<span className="font-medium line-clamp-1 text-gray-900 dark:text-white">
+										{doc.company}
+									</span>
+								</div>
+								<div className="flex justify-between">
+									<span className="text-gray-600 dark:text-gray-400">
+										Creador
+									</span>
+									<span className="font-medium line-clamp-1 text-right text-gray-900 dark:text-white">
+										{doc.creator_name}
+									</span>
+								</div>
+								<div className="flex justify-between">
+									<span className="text-gray-600 dark:text-gray-400">
+										Código:
+									</span>
+									<span className="font-medium text-gray-900 dark:text-white">
+										{doc.code}
+									</span>
+								</div>
+							</div>
+
+							<div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+								<div className="flex items-center gap-1">
+									<Calendar className="w-3 h-3" />
+									Creado el {formatDate(doc.created_at)}
+								</div>
+							</div>
+
+							<div className="flex gap-2 pt-2">
+								<Button
+									onClick={() => openDocument(doc)}
+									variant="ghost"
+									size="sm"
+									className="flex-1 cursor-pointer"
+								>
+									<Eye className="w-3 h-3 mr-1" />
+									Ver
+								</Button>
+							</div>
+						</CardContent>
+					</Card>
+				))}
+			</div>
+
+			{filteredAccountingDocuments.length === 0 && (
+				<div className="text-center py-12">
+					<div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+						<BookMarked className="w-8 h-8 text-gray-400" />
+					</div>
+					<h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+						No se encontraron registros contables
+					</h3>
 					<p className="text-gray-600 dark:text-gray-400 mb-4">
 						{searchTerm
 							? "Intenta cambiar el término de búsqueda"
-							: "Comienza creando tu primer documento"}
+							: "Comienza creando tu primer registro contable"}
 					</p>
-					{!searchTerm && (
-						<Button onClick={() => setIsDocumentDialogOpen(true)}>
-							<FileText className="w-4 h-4 mr-2" />
-							Crear Documento
+					{!searchTerm && hasAccountingFeature && (
+						<Button onClick={() => setIsAccountingDialogOpen(true)}>
+							<BookMarked className="w-4 h-4 mr-2" />
+							Crear Registro
 						</Button>
 					)}
 				</div>
@@ -1018,19 +1168,23 @@ const SystemDashboard: FC = () => {
 														<Button
 															key={item.id}
 															variant={isActive ? "secondary" : "ghost"}
-															className="w-full justify-start"
+															className="w-full justify-between"
 															onClick={() => {
 																if (item.id === "purchase")
 																	navigate("/billing/purchase");
-																else setViewMode(item.id as ViewMode);
+																else setViewMode(item.id);
 															}}
 														>
-															<Icon className="w-5 h-5 mr-3" />
-															<span className="flex-1 text-left">
-																{item.label}
-															</span>
+															<div className="flex min-w-0 flex-1 items-center">
+																<Icon className="w-5 h-5 mr-3 shrink-0" />
+																<span className="truncate text-left">
+																	{item.label}
+																</span>
+															</div>
 															{item.count !== undefined && (
-																<Badge variant="secondary">{item.count}</Badge>
+																<Badge variant="secondary" className="ml-2 shrink-0">
+																	{item.count}
+																</Badge>
 															)}
 														</Button>
 													);
@@ -1135,16 +1289,20 @@ const SystemDashboard: FC = () => {
 									<Button
 										key={item.id}
 										variant={isActive ? "secondary" : "ghost"}
-										className="w-full justify-start"
+										className="w-full justify-between"
 										onClick={() => {
 											if (item.id === "purchase") navigate("/billing/purchase");
-											else setViewMode(item.id as ViewMode);
+											else setViewMode(item.id);
 										}}
 									>
-										<Icon className="w-5 h-5 mr-3" />
-										<span className="flex-1 text-left">{item.label}</span>
+										<div className="flex min-w-0 flex-1 items-center">
+											<Icon className="w-5 h-5 mr-3 shrink-0" />
+											<span className="truncate text-left">{item.label}</span>
+										</div>
 										{item.count !== undefined && (
-											<Badge variant="secondary">{item.count}</Badge>
+											<Badge variant="secondary" className="ml-2 shrink-0">
+												{item.count}
+											</Badge>
 										)}
 									</Button>
 								);
@@ -1172,7 +1330,13 @@ const SystemDashboard: FC = () => {
 									<div className="relative max-w-md">
 										<Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
 										<Input
-											placeholder={`Buscar ${viewMode === "projects" ? "proyectos" : "documentos"}...`}
+											placeholder={`Buscar ${
+												viewMode === "projects"
+													? "proyectos"
+													: viewMode === "documents"
+														? "expedientes"
+														: "registros"
+											}...`}
 											value={searchTerm}
 											onChange={(e) => setSearchTerm(e.target.value)}
 											className="pl-10"
@@ -1183,6 +1347,7 @@ const SystemDashboard: FC = () => {
 							{viewMode === "home" && renderHome()}
 							{viewMode === "projects" && renderProjects()}
 							{viewMode === "documents" && renderDocuments()}
+							{viewMode === "accounting" && renderAccounting()}
 						</div>
 					</main>
 				</div>
@@ -1269,33 +1434,15 @@ const SystemDashboard: FC = () => {
 				onOpenChange={setIsDocumentDialogOpen}
 			>
 				<DialogContent className="max-w-sm mx-4 dark:bg-gray-800 dark:border-gray-700">
-					<DialogHeader>
-						<DialogTitle className="text-gray-900 dark:text-white">
-							Crear Nuevo Documento
-						</DialogTitle>
-						<DialogDescription className="sr-only">
-							Selecciona tipo y datos del documento a crear.
-						</DialogDescription>
-					</DialogHeader>
+						<DialogHeader>
+							<DialogTitle className="text-gray-900 dark:text-white">
+								Crear Nuevo Expediente
+							</DialogTitle>
+							<DialogDescription className="sr-only">
+								Completa los datos del expediente de gestión documental.
+							</DialogDescription>
+						</DialogHeader>
 					<div className="space-y-4">
-						<div>
-							<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-								Tipo de documento
-							</Label>
-							<select
-								value={newDocument.documentType}
-								onChange={(event) =>
-									setNewDocument({
-										...newDocument,
-										documentType: event.target.value as "management" | "tcp",
-									})
-								}
-								className="w-full h-10 px-3 rounded-md border border-input bg-background dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-							>
-								<option value="management">Archivo de Gestión</option>
-								<option value="tcp">Registro de ingresos y gastos (TCP)</option>
-							</select>
-						</div>
 						<div>
 							<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
 								Nombre del archivo
@@ -1309,36 +1456,32 @@ const SystemDashboard: FC = () => {
 								className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
 							/>
 						</div>
-						{newDocument.documentType === "management" && (
-							<>
-								<div>
-									<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-										Empresa:
-									</Label>
-									<Input
-										value={newDocument.company}
-										onChange={(e) =>
-											setNewDocument({ ...newDocument, company: e.target.value })
-										}
-										placeholder="Ej: SYSGD Inc"
-										className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-									/>
-								</div>
-								<div>
-									<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-										código:
-									</Label>
-									<Input
-										value={newDocument.code}
-										onChange={(e) =>
-											setNewDocument({ ...newDocument, code: e.target.value })
-										}
-										placeholder="Ej: OC37.1.1"
-										className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-									/>
-								</div>
-							</>
-						)}
+						<div>
+							<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+								Empresa:
+							</Label>
+							<Input
+								value={newDocument.company}
+								onChange={(e) =>
+									setNewDocument({ ...newDocument, company: e.target.value })
+								}
+								placeholder="Ej: SYSGD Inc"
+								className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+							/>
+						</div>
+						<div>
+							<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+								código:
+							</Label>
+							<Input
+								value={newDocument.code}
+								onChange={(e) =>
+									setNewDocument({ ...newDocument, code: e.target.value })
+								}
+								placeholder="Ej: OC37.1.1"
+								className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+							/>
+						</div>
 						<div className="flex justify-end gap-2">
 							<Button
 								variant="outline"
@@ -1346,13 +1489,59 @@ const SystemDashboard: FC = () => {
 							>
 								Cancelar
 							</Button>
-							<Button onClick={handleCreateDocument}>{newDocument.documentType === "management" ? "Crear Archivo" : "Crear Registro TCP"}</Button>
+							<Button onClick={handleCreateDocument}>Crear Archivo</Button>
 						</div>
 					</div>
 				</DialogContent>
 			</Dialog>
-		</>
-	);
+
+				<Dialog
+					open={isAccountingDialogOpen}
+					onOpenChange={setIsAccountingDialogOpen}
+				>
+					<DialogContent className="max-w-sm mx-4 dark:bg-gray-800 dark:border-gray-700">
+						<DialogHeader>
+							<DialogTitle className="text-gray-900 dark:text-white">
+								Crear Registro Contable
+							</DialogTitle>
+							<DialogDescription className="sr-only">
+								Ingresa un nombre para crear el nuevo registro contable.
+							</DialogDescription>
+						</DialogHeader>
+						<div className="space-y-4">
+							<div>
+								<Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+									Nombre del registro
+								</Label>
+								<Input
+									value={newAccountingDocumentName}
+									onChange={(e) => setNewAccountingDocumentName(e.target.value)}
+									placeholder="Ej: Registro TCP 2026"
+									className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+								/>
+							</div>
+							<div className="flex justify-end gap-2">
+								<Button
+									variant="outline"
+									onClick={() => {
+										setIsAccountingDialogOpen(false);
+										setNewAccountingDocumentName("");
+									}}
+								>
+									Cancelar
+								</Button>
+								<Button
+									onClick={handleCreateAccountingDocument}
+									disabled={!hasAccountingFeature}
+								>
+									Crear Registro
+								</Button>
+							</div>
+						</div>
+					</DialogContent>
+				</Dialog>
+			</>
+		);
 };
 
 export default SystemDashboard;

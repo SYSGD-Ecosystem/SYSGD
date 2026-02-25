@@ -28,8 +28,22 @@ export async function initDatabase() {
   `);
 
   await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS registration_source TEXT NOT NULL DEFAULT 'unknown';
+  `);
+
+  await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS registration_meta JSONB NOT NULL DEFAULT '{}'::jsonb;
+  `);
+
+  await pool.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email);
 
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_users_registration_source ON users(registration_source);
   `);
 
   await pool.query(`
@@ -38,8 +52,25 @@ export async function initDatabase() {
       user_id UUID REFERENCES users(id),
       login_time TIMESTAMP DEFAULT NOW(),
       ip_address TEXT,
-      user_agent TEXT
+      user_agent TEXT,
+      login_source TEXT NOT NULL DEFAULT 'unknown',
+      metadata JSONB NOT NULL DEFAULT '{}'::jsonb
     );
+  `);
+
+  await pool.query(`
+    ALTER TABLE users_logins
+    ADD COLUMN IF NOT EXISTS login_source TEXT NOT NULL DEFAULT 'unknown';
+  `);
+
+  await pool.query(`
+    ALTER TABLE users_logins
+    ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb;
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_users_logins_login_time ON users_logins(login_time DESC);
+    CREATE INDEX IF NOT EXISTS idx_users_logins_source_time ON users_logins(login_source, login_time DESC);
   `);
 
   await pool.query(`

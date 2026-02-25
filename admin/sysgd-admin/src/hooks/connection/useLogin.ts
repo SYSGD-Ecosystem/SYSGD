@@ -57,6 +57,9 @@ export function useLogin(): LoginResult {
 		try {
 			const res = await apiFetch<LoginResponse>("/api/auth/login", {
 				method: "POST",
+				headers: {
+					"X-App-Source": "admin_panel",
+				},
 				body: JSON.stringify({ email, password }),
 			})
 
@@ -114,6 +117,9 @@ export function useLogin(): LoginResult {
 		try {
 			const res = await apiFetch<LoginResponse>("/api/auth/verify-2fa", {
 				method: "POST",
+				headers: {
+					"X-App-Source": "admin_panel",
+				},
 				body: JSON.stringify({ twoFactorToken, code }),
 			})
 
@@ -153,6 +159,9 @@ export function useLogin(): LoginResult {
 		try {
 			const res = await apiFetch<{ message?: string }>("/api/auth/resend-2fa", {
 				method: "POST",
+				headers: {
+					"X-App-Source": "admin_panel",
+				},
 				body: JSON.stringify({ twoFactorToken }),
 			})
 			setInfo(res?.message || "Código reenviado correctamente.")

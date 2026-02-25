@@ -10,9 +10,11 @@ interface ApiService {
     suspend fun checkServerStatus(): Response<Unit>
 
     @POST("api/auth/login")
+    @Headers("X-App-Source: android")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
 
     @POST("api/users/register")
+    @Headers("X-App-Source: android")
     suspend fun register(@Body request: RegisterRequest): Response<Unit>
 
     @GET("api/auth/me")

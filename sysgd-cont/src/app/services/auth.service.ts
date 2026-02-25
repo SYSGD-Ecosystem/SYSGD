@@ -40,11 +40,12 @@ export class AuthService {
   }
 
   async login(email: string, password: string): Promise<AuthUser> {
+    const headers = new HttpHeaders({ 'X-App-Source': 'web' });
     const response = await firstValueFrom(
       this.http.post<LoginResponse>(`${this.apiBaseUrl}/api/auth/login`, {
         email,
         password
-      })
+      }, { headers })
     );
     localStorage.setItem(TOKEN_KEY, response.token);
     return response.user;

@@ -26,14 +26,30 @@ export function useRegisterUser(): RegisterResult {
 		setSuccess(false);
 
 		try {
-			await api.post("/api/register", { name, email, password });
+			await api.post(
+				"/api/register",
+				{ name, email, password },
+				{
+					headers: {
+						"X-App-Source": "main_web",
+					},
+				},
+			);
 			setSuccess(true);
 
 			try {
-				const loginResponse = await api.post("/api/auth/login", {
-					email,
-					password,
-				});
+				const loginResponse = await api.post(
+					"/api/auth/login",
+					{
+						email,
+						password,
+					},
+					{
+						headers: {
+							"X-App-Source": "main_web",
+						},
+					},
+				);
 				const token = loginResponse.data?.token;
 				if (typeof token === "string" && token.length > 0) {
 					localStorage.setItem("token", token);

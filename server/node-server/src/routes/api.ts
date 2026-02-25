@@ -14,6 +14,7 @@ import { isAdmin } from "../middlewares/auth";
 import { createDefaultUserData } from "../utils/billing";
 import { getClientIp, isIpFromCuba } from "../utils/ip";
 import { registerIpRateLimit } from "../middlewares/rate-limit";
+import { isContabilidadSource, normalizeClientSource } from "../utils/client-source";
 
 const router = Router();
 
@@ -738,8 +739,8 @@ router.post("/register", registerIpRateLimit, async (req: Request, res: Response
 	}
 
 	// Verificar origen del registro (sysgd-cont vs plataforma principal)
-	const appSource = req.headers["x-app-source"] as string;
-	const isFromSysgdCont = appSource === "web" || appSource === "android";
+	const registrationSource = normalizeClientSource(req.headers["x-app-source"], "main_web");
+	const isFromSysgdCont = isContabilidadSource(registrationSource);
 
 	// Validar IP solo para sysgd-cont
 	if (isFromSysgdCont) {
@@ -773,8 +774,18 @@ router.post("/register", registerIpRateLimit, async (req: Request, res: Response
 		const hashedPassword = await bcrypt.hash(password, 10);
 		const defaultUserData = createDefaultUserData();
 		const createResult = await pool.query(
-			"INSERT INTO users (name, email, password, privileges, user_data) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, privileges",
-			[name, email, hashedPassword, privileges, JSON.stringify(defaultUserData)],
+			`INSERT INTO users (name, email, password, privileges, user_data, registration_source, registration_meta)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7)
+			 RETURNING id, name, email, privileges`,
+			[
+				name,
+				email,
+				hashedPassword,
+				privileges,
+				JSON.stringify(defaultUserData),
+				registrationSource,
+				JSON.stringify({ rawHeader: req.headers["x-app-source"] ?? null }),
+			],
 		);
 
 		const createdUser = createResult.rows[0];

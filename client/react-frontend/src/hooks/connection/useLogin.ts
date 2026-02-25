@@ -25,7 +25,15 @@ export function useLogin(): LoginResult {
 		setSuccess(false);
 
 		try {
-			const res = await api.post("/api/auth/login", { email, password });
+			const res = await api.post(
+				"/api/auth/login",
+				{ email, password },
+				{
+					headers: {
+						"X-App-Source": "main_web",
+					},
+				},
+			);
 
 			const { token } = res.data;
 

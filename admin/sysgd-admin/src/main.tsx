@@ -6,6 +6,7 @@ import UpdatesPage from "./app/admin/updates/page.tsx";
 import AdminDashboard from "./app/admin/page.tsx";
 import LoginPage from "./app/login/page.tsx";
 import UsersPage from "./app/admin/usuarios/page.tsx";
+import AdminAnalyticsPage from "./app/admin/analytics/page.tsx";
 
 import AdminLayout from "./components/layouts/AdminLayout.tsx";
 import ProtectedRoute from "./components/routing/ProtectedRoute.tsx";
@@ -24,6 +25,7 @@ createRoot(document.getElementById("root")!).render(
 					}
 				>
 					<Route index element={<AdminDashboard />} />
+					<Route path="analytics" element={<AdminAnalyticsPage />} />
 					<Route path="usuarios" element={<UsersPage />} />
 					<Route path="updates" element={<UpdatesPage />} />
 				</Route>
