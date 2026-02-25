@@ -1,3 +1,4 @@
+// @deprecated: El nuevo componente es SystemDashboard, este componente se mantiene por compatibilidad pero no se recomienda su uso en nuevos desarrollos.
 import { type FC, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Toaster } from "sonner";

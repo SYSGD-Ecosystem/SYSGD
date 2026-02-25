@@ -1,3 +1,4 @@
+// TODO: La creacion de cuentas y login ahora se llevan en Auth.tsx, este componente se mantiene por compatibilidad pero no se recomienda su uso en nuevos desarrollos. Se planea eliminar este componente en futuras versiones para evitar confusiones y mantener el código limpio.
 import { type FC, type FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Loading from "@/components/Loading";

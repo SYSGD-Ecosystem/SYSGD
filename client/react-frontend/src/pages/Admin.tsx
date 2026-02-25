@@ -1,4 +1,4 @@
-// src/pages/Purchase.tsx
+// @deprecated: Este componente se mantiene por compatibilidad pero no se recomienda su uso en nuevos desarrollos. Para la gestión de usuarios, roles y permisos, se recomienda utilizar el nuevo "Admin Panel" que ofrece una experiencia más completa y segura. Se planea migrar completamente las funciones de administración al nuevo proyecto "Admin Panel" y eliminar este componente en futuras versiones para evitar confusiones y mantener el código limpio.
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';

@@ -1,3 +1,5 @@
+// @deprecated: Las funciones de administración de usuarios ahora se manejan en un nuevo proyecto separado llamado "Admin Panel". Este componente se mantiene por compatibilidad pero no se recomienda su uso en nuevos desarrollos. Para la gestión de usuarios, roles y permisos, se recomienda utilizar el nuevo "Admin Panel" que ofrece una experiencia más completa y segura.
+// TODO: Migrar completamente las funciones de administración al nuevo proyecto "Admin Panel" y eliminar este componente en futuras versiones para evitar confusiones y mantener el código limpio.
 import {
 	Crown,
 	Edit,
