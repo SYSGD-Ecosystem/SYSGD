@@ -51,7 +51,7 @@ export default function PrivacyPolicy() {
 					<AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
 					<AlertDescription className="text-amber-800 dark:text-amber-200">
 						<strong>Aviso importante:</strong> Este sistema se encuentra en fase
-						beta. Aunque implementamos controles de seguridad profesionales, 
+						beta. Aunque implementamos controles de seguridad profesionales,
 						recomendamos no almacenar información extremadamente sensible durante esta fase.
 					</AlertDescription>
 				</Alert>
@@ -77,19 +77,19 @@ export default function PrivacyPolicy() {
 										<p>Lazaro Yunier Salazar Rodriguez</p>
 									</div>
 									<div>
-										<p className="font-semibold text-gray-900 dark:text-gray-100">NIF/CIF:</p>
-										<p>96121719166</p>
+										<p className="font-semibold text-gray-900 dark:text-gray-100">WhatsApp Business:</p>
+										<p>
+											<a href="https://wa.me/5351158544" className="text-green-600 dark:text-green-400 hover:underline">
+												+53 5115 8544
+											</a>
+										</p>
 									</div>
 									<div>
 										<p className="font-semibold text-gray-900 dark:text-gray-100">País:</p>
 										<p>Cuba</p>
 									</div>
 								</div>
-								<Separator className="my-4" />
-								<div>
-									<p className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Dirección Legal:</p>
-									<p>Barrio Laguna Blanca S/N, Jesús Menéndez, Las Tunas, Cuba, Código Postal 77300</p>
-								</div>
+
 								<Separator className="my-4" />
 								<div className="grid md:grid-cols-3 gap-3">
 									<div className="flex items-center gap-2">
@@ -319,7 +319,7 @@ export default function PrivacyPolicy() {
 								<p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-3">
 									<strong>Medidas Técnicas implementadas:</strong>
 								</p>
-								
+
 								<div className="grid md:grid-cols-2 gap-3">
 									<div className="bg-green-50 dark:bg-green-900/50 rounded-lg p-3 border border-green-200 dark:border-green-700">
 										<h5 className="font-semibold text-green-900 dark:text-green-300 mb-1">✓ Encriptación en reposo</h5>
@@ -566,10 +566,10 @@ export default function PrivacyPolicy() {
 							</div>
 							<div className="bg-yellow-50 dark:bg-yellow-900/50 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3 mt-4">
 								<p className="text-yellow-800 dark:text-yellow-300 text-sm">
-									<strong>Al eliminar tu cuenta:</strong><br/>
-									• Datos personales: Eliminados en 30 días<br/>
-									• Facturas: Conservadas 7 años (obligación legal)<br/>
-									• Datos SYSGD CONT: Conservados 5 años (requisito ONAT)<br/>
+									<strong>Al eliminar tu cuenta:</strong><br />
+									• Datos personales: Eliminados en 30 días<br />
+									• Facturas: Conservadas 7 años (obligación legal)<br />
+									• Datos SYSGD CONT: Conservados 5 años (requisito ONAT)<br />
 									• Transacciones blockchain: Permanecen en blockchain (irreversible)
 								</p>
 							</div>
@@ -683,11 +683,11 @@ export default function PrivacyPolicy() {
 									Si eres menor, necesitas <strong>consentimiento verificable de tu padre/madre/tutor legal</strong>.
 								</p>
 								<p className="text-gray-700 dark:text-gray-300">
-									Si descubrimos que un menor ha creado una cuenta sin consentimiento, 
+									Si descubrimos que un menor ha creado una cuenta sin consentimiento,
 									la eliminaremos inmediatamente.
 								</p>
 								<p className="text-gray-700 dark:text-gray-300 text-sm">
-									<strong>Padres/tutores:</strong> Si crees que tu hijo creó una cuenta, contacta: 
+									<strong>Padres/tutores:</strong> Si crees que tu hijo creó una cuenta, contacta:
 									<a href="mailto:privacy@ecosysgd.com" className="text-blue-600 dark:text-blue-400 hover:underline ml-1">
 										privacy@ecosysgd.com
 									</a>
@@ -730,7 +730,7 @@ export default function PrivacyPolicy() {
 									<li>Recomendaciones para protegerte</li>
 								</ul>
 								<p className="text-gray-700 dark:text-gray-300 text-sm">
-									<strong>Contacto para reportar brechas:</strong> 
+									<strong>Contacto para reportar brechas:</strong>
 									<a href="mailto:security@ecosysgd.com" className="text-red-600 dark:text-red-400 hover:underline ml-1">
 										security@ecosysgd.com
 									</a> (respuesta en {'<'}24h)
@@ -812,8 +812,8 @@ export default function PrivacyPolicy() {
 								</div>
 								<div className="bg-yellow-50 dark:bg-yellow-900/50 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3">
 									<p className="text-yellow-800 dark:text-yellow-300 text-sm">
-										<strong>Preferimos resolver amigablemente:</strong><br/>
-										Antes de acudir a la autoridad, por favor contacta: 
+										<strong>Preferimos resolver amigablemente:</strong><br />
+										Antes de acudir a la autoridad, por favor contacta:
 										<a href="mailto:privacy@ecosysgd.com" className="underline ml-1">privacy@ecosysgd.com</a>
 									</p>
 								</div>

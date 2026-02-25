@@ -65,14 +65,6 @@ export default function TermsAndConditions() {
 								<p>Lazaro Yunier Salazar Rodriguez</p>
 							</div>
 							<div>
-								<p className="font-semibold text-gray-900 dark:text-gray-100">NIF/CIF/Pasaporte:</p>
-								<p>96121719166</p>
-							</div>
-							<div className="md:col-span-2">
-								<p className="font-semibold text-gray-900 dark:text-gray-100">Dirección:</p>
-								<p>Barrio Laguna Blanca S/N, Jesús Menéndez, Las Tunas, Cuba, Código Postal 77300</p>
-							</div>
-							<div>
 								<p className="font-semibold text-gray-900 dark:text-gray-100">País:</p>
 								<p>Cuba</p>
 							</div>
