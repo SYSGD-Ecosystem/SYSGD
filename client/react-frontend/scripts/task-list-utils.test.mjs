@@ -100,4 +100,3 @@ assert.equal(restored.searchTerm, "alpha");
 assert.equal(restored.sortDirection, "desc");
 
 fs.unlinkSync(tmpFile);
-console.log("task-list-utils tests passed");

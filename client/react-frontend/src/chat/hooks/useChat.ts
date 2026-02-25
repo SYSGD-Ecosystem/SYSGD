@@ -544,7 +544,7 @@ export function useChat() {
 				try {
 					ac.abort();
 				} catch {
-					console.log("Error al cargar conversaciones");
+					console.error("Error al cargar conversaciones");
 				}
 			});
 		};

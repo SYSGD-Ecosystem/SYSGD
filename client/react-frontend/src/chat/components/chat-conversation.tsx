@@ -98,7 +98,6 @@ export function ChatConversation({
 	// Receive socket events
 	useSocketEvents({
 		onNewMessage: (message) => {
-			console.log("Socket: Received new message:", message);
 			if (message.conversation_id === chat.id) {
 				const currentHookMsgs = messagesMap[chat.id] ?? [];
 				setMessagesForConversation(chat.id, [...currentHookMsgs, message]);
@@ -116,14 +115,6 @@ export function ChatConversation({
 			.catch(() => {});
 	}, [serverUrl]);
 
-	// Log socket connection status
-	useEffect(() => {
-		console.log("ChatConversation mounted, socket should connect");
-		return () => {
-			console.log("ChatConversation unmounting");
-		};
-	}, []);
-
 	// Join conversation when chat changes
 	useEffect(() => {
 		if (!chat?.id) return;
@@ -136,7 +127,6 @@ export function ChatConversation({
 
 	// --- Load messages from backend when chat changes ---
 	useEffect(() => {
-		console.log("Chat changed:", chat);
 		if (!chat?.id) return;
 		// fetchMessages will populate messagesMap inside the hook
 		fetchMessages(chat.id).catch((e) => {
@@ -305,20 +295,17 @@ export function ChatConversation({
 			const fd = new FormData();
 			fd.append("file", file);
 			try {
-				console.log("Uploading file:", file.name, file.type, file.size);
 				const res = await fetch(`${serverUrl}/api/uploads`, {
 					method: "POST",
 					body: fd,
 					credentials: "include",
 				});
-				console.log("Upload response status:", res.status);
 				if (!res.ok) {
 					const errorData = await res.json();
 					console.error("Upload error:", errorData);
 					throw new Error(errorData.error || "Upload failed");
 				}
 				const data = await res.json();
-				console.log("Upload success:", data);
 				return data; // { url, attachment_name, attachment_size, attachment_type, key, bucket }
 			} catch (err) {
 				console.error("uploadFile error:", err);

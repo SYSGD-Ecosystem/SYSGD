@@ -17,8 +17,6 @@ const useCurrentUser = () => {
 			try {
 				const res = await api.get<CurrentUserResponse>("/api/auth/me");
 
-				console.log("Respuesta de /api/auth/me:", res);
-
 				const userData: User = {
 					...res.data,
 					privileges: res.data.privileges ?? "user",

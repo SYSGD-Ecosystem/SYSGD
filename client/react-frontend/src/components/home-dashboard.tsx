@@ -111,7 +111,6 @@ export function HomeDashboard() {
 		);
 
 		if (projt !== null) {
-			console.log(projt);
 			setProjects(projt);
 		}
 	}, [mProjects]);
@@ -141,7 +140,6 @@ export function HomeDashboard() {
 		);
 
 		if (docs !== null) {
-			console.log(docs);
 			setDocument(docs);
 		}
 	}, [archives]);
@@ -197,8 +195,6 @@ export function HomeDashboard() {
 	};
 
 	const createProject = () => {
-		// Aquí se crearía el proyecto
-		console.log("Crear proyecto:", newProject);
 		setIsProjectDialogOpen(false);
 		handleCreateProject(
 			newProject.name,
@@ -245,8 +241,6 @@ export function HomeDashboard() {
 
 	const { handleNewArchiving } = useConnection();
 	const handleCreateDocument = () => {
-		// Aquí se crearía el documento
-		console.log("Crear documento:", newDocument);
 		handleNewArchiving(
 			newDocument.code,
 			newDocument.company,

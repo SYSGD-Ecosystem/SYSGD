@@ -25,7 +25,6 @@ export const TitleBar: React.FC = () => {
 	const handleMinimize = (e: React.MouseEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
-		console.log("Minimize button clicked");
 		if (window.electronAPI) {
 			window.electronAPI.minimize();
 		}
@@ -34,7 +33,6 @@ export const TitleBar: React.FC = () => {
 	const handleMaximize = (e: React.MouseEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
-		console.log("Maximize button clicked");
 		if (window.electronAPI) {
 			window.electronAPI.maximize();
 			setIsMaximized(!isMaximized);
@@ -44,7 +42,6 @@ export const TitleBar: React.FC = () => {
 	const handleClose = (e: React.MouseEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
-		console.log("Close button clicked");
 		if (window.electronAPI) {
 			window.electronAPI.close();
 		}

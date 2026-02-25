@@ -246,7 +246,7 @@ const CryptoPurchase: React.FC = () => {
 				}
 
 				if (order.status === "failed" || order.status === "expired") {
-					console.log("❌ Pago falló o expiró");
+					console.error("❌ Pago falló o expiró");
 					return false;
 				}
 

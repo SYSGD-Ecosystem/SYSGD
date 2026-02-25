@@ -25,8 +25,6 @@ export function TopNavigation({ onHomeClick }: TopNavigationProps) {
 			const pendingInvitations = invitations.filter(
 				(inv) => inv.status === "pending",
 			);
-			console.log("Invitaciones:", invitations);
-			console.log("Invitaciones pendientes:", pendingInvitations);
 			setUnreadCount(pendingInvitations.length);
 		} else {
 			setUnreadCount(0);

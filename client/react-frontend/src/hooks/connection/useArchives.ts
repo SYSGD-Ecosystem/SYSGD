@@ -11,7 +11,6 @@ const useArchives = () => {
 		setLoading(true);
 		try {
 			const { data } = await api.get("/api/archives");
-			console.log(data);
 			setArchives(data);
 			setError(null);
 		} catch (err) {

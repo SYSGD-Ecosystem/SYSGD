@@ -89,13 +89,6 @@ const DialogCreateTask: FC<Props> = ({
 }) => {
 	const { config } = useTaskConfig(projectId);
 	const { project, isLoading } = useProjectContext();
-
-	console.log(
-		"Task Config in DialogCreateTask:",
-		project?.name,
-		project?.description,
-		{ project },
-	);
 	const [selectedModel, setSelectedModel] =
 		useState<string>("gemini-2.5-flash");
 

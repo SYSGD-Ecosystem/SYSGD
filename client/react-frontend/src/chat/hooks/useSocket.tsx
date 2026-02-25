@@ -33,7 +33,6 @@ export function SocketProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    console.log("Socket: Token from localStorage:", token ? "present" : "missing");
     
     if (!token) {
       console.warn("No token available for socket connection");
@@ -42,12 +41,10 @@ export function SocketProvider({ children }: PropsWithChildren) {
 
     // Evitar múltiples conexiones
     if (isConnecting.current || socketRef.current?.connected) {
-      console.log("Socket: Already connected or connecting, skipping");
       return;
     }
 
     isConnecting.current = true;
-    console.log("Socket: Connecting with token:", token.substring(0, 20) + "...");
     
     socketRef.current = io(SOCKET_URL, {
       auth: { token },
@@ -58,7 +55,6 @@ export function SocketProvider({ children }: PropsWithChildren) {
     });
 
     socketRef.current.on("connect", () => {
-      console.log("Socket connected:", socketRef.current?.id);
       isConnecting.current = false;
       setIsConnected(true);
       // Dispatch custom event for other components
@@ -66,7 +62,6 @@ export function SocketProvider({ children }: PropsWithChildren) {
     });
 
     socketRef.current.on("disconnect", () => {
-      console.log("Socket disconnected");
       setIsConnected(false);
       window.dispatchEvent(new CustomEvent("socket-disconnected"));
     });

@@ -131,7 +131,6 @@ export function AgentsChatConversation({
 
 	// --- Load messages from backend when chat changes ---
 	useEffect(() => {
-		console.log("Chat changed:", chat);
 		if (!chat?.id) return;
 		// fetchMessages will populate messagesMap inside the hook
 		fetchMessages(chat.id).catch((e) => {

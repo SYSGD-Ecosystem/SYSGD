@@ -20,7 +20,6 @@ const DialogInvite: FC<{
 	});
 
 	const handleInvitation = () => {
-		console.log(invitation);
 		sendInvitation(
 			invitation.projectId,
 			invitation.email,

@@ -179,14 +179,12 @@ export const useWeb3 = (
     try {
       // Balance nativo (ETH/BNB)
       const ethBalance = await provider.getBalance(address);
-      console.log('ETH Balance:', ethBalance.toString());
       setBalance(ethers.formatEther(ethBalance));
 
       // Balance USDT
       if (usdtAddress) {
         const usdtContract = new ethers.Contract(usdtAddress, ERC20_ABI, provider);
         const usdtBal = await usdtContract.balanceOf(address);
-        console.log('USDT Balance:', usdtBal.toString());
         setUsdtBalance(ethers.formatUnits(usdtBal, 6)); // USDT tiene 6 decimales
       }
     } catch (error) {

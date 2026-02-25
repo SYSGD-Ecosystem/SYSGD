@@ -328,7 +328,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 	const [isDark, setIsDark] = useState(false);
 
 	useEffect(() => {
-		// console.log(localStorage.getItem("sysgd-theme"))
 
 		const savedTheme = localStorage.getItem("sysgd-theme") as Theme;
 		const savedModeStr = localStorage.getItem("sysgd-dark-mode");
@@ -343,8 +342,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 				savedModeStr === "true",
 			);
 		}
-
-		// console.log(savedTheme);
 
 		if (savedTheme) setTheme(savedTheme);
 		if (savedModeStr) setIsDark(savedModeStr === "true");

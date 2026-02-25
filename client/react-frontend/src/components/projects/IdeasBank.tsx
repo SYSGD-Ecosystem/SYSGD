@@ -55,7 +55,6 @@ const markdownTableComponents = {
 
 const IdeasBank: FC<{ projectId: string }> = ({ projectId }) => {
 	const { ideas, createIdea, deleteIdea, updateIdea } = useIdeas(projectId);
-	console.log(ideas);
 
 	const [editingIdea, setEditingIdea] = useState<Partial<Idea> | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
