@@ -1,5 +1,7 @@
 package cu.lazaroysr96.sysgdcont.ui.auth
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
@@ -12,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -23,6 +26,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cu.lazaroysr96.sysgdcont.ui.components.TermsAndConditionsDialog
 import cu.lazaroysr96.sysgdcont.viewmodel.AuthViewModel
 
+private const val SUPPORT_PHONE = "5351158544"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
@@ -32,6 +37,7 @@ fun LoginScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -42,6 +48,16 @@ fun LoginScreen(
     var manualToken by remember { mutableStateOf("") }
     var showTermsDialog by remember { mutableStateOf(false) }
     var termsAccepted by remember { mutableStateOf(false) }
+    var twoFactorCode by remember { mutableStateOf("") }
+    var showRecoverDialog by remember { mutableStateOf(false) }
+
+    fun openWhatsAppSupport(message: String) {
+        try {
+            val uri = Uri.parse("https://wa.me/$SUPPORT_PHONE?text=${Uri.encode(message)}")
+            context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+        } catch (_: Exception) {
+        }
+    }
 
     LaunchedEffect(uiState.isAuthenticated) {
         if (uiState.isAuthenticated) {
@@ -135,37 +151,58 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Contraseña") },
-                singleLine = true,
-                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(
-                            if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (passwordVisible) "Ocultar" else "Mostrar"
-                        )
-                    }
-                },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        focusManager.clearFocus()
-                        if (isRegisterMode) {
-                            viewModel.register(name, email, password)
-                        } else {
-                            viewModel.login(email, password)
+            if (uiState.requiresTwoFactor) {
+                OutlinedTextField(
+                    value = twoFactorCode,
+                    onValueChange = { twoFactorCode = it.filter { ch -> ch.isDigit() }.take(6) },
+                    label = { Text("Código 2FA") },
+                    singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.VerifiedUser, contentDescription = null) },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            focusManager.clearFocus()
+                            viewModel.verifyTwoFactorCode(twoFactorCode)
                         }
-                    }
+                    )
                 )
-            )
+            } else {
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Contraseña") },
+                    singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                    trailingIcon = {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(
+                                if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (passwordVisible) "Ocultar" else "Mostrar"
+                            )
+                        }
+                    },
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            focusManager.clearFocus()
+                            if (isRegisterMode) {
+                                viewModel.register(name, email, password)
+                            } else {
+                                viewModel.login(email, password)
+                            }
+                        }
+                    )
+                )
+            }
 
             if (uiState.error != null) {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -180,7 +217,9 @@ fun LoginScreen(
 
             Button(
                 onClick = {
-                    if (isRegisterMode) {
+                    if (uiState.requiresTwoFactor) {
+                        viewModel.verifyTwoFactorCode(twoFactorCode)
+                    } else if (isRegisterMode) {
                         if (termsAccepted) {
                             viewModel.register(name, email, password)
                         } else {
@@ -190,7 +229,8 @@ fun LoginScreen(
                         viewModel.login(email, password)
                     }
                 },
-                enabled = !uiState.isLoading && !uiState.isWakingUp && email.isNotBlank() && password.isNotBlank(),
+                enabled = !uiState.isLoading && !uiState.isWakingUp && email.isNotBlank() &&
+                    if (uiState.requiresTwoFactor) twoFactorCode.length == 6 else password.isNotBlank(),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (uiState.isLoading || uiState.isWakingUp) {
@@ -202,7 +242,13 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(if (uiState.isWakingUp) "Conectando..." else "Cargando...")
                 } else {
-                    Text(if (isRegisterMode) "Registrarse" else "Iniciar Sesión")
+                    Text(
+                        when {
+                            uiState.requiresTwoFactor -> "Verificar código"
+                            isRegisterMode -> "Registrarse"
+                            else -> "Iniciar Sesión"
+                        }
+                    )
                 }
             }
 
@@ -216,19 +262,37 @@ fun LoginScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            TextButton(
-                onClick = {
-                    isRegisterMode = !isRegisterMode
-                    termsAccepted = false
-                    viewModel.clearError()
+            if (uiState.requiresTwoFactor) {
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(onClick = { viewModel.resendTwoFactorCode() }) {
+                    Text("Reenviar código")
                 }
-            ) {
-                Text(
-                    if (isRegisterMode) "¿Ya tienes cuenta? Iniciar sesión"
-                    else "¿No tienes cuenta? Regístrate"
-                )
+                TextButton(onClick = {
+                    viewModel.cancelTwoFactorFlow()
+                    twoFactorCode = ""
+                }) {
+                    Text("Volver")
+                }
+            } else {
+                Spacer(modifier = Modifier.height(16.dp))
+                if (!isRegisterMode) {
+                    TextButton(onClick = { showRecoverDialog = true }) {
+                        Text("Olvidé mi contraseña")
+                    }
+                }
+
+                TextButton(
+                    onClick = {
+                        isRegisterMode = !isRegisterMode
+                        termsAccepted = false
+                        viewModel.clearError()
+                    }
+                ) {
+                    Text(
+                        if (isRegisterMode) "¿Ya tienes cuenta? Iniciar sesión"
+                        else "¿No tienes cuenta? Regístrate"
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -284,6 +348,53 @@ fun LoginScreen(
             dismissButton = {
                 TextButton(onClick = { showAdvancedDialog = false }) {
                     Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showRecoverDialog) {
+        AlertDialog(
+            onDismissRequest = { showRecoverDialog = false },
+            title = { Text("Recuperar contraseña") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "Solo cuentas con correo verificado pueden recuperar contraseña automáticamente.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("Correo") }
+                    )
+                    Text(
+                        "Si tu correo no está verificado, contacta soporte por WhatsApp (+53 51158544). Respuesta en 72h hábiles.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.requestPasswordReset(email)
+                    showRecoverDialog = false
+                }) {
+                    Text("Enviar enlace")
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        openWhatsAppSupport("Hola, necesito recuperar mi cuenta en SYSGD Cont.")
+                    }) {
+                        Text("Soporte")
+                    }
+                    TextButton(onClick = { showRecoverDialog = false }) {
+                        Text("Cerrar")
+                    }
                 }
             }
         )

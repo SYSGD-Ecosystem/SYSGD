@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS users (
   is_public BOOLEAN DEFAULT false,
   user_data JSONB,
   status TEXT DEFAULT 'active',
+  email_verified BOOLEAN NOT NULL DEFAULT false,
+  email_verified_at TIMESTAMP,
+  two_factor_enabled BOOLEAN NOT NULL DEFAULT false,
   failed_login_attempts INTEGER NOT NULL DEFAULT 0,
   lockout_until TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW()
@@ -41,6 +44,38 @@ CREATE TABLE IF NOT EXISTS admin_login_2fa_codes (
 
 CREATE INDEX IF NOT EXISTS idx_admin_login_2fa_user_created
 ON admin_login_2fa_codes(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID,
+  token TEXT NOT NULL UNIQUE,
+  type TEXT NOT NULL,
+  used BOOLEAN NOT NULL DEFAULT false,
+  used_at TIMESTAMP,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_lookup
+ON email_verification_tokens (token, type, used);
+
+CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user_type
+ON email_verification_tokens (user_id, type, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS email_notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID,
+  recipient_email TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  type TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  error_message TEXT,
+  sent_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_notifications_user_created
+ON email_notifications (user_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS cont_ledger_records (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

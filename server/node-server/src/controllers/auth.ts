@@ -9,6 +9,7 @@ import { getClientIp, isIpFromCuba } from "../utils/ip";
 import { AdminTwoFactorService } from "../services/adminTwoFactor.service";
 import { LoginSecurityService } from "../services/loginSecurity.service";
 import { normalizeClientSource, type ClientSource } from "../utils/client-source";
+import { EmailVerificationService } from "../services/emailVerification.service";
 
 dotenv.config();
 
@@ -17,6 +18,25 @@ if (!process.env.JWT_SECRET) {
 }
 
 const JWT_SECRET = process.env.JWT_SECRET;
+let twoFactorSchemaEnsured = false;
+
+const ensureTwoFactorSchema = async () => {
+	if (twoFactorSchemaEnsured) return;
+	await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN NOT NULL DEFAULT false;
+  `);
+	await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;
+  `);
+	await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMP;
+  `);
+	await EmailVerificationService.ensureSchema();
+	twoFactorSchemaEnsured = true;
+};
 
 interface UserPayload {
 	id: string;
@@ -26,7 +46,7 @@ interface UserPayload {
 }
 
 interface PendingTwoFactorPayload extends UserPayload {
-	purpose: "admin-2fa";
+	purpose: "login-2fa";
 }
 
 const setAuthCookie = (res: Response, token: string, maxAgeMs: number) => {
@@ -68,7 +88,7 @@ const createPendingTwoFactorToken = (user: UserPayload) =>
 			email: user.email,
 			name: user.name,
 			privileges: user.privileges,
-			purpose: "admin-2fa",
+			purpose: "login-2fa",
 		},
 		JWT_SECRET as string,
 		{ expiresIn: `${AdminTwoFactorService.getPendingTokenTtlMinutes()}m` },
@@ -79,7 +99,7 @@ const parsePendingTwoFactorToken = (
 ): PendingTwoFactorPayload | null => {
 	try {
 		const decoded = jwt.verify(token, JWT_SECRET as string) as PendingTwoFactorPayload;
-		if (decoded.purpose !== "admin-2fa" || decoded.privileges !== "admin") {
+		if (decoded.purpose !== "login-2fa") {
 			return null;
 		}
 		return decoded;
@@ -95,7 +115,7 @@ export function generateJWT(user: {
 	name: string;
 	privileges: string;
 }) {
-	const expiresIn = user.privileges === "admin" ? "30m" : "7d";
+	const expiresIn = user.privileges === "admin" ? "30m" : "30d";
 
 	return jwt.sign(
 		{
@@ -118,6 +138,7 @@ export const login = async (req: Request, res: Response) => {
 	}
 
 	try {
+		await ensureTwoFactorSchema();
 		const user = await findUserByemail(email);
 
 		if (user === null) {
@@ -147,6 +168,16 @@ export const login = async (req: Request, res: Response) => {
 					status: user.status,
 				},
 			});
+			return;
+		}
+
+		if (user.status === "suspended" || user.status === "banned") {
+			res.status(403).json({ message: "Esta cuenta no tiene acceso habilitado." });
+			return;
+		}
+
+		if (!user.password) {
+			res.status(401).json({ message: "Credenciales inválidas" });
 			return;
 		}
 
@@ -180,6 +211,11 @@ export const login = async (req: Request, res: Response) => {
 			privileges: user.privileges,
 		};
 
+		const enforceAdminTwoFactor =
+			user.privileges === "admin" && AdminTwoFactorService.isRequiredForAdmins();
+		const requiresTwoFactor =
+			enforceAdminTwoFactor || Boolean(user.two_factor_enabled);
+
 		if (user.privileges === "admin") {
 			const clientIp = getClientIp(req);
 			if (!isIpFromCuba(clientIp)) {
@@ -188,31 +224,31 @@ export const login = async (req: Request, res: Response) => {
 						"Acceso denegado. El administrador solo puede iniciar sesión desde Cuba.",
 					ip: clientIp,
 				});
-				return;
-			}
-
-			if (AdminTwoFactorService.isRequiredForAdmins()) {
-				const issueResult = await AdminTwoFactorService.issueCode(authUser);
-				if (!issueResult.success) {
-					const status = issueResult.secondsRemaining ? 429 : 500;
-					res.status(status).json({
-						message: issueResult.error || "No se pudo iniciar 2FA",
-						secondsRemaining: issueResult.secondsRemaining,
-					});
 					return;
 				}
+		}
 
-				const twoFactorToken = createPendingTwoFactorToken(authUser);
-				res.status(202).json({
-					message: "Se envio un codigo de verificacion al correo del administrador",
-					requiresTwoFactor: true,
-					twoFactorMethod: "email",
-					twoFactorToken,
-					expiresInMinutes: AdminTwoFactorService.getPendingTokenTtlMinutes(),
-					user: authUser,
+		if (requiresTwoFactor) {
+			const issueResult = await AdminTwoFactorService.issueCode(authUser);
+			if (!issueResult.success) {
+				const status = issueResult.secondsRemaining ? 429 : 500;
+				res.status(status).json({
+					message: issueResult.error || "No se pudo iniciar 2FA",
+					secondsRemaining: issueResult.secondsRemaining,
 				});
 				return;
 			}
+
+			const twoFactorToken = createPendingTwoFactorToken(authUser);
+			res.status(202).json({
+				message: "Se envió un código de verificación a tu correo",
+				requiresTwoFactor: true,
+				twoFactorMethod: "email",
+				twoFactorToken,
+				expiresInMinutes: AdminTwoFactorService.getPendingTokenTtlMinutes(),
+				user: authUser,
+			});
+			return;
 		}
 
 		const token = generateJWT(authUser);
@@ -307,6 +343,208 @@ export const resendAdminTwoFactor = async (req: Request, res: Response) => {
 	}
 };
 
+export const getTwoFactorStatus = async (req: Request, res: Response) => {
+	const authUser = req.user as UserPayload | undefined;
+	if (!authUser?.id) {
+		res.status(401).json({ message: "No autorizado" });
+		return;
+	}
+
+	try {
+		await ensureTwoFactorSchema();
+		const { rows } = await pool.query<{
+			two_factor_enabled: boolean;
+			privileges: string;
+			email_verified: boolean;
+		}>(
+			`SELECT two_factor_enabled, privileges, email_verified
+       FROM users
+       WHERE id = $1`,
+			[authUser.id],
+		);
+
+		if (rows.length === 0) {
+			res.status(404).json({ message: "Usuario no encontrado" });
+			return;
+		}
+
+		const row = rows[0];
+		const mandatory =
+			row.privileges === "admin" && AdminTwoFactorService.isRequiredForAdmins();
+
+		res.json({
+			enabled: mandatory ? true : Boolean(row.two_factor_enabled),
+			mandatory,
+			method: "email",
+			emailVerified: Boolean(row.email_verified),
+		});
+	} catch (error) {
+		console.error("Error getting 2FA status:", error);
+		res.status(500).json({ message: "Error al obtener estado de seguridad" });
+	}
+};
+
+export const updateTwoFactorStatus = async (req: Request, res: Response) => {
+	const authUser = req.user as UserPayload | undefined;
+	const { enabled, password } = req.body as {
+		enabled?: boolean;
+		password?: string;
+	};
+
+	if (!authUser?.id) {
+		res.status(401).json({ message: "No autorizado" });
+		return;
+	}
+
+	if (typeof enabled !== "boolean" || !password) {
+		res.status(400).json({ message: "enabled y password son requeridos" });
+		return;
+	}
+
+	try {
+		await ensureTwoFactorSchema();
+		const { rows } = await pool.query<{
+			password: string | null;
+			privileges: string;
+			email_verified: boolean;
+		}>(
+			`SELECT password, privileges, email_verified
+       FROM users
+       WHERE id = $1`,
+			[authUser.id],
+		);
+
+		if (rows.length === 0) {
+			res.status(404).json({ message: "Usuario no encontrado" });
+			return;
+		}
+
+		const user = rows[0];
+		const mandatory =
+			user.privileges === "admin" && AdminTwoFactorService.isRequiredForAdmins();
+		if (!enabled && mandatory) {
+			res.status(400).json({
+				message: "2FA es obligatorio para administradores en este entorno",
+			});
+			return;
+		}
+
+		if (!user.password) {
+			res.status(400).json({ message: "La cuenta no tiene password local" });
+			return;
+		}
+
+		if (enabled && !user.email_verified) {
+			res.status(400).json({
+				message:
+					"Debes verificar tu correo electrónico antes de activar el doble factor.",
+			});
+			return;
+		}
+
+		const passwordValid = await bcrypt.compare(password, user.password);
+		if (!passwordValid) {
+			res.status(401).json({ message: "Contraseña incorrecta" });
+			return;
+		}
+
+		await pool.query(
+			`UPDATE users
+       SET two_factor_enabled = $2
+       WHERE id = $1`,
+			[authUser.id, enabled],
+		);
+
+		res.json({
+			message: enabled
+				? "Doble factor activado correctamente"
+				: "Doble factor desactivado correctamente",
+			enabled,
+			mandatory,
+			emailVerified: Boolean(user.email_verified),
+		});
+	} catch (error) {
+		console.error("Error updating 2FA status:", error);
+		res.status(500).json({ message: "Error al actualizar seguridad" });
+	}
+};
+
+export const deleteOwnAccount = async (req: Request, res: Response) => {
+	const authUser = req.user as UserPayload | undefined;
+	const { password } = req.body as { password?: string };
+
+	if (!authUser?.id) {
+		res.status(401).json({ message: "No autorizado" });
+		return;
+	}
+
+	if (!password) {
+		res.status(400).json({ message: "password es requerido" });
+		return;
+	}
+
+	try {
+		await ensureTwoFactorSchema();
+		const { rows } = await pool.query<{
+			password: string | null;
+			email: string;
+		}>(
+			`SELECT password, email
+       FROM users
+       WHERE id = $1`,
+			[authUser.id],
+		);
+
+		if (rows.length === 0) {
+			res.status(404).json({ message: "Usuario no encontrado" });
+			return;
+		}
+
+		const current = rows[0];
+		if (!current.password) {
+			res.status(400).json({ message: "No se puede eliminar esta cuenta con este método" });
+			return;
+		}
+
+		const passwordValid = await bcrypt.compare(password, current.password);
+		if (!passwordValid) {
+			res.status(401).json({ message: "Contraseña incorrecta" });
+			return;
+		}
+
+		const lockPassword = await bcrypt.hash(`${authUser.id}-${Date.now()}`, 10);
+		const anonymizedEmail = `deleted+${authUser.id}@deleted.local`;
+		await pool.query(
+			`UPDATE users
+       SET name = 'Cuenta eliminada',
+           email = $2,
+           password = $3,
+           status = 'banned',
+           is_public = false,
+           two_factor_enabled = false
+       WHERE id = $1`,
+			[authUser.id, anonymizedEmail, lockPassword],
+		);
+
+		await pool.query(
+			`DELETE FROM users_logins
+       WHERE user_id = $1`,
+			[authUser.id],
+		);
+
+		res.clearCookie("token", {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+		});
+
+		res.json({ message: "Cuenta eliminada correctamente" });
+	} catch (error) {
+		console.error("Error deleting own account:", error);
+		res.status(500).json({ message: "Error al eliminar la cuenta" });
+	}
+};
+
 export const checkUser = async (req: Request, res: Response) => {
 	const { email } = req.body;
 	if (!email) {
@@ -356,7 +594,7 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 			email: decoded.email,
 			privileges: decoded.privileges,
 		});
-		console.log("User decoded:", decoded);
+		console.log("User :", decoded.name);
 	} catch (err) {
 		console.error("JWT verification error:", err);
 		res.status(401).json({ message: "Sesión inválida o expirada" });

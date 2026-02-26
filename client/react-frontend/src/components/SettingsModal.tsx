@@ -6,6 +6,7 @@ import {
 	EyeOff,
 	Globe,
 	KeyRound,
+	LockKeyhole,
 	Loader2,
 	Monitor,
 	Palette,
@@ -43,6 +44,7 @@ import { useUsers } from "@/hooks/connection/useUsers";
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import api from "@/lib/api";
+import SecuritySettingsSection from "@/components/SecuritySettingsSection";
 
 interface SettingsModalProps {
 	isOpen: boolean;
@@ -60,6 +62,7 @@ const SettingsModal: FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 		{ id: "appearance", Label: "Apariencia", icon: Palette },
 		{ id: "notifications", Label: "Notificaciones", icon: Bell },
 		{ id: "privacy", Label: "Privacidad", icon: Shield },
+		{ id: "security", Label: "Seguridad", icon: LockKeyhole },
 		{ id: "general", Label: "General", icon: Globe },
 		{ id: "tokens", Label: "Tokens API", icon: KeyRound },
 	];
@@ -647,6 +650,8 @@ const TokensSettings: FC = () => {
 				return renderNotificationSettings();
 			case "privacy":
 				return renderPrivacySettings();
+			case "security":
+				return <SecuritySettingsSection onAccountDeleted={onClose} />;
 			case "general":
 				return renderGeneralSettings();
 			case "tokens":
@@ -705,9 +710,12 @@ const TokensSettings: FC = () => {
 					<div className="space-y-4">
 						{categories.map((category) => {
 							const Icon = category.icon;
-							return (
-								<Collapsible key={category.id}>
-									<CollapsibleTrigger className="flex items-center justify-between w-full p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
+								return (
+									<Collapsible key={category.id}>
+										<CollapsibleTrigger
+											className="flex items-center justify-between w-full p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+											onClick={() => setActiveCategory(category.id)}
+										>
 										<div className="flex items-center space-x-3">
 											<Icon className="w-5 h-5" />
 											<span className="font-medium">{category.Label}</span>
@@ -715,15 +723,7 @@ const TokensSettings: FC = () => {
 										<ChevronDown className="w-4 h-4" />
 									</CollapsibleTrigger>
 									<CollapsibleContent className="mt-2 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800/50">
-										{/* biome-ignore lint/a11y/useKeyWithClickEvents: <explanation> */}
-										<div onClick={() => setActiveCategory(category.id)}>
-											{category.id === "appearance" &&
-												renderAppearanceSettings()}
-											{category.id === "notifications" &&
-												renderNotificationSettings()}
-											{category.id === "privacy" && renderPrivacySettings()}
-											{category.id === "general" && renderGeneralSettings()}
-										</div>
+										{activeCategory === category.id && renderCategoryContent()}
 									</CollapsibleContent>
 								</Collapsible>
 							);

@@ -10,6 +10,7 @@ import {
 	EyeOff,
 	Globe,
 	KeyRound,
+	LockKeyhole,
 	Loader2,
 	Menu,
 	Palette,
@@ -42,6 +43,7 @@ import { useUsers } from "@/hooks/connection/useUsers";
 import { useWeb3 } from "@/components/billing/hooks/useWeb3";
 import { toast } from "sonner";
 import api from "@/lib/api";
+import SecuritySettingsSection from "@/components/SecuritySettingsSection";
 
 type Theme = "classic" | "red" | "green" | "fire" | "purple" | "pink";
 
@@ -351,6 +353,7 @@ const SettingsPage: FC = () => {
 		{ id: "appearance", label: "Apariencia", icon: Palette },
 		{ id: "notifications", label: "Notificaciones", icon: Bell },
 		{ id: "privacy", label: "Privacidad", icon: Shield },
+		{ id: "security", label: "Seguridad", icon: LockKeyhole },
 		{ id: "general", label: "General", icon: Globe },
 		{ id: "tokens", label: "Tokens API", icon: KeyRound },
 	];
@@ -636,6 +639,8 @@ const SettingsPage: FC = () => {
 				return renderNotificationSettings();
 			case "privacy":
 				return renderPrivacySettings();
+			case "security":
+				return <SecuritySettingsSection />;
 			case "general":
 				return renderGeneralSettings();
 			case "tokens":

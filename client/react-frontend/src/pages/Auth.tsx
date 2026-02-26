@@ -16,17 +16,22 @@ import { useRegisterUser } from "@/hooks/connection/useRegisterUser";
 import useServerStatus from "@/hooks/connection/useServerStatus";
 
 const Auth: FC = () => {
+	const SUPPORT_WHATSAPP = "+5351158544";
 	const [isLoginPage, setIsLoginPage] = useState(true);
 	const [password, setPassword] = useState("");
 	const [repetPassword, setRepetPassword] = useState("");
 	const [name, setName] = useState("");
 	const [user, setUser] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
+	const [twoFactorCode, setTwoFactorCode] = useState("");
 	const [invitationToken, setInvitationToken] = useState<string | null>(null);
 	const [invitationData, setInvitationData] = useState<any>(null);
+	const [forgotLoading, setForgotLoading] = useState(false);
+	const [forgotMessage, setForgotMessage] = useState("");
+	const [forgotError, setForgotError] = useState("");
 
 	const [loginStep, setLoginStep] = useState<
-		"email" | "password" | "complete" | "offer-register"
+		"email" | "password" | "complete" | "offer-register" | "two-factor"
 	>("email");
 	const [invitedUserId, setInvitedUserId] = useState<string | null>(null);
 
@@ -36,8 +41,13 @@ const Auth: FC = () => {
 	const {
 		login,
 		error: loginError,
+		info: loginInfo,
 		loading: loginLoading,
+		resendTwoFactor,
+		resetTwoFactor,
 		success: loginSuccess,
+		twoFactorRequired,
+		verifyTwoFactor,
 	} = useLogin();
 	const {
 		checkUser,
@@ -110,10 +120,44 @@ const Auth: FC = () => {
 	}, [authUser, router]);
 
 	useEffect(() => {
-		if (loginSuccess) {
-			router("/dashboard");
+		if (!loginSuccess) return;
+		let cancelled = false;
+
+		const completeLogin = async () => {
+			if (invitationToken) {
+				try {
+					const token = localStorage.getItem("token");
+					if (token) {
+						await fetch(`${serverUrl}/api/invitations/accept`, {
+							method: "POST",
+							headers: {
+								"Content-Type": "application/json",
+								Authorization: `Bearer ${token}`,
+							},
+							body: JSON.stringify({ token: invitationToken }),
+						});
+					}
+				} catch (err) {
+					console.error("Error aceptando invitación:", err);
+				}
+			}
+
+			if (!cancelled) {
+				router("/dashboard");
+			}
+		};
+
+		completeLogin();
+		return () => {
+			cancelled = true;
+		};
+	}, [loginSuccess, invitationToken, router, serverUrl]);
+
+	useEffect(() => {
+		if (twoFactorRequired) {
+			setLoginStep("two-factor");
 		}
-	}, [loginSuccess, router]);
+	}, [twoFactorRequired]);
 
 	useEffect(() => {
 		if (!success) return;
@@ -205,24 +249,17 @@ const Auth: FC = () => {
 		}
 
 		if (loginStep === "password") {
-			// Si hay token de invitación, aceptarla después del login
 			await login({ email: user, password });
+			return;
+		}
 
-			if (invitationToken) {
-				try {
-					const token = localStorage.getItem("token");
-					await fetch(`${serverUrl}/api/invitations/accept`, {
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-							Authorization: `Bearer ${token}`,
-						},
-						body: JSON.stringify({ token: invitationToken }),
-					});
-				} catch (err) {
-					console.error("Error aceptando invitación:", err);
-				}
+		if (loginStep === "two-factor") {
+			if (!twoFactorCode.trim()) {
+				alert("Ingresa el código de verificación");
+				return;
 			}
+
+			await verifyTwoFactor(twoFactorCode.trim());
 			return;
 		}
 
@@ -293,6 +330,44 @@ const Auth: FC = () => {
 
 	};
 
+	const handleForgotPassword = async () => {
+		if (!user.trim()) {
+			setForgotError("Escribe tu correo para recuperar contraseña.");
+			setForgotMessage("");
+			return;
+		}
+
+		setForgotLoading(true);
+		setForgotError("");
+		setForgotMessage("");
+		try {
+			const res = await fetch(`${serverUrl}/api/verification/request-password-reset`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ email: user.trim() }),
+			});
+			const data = await res.json();
+			if (!res.ok) throw data;
+
+			setForgotMessage(
+				data?.message ||
+					"Si el correo está verificado, recibirás un enlace de recuperación.",
+			);
+		} catch (err: any) {
+			const backendError = err?.error || "No se pudo procesar la recuperación.";
+			const support = err?.support;
+			if (support?.whatsapp) {
+				setForgotError(
+					`${backendError} Soporte: ${support.whatsapp} (${support.responseTime || "72h hábiles"}).`,
+				);
+			} else {
+				setForgotError(backendError);
+			}
+		} finally {
+			setForgotLoading(false);
+		}
+	};
+
 	// Agrega un banner informativo cuando hay invitación
 
 	/* =======================
@@ -324,6 +399,8 @@ const Auth: FC = () => {
 		switch (loginStep) {
 			case "password":
 				return <Lock className="w-5 h-5" />;
+			case "two-factor":
+				return <CheckCircle className="w-5 h-5" />;
 			case "complete":
 				return <User className="w-5 h-5" />;
 			case "offer-register":
@@ -337,6 +414,8 @@ const Auth: FC = () => {
 		switch (loginStep) {
 			case "password":
 				return "Ingresa tu contraseña";
+			case "two-factor":
+				return "Verifica tu código";
 			case "complete":
 				return "Completa tu registro";
 			case "offer-register":
@@ -371,13 +450,23 @@ const Auth: FC = () => {
 									? "1"
 									: loginStep === "password"
 										? "2"
-										: "2"}{" "}
-								de 2
+										: loginStep === "two-factor"
+											? "3"
+											: "2"}{" "}
+								de {twoFactorRequired || loginStep === "two-factor" ? "3" : "2"}
 							</div>
 							{loginStep !== "email" && (
 								<button
 									type="button"
-									onClick={() => setLoginStep("email")}
+									onClick={() => {
+										if (loginStep === "two-factor") {
+											resetTwoFactor();
+											setTwoFactorCode("");
+											setLoginStep("password");
+											return;
+										}
+										setLoginStep("email");
+									}}
 									className="text-white/60 hover:text-white text-sm flex items-center gap-1 transition-colors"
 								>
 									<svg
@@ -439,6 +528,48 @@ const Auth: FC = () => {
 										onChange={(e) => setPassword(e.target.value)}
 										className="w-full pl-10 bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-white/40"
 									/>
+								</div>
+								<div className="text-right">
+									<button
+										type="button"
+										onClick={handleForgotPassword}
+										disabled={forgotLoading}
+										className="text-blue-300 hover:text-blue-200 text-xs underline disabled:opacity-60"
+									>
+										{forgotLoading ? "Enviando..." : "Olvidé mi contraseña"}
+									</button>
+								</div>
+							</div>
+						)}
+
+						{loginStep === "two-factor" && (
+							<div className="space-y-2">
+								<Label htmlFor="two-factor-code" className="text-white/80 text-sm">
+									Código de verificación
+								</Label>
+								<div className="relative">
+									<CheckCircle className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" />
+									<Input
+										id="two-factor-code"
+										type="text"
+										inputMode="numeric"
+										maxLength={6}
+										placeholder="000000"
+										value={twoFactorCode}
+										onChange={(e) =>
+											setTwoFactorCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+										}
+										className="w-full pl-10 bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-white/40"
+									/>
+								</div>
+								<div className="text-right">
+									<button
+										type="button"
+										onClick={resendTwoFactor}
+										className="text-blue-300 hover:text-blue-200 text-xs underline"
+									>
+										Reenviar código
+									</button>
 								</div>
 							</div>
 						)}
@@ -564,6 +695,8 @@ const Auth: FC = () => {
 									(loginStep === "email" && (user === "" || checkingUser)) ||
 									(loginStep === "password" &&
 										(password === "" || loginLoading)) ||
+									(loginStep === "two-factor" &&
+										(twoFactorCode.trim().length < 6 || loginLoading)) ||
 									(loginStep === "complete" &&
 										(!name || !password || !confirmPassword || loginLoading))
 								}
@@ -578,6 +711,8 @@ const Auth: FC = () => {
 									"Continuar"
 								) : loginStep === "password" ? (
 									"Iniciar sesión"
+								) : loginStep === "two-factor" ? (
+									"Verificar código"
 								) : loginStep === "complete" ? (
 									"Completar registro"
 								) : (
@@ -591,9 +726,53 @@ const Auth: FC = () => {
 								<p className="text-red-200 text-sm text-center">{loginError}</p>
 							</div>
 						)}
+						{loginInfo && (
+							<div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-3">
+								<p className="text-blue-200 text-sm text-center">{loginInfo}</p>
+							</div>
+						)}
 						{checkError && (
 							<div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3">
 								<p className="text-red-200 text-sm text-center">{checkError}</p>
+							</div>
+						)}
+						{forgotMessage && (
+							<div className="bg-green-500/20 border border-green-500/30 rounded-lg p-3">
+								<p className="text-green-200 text-sm text-center">
+									{forgotMessage}
+								</p>
+							</div>
+						)}
+						{forgotError && (
+							<div className="bg-amber-500/20 border border-amber-500/30 rounded-lg p-3">
+								<p className="text-amber-200 text-sm text-center">{forgotError}</p>
+								<p className="text-amber-200/80 text-xs text-center mt-2">
+									Soporte WhatsApp:{" "}
+									<a
+										href={`https://wa.me/${SUPPORT_WHATSAPP.replace("+", "")}`}
+										target="_blank"
+										rel="noreferrer"
+										className="underline"
+									>
+										{SUPPORT_WHATSAPP}
+									</a>{" "}
+									(respuesta en 72h hábiles)
+								</p>
+							</div>
+						)}
+						{loginStep === "two-factor" && (
+							<div className="text-center">
+								<button
+									type="button"
+									onClick={() => {
+										resetTwoFactor();
+										setLoginStep("password");
+										setTwoFactorCode("");
+									}}
+									className="text-white/70 hover:text-white text-sm underline"
+								>
+									Volver al paso anterior
+								</button>
 							</div>
 						)}
 					</form>

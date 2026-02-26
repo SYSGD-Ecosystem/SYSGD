@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -79,6 +80,7 @@ import cu.lazaroysr96.sysgdcont.ui.main.screens.GastosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.GeneralesScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.IngresosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.ResumenScreen
+import cu.lazaroysr96.sysgdcont.ui.main.screens.SecuritySettingsScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.TributosScreen
 import cu.lazaroysr96.sysgdcont.ui.navigation.MainTab
 import cu.lazaroysr96.sysgdcont.ui.navigation.mainTabs
@@ -91,6 +93,7 @@ private const val ABOUT_ROUTE = "about"
 private const val HELP_ROUTE = "help"
 private const val RESOURCES_ROUTE = "resources"
 private const val BACKUP_ROUTE = "backup_json"
+private const val SECURITY_ROUTE = "security_settings"
 
 private fun openWhatsAppContact(context: android.content.Context, message: String): Boolean {
     return try {
@@ -308,6 +311,19 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
+                            NavigationDrawerItem(
+                                    label = { Text("Seguridad y cuenta") },
+                                    selected = currentRoute == SECURITY_ROUTE,
+                                    icon = {
+                                        Icon(Icons.Default.Security, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        navController.navigate(SECURITY_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                         Column {
@@ -341,12 +357,13 @@ fun MainScreen(
                                             HELP_ROUTE -> "Ayuda de llenado"
                                             RESOURCES_ROUTE -> "Recursos útiles"
                                             BACKUP_ROUTE -> "Respaldo JSON"
+                                            SECURITY_ROUTE -> "Seguridad y cuenta"
                                             else -> "Gestor Contable TCP"
                                         }
                                 )
                             },
                             navigationIcon = {
-                                if (currentRoute == ABOUT_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE) {
+                                if (currentRoute == ABOUT_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE) {
                                     IconButton(onClick = { navController.popBackStack() }) {
                                         Icon(
                                                 Icons.Default.ArrowBack,
@@ -485,6 +502,25 @@ fun MainScreen(
                             },
                     )
                 }
+                composable(SECURITY_ROUTE) {
+                    SecuritySettingsScreen(
+                        authState = authState,
+                        authViewModel = authViewModel,
+                        onContactSupport = {
+                            val opened = openWhatsAppContact(
+                                context,
+                                "Hola, necesito soporte de seguridad para mi cuenta de SYSGD Cont."
+                            )
+                            if (!opened) {
+                                drawerScope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        "No se pudo abrir WhatsApp en este dispositivo"
+                                    )
+                                }
+                            }
+                        }
+                    )
+                }
             }
         }
     }
@@ -493,6 +529,12 @@ fun MainScreen(
     LaunchedEffect(authState.isAuthenticated) {
         if (authState.isAuthenticated) {
             ledgerViewModel.autoSyncOnFirstLogin()
+        }
+    }
+
+    LaunchedEffect(authState.accountDeleted) {
+        if (authState.accountDeleted) {
+            onLogout()
         }
     }
 

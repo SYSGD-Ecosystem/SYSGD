@@ -173,7 +173,7 @@ export class EmailService {
           </div>
           
           <div class="content">
-            <h2>¡Hola ${userName}! 👋</h2>
+            <h2>¡Bienvenido, ${userName}! 👋</h2>
             <p>Gracias por registrarte en ${APP_NAME}. Para completar tu registro y verificar tu cuenta, por favor confirma tu dirección de email.</p>
             
             <p>Haz clic en el botón de abajo para verificar tu email:</p>
@@ -217,7 +217,7 @@ Si no creaste una cuenta, puedes ignorar este email.
 
     return this.sendEmail({
       to: email,
-      subject: `Verifica tu email en ${APP_NAME}`,
+      subject: `¡Bienvenido a ${APP_NAME}! Verifica tu email`,
       html,
       text,
     });
@@ -645,7 +645,7 @@ Si no creaste una cuenta, puedes ignorar este email.
     });
   }
 
-  static async sendAdminTwoFactorCode(
+  static async sendLoginTwoFactorCode(
     email: string,
     userName: string,
     code: string,
@@ -668,9 +668,9 @@ Si no creaste una cuenta, puedes ignorar este email.
       <body>
         <div class="container">
           <div class="logo"><h1>${APP_NAME}</h1></div>
-          <h2>Codigo de acceso de administrador</h2>
+          <h2>Codigo de verificacion de acceso</h2>
           <p>Hola ${userName},</p>
-          <p>Usa este codigo para completar el inicio de sesion de administrador:</p>
+          <p>Usa este codigo para completar el inicio de sesion:</p>
           <div class="code">${code}</div>
           <div class="alert"><strong>Importante:</strong> este codigo expira en ${expiresInMinutes} minutos.</div>
           <p>Si no intentaste iniciar sesion, cambia tu contrasena inmediatamente.</p>
@@ -682,9 +682,18 @@ Si no creaste una cuenta, puedes ignorar este email.
 
     return this.sendEmail({
       to: email,
-      subject: `Codigo de acceso de administrador - ${APP_NAME}`,
+      subject: `Codigo de verificacion - ${APP_NAME}`,
       html,
       text: `Tu codigo de acceso es: ${code}. Expira en ${expiresInMinutes} minutos.`,
     });
+  }
+
+  static async sendAdminTwoFactorCode(
+    email: string,
+    userName: string,
+    code: string,
+    expiresInMinutes: number
+  ): Promise<boolean> {
+    return this.sendLoginTwoFactorCode(email, userName, code, expiresInMinutes);
   }
 }

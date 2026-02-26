@@ -31,6 +31,7 @@ import SystemDashboard from "./pages/SystemDashboard.tsx";
 import PageNotFound from "./pages/PageNotFound.tsx";
 import AboutPage from "./pages/AboutPage.tsx";
 import TcpIncomeExpenseRegisterPage from "./pages/TcpIncomeExpenseRegisterPage.tsx";
+import VerifyEmail from "./pages/VerifyEmail.tsx";
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(
@@ -59,6 +60,7 @@ createRoot(document.getElementById("root")!).render(
 						<Route path="/help" element={<Help />} />
 						<Route path="/settings" element={<SettingsPage />} />
 						<Route path="/settings/tokens" element={<TokenManagement />} />
+						<Route path="/verify-email" element={<VerifyEmail />} />
 						<Route path="/billing/purchase" element={<Purchase />} />
 						<Route path="/billing/upgrade" element={<Purchase />} />
 						<Route path="/dashboard" element={<SystemDashboard />} />

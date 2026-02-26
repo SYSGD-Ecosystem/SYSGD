@@ -2,6 +2,7 @@
 /** biome-ignore-all lint/complexity/noStaticOnlyClass: <explanation> */
 import { Request, Response } from 'express';
 import { pool } from '../db';
+import { EmailVerificationService } from '../services/emailVerification.service';
 import { EmailService } from '../services/emailService';
 import crypto from 'crypto';
 
@@ -18,75 +19,23 @@ export class VerificationController {
     }
 
     try {
-      // Obtener datos del usuario
-      const { rows: userRows } = await pool.query(
-        'SELECT id, name, email, email_verified FROM users WHERE id = $1',
-        [userId]
-      );
-
-      if (userRows.length === 0) {
-        res.status(404).json({ error: 'Usuario no encontrado' });
-        return;
-      }
-
-      const user = userRows[0];
-
-      // Verificar si ya está verificado
-      if (user.email_verified) {
-        res.status(400).json({ error: 'El email ya está verificado' });
-        return;
-      }
-
-      // Verificar si ya tiene un token válido pendiente
-      const { rows: existingTokens } = await pool.query(
-        `SELECT id FROM email_verification_tokens 
-         WHERE user_id = $1 
-         AND type = 'verification' 
-         AND used = false 
-         AND expires_at > NOW()`,
-        [userId]
-      );
-
-      if (existingTokens.length > 0) {
-        res.status(400).json({ 
-          error: 'Ya se envió un email de verificación. Por favor, revisa tu bandeja de entrada.' 
-        });
-        return;
-      }
-
-      // Generar token de verificación
-      const token = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
-
-      // Guardar token en la base de datos
-      await pool.query(
-        `INSERT INTO email_verification_tokens (user_id, token, type, expires_at)
-         VALUES ($1, $2, 'verification', $3)`,
-        [userId, token, expiresAt]
-      );
-
-      // Enviar email
-      const emailSent = await EmailService.sendVerificationEmail(
-        user.email,
-        user.name,
-        token
-      );
-
-      if (!emailSent) {
+      const result = await EmailVerificationService.issueVerificationEmail(userId);
+      if (!result.ok) {
+        if (result.reason === 'not_found') {
+          res.status(404).json({ error: 'Usuario no encontrado' });
+          return;
+        }
+        if (result.reason === 'already_verified') {
+          res.status(400).json({ error: 'El email ya está verificado' });
+          return;
+        }
         res.status(500).json({ error: 'Error al enviar el email' });
         return;
       }
 
-      // Registrar en log de notificaciones
-      await pool.query(
-        `INSERT INTO email_notifications (user_id, recipient_email, subject, type, status, sent_at)
-         VALUES ($1, $2, $3, 'verification', 'sent', NOW())`,
-        [userId, user.email, 'Verificación de email']
-      );
-
-      res.json({ 
+      res.json({
         message: 'Email de verificación enviado correctamente',
-        expiresAt: expiresAt.toISOString()
+        expiresAt: result.expiresAt
       });
     } catch (error) {
       console.error('Error sending verification email:', error);
@@ -106,74 +55,31 @@ export class VerificationController {
     }
 
     try {
-      await pool.query('BEGIN');
-
-      // Buscar token
-      const { rows: tokenRows } = await pool.query(
-        `SELECT id, user_id, expires_at, used 
-         FROM email_verification_tokens 
-         WHERE token = $1 AND type = 'verification'`,
-        [token]
-      );
-
-      if (tokenRows.length === 0) {
-        await pool.query('ROLLBACK');
-        res.status(400).json({ error: 'Token inválido' });
+      const result = await EmailVerificationService.verifyEmailByToken(token);
+      if (!result.ok) {
+        if (result.reason === 'invalid_token') {
+          res.status(400).json({ error: 'Token inválido' });
+          return;
+        }
+        if (result.reason === 'expired') {
+          res.status(400).json({ error: 'El token ha expirado' });
+          return;
+        }
+        if (result.reason === 'already_used') {
+          res.status(400).json({ error: 'Este token ya fue usado' });
+          return;
+        }
+        res.status(500).json({ error: 'Error al verificar email' });
         return;
       }
 
-      const tokenData = tokenRows[0];
-
-      // Verificar si ya fue usado
-      if (tokenData.used) {
-        await pool.query('ROLLBACK');
-        res.status(400).json({ error: 'Este token ya fue usado' });
-        return;
-      }
-
-      // Verificar si expiró
-      if (new Date(tokenData.expires_at) < new Date()) {
-        await pool.query('ROLLBACK');
-        res.status(400).json({ error: 'El token ha expirado' });
-        return;
-      }
-
-      // Marcar email como verificado
-      await pool.query(
-        `UPDATE users 
-         SET email_verified = true, email_verified_at = NOW()
-         WHERE id = $1`,
-        [tokenData.user_id]
-      );
-
-      // Marcar token como usado
-      await pool.query(
-        `UPDATE email_verification_tokens 
-         SET used = true, used_at = NOW()
-         WHERE id = $1`,
-        [tokenData.id]
-      );
-
-      await pool.query('COMMIT');
-
-      // Obtener usuario para enviar email de bienvenida
-      const { rows: userRows } = await pool.query(
-        'SELECT name, email FROM users WHERE id = $1',
-        [tokenData.user_id]
-      );
-
-      if (userRows.length > 0) {
-        const user = userRows[0];
-        // Enviar email de bienvenida (sin esperar)
-        EmailService.sendWelcomeEmail(user.email, user.name).catch(console.error);
-      }
-
-      res.json({ 
-        message: 'Email verificado correctamente',
-        verified: true 
+      res.json({
+        message: result.alreadyVerified
+          ? 'Tu cuenta ya estaba verificada'
+          : 'Email verificado correctamente',
+        verified: true
       });
     } catch (error) {
-      await pool.query('ROLLBACK');
       console.error('Error verifying email:', error);
       res.status(500).json({ error: 'Error al verificar email' });
     }
@@ -193,7 +99,7 @@ export class VerificationController {
     try {
       // Buscar usuario
       const { rows: userRows } = await pool.query(
-        'SELECT id, name, email FROM users WHERE email = $1',
+        'SELECT id, name, email, email_verified FROM users WHERE email = $1',
         [email]
       );
 
@@ -206,6 +112,17 @@ export class VerificationController {
       }
 
       const user = userRows[0];
+
+      if (!user.email_verified) {
+        res.status(403).json({
+          error: 'Para recuperar tu contraseña primero debes verificar tu correo.',
+          support: {
+            whatsapp: '+5351158544',
+            responseTime: '72h hábiles'
+          }
+        });
+        return;
+      }
 
       // Invalidar tokens previos
       await pool.query(
@@ -337,21 +254,15 @@ export class VerificationController {
     }
 
     try {
-      const { rows } = await pool.query(
-        `SELECT email_verified, email_verified_at 
-         FROM users 
-         WHERE id = $1`,
-        [userId]
-      );
-
-      if (rows.length === 0) {
+      const status = await EmailVerificationService.getVerificationStatus(userId);
+      if (!status) {
         res.status(404).json({ error: 'Usuario no encontrado' });
         return;
       }
 
       res.json({
-        verified: rows[0].email_verified,
-        verifiedAt: rows[0].email_verified_at
+        verified: status.verified,
+        verifiedAt: status.verifiedAt
       });
     } catch (error) {
       console.error('Error getting verification status:', error);

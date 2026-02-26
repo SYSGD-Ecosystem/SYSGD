@@ -15,6 +15,7 @@ import { createDefaultUserData } from "../utils/billing";
 import { getClientIp, isIpFromCuba } from "../utils/ip";
 import { registerIpRateLimit } from "../middlewares/rate-limit";
 import { isContabilidadSource, normalizeClientSource } from "../utils/client-source";
+import { EmailVerificationService } from "../services/emailVerification.service";
 
 const router = Router();
 
@@ -789,6 +790,8 @@ router.post("/register", registerIpRateLimit, async (req: Request, res: Response
 		);
 
 		const createdUser = createResult.rows[0];
+		const verificationResult =
+			await EmailVerificationService.issueVerificationEmail(createdUser.id);
 		const token = generateJWT({
 			id: createdUser.id,
 			email: createdUser.email,
@@ -807,6 +810,10 @@ router.post("/register", registerIpRateLimit, async (req: Request, res: Response
 			message: "Usuario registrado",
 			token,
 			user: createdUser,
+			emailVerification: {
+				sent: verificationResult.ok,
+				verified: false,
+			},
 		});
 	} catch (err) {
 		console.error(err);

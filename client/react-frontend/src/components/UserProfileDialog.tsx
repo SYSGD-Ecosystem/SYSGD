@@ -446,6 +446,7 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
               </Button>
             </div>
           </TabsContent>
+
         </Tabs>
 
         <Separator />

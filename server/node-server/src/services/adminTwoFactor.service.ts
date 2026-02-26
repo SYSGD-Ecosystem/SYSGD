@@ -114,7 +114,7 @@ export class AdminTwoFactorService {
 		);
 
 		const codeId = insertResult.rows[0]?.id;
-		const sent = await EmailService.sendAdminTwoFactorCode(
+		const sent = await EmailService.sendLoginTwoFactorCode(
 			admin.email,
 			admin.name || "Administrador",
 			plainCode,

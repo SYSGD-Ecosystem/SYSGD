@@ -13,12 +13,44 @@ interface ApiService {
     @Headers("X-App-Source: android")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
 
+    @POST("api/auth/verify-2fa")
+    @Headers("X-App-Source: android")
+    suspend fun verifyTwoFactor(@Body request: VerifyTwoFactorRequest): Response<LoginResponse>
+
+    @POST("api/auth/resend-2fa")
+    @Headers("X-App-Source: android")
+    suspend fun resendTwoFactor(@Body request: ResendTwoFactorRequest): Response<ApiMessageResponse>
+
     @POST("api/users/register")
     @Headers("X-App-Source: android")
     suspend fun register(@Body request: RegisterRequest): Response<Unit>
 
     @GET("api/auth/me")
     suspend fun me(@Header("Authorization") token: String): Response<AuthUser>
+
+    @GET("api/auth/2fa/status")
+    suspend fun getTwoFactorStatus(@Header("Authorization") token: String): Response<TwoFactorStatusResponse>
+
+    @PUT("api/auth/2fa/status")
+    suspend fun updateTwoFactorStatus(
+        @Header("Authorization") token: String,
+        @Body request: UpdateTwoFactorRequest
+    ): Response<ApiMessageResponse>
+
+    @HTTP(method = "DELETE", path = "api/auth/account", hasBody = true)
+    suspend fun deleteOwnAccount(
+        @Header("Authorization") token: String,
+        @Body request: DeleteAccountRequest
+    ): Response<ApiMessageResponse>
+
+    @GET("api/verification/status")
+    suspend fun getVerificationStatus(@Header("Authorization") token: String): Response<VerificationStatusResponse>
+
+    @POST("api/verification/resend-verification")
+    suspend fun resendVerification(@Header("Authorization") token: String): Response<ApiMessageResponse>
+
+    @POST("api/verification/request-password-reset")
+    suspend fun requestPasswordReset(@Body request: PasswordResetRequest): Response<ApiMessageResponse>
 
     @GET("api/users/plan")
     suspend fun getUserPlan(@Header("Authorization") token: String): Response<UserPlanResponse>

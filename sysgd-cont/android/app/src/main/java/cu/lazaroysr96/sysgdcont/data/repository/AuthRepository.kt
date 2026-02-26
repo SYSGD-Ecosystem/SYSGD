@@ -8,8 +8,14 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import cu.lazaroysr96.sysgdcont.data.api.ApiService
 import cu.lazaroysr96.sysgdcont.data.model.AuthUser
+import cu.lazaroysr96.sysgdcont.data.model.DeleteAccountRequest
 import cu.lazaroysr96.sysgdcont.data.model.LoginRequest
+import cu.lazaroysr96.sysgdcont.data.model.PasswordResetRequest
 import cu.lazaroysr96.sysgdcont.data.model.RegisterRequest
+import cu.lazaroysr96.sysgdcont.data.model.ResendTwoFactorRequest
+import cu.lazaroysr96.sysgdcont.data.model.TwoFactorStatusResponse
+import cu.lazaroysr96.sysgdcont.data.model.UpdateTwoFactorRequest
+import cu.lazaroysr96.sysgdcont.data.model.VerifyTwoFactorRequest
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -20,6 +26,11 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private val Context.authDataStore: DataStore<Preferences> by preferencesDataStore(name = "auth_prefs")
+
+sealed class LoginFlowResult {
+    data class Success(val user: AuthUser) : LoginFlowResult()
+    data class RequiresTwoFactor(val twoFactorToken: String, val message: String?) : LoginFlowResult()
+}
 
 @Singleton
 class AuthRepository @Inject constructor(
@@ -108,21 +119,59 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    suspend fun login(email: String, password: String): Result<AuthUser> {
+    suspend fun loginWithFlow(email: String, password: String): Result<LoginFlowResult> {
         return try {
             val response = apiService.login(LoginRequest(email, password))
-            if (response.isSuccessful) {
-                val body = response.body()!!
-                context.authDataStore.edit { prefs ->
-                    prefs[TOKEN_KEY] = body.token
-                    prefs[USER_ID_KEY] = body.user.id
-                    prefs[USER_NAME_KEY] = body.user.name
-                    prefs[USER_EMAIL_KEY] = body.user.email
-                    prefs[USER_PRIVILEGES_KEY] = body.user.privileges
-                }
-                Result.success(body.user)
+            if (!response.isSuccessful) {
+                return Result.failure(Exception(extractApiError(response, "Error al iniciar sesión")))
+            }
+
+            val body = response.body() ?: return Result.failure(Exception("Respuesta de login vacía"))
+            if (body.requiresTwoFactor == true && !body.twoFactorToken.isNullOrBlank()) {
+                return Result.success(LoginFlowResult.RequiresTwoFactor(body.twoFactorToken, body.message))
+            }
+
+            val token = body.token
+            val user = body.user
+            if (token.isNullOrBlank() || user == null) {
+                Result.failure(Exception("Respuesta de login inválida"))
             } else {
-                Result.failure(Exception(extractApiError(response, "Error al iniciar sesión")))
+                saveSession(token, user)
+                Result.success(LoginFlowResult.Success(user))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun verifyTwoFactor(twoFactorToken: String, code: String): Result<AuthUser> {
+        return try {
+            val response = apiService.verifyTwoFactor(VerifyTwoFactorRequest(twoFactorToken, code))
+            if (!response.isSuccessful) {
+                return Result.failure(Exception(extractApiError(response, "No se pudo verificar el código")))
+            }
+
+            val body = response.body() ?: return Result.failure(Exception("Respuesta vacía al verificar 2FA"))
+            val token = body.token
+            val user = body.user
+            if (token.isNullOrBlank() || user == null) {
+                Result.failure(Exception("Respuesta inválida al verificar 2FA"))
+            } else {
+                saveSession(token, user)
+                Result.success(user)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun resendTwoFactor(twoFactorToken: String): Result<String> {
+        return try {
+            val response = apiService.resendTwoFactor(ResendTwoFactorRequest(twoFactorToken))
+            if (response.isSuccessful) {
+                Result.success(response.body()?.message ?: "Código reenviado correctamente")
+            } else {
+                Result.failure(Exception(extractApiError(response, "No se pudo reenviar el código")))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -136,6 +185,96 @@ class AuthRepository @Inject constructor(
                 Result.success(Unit)
             } else {
                 Result.failure(Exception(extractApiError(response, "No se pudo crear la cuenta")))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getTwoFactorStatus(): Result<TwoFactorStatusResponse> {
+        return try {
+            val token = getToken() ?: return Result.failure(Exception("No autenticado"))
+            val response = apiService.getTwoFactorStatus("Bearer $token")
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception(extractApiError(response, "No se pudo cargar estado de 2FA")))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getEmailVerificationStatus(): Result<Boolean> {
+        return try {
+            val token = getToken() ?: return Result.failure(Exception("No autenticado"))
+            val response = apiService.getVerificationStatus("Bearer $token")
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!.verified)
+            } else {
+                Result.failure(Exception(extractApiError(response, "No se pudo cargar estado de verificación")))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun resendVerificationEmail(): Result<String> {
+        return try {
+            val token = getToken() ?: return Result.failure(Exception("No autenticado"))
+            val response = apiService.resendVerification("Bearer $token")
+            if (response.isSuccessful) {
+                Result.success(response.body()?.message ?: "Correo de verificación enviado")
+            } else {
+                Result.failure(Exception(extractApiError(response, "No se pudo enviar el correo de verificación")))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateTwoFactorStatus(enabled: Boolean, password: String): Result<String> {
+        return try {
+            val token = getToken() ?: return Result.failure(Exception("No autenticado"))
+            val response = apiService.updateTwoFactorStatus(
+                "Bearer $token",
+                UpdateTwoFactorRequest(enabled = enabled, password = password)
+            )
+            if (response.isSuccessful) {
+                Result.success(response.body()?.message ?: "Configuración actualizada")
+            } else {
+                Result.failure(Exception(extractApiError(response, "No se pudo actualizar 2FA")))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteOwnAccount(password: String): Result<String> {
+        return try {
+            val token = getToken() ?: return Result.failure(Exception("No autenticado"))
+            val response = apiService.deleteOwnAccount(
+                "Bearer $token",
+                DeleteAccountRequest(password = password)
+            )
+            if (response.isSuccessful) {
+                logout()
+                Result.success(response.body()?.message ?: "Cuenta eliminada")
+            } else {
+                Result.failure(Exception(extractApiError(response, "No se pudo eliminar la cuenta")))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun requestPasswordReset(email: String): Result<String> {
+        return try {
+            val response = apiService.requestPasswordReset(PasswordResetRequest(email))
+            if (response.isSuccessful) {
+                Result.success(response.body()?.message ?: "Si el correo está verificado, recibirás un enlace.")
+            } else {
+                Result.failure(Exception(extractApiError(response, "No se pudo iniciar recuperación")))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -157,13 +296,7 @@ class AuthRepository @Inject constructor(
             val response = apiService.me("Bearer $token")
             if (response.isSuccessful) {
                 val user = response.body()!!
-                context.authDataStore.edit { prefs ->
-                    prefs[TOKEN_KEY] = token
-                    prefs[USER_ID_KEY] = user.id
-                    prefs[USER_NAME_KEY] = user.name
-                    prefs[USER_EMAIL_KEY] = user.email
-                    prefs[USER_PRIVILEGES_KEY] = user.privileges
-                }
+                saveSession(token, user)
                 Result.success(user)
             } else {
                 Result.failure(Exception("Token inválido o expirado"))
@@ -193,5 +326,15 @@ class AuthRepository @Inject constructor(
             }
         }
         return "$fallback (${response.code()})"
+    }
+
+    private suspend fun saveSession(token: String, user: AuthUser) {
+        context.authDataStore.edit { prefs ->
+            prefs[TOKEN_KEY] = token
+            prefs[USER_ID_KEY] = user.id
+            prefs[USER_NAME_KEY] = user.name
+            prefs[USER_EMAIL_KEY] = user.email
+            prefs[USER_PRIVILEGES_KEY] = user.privileges
+        }
     }
 }

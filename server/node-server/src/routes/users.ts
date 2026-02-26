@@ -9,6 +9,7 @@ import { maybeRenewPlanCredits, normalizeBillingState } from "../services/billin
 import { getClientIp, isIpFromCuba } from "../utils/ip";
 import { registerIpRateLimit } from "../middlewares/rate-limit";
 import { isContabilidadSource, normalizeClientSource } from "../utils/client-source";
+import { EmailVerificationService } from "../services/emailVerification.service";
 
 const router = Router();
 
@@ -127,7 +128,15 @@ router.post("/register", registerIpRateLimit, async (req, res) => {
       ]
     );
 
-    res.status(201).json(rows[0]);
+    const verificationResult = await EmailVerificationService.issueVerificationEmail(rows[0].id);
+
+    res.status(201).json({
+      ...rows[0],
+      emailVerification: {
+        sent: verificationResult.ok,
+        verified: false,
+      },
+    });
   } catch (e: any) {
     if (e.code === "23505") {
       res.status(409).json({ error: "El email ya está registrado" });
@@ -643,9 +652,20 @@ router.put("/:id/password", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   const userId = req.params.id;
+  const currentUser = getCurrentUserData(req);
 
   if (!userId) {
     res.status(400).json({ error: "ID inválido" });
+    return;
+  }
+
+  if (!currentUser?.id) {
+    res.status(401).json({ error: "Usuario no autenticado" });
+    return;
+  }
+
+  if (currentUser.privileges !== "admin" && currentUser.id !== userId) {
+    res.status(403).json({ error: "No autorizado para eliminar este usuario" });
     return;
   }
 
