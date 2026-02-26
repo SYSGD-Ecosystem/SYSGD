@@ -570,5 +570,22 @@ CREATE TABLE IF NOT EXISTS agent_conversations (
   ON github_project_user_token(project_id, user_id);
 `);
 
+  // ==============================
+  // Organization Chart (Organigrama)
+  // ==============================
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS organization_chart (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      file_id UUID NOT NULL UNIQUE,
+      data JSONB NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_organization_chart_file_id ON organization_chart(file_id);
+  `);
+
   console.log("✅ Tablas verificadas o creadas correctamente.");
 }

@@ -37,7 +37,11 @@ router.post("/", async (req, res) => {
 		res.status(400).json({ error: "Faltan datos" });
 		return;
 	}
-const user = getCurrentUserData(req)
+	if (typeof id !== "string") {
+		res.status(400).json({ error: "Id inválido" });
+		return;
+	}
+	const user = getCurrentUserData(req);
 	const userId = user?.id;
 	try {
 		const owner = await pool.query(

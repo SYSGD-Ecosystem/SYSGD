@@ -500,3 +500,17 @@ SELECT
 FROM users u
 LEFT JOIN crypto_payment_orders cpo ON u.id = cpo.user_id
 GROUP BY u.id, u.email;
+
+-- ==============================
+-- Organization Chart (Organigrama)
+-- ==============================
+
+CREATE TABLE IF NOT EXISTS organization_chart (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  file_id UUID NOT NULL UNIQUE,
+  data JSONB NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_organization_chart_file_id ON organization_chart(file_id);
