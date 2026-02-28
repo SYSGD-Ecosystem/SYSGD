@@ -4,12 +4,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -325,16 +329,32 @@ private fun AddProductDialog(
     var emoji by remember { mutableStateOf("📦") }
     var unidad by remember { mutableStateOf("und") }
 
-    val unidades = listOf("und", "kg", "g", "litro", "ml", "docena", "paquete")
+    val unidades = listOf("und", "kg", "g", "litro", "ml", "docena", "paquete", "caja", "bolsa", "par")
     var unitExpanded by remember { mutableStateOf(false) }
 
     val puedeAgregar = nombre.isNotBlank() && precio.toDoubleOrNull() != null && (precio.toDoubleOrNull() ?: 0.0) > 0
+
+    val emojis = listOf(
+        "📦", "🍔", "☕", "🥤", "🍟", "🍕", "🎁", "🥪", "🌮", "🍜",
+        "🍰", "🧁", "🍩", "🍪", "🍫", "🍬", "🍭", "🍮", "🍯", "🥛",
+        "🧃", "🧉", "🍺", "🍻", "🥂", "🥃", "🫗", "🥤", "🧋", "🍵",
+        "👕", "👖", "👗", "👘", "👙", "👚", "👛", "👜", "👝", "🎒",
+        "👞", "👟", "👠", "👡", "👢", "👑", "👒", "🎩", "🎓", "⛑️",
+        "📱", "💻", "⌨️", "🖱️", "🖨️", "📷", "📹", "🎥", "📞", "☎️",
+        "📺", "📻", "🎙️", "🎚️", "🎛️", "⏰", "⌚", "📡", "🔋", "💡",
+        "🧹", "🧺", "🧻", "🧼", "🪥", "🪒", "🧽", "🪣", "🧴", "🛎️",
+        "🔑", "🗝️", "🔒", "🔓", "📁", "📂", "🗂️", "📅", "📆", "📇",
+        "✏️", "🖊️", "🖋️", "📌", "📍", "✂️", "🗃️", "🗄️", "📎", "📏"
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Nuevo producto") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 OutlinedTextField(
                     value = nombre,
                     onValueChange = { nombre = it },
@@ -352,26 +372,29 @@ private fun AddProductDialog(
                     singleLine = true
                 )
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Text("Emoji:", style = MaterialTheme.typography.bodyMedium)
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Emoji:")
-                    listOf("📦", "🍔", "☕", "🥤", "🍟", "🍕", "🎁").forEach { e ->
+                    items(emojis) { e ->
                         Text(
                             e,
-                            fontSize = 20.sp,
+                            fontSize = 24.sp,
                             modifier = Modifier
-                                .clip(CircleShape)
+                                .clip(RoundedCornerShape(8.dp))
                                 .clickable { emoji = e }
                                 .background(
                                     if (emoji == e) MaterialTheme.colorScheme.primaryContainer
                                     else MaterialTheme.colorScheme.surface
                                 )
-                                .padding(4.dp)
+                                .padding(8.dp)
                         )
                     }
                 }
+
+                Text("Unidad:", style = MaterialTheme.typography.bodyMedium)
 
                 ExposedDropdownMenuBox(
                     expanded = unitExpanded,
@@ -381,7 +404,7 @@ private fun AddProductDialog(
                         value = unidad,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Unidad") },
+                        label = { Text("Seleccionar") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(unitExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
