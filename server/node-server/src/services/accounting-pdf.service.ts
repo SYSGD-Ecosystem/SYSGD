@@ -188,8 +188,8 @@ const buildMonthSection = (
 				layout: {
 					hLineWidth: (): number => 0.6,
 					vLineWidth: (): number => 0.6,
-					paddingTop: (): number => 2,
-					paddingBottom: (): number => 2,
+					paddingTop: (): number => 2.9,
+					paddingBottom: (): number => 2.9,
 				},
 			},
 			{

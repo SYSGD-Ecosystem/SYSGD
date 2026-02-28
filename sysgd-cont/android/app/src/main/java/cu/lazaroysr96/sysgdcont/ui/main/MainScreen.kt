@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
@@ -79,12 +80,14 @@ import cu.lazaroysr96.sysgdcont.data.model.SyncAction
 import cu.lazaroysr96.sysgdcont.ui.main.screens.GastosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.GeneralesScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.IngresosScreen
+import cu.lazaroysr96.sysgdcont.ui.main.screens.InventarioScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.ResumenScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.SecuritySettingsScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.TributosScreen
 import cu.lazaroysr96.sysgdcont.ui.navigation.MainTab
 import cu.lazaroysr96.sysgdcont.ui.navigation.mainTabs
 import cu.lazaroysr96.sysgdcont.viewmodel.AuthViewModel
+import cu.lazaroysr96.sysgdcont.viewmodel.InventarioViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
 import kotlinx.coroutines.launch
 
@@ -94,6 +97,7 @@ private const val HELP_ROUTE = "help"
 private const val RESOURCES_ROUTE = "resources"
 private const val BACKUP_ROUTE = "backup_json"
 private const val SECURITY_ROUTE = "security_settings"
+private const val VENTAS_ROUTE = "ventas"
 
 private fun openWhatsAppContact(context: android.content.Context, message: String): Boolean {
     return try {
@@ -129,7 +133,8 @@ private fun getAppVersionName(context: android.content.Context): String {
 fun MainScreen(
         onLogout: () -> Unit,
         authViewModel: AuthViewModel = hiltViewModel(),
-        ledgerViewModel: LedgerViewModel = hiltViewModel()
+        ledgerViewModel: LedgerViewModel = hiltViewModel(),
+        inventarioViewModel: InventarioViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     // val configuration = LocalConfiguration.current
@@ -260,7 +265,12 @@ fun MainScreen(
                             }
                             Spacer(modifier = Modifier.height(12.dp))
                             Divider()
-                            Divider()
+                            Text(
+                                "Registro Contable DJ",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
                             NavigationDrawerItem(
                                     label = { Text("Acerca de") },
                                     selected = currentRoute == ABOUT_ROUTE,
@@ -325,6 +335,25 @@ fun MainScreen(
                                     }
                             )
                             Spacer(modifier = Modifier.height(8.dp))
+                            Divider()
+                            Text(
+                                "Herramientas",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                            NavigationDrawerItem(
+                                    label = { Text("Punto de Venta") },
+                                    selected = currentRoute == VENTAS_ROUTE,
+                                    icon = { Icon(Icons.Default.Inventory2, contentDescription = null) },
+                                    onClick = {
+                                        navController.navigate(VENTAS_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
                         }
                         Column {
                             Divider()
@@ -358,12 +387,13 @@ fun MainScreen(
                                             RESOURCES_ROUTE -> "Recursos útiles"
                                             BACKUP_ROUTE -> "Respaldo JSON"
                                             SECURITY_ROUTE -> "Seguridad y cuenta"
+                                            VENTAS_ROUTE -> "Punto de Venta"
                                             else -> "Gestor Contable TCP"
                                         }
                                 )
                             },
                             navigationIcon = {
-                                if (currentRoute == ABOUT_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE) {
+                                if (currentRoute == ABOUT_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE) {
                                     IconButton(onClick = { navController.popBackStack() }) {
                                         Icon(
                                                 Icons.Default.ArrowBack,
@@ -435,6 +465,7 @@ fun MainScreen(
                 composable(MainTab.Gastos.route) { GastosScreen(ledgerViewModel) }
                 composable(MainTab.Tributos.route) { TributosScreen(ledgerViewModel) }
                 composable(MainTab.Resumen.route) { ResumenScreen(ledgerViewModel) }
+                composable(VENTAS_ROUTE) { InventarioScreen(inventarioViewModel) }
                 composable(ABOUT_ROUTE) {
                     AboutScreen(
                             onContactWhatsApp = {
