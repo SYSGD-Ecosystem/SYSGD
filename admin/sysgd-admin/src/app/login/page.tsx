@@ -85,7 +85,6 @@ export default function LoginPage() {
             <Shield className="w-8 h-8 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">SYSGD</h1>
-          <p className="text-muted-foreground text-sm">Sistema de Gestión Documental</p>
         </div>
 
         <Card className="border-border shadow-lg">

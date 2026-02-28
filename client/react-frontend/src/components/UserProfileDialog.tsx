@@ -452,20 +452,6 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
         <Separator />
 
         <div className="space-y-2">
-          {user.privileges.toLowerCase() === "admin" && (
-            <Button
-              variant="outline"
-              className="w-full"
-              asChild
-              onClick={() => setOpen(false)}
-            >
-              <Link to="/admin" className="flex items-center justify-center gap-2">
-                <Shield className="h-4 w-4" />
-                Administración
-              </Link>
-            </Button>
-          )}
-
           <Button variant="destructive" className="w-full" onClick={handleLogout}>
             <LogOut className="h-4 w-4 mr-2" />
             Cerrar sesión
