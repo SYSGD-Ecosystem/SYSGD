@@ -21,6 +21,7 @@ export default function useUpdates() {
 		
 		try {
 			const data = await apiFetchPublic<UpdateItem[]>("/api/updates")
+			console.log("Fetched updates:", data)
 			setUpdates(data)
 		} catch (e: any) {
 			setError(e?.message || "Error al obtener actualizaciones")
