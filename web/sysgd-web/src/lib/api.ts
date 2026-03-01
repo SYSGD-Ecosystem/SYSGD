@@ -29,7 +29,7 @@ export async function apiFetchPublic<T>(path: string, init: RequestInit = {}): P
 	const res = await fetch(`${baseUrl}${path}`, {
 		...init,
 		headers,
-		credentials: "include",
+		credentials: "omit",
 	})
 
 	if (!res.ok) {
