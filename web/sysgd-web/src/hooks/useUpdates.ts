@@ -10,6 +10,37 @@ type UpdateItem = {
 	category: string
 }
 
+function normalizeUpdatesResponse(data: unknown): UpdateItem[] {
+	if (Array.isArray(data)) return data
+
+	if (data && typeof data === "object") {
+		const obj = data as any
+
+		// Caso directo: { updates: [...] }
+		if (Array.isArray(obj.updates)) {
+			return obj.updates
+		}
+
+		// Caso típico de API: { result: { updates: [...] } }
+		if (obj.result && typeof obj.result === "object") {
+			const result = obj.result as any
+			if (Array.isArray(result.updates)) {
+				return result.updates
+			}
+			if (Array.isArray(result.data)) {
+				return result.data
+			}
+		}
+
+		// Fallback genérico: { data: [...] }
+		if (Array.isArray(obj.data)) {
+			return obj.data
+		}
+	}
+
+	return []
+}
+
 export default function useUpdates() {
 	const [updates, setUpdates] = useState<UpdateItem[]>([])
 	const [loading, setLoading] = useState(true)
@@ -20,9 +51,9 @@ export default function useUpdates() {
 		setError(null)
 		
 		try {
-			const data = await apiFetchPublic<UpdateItem[]>("/api/updates")
+			const data = await apiFetchPublic<unknown>("/api/updates")
 			console.log("Fetched updates:", data)
-			setUpdates(data)
+			setUpdates(normalizeUpdatesResponse(data))
 		} catch (e: any) {
 			setError(e?.message || "Error al obtener actualizaciones")
 			setUpdates([])
@@ -41,9 +72,9 @@ export default function useUpdates() {
 
 		async function run() {
 			try {
-				const data = await apiFetchPublic<UpdateItem[]>("/api/updates")
+				const data = await apiFetchPublic<unknown>("/api/updates")
 				if (!cancelled) {
-					setUpdates(data)
+					setUpdates(normalizeUpdatesResponse(data))
 					setError(null)
 				}
 			} catch (e: any) {

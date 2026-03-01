@@ -9,9 +9,10 @@ export default function UpdatesPage() {
   const { updates, loading, error, refetch } = useUpdates();
   const [currentPage, setCurrentPage] = useState(1);
 
-  const totalPages = Math.ceil(updates.length / ITEMS_PER_PAGE);
+  const safeUpdates = Array.isArray(updates) ? updates : [];
+  const totalPages = Math.ceil(safeUpdates.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedUpdates = updates.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const paginatedUpdates = safeUpdates.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950">
@@ -50,7 +51,7 @@ export default function UpdatesPage() {
             <LoadingState />
           ) : error ? (
             <ErrorState onRetry={refetch} />
-          ) : updates.length === 0 ? (
+          ) : safeUpdates.length === 0 ? (
             <EmptyState />
           ) : (
             <UpdatesList updates={paginatedUpdates} totalPages={totalPages} currentPage={currentPage} onPageChange={setCurrentPage} totalItems={updates.length} />
@@ -143,7 +144,21 @@ function EmptyState() {
 }
 
 // Updates List Component
-function UpdatesList({ updates, totalPages, currentPage, onPageChange, totalItems }: { updates: any[]; totalPages: number; currentPage: number; onPageChange: (page: number) => void; totalItems: number }) {
+type UpdatesListProps = {
+  updates: {
+    id: string;
+    date: string;
+    title: string;
+    description: string;
+    category: string;
+  }[];
+  totalPages: number;
+  currentPage: number;
+  onPageChange: (page: number) => void;
+  totalItems: number;
+};
+
+function UpdatesList({ updates, totalPages, currentPage, onPageChange, totalItems }: UpdatesListProps) {
   const startItem = (currentPage - 1) * ITEMS_PER_PAGE + 1;
   const endItem = Math.min(currentPage * ITEMS_PER_PAGE, totalItems);
 
