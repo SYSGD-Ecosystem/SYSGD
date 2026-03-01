@@ -1,5 +1,8 @@
 package cu.lazaroysr96.sysgdcont.ui.main.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -30,6 +33,10 @@ import cu.lazaroysr96.sysgdcont.data.model.LineaVenta
 import cu.lazaroysr96.sysgdcont.data.model.Producto
 import cu.lazaroysr96.sysgdcont.data.model.Venta
 import cu.lazaroysr96.sysgdcont.viewmodel.InventarioViewModel
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.TextStyle
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +53,22 @@ fun InventarioScreen(viewModel: InventarioViewModel) {
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = uiState.currentTab == 0,
+                    onClick = { viewModel.setCurrentTab(0) },
+                    icon = { Icon(Icons.Default.PointOfSale, "Vender") },
+                    label = { Text("Venta") }
+                )
+                NavigationBarItem(
+                    selected = uiState.currentTab == 1,
+                    onClick = { viewModel.setCurrentTab(1) },
+                    icon = { Icon(Icons.Default.History, "Historial") },
+                    label = { Text("Historial") }
+                )
+            }
+        },
         floatingActionButton = {
             Column {
                 if (uiState.cart.isNotEmpty()) {
@@ -70,121 +93,397 @@ fun InventarioScreen(viewModel: InventarioViewModel) {
             }
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp)
-        ) {
-            Text(
-                "Punto de Venta",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
+        when (uiState.currentTab) {
+            0 -> PuntoVentaContent(viewModel, padding)
+            1 -> HistorialVentasContent(viewModel, padding)
+        }
+    }
+
+    if (uiState.showCatalog) {
+        ProductCatalogSheet(
+            productos = uiState.productos,
+            onAdd = { nombre, precio, emoji, unidad ->
+                viewModel.agregarProducto(nombre, precio, emoji, unidad)
+            },
+            onEliminar = viewModel::eliminarProducto,
+            onDismiss = { viewModel.showCatalog(false) }
+        )
+    }
+
+    if (uiState.showSaleSheet) {
+        CartSheet(
+            cart = uiState.cart,
+            total = viewModel.cartTotal,
+            onAdd = viewModel::addToCart,
+            onRemove = viewModel::removeFromCart,
+            onRegistrar = viewModel::registrarVenta,
+            onDismiss = { viewModel.showSaleSheet(false) }
+        )
+    }
+}
+
+@Composable
+private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingValues) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+            .padding(16.dp)
+    ) {
+        Text(
+            "Punto de Venta",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        "Ventas de hoy",
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    Text(
+                        "${uiState.ventasHoy.size} transacciones",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                Text(
+                    "%.2f CUP".format(uiState.totalHoy),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
                 )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            "Productos disponibles",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (uiState.productos.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("📦", fontSize = 48.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "No hay productos",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        "Toca + para agregar",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(uiState.productos) { producto ->
+                    ProductCard(
+                        producto = producto,
+                        onClick = { viewModel.addToCart(producto) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistorialVentasContent(viewModel: InventarioViewModel, padding: PaddingValues) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text(
-                            "Ventas de hoy",
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                        Text(
-                            "${uiState.ventasHoy.size} transacciones",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                    IconButton(onClick = { viewModel.mesAnterior() }) {
+                        Icon(Icons.Default.ChevronLeft, "Mes anterior")
                     }
                     Text(
-                        "%.2f CUP".format(uiState.totalHoy),
-                        style = MaterialTheme.typography.headlineSmall,
+                        viewModel.getNombreMes(uiState.mesActual),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(
+                        onClick = { viewModel.mesSiguiente() },
+                        enabled = !uiState.mesActual.isAfter(YearMonth.now())
+                    ) {
+                        Icon(
+                            Icons.Default.ChevronRight, 
+                            "Mes siguiente",
+                            tint = if (uiState.mesActual.isAfter(YearMonth.now())) 
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f) 
+                            else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            "${uiState.cantidadVentasMes}",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            "ventas",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            "%.2f CUP".format(uiState.totalVentasMes),
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            "total",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        }
+
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (uiState.ventasDelMes.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("📊", fontSize = 48.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "No hay ventas este mes",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                uiState.ventasDelMes.forEach { (fecha, ventas) ->
+                    item {
+                        DiaVentasCard(
+                            fecha = fecha,
+                            ventas = ventas,
+                            onAnular = { ventaId -> viewModel.anularVenta(ventaId) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DiaVentasCard(
+    fecha: String,
+    ventas: List<Pair<Venta, List<LineaVenta>>>,
+    onAnular: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val totalDia = ventas.sumOf { it.first.total }
+    
+    val fechaLocal = LocalDate.parse(fecha)
+    val nombreDia = fechaLocal.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("es", "ES"))
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = !expanded }
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        "$nombreDia ${fechaLocal.dayOfMonth}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "${ventas.size} venta${if (ventas.size != 1) "s" else ""}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "%.2f CUP".format(totalDia),
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (expanded) "Contraer" else "Expandir"
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                "Productos disponibles",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            if (uiState.productos.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("📦", fontSize = 48.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "No hay productos",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Text(
-                            "Toca + para agregar",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(uiState.productos) { producto ->
-                        ProductCard(
-                            producto = producto,
-                            onClick = { viewModel.addToCart(producto) }
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    Divider()
+                    ventas.forEach { (venta, lineas) ->
+                        VentaItem(
+                            venta = venta,
+                            lineas = lineas,
+                            onAnular = { onAnular(venta.id) }
                         )
                     }
                 }
             }
         }
+    }
+}
 
-        if (uiState.showCatalog) {
-            ProductCatalogSheet(
-                productos = uiState.productos,
-                onAdd = { nombre, precio, emoji, unidad ->
-                    viewModel.agregarProducto(nombre, precio, emoji, unidad)
-                },
-                onEliminar = viewModel::eliminarProducto,
-                onDismiss = { viewModel.showCatalog(false) }
+@Composable
+private fun VentaItem(
+    venta: Venta,
+    lineas: List<LineaVenta>,
+    onAnular: () -> Unit
+) {
+    var showDialog by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { showDialog = true }
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                venta.hora,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                lineas.take(3).joinToString(", ") { it.nombreProducto } +
+                        if (lineas.size > 3) " +${lineas.size - 3}" else "",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
             )
         }
+        Text(
+            "%.2f CUP".format(venta.total),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold
+        )
+    }
 
-        if (uiState.showSaleSheet) {
-            CartSheet(
-                cart = uiState.cart,
-                total = viewModel.cartTotal,
-                onAdd = viewModel::addToCart,
-                onRemove = viewModel::removeFromCart,
-                onRegistrar = viewModel::registrarVenta,
-                onDismiss = { viewModel.showSaleSheet(false) }
-            )
-        }
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Detalle de venta") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Hora: ${venta.hora}")
+                    Text("Total: %.2f CUP".format(venta.total))
+                    Divider()
+                    Text("Productos:", fontWeight = FontWeight.Bold)
+                    lineas.forEach { linea ->
+                        Text(
+                            "• ${linea.nombreProducto} x${linea.cantidad} = %.2f CUP".format(linea.subtotal),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Cerrar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    onAnular()
+                    showDialog = false
+                }) {
+                    Text("Anular", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        )
     }
 }
 

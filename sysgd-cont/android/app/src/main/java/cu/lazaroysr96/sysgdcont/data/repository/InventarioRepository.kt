@@ -8,6 +8,7 @@ import cu.lazaroysr96.sysgdcont.data.model.Venta
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -58,6 +59,30 @@ class InventarioRepository @Inject constructor(
 
     suspend fun getTotalMes(mes: String): Double? =
         ventaDao.getTotalMes(mes)
+
+    suspend fun getVentasConLineasDelMes(mes: String): Map<String, List<Pair<Venta, List<LineaVenta>>>> {
+        val dias = ventaDao.getDiasConVentas(mes)
+        val result = mutableMapOf<String, List<Pair<Venta, List<LineaVenta>>>>()
+        
+        for (dia in dias) {
+            val ventas = ventaDao.getVentasDelDia(dia).first()
+            val ventasConLineas = ventas.map { venta ->
+                venta to ventaDao.getLineasDeVenta(venta.id)
+            }
+            result[dia] = ventasConLineas
+        }
+        
+        return result
+    }
+
+    suspend fun getResumenMensual(mes: String): Pair<Int, Double> {
+        val dias = ventaDao.getDiasConVentas(mes)
+        var total = 0.0
+        for (dia in dias) {
+            total += ventaDao.getTotalDia(dia).first() ?: 0.0
+        }
+        return dias.size to total
+    }
 
     suspend fun registrarVenta(lineasCarrito: Map<Producto, Int>) {
         require(lineasCarrito.isNotEmpty())

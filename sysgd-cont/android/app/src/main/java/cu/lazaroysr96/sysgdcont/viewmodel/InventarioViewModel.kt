@@ -10,7 +10,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
 import javax.inject.Inject
 
 data class InventarioUiState(
@@ -23,7 +26,12 @@ data class InventarioUiState(
     val showCatalog: Boolean = false,
     val showAddProductDialog: Boolean = false,
     val selectedProduct: Producto? = null,
-    val cart: Map<Producto, Int> = emptyMap()
+    val cart: Map<Producto, Int> = emptyMap(),
+    val currentTab: Int = 0,
+    val mesActual: YearMonth = YearMonth.now(),
+    val ventasDelMes: Map<String, List<Pair<Venta, List<LineaVenta>>>> = emptyMap(),
+    val totalVentasMes: Double = 0.0,
+    val cantidadVentasMes: Int = 0
 )
 
 @HiltViewModel
@@ -54,6 +62,48 @@ class InventarioViewModel @Inject constructor(
                 _uiState.update { it.copy(totalHoy = total ?: 0.0) }
             }
         }
+
+        cargarVentasDelMes(YearMonth.now())
+    }
+
+    private fun cargarVentasDelMes(mes: YearMonth) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            val mesStr = mes.format(DateTimeFormatter.ofPattern("yyyy-MM"))
+            val ventas = repo.getVentasConLineasDelMes(mesStr)
+            val (cantidad, total) = repo.getResumenMensual(mesStr)
+            
+            _uiState.update { 
+                it.copy(
+                    ventasDelMes = ventas,
+                    totalVentasMes = total,
+                    cantidadVentasMes = cantidad,
+                    mesActual = mes,
+                    isLoading = false
+                )
+            }
+        }
+    }
+
+    fun mesAnterior() {
+        val nuevoMes = _uiState.value.mesActual.minusMonths(1)
+        cargarVentasDelMes(nuevoMes)
+    }
+
+    fun mesSiguiente() {
+        val nuevoMes = _uiState.value.mesActual.plusMonths(1)
+        if (!nuevoMes.isAfter(YearMonth.now())) {
+            cargarVentasDelMes(nuevoMes)
+        }
+    }
+
+    fun setCurrentTab(tab: Int) {
+        _uiState.update { it.copy(currentTab = tab) }
+    }
+
+    fun getNombreMes(mes: YearMonth): String {
+        val mesNombre = mes.month.getDisplayName(TextStyle.FULL, Locale("es", "ES"))
+        return "${mesNombre.replaceFirstChar { it.uppercase() }} ${mes.year}"
     }
 
     fun agregarProducto(nombre: String, precio: Double, emoji: String, unidad: String) {
@@ -117,6 +167,7 @@ class InventarioViewModel @Inject constructor(
                         snackbarMessage = "Venta registrada"
                     )
                 }
+                cargarVentasDelMes(_uiState.value.mesActual)
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = "Error al registrar venta") }
             }
@@ -128,6 +179,7 @@ class InventarioViewModel @Inject constructor(
             try {
                 repo.anularVenta(ventaId)
                 _uiState.update { it.copy(snackbarMessage = "Venta anulada") }
+                cargarVentasDelMes(_uiState.value.mesActual)
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = "Error al anular") }
             }

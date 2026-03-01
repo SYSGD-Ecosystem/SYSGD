@@ -32,6 +32,9 @@ interface VentaDao {
     @Query("SELECT SUM(total) FROM ventas WHERE fecha LIKE :mes || '%' AND anulada = 0")
     suspend fun getTotalMes(mes: String): Double?
 
+    @Query("SELECT DISTINCT fecha FROM ventas WHERE fecha LIKE :mes || '%' AND anulada = 0 ORDER BY fecha DESC")
+    suspend fun getDiasConVentas(mes: String): List<String>
+
     @Insert
     suspend fun insertVenta(venta: Venta)
 
