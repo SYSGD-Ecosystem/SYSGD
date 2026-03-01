@@ -93,6 +93,14 @@ export interface AdminAnalytics {
 	users: AdminAnalyticsUser[];
 }
 
+export interface DailyStats {
+	date: string;
+	new_users: number;
+	logins: number;
+	contabilidad: number;
+	proyectos: number;
+}
+
 type UserCreditsRow = {
 	credits_raw: string | null;
 };
@@ -159,6 +167,10 @@ type AnalyticsUserRow = {
 	logins_in_period: string;
 	projects_count: string;
 	has_accounting: boolean;
+};
+
+type CountRow = {
+	total: string;
 };
 
 const toInt = (value: string | number | null | undefined): number => {
@@ -544,6 +556,72 @@ export async function getAdminAnalytics(
 		registrationSources,
 		loginSources,
 		users,
+	};
+}
+
+export async function getDailyStats(anchorDate?: string): Promise<DailyStats> {
+	const anchor = parseAnchorDate(anchorDate);
+	const startDate = new Date(
+		Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth(), anchor.getUTCDate(), 0, 0, 0, 0),
+	);
+	const endDate = new Date(
+		Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth(), anchor.getUTCDate(), 23, 59, 59, 999),
+	);
+
+	const [newUsersResult, loginsResult, contabilidadResult, proyectosResult] = await Promise.all([
+		pool.query<CountRow>(
+			`
+			SELECT COUNT(*) AS total
+			FROM users
+			WHERE privileges != 'admin'
+			  AND created_at >= $1
+			  AND created_at <= $2
+			`,
+			[startDate.toISOString(), endDate.toISOString()],
+		),
+		pool.query<CountRow>(
+			`
+			SELECT COUNT(*) AS total
+			FROM users_logins ul
+			INNER JOIN users u ON u.id = ul.user_id
+			WHERE u.privileges != 'admin'
+			  AND ul.login_time >= $1
+			  AND ul.login_time <= $2
+			`,
+			[startDate.toISOString(), endDate.toISOString()],
+		),
+		pool.query<CountRow>(
+			`
+			SELECT COUNT(*) AS total
+			FROM cont_ledger_records clr
+			INNER JOIN users u ON u.id = clr.user_id
+			WHERE u.privileges != 'admin'
+			  AND clr.updated_at >= $1
+			  AND clr.updated_at <= $2
+			`,
+			[startDate.toISOString(), endDate.toISOString()],
+		),
+		pool.query<CountRow>(
+			`
+			SELECT COUNT(*) AS total
+			FROM projects p
+			INNER JOIN users u ON u.id = p.created_by
+			WHERE u.privileges != 'admin'
+			  AND p.created_at >= $1
+			  AND p.created_at <= $2
+			`,
+			[startDate.toISOString(), endDate.toISOString()],
+		),
+	]);
+
+	const dateKeyValue = dayKey(startDate);
+
+	return {
+		date: dateKeyValue,
+		new_users: toInt(newUsersResult.rows[0]?.total),
+		logins: toInt(loginsResult.rows[0]?.total),
+		contabilidad: toInt(contabilidadResult.rows[0]?.total),
+		proyectos: toInt(proyectosResult.rows[0]?.total),
 	};
 }
 

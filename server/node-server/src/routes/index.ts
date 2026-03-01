@@ -26,6 +26,7 @@ import timeEntries from "./time-entries";
 import contLedger from "./cont-ledger";
 import accountingDocuments from "./accounting-documents.routes";
 import adminRoutes from "./admin.routes";
+import statsRoutes from "./stats.routes";
 
 const router = Router();
 
@@ -57,6 +58,7 @@ router.use("/accounting-documents", accountingDocuments);
 router.use("/admin", adminRoutes);
 
 router.use(updates);
+router.use(statsRoutes);
 
 
 // others (document registers, classification, etc.) remain in docApi
