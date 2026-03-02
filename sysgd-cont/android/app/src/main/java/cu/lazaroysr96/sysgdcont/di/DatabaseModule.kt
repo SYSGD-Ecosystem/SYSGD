@@ -3,8 +3,11 @@ package cu.lazaroysr96.sysgdcont.di
 import android.content.Context
 import androidx.room.Room
 import cu.lazaroysr96.sysgdcont.data.AppDatabase
+import cu.lazaroysr96.sysgdcont.data.MIGRATION_1_2
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
 import cu.lazaroysr96.sysgdcont.data.dao.VentaDao
+import cu.lazaroysr96.sysgdcont.data.dao.ProductoCompraDao
+import cu.lazaroysr96.sysgdcont.data.dao.CompraDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,7 +26,9 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "sysgd_cont_database"
-        ).build()
+        )
+            .addMigrations(MIGRATION_1_2)
+            .build()
     }
 
     @Provides
@@ -36,5 +41,17 @@ object DatabaseModule {
     @Singleton
     fun provideVentaDao(database: AppDatabase): VentaDao {
         return database.ventaDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideProductoCompraDao(database: AppDatabase): ProductoCompraDao {
+        return database.productoCompraDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideCompraDao(database: AppDatabase): CompraDao {
+        return database.compraDao()
     }
 }
