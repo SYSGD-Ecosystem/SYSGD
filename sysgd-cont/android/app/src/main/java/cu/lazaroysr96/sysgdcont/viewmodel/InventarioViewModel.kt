@@ -209,9 +209,14 @@ class InventarioViewModel @Inject constructor(
     }
 
     fun addToCartCompra(producto: ProductoCompra) {
+        addToCartCompra(producto, 1)
+    }
+
+    fun addToCartCompra(producto: ProductoCompra, cantidad: Int) {
+        if (cantidad <= 0) return
         _uiState.update { state ->
             val currentCart = state.cartCompra.toMutableMap()
-            currentCart[producto] = (currentCart[producto] ?: 0) + 1
+            currentCart[producto] = (currentCart[producto] ?: 0) + cantidad
             state.copy(cartCompra = currentCart, showPurchaseSheet = true)
         }
     }

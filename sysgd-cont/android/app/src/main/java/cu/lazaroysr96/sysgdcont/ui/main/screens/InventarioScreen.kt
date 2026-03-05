@@ -37,7 +37,9 @@ import cu.lazaroysr96.sysgdcont.data.model.Compra
 import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.viewmodel.InventarioViewModel
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.YearMonth
+import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -279,6 +281,8 @@ private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingVa
 @Composable
 private fun PuntoCompraContent(viewModel: InventarioViewModel, padding: PaddingValues) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var productoSeleccionado by remember { mutableStateOf<ProductoCompra?>(null) }
+    var cantidadSeleccionada by remember { mutableStateOf("1") }
 
     Column(
         modifier = Modifier
@@ -367,11 +371,63 @@ private fun PuntoCompraContent(viewModel: InventarioViewModel, padding: PaddingV
                 items(uiState.productosCompra) { producto ->
                     ProductCardCompra(
                         producto = producto,
-                        onClick = { viewModel.addToCartCompra(producto) }
+                        onClick = {
+                            productoSeleccionado = producto
+                            cantidadSeleccionada = "1"
+                        }
                     )
                 }
             }
         }
+    }
+
+    if (productoSeleccionado != null) {
+        val cantidad = cantidadSeleccionada.toIntOrNull() ?: 0
+        AlertDialog(
+            onDismissRequest = { productoSeleccionado = null },
+            title = { Text("Cantidad a comprar") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        productoSeleccionado?.nombre.orEmpty(),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    OutlinedTextField(
+                        value = cantidadSeleccionada,
+                        onValueChange = { nueva ->
+                            if (nueva.isEmpty() || nueva.all(Char::isDigit)) {
+                                cantidadSeleccionada = nueva
+                            }
+                        },
+                        label = { Text("Cantidad") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        "Precio unitario: %.2f CUP".format(productoSeleccionado?.precio ?: 0.0),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        productoSeleccionado?.let { viewModel.addToCartCompra(it, cantidad) }
+                        productoSeleccionado = null
+                    },
+                    enabled = cantidad > 0
+                ) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { productoSeleccionado = null }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
 
@@ -425,62 +481,50 @@ private fun HistorialContent(viewModel: InventarioViewModel, padding: PaddingVal
                 }
                 
                 Spacer(modifier = Modifier.height(8.dp))
-                
-                Row(
+
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            "${uiState.cantidadVentasMes}",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ResumenItem(
+                            modifier = Modifier.weight(1f),
+                            value = "${uiState.cantidadVentasMes}",
+                            label = "Ventas realizadas",
+                            valueColor = MaterialTheme.colorScheme.primary
                         )
-                        Text(
-                            "ventas",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            "%.2f CUP".format(uiState.totalVentasMes),
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            "ventas",
-                            style = MaterialTheme.typography.bodySmall
+                        ResumenItem(
+                            modifier = Modifier.weight(1f),
+                            value = "%.2f CUP".format(uiState.totalVentasMes),
+                            label = "Total de ventas",
+                            valueColor = MaterialTheme.colorScheme.primary
                         )
                     }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            "${uiState.cantidadComprasMes}",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.secondary
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ResumenItem(
+                            modifier = Modifier.weight(1f),
+                            value = "${uiState.cantidadComprasMes}",
+                            label = "Compras realizadas",
+                            valueColor = MaterialTheme.colorScheme.secondary
                         )
-                        Text(
-                            "compras",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            "%.2f CUP".format(uiState.totalComprasMes),
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                        Text(
-                            "compras",
-                            style = MaterialTheme.typography.bodySmall
+                        ResumenItem(
+                            modifier = Modifier.weight(1f),
+                            value = "%.2f CUP".format(uiState.totalComprasMes),
+                            label = "Total de compras",
+                            valueColor = MaterialTheme.colorScheme.secondary
                         )
                     }
                 }
             }
         }
+
+        val hayMovimientos = uiState.ventasDelMes.isNotEmpty() || uiState.comprasDelMes.isNotEmpty()
 
         if (uiState.isLoading) {
             Box(
@@ -489,7 +533,7 @@ private fun HistorialContent(viewModel: InventarioViewModel, padding: PaddingVal
             ) {
                 CircularProgressIndicator()
             }
-        } else if (uiState.ventasDelMes.isEmpty()) {
+        } else if (!hayMovimientos) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -498,28 +542,264 @@ private fun HistorialContent(viewModel: InventarioViewModel, padding: PaddingVal
                     Text("📊", fontSize = 48.sp)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "No hay ventas este mes",
+                        "No hay movimientos este mes",
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
             }
         } else {
+            val fechas = (uiState.ventasDelMes.keys + uiState.comprasDelMes.keys).distinct().sortedDescending()
+
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                uiState.ventasDelMes.forEach { (fecha, ventas) ->
-                    item {
-                        DiaVentasCard(
+                fechas.forEach { fecha ->
+                    val ventas = uiState.ventasDelMes[fecha].orEmpty()
+                    val compras = uiState.comprasDelMes[fecha].orEmpty()
+
+                    if (ventas.isNotEmpty()) {
+                        item(key = "ventas-$fecha") {
+                            DiaVentasCard(
+                                fecha = fecha,
+                                ventas = ventas,
+                                onAnular = { ventaId -> viewModel.anularVenta(ventaId) }
+                            )
+                        }
+                    }
+                    if (compras.isNotEmpty()) {
+                        item(key = "compras-$fecha") {
+                            DiaComprasCard(
+                                fecha = fecha,
+                                compras = compras,
+                                onAnular = { compraId -> viewModel.anularCompra(compraId) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResumenItem(
+    modifier: Modifier = Modifier,
+    value: String,
+    label: String,
+    valueColor: androidx.compose.ui.graphics.Color
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp, horizontal = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = valueColor
+            )
+            Text(
+                label,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+}
+
+@Composable
+private fun DiaComprasCard(
+    fecha: String,
+    compras: List<Pair<Compra, List<LineaCompra>>>,
+    onAnular: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val totalDia = compras.sumOf { it.first.total }
+
+    val fechaLocal = LocalDate.parse(fecha)
+    val nombreDia = fechaLocal.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("es", "ES"))
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = !expanded }
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        "$nombreDia ${fechaLocal.dayOfMonth}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "${compras.size} compra${if (compras.size != 1) "s" else ""}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "%.2f CUP".format(totalDia),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (expanded) "Contraer" else "Expandir"
+                    )
+                }
+            }
+
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    Divider()
+                    compras.forEach { (compra, lineas) ->
+                        CompraItem(
                             fecha = fecha,
-                            ventas = ventas,
-                            onAnular = { ventaId -> viewModel.anularVenta(ventaId) }
+                            compra = compra,
+                            lineas = lineas,
+                            onAnular = { onAnular(compra.id) }
                         )
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CompraItem(
+    fecha: String,
+    compra: Compra,
+    lineas: List<LineaCompra>,
+    onAnular: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var showAnularDialog by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded },
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Column {
+                    Text(
+                        lineas.resumenProductosCompra(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = formatFechaHoraOperacion(fecha, compra.hora),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "$ %.2f CUP".format(compra.total),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (expanded) "Contraer detalle" else "Expandir detalle"
+                )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            Column(modifier = Modifier.padding(top = 8.dp)) {
+                lineas.forEachIndexed { index, linea ->
+                    LineaDetalleFactura(
+                        nombre = linea.nombreProducto,
+                        cantidad = linea.cantidad,
+                        precioUnitario = linea.precioUnitario,
+                        subtotal = linea.subtotal
+                    )
+                    if (index < lineas.lastIndex) {
+                        Divider(modifier = Modifier.padding(vertical = 6.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Importe total: $ %.2f CUP".format(compra.total),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+
+                TextButton(
+                    onClick = { showAnularDialog = true },
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text("Anular", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    }
+
+    if (showAnularDialog) {
+        AlertDialog(
+            onDismissRequest = { showAnularDialog = false },
+            title = { Text("Anular compra") },
+            text = {
+                Text("Esta operación se anulará del historial. ¿Deseas continuar?")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onAnular()
+                    showAnularDialog = false
+                }) {
+                    Text("Sí, anular", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showAnularDialog = false
+                }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
 
@@ -582,6 +862,7 @@ private fun DiaVentasCard(
                     Divider()
                     ventas.forEach { (venta, lineas) ->
                         VentaItem(
+                            fecha = fecha,
                             venta = venta,
                             lineas = lineas,
                             onAnular = { onAnular(venta.id) }
@@ -595,74 +876,195 @@ private fun DiaVentasCard(
 
 @Composable
 private fun VentaItem(
+    fecha: String,
     venta: Venta,
     lineas: List<LineaVenta>,
     onAnular: () -> Unit
 ) {
-    var showDialog by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
+    var showAnularDialog by remember { mutableStateOf(false) }
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { showDialog = true }
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .padding(vertical = 8.dp)
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                venta.hora,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                lineas.take(3).joinToString(", ") { it.nombreProducto } +
-                        if (lineas.size > 3) " +${lineas.size - 3}" else "",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1
-            )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded },
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Column {
+                    Text(
+                        lineas.resumenProductosVenta(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = formatFechaHoraOperacion(fecha, venta.hora),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "$ %.2f CUP".format(venta.total),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (expanded) "Contraer detalle" else "Expandir detalle"
+                )
+            }
         }
-        Text(
-            "%.2f CUP".format(venta.total),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold
-        )
-    }
 
-    if (showDialog) {
-        AlertDialog(
-            onDismissRequest = { showDialog = false },
-            title = { Text("Detalle de venta") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Hora: ${venta.hora}")
-                    Text("Total: %.2f CUP".format(venta.total))
-                    Divider()
-                    Text("Productos:", fontWeight = FontWeight.Bold)
-                    lineas.forEach { linea ->
-                        Text(
-                            "• ${linea.nombreProducto} x${linea.cantidad} = %.2f CUP".format(linea.subtotal),
-                            style = MaterialTheme.typography.bodySmall
-                        )
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            Column(modifier = Modifier.padding(top = 8.dp)) {
+                lineas.forEachIndexed { index, linea ->
+                    LineaDetalleFactura(
+                        nombre = linea.nombreProducto,
+                        cantidad = linea.cantidad,
+                        precioUnitario = linea.precioUnitario,
+                        subtotal = linea.subtotal
+                    )
+                    if (index < lineas.lastIndex) {
+                        Divider(modifier = Modifier.padding(vertical = 6.dp))
                     }
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Importe total: $ %.2f CUP".format(venta.total),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                TextButton(
+                    onClick = { showAnularDialog = true },
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text("Anular", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    }
+
+    if (showAnularDialog) {
+        AlertDialog(
+            onDismissRequest = { showAnularDialog = false },
+            title = { Text("Anular venta") },
+            text = {
+                Text("Esta operación se anulará del historial. ¿Deseas continuar?")
             },
             confirmButton = {
-                TextButton(onClick = { showDialog = false }) {
-                    Text("Cerrar")
+                TextButton(onClick = {
+                    onAnular()
+                    showAnularDialog = false
+                }) {
+                    Text("Sí, anular", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = {
-                    onAnular()
-                    showDialog = false
+                    showAnularDialog = false
                 }) {
-                    Text("Anular", color = MaterialTheme.colorScheme.error)
+                    Text("Cancelar")
                 }
             }
         )
     }
+}
+
+@Composable
+private fun LineaDetalleFactura(
+    nombre: String,
+    cantidad: Int,
+    precioUnitario: Double,
+    subtotal: Double
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            Text(
+                text = nombre,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "%dx%.2f".format(cantidad, precioUnitario),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Subtotal",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "%.2f CUP".format(subtotal),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+private fun formatFechaHoraOperacion(fecha: String, hora: String): String {
+    val fechaFormateada = runCatching {
+        LocalDate.parse(fecha).format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+    }.getOrElse { fecha }
+
+    val horaFormateada = runCatching {
+        val formatterEntrada = listOf(
+            DateTimeFormatter.ofPattern("HH:mm"),
+            DateTimeFormatter.ofPattern("HH:mm:ss"),
+            DateTimeFormatter.ofPattern("h:mm a", Locale.US)
+        ).firstNotNullOfOrNull { fmt ->
+            runCatching { LocalTime.parse(hora, fmt) }.getOrNull()
+        } ?: return@runCatching hora
+
+        formatterEntrada.format(DateTimeFormatter.ofPattern("hh:mm a", Locale.US))
+    }.getOrElse { hora }
+
+    return "$fechaFormateada $horaFormateada"
+}
+
+private fun List<LineaCompra>.resumenProductosCompra(): String {
+    val resumen = take(2).joinToString(", ") { it.nombreProducto }
+    return if (size > 2) "$resumen +${size - 2}" else resumen
+}
+
+private fun List<LineaVenta>.resumenProductosVenta(): String {
+    val resumen = take(2).joinToString(", ") { it.nombreProducto }
+    return if (size > 2) "$resumen +${size - 2}" else resumen
 }
 
 @Composable
@@ -752,6 +1154,7 @@ private fun ProductCatalogSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
+                .navigationBarsPadding()
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -847,7 +1250,7 @@ private fun AddProductDialog(
 
     val puedeAgregar = nombre.isNotBlank() && precio.toDoubleOrNull() != null && (precio.toDoubleOrNull() ?: 0.0) > 0
 
-    val emojis = listOf(
+    val defaultEmojis = listOf(
         "📦", "🍔", "☕", "🥤", "🍟", "🍕", "🎁", "🥪", "🌮", "🍜",
         "🍰", "🧁", "🍩", "🍪", "🍫", "🍬", "🍭", "🍮", "🍯", "🥛",
         "🧃", "🧉", "🍺", "🍻", "🥂", "🥃", "🫗", "🥤", "🧋", "🍵",
@@ -859,6 +1262,9 @@ private fun AddProductDialog(
         "🔑", "🗝️", "🔒", "🔓", "📁", "📂", "🗂️", "📅", "📆", "📇",
         "✏️", "🖊️", "🖋️", "📌", "📍", "✂️", "🗃️", "🗄️", "📎", "📏"
     )
+    val emojis = remember { mutableStateListOf<String>().apply { addAll(defaultEmojis) } }
+    var showCustomEmojiDialog by remember { mutableStateOf(false) }
+    var customEmojiInput by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -885,7 +1291,19 @@ private fun AddProductDialog(
                     singleLine = true
                 )
 
-                Text("Emoji:", style = MaterialTheme.typography.bodyMedium)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Emoji:", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "Añadir emoji",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { showCustomEmojiDialog = true }
+                    )
+                }
 
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -957,6 +1375,53 @@ private fun AddProductDialog(
             }
         }
     )
+
+    if (showCustomEmojiDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showCustomEmojiDialog = false
+                customEmojiInput = ""
+            },
+            title = { Text("Agregar emoji") },
+            text = {
+                OutlinedTextField(
+                    value = customEmojiInput,
+                    onValueChange = { customEmojiInput = it },
+                    label = { Text("Pega o escribe el emoji") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val nuevo = customEmojiInput.trim()
+                        if (nuevo.isNotEmpty() && !emojis.contains(nuevo)) {
+                            emojis.add(0, nuevo)
+                        }
+                        if (nuevo.isNotEmpty()) {
+                            emoji = nuevo
+                        }
+                        customEmojiInput = ""
+                        showCustomEmojiDialog = false
+                    },
+                    enabled = customEmojiInput.trim().isNotEmpty()
+                ) {
+                    Text("Añadir")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showCustomEmojiDialog = false
+                        customEmojiInput = ""
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -974,6 +1439,7 @@ private fun CartSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
+                .navigationBarsPadding()
         ) {
             Text(
                 "Carrito de venta",
@@ -1171,12 +1637,15 @@ private fun AddProductCompraDialog(
 
     val puedeAgregar = nombre.isNotBlank() && precio.toDoubleOrNull() != null && (precio.toDoubleOrNull() ?: 0.0) > 0
 
-    val emojis = listOf(
+    val defaultEmojis = listOf(
         "📦", "🍞", "🥚", "🧈", "🧀", "🥛", "🍚", "🍝", "🍅", "🧅",
         "🧄", "🥩", "🍗", "🐟", "🧃", "☕", "🍵", "🍪", "🍫", "🍬",
         "🧼", "🧻", "🧴", "🧹", "🪥", "🧽", "🪣", "🔧", "🔨", "🪚",
         "🪵", "📦", "✏️", "📎", "📏", "✂️", "🗃️", "🗄️", "📁", "📂"
     )
+    val emojis = remember { mutableStateListOf<String>().apply { addAll(defaultEmojis) } }
+    var showCustomEmojiDialog by remember { mutableStateOf(false) }
+    var customEmojiInput by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1203,7 +1672,19 @@ private fun AddProductCompraDialog(
                     singleLine = true
                 )
 
-                Text("Emoji:", style = MaterialTheme.typography.bodyMedium)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Emoji:", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "Añadir emoji",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { showCustomEmojiDialog = true }
+                    )
+                }
 
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -1275,6 +1756,53 @@ private fun AddProductCompraDialog(
             }
         }
     )
+
+    if (showCustomEmojiDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showCustomEmojiDialog = false
+                customEmojiInput = ""
+            },
+            title = { Text("Agregar emoji") },
+            text = {
+                OutlinedTextField(
+                    value = customEmojiInput,
+                    onValueChange = { customEmojiInput = it },
+                    label = { Text("Pega o escribe el emoji") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val nuevo = customEmojiInput.trim()
+                        if (nuevo.isNotEmpty() && !emojis.contains(nuevo)) {
+                            emojis.add(0, nuevo)
+                        }
+                        if (nuevo.isNotEmpty()) {
+                            emoji = nuevo
+                        }
+                        customEmojiInput = ""
+                        showCustomEmojiDialog = false
+                    },
+                    enabled = customEmojiInput.trim().isNotEmpty()
+                ) {
+                    Text("Añadir")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showCustomEmojiDialog = false
+                        customEmojiInput = ""
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
