@@ -17,7 +17,6 @@ import Dashboard from "./pages/Dashboard.tsx";
 import DevPreview from "./pages/DevPreview.tsx";
 import ErrorServer from "./pages/ErrorServer.tsx";
 import Help from "./pages/Help.tsx";
-import LandingPage from "./pages/LandingPage.tsx";
 import Login from "./pages/Login.tsx";
 import OrganigramaPage from "./pages/Organigrama.tsx";
 import Print from "./pages/Print.tsx";
@@ -55,7 +54,6 @@ createRoot(document.getElementById("root")!).render(
 						<Route path="/privacy" element={<PrivacyPolicy />} />
 						<Route path="/old-dashboard" element={<ProjectsPage />} />
 						<Route path="/projects" element={<ProjectWorkSpace />} />
-						<Route path="/landpage" element={<LandingPage />} />
 						<Route path="/chat" element={<HomeChat />} />
 						<Route path="/chat/agents" element={<AgentsChatPage />} />
 						<Route path="/help" element={<Help />} />

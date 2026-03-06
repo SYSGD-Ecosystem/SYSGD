@@ -1,9 +1,9 @@
 import type { FC } from "react";
 import "react-markdown-editor-lite/lib/index.css";
-import SysgdCont from "@/cont/SysgdCont";
+import Plans from "@/components/billing/Plans";
 
 const DevPreview: FC = () => {
-	return <SysgdCont/>;
+	return <Plans/>;
 };
 
 export default DevPreview;

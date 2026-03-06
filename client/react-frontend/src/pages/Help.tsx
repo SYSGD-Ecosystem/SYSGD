@@ -249,7 +249,7 @@ export default function HelpPage() {
 						</p>
 					</div>
 					<Button variant="outline" asChild>
-						<Link to="/landpage">Volver</Link>
+						<Link to="/">Volver</Link>
 					</Button>
 				</div>
 

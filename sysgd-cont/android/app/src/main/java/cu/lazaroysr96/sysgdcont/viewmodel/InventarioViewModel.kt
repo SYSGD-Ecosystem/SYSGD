@@ -12,6 +12,7 @@ import cu.lazaroysr96.sysgdcont.data.repository.InventarioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -44,7 +45,8 @@ data class InventarioUiState(
     val totalVentasMes: Double = 0.0,
     val cantidadVentasMes: Int = 0,
     val totalComprasMes: Double = 0.0,
-    val cantidadComprasMes: Int = 0
+    val cantidadComprasMes: Int = 0,
+    val fechaTrabajo: LocalDate = LocalDate.now()
 )
 
 @HiltViewModel
@@ -55,7 +57,10 @@ class InventarioViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(InventarioUiState())
     val uiState: StateFlow<InventarioUiState> = _uiState.asStateFlow()
 
-    private val hoy = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+    private var ventasDiaJob: Job? = null
+    private var totalVentasDiaJob: Job? = null
+    private var comprasDiaJob: Job? = null
+    private var totalComprasDiaJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -65,37 +70,47 @@ class InventarioViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            repo.getVentasConLineasDelDia(hoy).collect { ventas ->
-                _uiState.update { it.copy(ventasHoy = ventas) }
-            }
-        }
-
-        viewModelScope.launch {
-            repo.getTotalDia(hoy).collect { total ->
-                _uiState.update { it.copy(totalHoy = total ?: 0.0) }
-            }
-        }
-
-        viewModelScope.launch {
             repo.getProductosCompra().collect { productos ->
                 _uiState.update { it.copy(productosCompra = productos) }
             }
         }
 
-        viewModelScope.launch {
-            repo.getComprasConLineasDelDia(hoy).collect { compras ->
+        observarDiaTrabajo(_uiState.value.fechaTrabajo)
+
+        cargarVentasDelMes(YearMonth.now())
+        cargarComprasDelMes(YearMonth.now())
+    }
+
+    private fun observarDiaTrabajo(fecha: LocalDate) {
+        val fechaIso = fecha.format(DateTimeFormatter.ISO_LOCAL_DATE)
+
+        ventasDiaJob?.cancel()
+        ventasDiaJob = viewModelScope.launch {
+            repo.getVentasConLineasDelDia(fechaIso).collect { ventas ->
+                _uiState.update { it.copy(ventasHoy = ventas) }
+            }
+        }
+
+        totalVentasDiaJob?.cancel()
+        totalVentasDiaJob = viewModelScope.launch {
+            repo.getTotalDia(fechaIso).collect { total ->
+                _uiState.update { it.copy(totalHoy = total ?: 0.0) }
+            }
+        }
+
+        comprasDiaJob?.cancel()
+        comprasDiaJob = viewModelScope.launch {
+            repo.getComprasConLineasDelDia(fechaIso).collect { compras ->
                 _uiState.update { it.copy(comprasHoy = compras) }
             }
         }
 
-        viewModelScope.launch {
-            repo.getTotalComprasDia(hoy).collect { total ->
+        totalComprasDiaJob?.cancel()
+        totalComprasDiaJob = viewModelScope.launch {
+            repo.getTotalComprasDia(fechaIso).collect { total ->
                 _uiState.update { it.copy(totalComprasHoy = total ?: 0.0) }
             }
         }
-
-        cargarVentasDelMes(YearMonth.now())
-        cargarComprasDelMes(YearMonth.now())
     }
 
     private fun cargarVentasDelMes(mes: YearMonth) {
@@ -149,6 +164,13 @@ class InventarioViewModel @Inject constructor(
 
     fun setCurrentTab(tab: Int) {
         _uiState.update { it.copy(currentTab = tab) }
+    }
+
+    fun setFechaTrabajo(fecha: LocalDate) {
+        val fechaValida = if (fecha.isAfter(LocalDate.now())) LocalDate.now() else fecha
+        if (fechaValida == _uiState.value.fechaTrabajo) return
+        _uiState.update { it.copy(fechaTrabajo = fechaValida) }
+        observarDiaTrabajo(fechaValida)
     }
 
     fun getNombreMes(mes: YearMonth): String {
@@ -261,7 +283,8 @@ class InventarioViewModel @Inject constructor(
             if (cart.isEmpty()) return@launch
 
             try {
-                repo.registrarVenta(cart)
+                val fecha = _uiState.value.fechaTrabajo.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                repo.registrarVenta(cart, fecha)
                 _uiState.update {
                     it.copy(
                         cart = emptyMap(),
@@ -282,7 +305,8 @@ class InventarioViewModel @Inject constructor(
             if (cart.isEmpty()) return@launch
 
             try {
-                repo.registrarCompra(cart)
+                val fecha = _uiState.value.fechaTrabajo.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                repo.registrarCompra(cart, fecha)
                 _uiState.update {
                     it.copy(
                         cartCompra = emptyMap(),

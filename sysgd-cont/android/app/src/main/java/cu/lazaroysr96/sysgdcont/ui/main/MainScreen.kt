@@ -29,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Logout
@@ -148,6 +149,7 @@ fun MainScreen(
             rememberDrawerState(initialValue = androidx.compose.material3.DrawerValue.Closed)
     val drawerScope = rememberCoroutineScope()
     var showCreditsInfoDialog by remember { mutableStateOf(false) }
+    var showVentasHelpDialog by remember { mutableStateOf(false) }
     val exportBackupLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
@@ -271,17 +273,7 @@ fun MainScreen(
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
-                            NavigationDrawerItem(
-                                    label = { Text("Acerca de") },
-                                    selected = currentRoute == ABOUT_ROUTE,
-                                    icon = { Icon(Icons.Default.Info, contentDescription = null) },
-                                    onClick = {
-                                        navController.navigate(ABOUT_ROUTE) {
-                                            launchSingleTop = true
-                                        }
-                                        drawerScope.launch { drawerState.close() }
-                                    }
-                            )
+                            
                             NavigationDrawerItem(
                                     label = { Text("Ayuda (llenado)") },
                                     selected = currentRoute == HELP_ROUTE,
@@ -321,19 +313,7 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
-                            NavigationDrawerItem(
-                                    label = { Text("Seguridad y cuenta") },
-                                    selected = currentRoute == SECURITY_ROUTE,
-                                    icon = {
-                                        Icon(Icons.Default.Security, contentDescription = null)
-                                    },
-                                    onClick = {
-                                        navController.navigate(SECURITY_ROUTE) {
-                                            launchSingleTop = true
-                                        }
-                                        drawerScope.launch { drawerState.close() }
-                                    }
-                            )
+                            
                             Spacer(modifier = Modifier.height(8.dp))
                             Divider()
                             Text(
@@ -353,6 +333,36 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Divider()
+
+                            NavigationDrawerItem(
+                                    label = { Text("Seguridad y cuenta") },
+                                    selected = currentRoute == SECURITY_ROUTE,
+                                    icon = {
+                                        Icon(Icons.Default.Security, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        navController.navigate(SECURITY_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+
+                            NavigationDrawerItem(
+                                    label = { Text("Acerca de") },
+                                    selected = currentRoute == ABOUT_ROUTE,
+                                    icon = { Icon(Icons.Default.Info, contentDescription = null) },
+                                    onClick = {
+                                        navController.navigate(ABOUT_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                         Column {
@@ -409,6 +419,14 @@ fun MainScreen(
                                 }
                             },
                             actions = {
+                                if (currentRoute == VENTAS_ROUTE) {
+                                    IconButton(onClick = { showVentasHelpDialog = true }) {
+                                        Icon(
+                                            Icons.Default.Help,
+                                            contentDescription = "Ayuda de uso del punto de venta"
+                                        )
+                                    }
+                                }
                                 if (currentRoute in mainTabs.map { it.route }) {
                                     if (ledgerState.hasLocalChanges && !ledgerState.isSyncing) {
                                         Icon(
@@ -731,6 +749,25 @@ fun MainScreen(
                 }
         )
     }
+
+    if (showVentasHelpDialog) {
+        AlertDialog(
+            onDismissRequest = { showVentasHelpDialog = false },
+            title = { Text("Cómo usar Punto de Venta") },
+            text = {
+                Text(
+                    "• Toque el botón + para agregar un producto.\n" +
+                        "• Toque cualquier producto creado en la pantalla para registrar una compra o venta.\n" +
+                        "• Toque la fecha sobre el importe de operaciones diarias para cambiar el día sobre el que está trabajando."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showVentasHelpDialog = false }) {
+                    Text("Entendido")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -784,7 +821,7 @@ private fun AboutScreen(onContactWhatsApp: () -> Unit, onOpenUrl: (String) -> Un
             }
         }
 
-        TextButton(onClick = onContactWhatsApp) { Text("Contactar por WhatsApp (+53 51158544)") }
+        TextButton(onClick = onContactWhatsApp) { Text("Contactar por WhatsApp") }
 
         Divider()
 

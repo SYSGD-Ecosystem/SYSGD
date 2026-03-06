@@ -36,12 +36,14 @@ import cu.lazaroysr96.sysgdcont.data.model.ProductoCompra
 import cu.lazaroysr96.sysgdcont.data.model.Compra
 import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.viewmodel.InventarioViewModel
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
+import java.time.ZoneOffset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -182,6 +184,8 @@ fun InventarioScreen(viewModel: InventarioViewModel) {
 @Composable
 private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingValues) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
+    val esHoy = uiState.fechaTrabajo == LocalDate.now()
 
     Column(
         modifier = Modifier
@@ -210,9 +214,9 @@ private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingVa
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "Ventas de hoy",
+                        if (esHoy) "Ventas de hoy" else "Ventas del ${uiState.fechaTrabajo.format(dateFormatter)}",
                         style = MaterialTheme.typography.labelMedium
                     )
                     Text(
@@ -220,12 +224,18 @@ private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingVa
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
-                Text(
-                    "%.2f CUP".format(uiState.totalHoy),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Column(horizontalAlignment = Alignment.End) {
+                    DiaTrabajoSelector(
+                        fechaTrabajo = uiState.fechaTrabajo,
+                        onFechaChange = viewModel::setFechaTrabajo
+                    )
+                    Text(
+                        "%.2f CUP".format(uiState.totalHoy),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
 
@@ -281,6 +291,8 @@ private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingVa
 @Composable
 private fun PuntoCompraContent(viewModel: InventarioViewModel, padding: PaddingValues) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
+    val esHoy = uiState.fechaTrabajo == LocalDate.now()
     var productoSeleccionado by remember { mutableStateOf<ProductoCompra?>(null) }
     var cantidadSeleccionada by remember { mutableStateOf("1") }
 
@@ -311,9 +323,9 @@ private fun PuntoCompraContent(viewModel: InventarioViewModel, padding: PaddingV
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "Compras de hoy",
+                        if (esHoy) "Compras de hoy" else "Compras del ${uiState.fechaTrabajo.format(dateFormatter)}",
                         style = MaterialTheme.typography.labelMedium
                     )
                     Text(
@@ -321,12 +333,18 @@ private fun PuntoCompraContent(viewModel: InventarioViewModel, padding: PaddingV
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
-                Text(
-                    "%.2f CUP".format(uiState.totalComprasHoy),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.secondary
-                )
+                Column(horizontalAlignment = Alignment.End) {
+                    DiaTrabajoSelector(
+                        fechaTrabajo = uiState.fechaTrabajo,
+                        onFechaChange = viewModel::setFechaTrabajo
+                    )
+                    Text(
+                        "%.2f CUP".format(uiState.totalComprasHoy),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
             }
         }
 
@@ -428,6 +446,60 @@ private fun PuntoCompraContent(viewModel: InventarioViewModel, padding: PaddingV
                 }
             }
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DiaTrabajoSelector(
+    fechaTrabajo: LocalDate,
+    onFechaChange: (LocalDate) -> Unit
+) {
+    val formatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    Text(
+        text = fechaTrabajo.format(formatter),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.clickable { showDatePicker = true }
+    )
+
+    if (showDatePicker) {
+        val initialSelectedDateMillis = remember(fechaTrabajo) {
+            fechaTrabajo
+                .atStartOfDay(ZoneOffset.UTC)
+                .toInstant()
+                .toEpochMilli()
+        }
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialSelectedDateMillis)
+
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val millis = datePickerState.selectedDateMillis
+                        if (millis != null) {
+                            val selectedDate = Instant.ofEpochMilli(millis)
+                                .atZone(ZoneOffset.UTC)
+                                .toLocalDate()
+                            onFechaChange(selectedDate)
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancelar")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
     }
 }
 
