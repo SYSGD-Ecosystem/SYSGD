@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
 import {
 	ArrowRight,
+	BarChart,
 	BarChart3,
 	Building2,
 	CheckCircle,
@@ -13,6 +14,7 @@ import {
 	Mail,
 	MapPin,
 	Menu,
+	MessageCircle,
 	Rocket,
 	ShoppingCart,
 	Sparkles,
@@ -56,8 +58,8 @@ export default function LandingPage() {
 			subtitle: "Gestión de Proyectos",
 			description:
 				"Herramientas avanzadas para administración de proyectos, equipos y seguimiento de tiempo.",
-			status: "En Desarrollo",
-			statusColor: "bg-blue-500",
+			status: "Disponible",
+			statusColor: "bg-green-500",
 			features: [
 				"Tableros Kanban",
 				"Seguimiento de tiempo",
@@ -66,35 +68,65 @@ export default function LandingPage() {
 			],
 		},
 		{
-			icon: ShoppingCart,
-			title: "SYSGD-COMMERCE",
-			subtitle: "E-Commerce",
+			icon: MessageCircle,
+			title: "SYSGD-ChAT",
+			subtitle: "Plataforma de Comunicación Empresarial",
 			description:
-				"Plataforma de comercio electrónico integrada con gestión de inventario y análisis de ventas.",
-			status: "Próximamente",
-			statusColor: "bg-purple-500",
+				"Sistema de mensajería y colaboración en tiempo real para equipos empresariales, integrado con IA para productividad.",
+			status: "Disponible",
+			statusColor: "bg-green-500",
 			features: [
-				"Tienda online",
-				"Gestión de inventario",
-				"Pagos integrados",
-				"Analytics de ventas",
+				"Mensajería en tiempo real",
+				"Colaboración en tiempo real",
+				"Integración con agentes IA",
+				"Canales organizados por proyectos",
 			],
 		},
 		{
-			icon: BarChart3,
-			title: "SYSGD-ANALYTICS",
-			subtitle: "Business Intelligence",
+			icon: BarChart,
+			title: "SYSGD-CONT",
+			subtitle: "Gestión Contable y Financiera",
 			description:
-				"Inteligencia de negocio y análisis de datos para toma de decisiones estratégicas.",
-			status: "Planificado",
-			statusColor: "bg-orange-500",
+				"Plataforma de contabilidad y finanzas con análisis predictivo impulsado por IA para empresas de todos los tamaños.",
+			status: "En Desarrollo",
+			statusColor: "bg-blue-500",
 			features: [
-				"Dashboards interactivos",
-				"Reportes personalizados",
-				"Métricas en tiempo real",
-				"Predicciones AI",
+				"Análisis predictivo de finanzas",
+				"Gestión de facturas y gastos",
+				"Integración bancaria",
+				"Reportes financieros personalizados",
 			],
 		},
+		// {
+		// 	icon: ShoppingCart,
+		// 	title: "SYSGD-COMMERCE",
+		// 	subtitle: "E-Commerce",
+		// 	description:
+		// 		"Plataforma de comercio electrónico integrada con gestión de inventario y análisis de ventas.",
+		// 	status: "Próximamente",
+		// 	statusColor: "bg-purple-500",
+		// 	features: [
+		// 		"Tienda online",
+		// 		"Gestión de inventario",
+		// 		"Pagos integrados",
+		// 		"Analytics de ventas",
+		// 	],
+		// },
+		// {
+		// 	icon: BarChart3,
+		// 	title: "SYSGD-ANALYTICS",
+		// 	subtitle: "Business Intelligence",
+		// 	description:
+		// 		"Inteligencia de negocio y análisis de datos para toma de decisiones estratégicas.",
+		// 	status: "Planificado",
+		// 	statusColor: "bg-orange-500",
+		// 	features: [
+		// 		"Dashboards interactivos",
+		// 		"Reportes personalizados",
+		// 		"Métricas en tiempo real",
+		// 		"Predicciones AI",
+		// 	],
+		// },
 	];
 
 	// const sponsors = [
@@ -205,9 +237,7 @@ export default function LandingPage() {
 		"Inteligencia artificial incorporada",
 		"APIs abiertas para integraciones personalizadas",
 		"Seguridad de nivel empresarial",
-		"Soporte 24/7 especializado",
 		"Actualizaciones continuas sin interrupciones",
-		"Análisis predictivo y machine learning",
 	];
 
 	const testimonials = [
