@@ -97,36 +97,6 @@ export default function LandingPage() {
 				"Reportes financieros personalizados",
 			],
 		},
-		// {
-		// 	icon: ShoppingCart,
-		// 	title: "SYSGD-COMMERCE",
-		// 	subtitle: "E-Commerce",
-		// 	description:
-		// 		"Plataforma de comercio electrónico integrada con gestión de inventario y análisis de ventas.",
-		// 	status: "Próximamente",
-		// 	statusColor: "bg-purple-500",
-		// 	features: [
-		// 		"Tienda online",
-		// 		"Gestión de inventario",
-		// 		"Pagos integrados",
-		// 		"Analytics de ventas",
-		// 	],
-		// },
-		// {
-		// 	icon: BarChart3,
-		// 	title: "SYSGD-ANALYTICS",
-		// 	subtitle: "Business Intelligence",
-		// 	description:
-		// 		"Inteligencia de negocio y análisis de datos para toma de decisiones estratégicas.",
-		// 	status: "Planificado",
-		// 	statusColor: "bg-orange-500",
-		// 	features: [
-		// 		"Dashboards interactivos",
-		// 		"Reportes personalizados",
-		// 		"Métricas en tiempo real",
-		// 		"Predicciones AI",
-		// 	],
-		// },
 	];
 
 	// const sponsors = [
