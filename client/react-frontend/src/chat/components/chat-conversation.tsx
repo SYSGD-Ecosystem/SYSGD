@@ -1,12 +1,14 @@
 import { File, Mic, Paperclip, Send, Smile, Video, X } from "lucide-react";
+import { isAxiosError } from "axios";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-	type Message as BackendMessage,
-	type Conversation,
+import type {
+	Message as BackendMessage,
+	Conversation,
+	SendMessagePayload,
 } from "../hooks/useChat";
 import type { Message } from "./chat-interface";
 import { ChatMessage } from "./chat-message";
@@ -25,6 +27,13 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import useCurrentUser from "@/hooks/connection/useCurrentUser";
+import {
+	formatFileSize,
+	getAttachmentType,
+	toAttachmentType,
+} from "../utils/utils";
+import api from "@/lib/api";
 
 interface ChatConversationProps {
 	chat: Conversation;
@@ -46,12 +55,16 @@ export interface ExtendedMessage extends Message {
 	};
 }
 
-/**
- * ChatConversation:
- * - integra useChat para fetch/send/mark-as-read
- * - sube archivos a /api/uploads (POST FormData) — el backend debe exponer este endpoint
- * - actualiza UI de forma optimista y luego reemplaza con la respuesta del servidor
- */
+interface UploadResponse {
+	url?: string;
+	fileUrl?: string;
+	attachment_url?: string;
+	attachment_type?: "image" | "audio" | "video" | "file" | string;
+	attachment_name?: string;
+	attachment_size?: string;
+	key?: string;
+	bucket?: string;
+}
 
 export function ChatConversation({
 	chat,
@@ -88,14 +101,11 @@ export function ChatConversation({
 	const [isAtBottom, setIsAtBottom] = useState(true);
 	const isInitialScrollDone = useRef(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const { user } = useCurrentUser();
 	const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
-	const serverUrl =
-		(import.meta.env.VITE_SERVER_URL as string) || "http://localhost:3000";
 
 	const { joinConversation, leaveConversation } = useSocketContext();
 
-	// Receive socket events
 	useSocketEvents({
 		onNewMessage: (message) => {
 			if (message.conversation_id === chat.id) {
@@ -105,17 +115,11 @@ export function ChatConversation({
 		},
 	});
 
-	// Get current user ID
 	useEffect(() => {
-		fetch(`${serverUrl}/api/auth/me`, { credentials: "include" })
-			.then((res) => res.json())
-			.then((data) => {
-				setCurrentUserId(data?.id ?? null);
-			})
-			.catch(() => {});
-	}, [serverUrl]);
+		setCurrentUserId(user?.id ?? null);
+	}, [user]);
 
-	// Join conversation when chat changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	useEffect(() => {
 		if (!chat?.id) return;
 		joinConversation(chat.id);
@@ -125,22 +129,17 @@ export function ChatConversation({
 		};
 	}, [chat?.id, joinConversation, leaveConversation]);
 
-	// --- Load messages from backend when chat changes ---
+	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	useEffect(() => {
 		if (!chat?.id) return;
-		// fetchMessages will populate messagesMap inside the hook
 		fetchMessages(chat.id).catch((e) => {
-			// fetchMessages already sets error inside hook; here just log
 			console.error("fetchMessages error:", e);
 		});
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [chat?.id]);
 
-	// --- Mirror hook's messagesMap into local messages state for rendering and local UX edits ---
-	// Use useMemo to avoid recalculating on every render
 	const normalizedMessages = useMemo(() => {
 		const list = messagesMap?.[chat.id] ?? [];
-		// map backend message shape to ExtendedMessage if needed
+
 		return (list as BackendMessage[]).map((m) => ({
 			id: String(m.id),
 			content: m.content ?? "",
@@ -148,33 +147,33 @@ export function ChatConversation({
 				m.sender_id === undefined || m.sender_id === null
 					? ("other" as const)
 					: m.sender_id === currentUserId
-						? ("me" as const)
-						: ("other" as const),
+					? ("me" as const)
+					: ("other" as const),
 			timestamp: m.created_at
 				? new Date(m.created_at).toLocaleTimeString("es-ES", {
 						hour: "2-digit",
 						minute: "2-digit",
-					})
+				  })
 				: "",
 			senderName:
 				m.sender_id === currentUserId
 					? "Tú"
 					: m.sender_name || m.sender_email || "Usuario",
-			avatar: undefined, // Backend Message doesn't have avatar field
+			avatar: undefined,
 			attachment: m.attachment_url
 				? {
-						type: (m.attachment_type as any) ?? "file",
+						type: toAttachmentType(m.attachment_type),
 						url: m.attachment_url,
 						name: undefined,
 						size: undefined,
-					}
+				  }
 				: undefined,
 			replyTo: m.reply_to
 				? {
 						id: String(m.reply_to),
-						content: "", // Backend doesn't have reply_to content
+						content: "",
 						senderName: undefined,
-					}
+				  }
 				: undefined,
 		}));
 	}, [messagesMap, chat.id, currentUserId]);
@@ -206,21 +205,18 @@ export function ChatConversation({
 
 	const isLoadingMessages = loadingMessagesMap?.[chat.id] ?? false;
 
-	const scrollToBottom = useCallback(
-		(behavior: ScrollBehavior = "auto") => {
-			const root = scrollRef.current;
-			if (!root) return;
-			const viewport = root.querySelector<HTMLElement>(
-				"[data-radix-scroll-area-viewport]",
-			);
-			const target = viewport ?? root;
-			target.scrollTo({
-				top: target.scrollHeight,
-				behavior,
-			});
-		},
-		[],
-	);
+	const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
+		const root = scrollRef.current;
+		if (!root) return;
+		const viewport = root.querySelector<HTMLElement>(
+			"[data-radix-scroll-area-viewport]",
+		);
+		const target = viewport ?? root;
+		target.scrollTo({
+			top: target.scrollHeight,
+			behavior,
+		});
+	}, []);
 
 	// --- Track if user is near bottom ---
 	useEffect(() => {
@@ -242,12 +238,14 @@ export function ChatConversation({
 	}, []);
 
 	// --- Scroll to bottom when messages change (only if already at bottom) ---
+	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	useEffect(() => {
 		if (!isAtBottom || !isInitialScrollDone.current) return;
 		requestAnimationFrame(() => scrollToBottom("smooth"));
 	}, [messages.length, isAtBottom, scrollToBottom]);
 
 	// --- Ensure bottom on chat switch ---
+	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	useEffect(() => {
 		isInitialScrollDone.current = false;
 		requestAnimationFrame(() => {
@@ -262,7 +260,6 @@ export function ChatConversation({
 
 		setAttachment(file);
 
-		// Create preview for images
 		if (file.type.startsWith("image/")) {
 			const reader = new FileReader();
 			reader.onload = (ev) => {
@@ -274,48 +271,24 @@ export function ChatConversation({
 		}
 	};
 
-	const getAttachmentType = (
-		file: File,
-	): "image" | "audio" | "video" | "file" => {
-		if (file.type.startsWith("image/")) return "image";
-		if (file.type.startsWith("audio/")) return "audio";
-		if (file.type.startsWith("video/")) return "video";
-		return "file";
-	};
+	const uploadFile = useCallback(async (file: File) => {
+		const fd = new FormData();
+		fd.append("file", file);
+		try {
+			const { data } = await api.post<UploadResponse>("/api/uploads", fd, {
+				headers: {
+					"Content-Type": "multipart/form-data",
+				},
+				withCredentials: true,
+			});
 
-	const formatFileSize = (bytes: number): string => {
-		if (bytes < 1024) return bytes + " B";
-		if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-		return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-	};
+			return data;
+		} catch (err) {
+			console.error("uploadFile error:", err);
+			throw err;
+		}
+	}, []);
 
-	// upload file to S3 via backend
-	const uploadFile = useCallback(
-		async (file: File) => {
-			const fd = new FormData();
-			fd.append("file", file);
-			try {
-				const res = await fetch(`${serverUrl}/api/uploads`, {
-					method: "POST",
-					body: fd,
-					credentials: "include",
-				});
-				if (!res.ok) {
-					const errorData = await res.json();
-					console.error("Upload error:", errorData);
-					throw new Error(errorData.error || "Upload failed");
-				}
-				const data = await res.json();
-				return data; // { url, attachment_name, attachment_size, attachment_type, key, bucket }
-			} catch (err) {
-				console.error("uploadFile error:", err);
-				throw err;
-			}
-		},
-		[serverUrl],
-	);
-
-	// send message using hook; if attachment present, first upload then include attachment_url/type
 	const handleSendMessage = async () => {
 		if (sending) return;
 		if (!newMessage.trim() && !attachment) return;
@@ -324,8 +297,7 @@ export function ChatConversation({
 
 		setAnErrorOcurred(false);
 
-		// optimistic message (temporary id)
-		const tempId = "tmp-" + Date.now().toString();
+		const tempId = `tmp-${Date.now().toString()}`;
 		const optimistic: ExtendedMessage = {
 			id: tempId,
 			content: newMessage || "",
@@ -351,7 +323,6 @@ export function ChatConversation({
 			}),
 		};
 
-		// update UI immediately
 		setMessages((prev) => [...prev, optimistic]);
 
 		try {
@@ -364,7 +335,6 @@ export function ChatConversation({
 			if (attachment) {
 				try {
 					const uploaded = await uploadFile(attachment);
-					// normalize expected fields
 					attachment_payload.attachment_url =
 						uploaded.url || uploaded.attachment_url || uploaded.fileUrl;
 					attachment_payload.attachment_type =
@@ -374,12 +344,10 @@ export function ChatConversation({
 					attachment_payload.attachment_size =
 						uploaded.attachment_size || formatFileSize(attachment.size);
 				} catch (err) {
-					// if upload fails, remove optimistic attachment preview but still attempt to send text
 					console.warn(
 						"upload failed, will send message without attachment",
 						err,
 					);
-					// remove preview from optimistic message
 					setMessages((prev) =>
 						prev.map((m) =>
 							m.id === tempId ? { ...m, attachment: undefined } : m,
@@ -388,7 +356,7 @@ export function ChatConversation({
 				}
 			}
 
-			const payload: any = {
+			const payload: SendMessagePayload = {
 				content: newMessage || null,
 				...attachment_payload,
 				reply_to: replyingTo?.id ?? null,
@@ -397,37 +365,34 @@ export function ChatConversation({
 			const sent = await sendMessage(chat.id, payload);
 			if (sent) {
 				const normalizedBackend: ExtendedMessage = {
-					id: String((sent as any).id),
+					id: String(sent.id),
 					content: sent.content ?? "",
 					sender: "me",
 					timestamp: sent.created_at
 						? new Date(sent.created_at).toLocaleTimeString("es-ES", {
 								hour: "2-digit",
 								minute: "2-digit",
-							})
+						  })
 						: new Date().toLocaleTimeString(),
-					senderName: (sent as any).sender_name ?? undefined,
-					attachment: (sent as any).attachment_url
+					senderName: sent.sender_name ?? undefined,
+					attachment: sent.attachment_url
 						? {
-								url: (sent as any).attachment_url,
-								type:
-									(sent as any).attachment_type ??
-									attachment_payload.attachment_type ??
-									"file",
+								url: sent.attachment_url,
+								type: sent.attachment_type
+									? toAttachmentType(sent.attachment_type)
+									: toAttachmentType(attachment_payload.attachment_type),
 								name:
-									(sent as any).attachment_name ??
-									attachment_payload.attachment_name,
+									sent.attachment_name ?? attachment_payload.attachment_name,
 								size:
-									(sent as any).attachment_size ??
-									attachment_payload.attachment_size,
-							}
+									sent.attachment_size ?? attachment_payload.attachment_size,
+						  }
 						: undefined,
 					replyTo: sent.reply_to
 						? {
 								id: String(sent.reply_to),
-								content: (sent as any).reply_preview ?? "",
+								content: sent.reply_preview ?? "",
 								senderName: undefined,
-							}
+						  }
 						: undefined,
 				};
 
@@ -436,10 +401,7 @@ export function ChatConversation({
 				);
 
 				const currentHookMsgs = messagesMap[chat.id] ?? [];
-				setMessagesForConversation(chat.id, [
-					...currentHookMsgs,
-					sent as BackendMessage,
-				]);
+				setMessagesForConversation(chat.id, [...currentHookMsgs, sent]);
 
 				try {
 					await markAsRead(chat.id, String(sent.id));
@@ -452,7 +414,7 @@ export function ChatConversation({
 			setMessages((prev) => prev.filter((m) => m.id !== tempId));
 			toast({
 				title: "Error",
-				description: "No se pudo enviar el mensaje. Intenta de nuevo."
+				description: "No se pudo enviar el mensaje. Intenta de nuevo.",
 			});
 			setAnErrorOcurred(true);
 		} finally {
@@ -494,11 +456,14 @@ export function ChatConversation({
 		try {
 			await deleteMessage(chat.id, messageToDelete.id);
 			setMessageToDelete(null);
-		} catch (err: any) {
-			const msg =
-				err?.response?.data?.error ||
-				err?.message ||
-				"Error al eliminar mensaje";
+		} catch (err: unknown) {
+			const msg = isAxiosError(err)
+				? (err.response?.data as { error?: string } | undefined)?.error ||
+				  err.message ||
+				  "Error al eliminar mensaje"
+				: err instanceof Error
+				? err.message
+				: "Error al eliminar mensaje";
 			toast({ variant: "destructive", title: "Error", description: msg });
 		}
 	}, [deleteMessage, chat.id, messageToDelete, toast]);
@@ -516,7 +481,6 @@ export function ChatConversation({
 			);
 			setEditingMessageId(null);
 			setEditingContent("");
-			// note: no backend edit endpoint implemented; if you add it, call it here and refresh hook
 		},
 		[editingContent],
 	);
@@ -540,7 +504,6 @@ export function ChatConversation({
 
 	return (
 		<div className="h-full flex flex-col">
-			{/* Messages */}
 			<ScrollArea className="flex-1 p-4" ref={scrollRef}>
 				<div className="space-y-4 max-w-4xl mx-auto">
 					{isLoadingMessages && messages.length === 0 && (
@@ -548,9 +511,11 @@ export function ChatConversation({
 							{Array.from({ length: 6 }).map((_, index) => (
 								<div
 									key={`msg-skel-${index}`}
-									className={`flex gap-3 ${index % 2 === 0 ? "" : "flex-row-reverse"}`}
+									className={`flex gap-3 ${
+										index % 2 === 0 ? "" : "flex-row-reverse"
+									}`}
 								>
-									<Skeleton className="h-8 w-8 rounded-full flex-shrink-0" />
+									<Skeleton className="h-8 w-8 rounded-full shrink-0" />
 									<div className="max-w-[70%] space-y-2">
 										<Skeleton className="h-4 w-24 rounded-md" />
 										<Skeleton className="h-16 w-full rounded-2xl" />
@@ -581,7 +546,6 @@ export function ChatConversation({
 							}
 						/>
 					))}
-
 				</div>
 			</ScrollArea>
 
@@ -605,7 +569,6 @@ export function ChatConversation({
 				</AlertDialogContent>
 			</AlertDialog>
 
-			{/* Input */}
 			<div className="border-t border-border p-4 bg-card">
 				<div className="max-w-4xl mx-auto">
 					{replyingTo && (
@@ -681,7 +644,7 @@ export function ChatConversation({
 						<Button
 							variant="ghost"
 							size="icon"
-							className="flex-shrink-0"
+							className="shrink-0"
 							onClick={() => fileInputRef.current?.click()}
 						>
 							<Paperclip className="h-5 w-5" />
@@ -705,7 +668,7 @@ export function ChatConversation({
 						<Button
 							onClick={() => void handleSendMessage()}
 							size="icon"
-							className="flex-shrink-0"
+							className="shrink-0"
 							disabled={(!newMessage.trim() && !attachment) || sending}
 						>
 							<Send className="h-5 w-5" />

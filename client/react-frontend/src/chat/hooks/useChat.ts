@@ -1,8 +1,5 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
-/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { isAxiosError } from "axios";
 import api from "@/lib/api";
 
 type UUID = string;
@@ -41,6 +38,18 @@ export interface Message {
 	created_at?: string;
 	sender_email?: string | null;
 	sender_name?: string | null;
+	attachment_name?: string | null;
+	attachment_size?: string | null;
+	reply_preview?: string | null;
+}
+
+export interface SendMessagePayload {
+	content?: string | null;
+	attachment_url?: string;
+	attachment_type?: "image" | "audio" | "video" | "file" | string;
+	attachment_name?: string;
+	attachment_size?: string;
+	reply_to?: UUID | null;
 }
 
 export interface Invitation {
@@ -56,12 +65,33 @@ export interface Invitation {
 	sender_email?: string | null;
 }
 
-function getErrorMessage(err: any, fallback: string) {
+function getErrorMessage(err: unknown, fallback: string) {
+	if (isAxiosError(err)) {
+		return (
+			(err.response?.data as { message?: string; error?: string } | undefined)
+				?.message ||
+			(err.response?.data as { message?: string; error?: string } | undefined)
+				?.error ||
+			err.message ||
+			fallback
+		);
+	}
+	if (err instanceof Error) {
+		return err.message || fallback;
+	}
+
+	return fallback;
+}
+
+function isCanceledRequest(err: unknown) {
+	if (isAxiosError(err)) return err.code === "ERR_CANCELED";
+	return err instanceof Error && err.name === "CanceledError";
+}
+
+function getAxiosData<T>(err: unknown): T | undefined {
+	if (isAxiosError(err)) return err.response?.data as T | undefined;
 	return (
-		err?.response?.data?.message ||
-		err?.response?.data?.error ||
-		err?.message ||
-		fallback
+		undefined
 	);
 }
 
@@ -99,7 +129,7 @@ export function useChat() {
 			const { data } = await api.get<Conversation[]>("/api/chat/conversations");
 			setConversations(Array.isArray(data) ? data : []);
 			return data;
-		} catch (err: any) {
+		} catch (err: unknown) {
 			const msg = getErrorMessage(err, "Error al obtener conversaciones");
 			setError(msg);
 			throw err;
@@ -139,8 +169,8 @@ export function useChat() {
 			}));
 
 			return data;
-		} catch (err: any) {
-			if (err.name !== "CanceledError") {
+		} catch (err: unknown) {
+			if (!isCanceledRequest(err)) {
 				const msg = getErrorMessage(err, "Error al obtener mensajes");
 				setError(msg);
 				throw err;
@@ -153,7 +183,7 @@ export function useChat() {
 	}, []);
 
 	const sendMessage = useCallback(
-		async (conversationId: string, message: any) => {
+		async (conversationId: string, message: SendMessagePayload) => {
 			if (!conversationId) throw new Error("conversationId requerido");
 			setError(null);
 
@@ -177,7 +207,7 @@ export function useChat() {
 				);
 
 				return newMessage;
-			} catch (err: any) {
+			} catch (err: unknown) {
 				const msg = getErrorMessage(err, "Error al enviar mensaje");
 				setError(msg);
 				throw err;
@@ -201,7 +231,12 @@ export function useChat() {
 	const createConversation = useCallback(async (opts?: CreateOpts) => {
 		setError(null);
 		try {
-			const body: any =
+			const body: {
+				contactemail?: string;
+				members?: string[];
+				title?: string;
+				type?: string;
+			} =
 				typeof opts === "string" ? { contactemail: opts } : (opts ?? {});
 
 			const { data: newConv } = await api.post<Conversation>(
@@ -214,7 +249,7 @@ export function useChat() {
 			);
 
 			return newConv;
-		} catch (err: any) {
+		} catch (err: unknown) {
 			const msg = getErrorMessage(err, "Error al crear conversación");
 			setError(msg);
 			throw err;
@@ -241,9 +276,10 @@ export function useChat() {
 
 				setInvitations((prev) => [data, ...prev]);
 				return data;
-			} catch (err: any) {
+			} catch (err: unknown) {
 				const msg =
-					err?.response?.data?.message || "Error al enviar invitación";
+					getAxiosData<{ message?: string }>(err)?.message ||
+					"Error al enviar invitación";
 				setError(msg);
 				throw err;
 			}
@@ -260,7 +296,7 @@ export function useChat() {
 			);
 			setInvitations(Array.isArray(data) ? data : []);
 			return data;
-		} catch (err: any) {
+		} catch (err: unknown) {
 			const msg = getErrorMessage(err, "Error al obtener invitaciones");
 			setError(msg);
 			throw err;
@@ -291,9 +327,10 @@ export function useChat() {
 
 				await fetchConversations();
 				return data;
-			} catch (err: any) {
+			} catch (err: unknown) {
 				const msg =
-					err?.response?.data?.message || "Error al aceptar invitación";
+					getAxiosData<{ message?: string }>(err)?.message ||
+					"Error al aceptar invitación";
 				setError(msg);
 				throw err;
 			}
@@ -326,9 +363,10 @@ export function useChat() {
 				);
 
 				return data;
-			} catch (err: any) {
+			} catch (err: unknown) {
 				const msg =
-					err?.response?.data?.message || "Error al marcar como leído";
+					getAxiosData<{ message?: string }>(err)?.message ||
+					"Error al marcar como leído";
 				setError(msg);
 				throw err;
 			}
@@ -358,9 +396,10 @@ export function useChat() {
 			});
 
 			return true;
-		} catch (err: any) {
+		} catch (err: unknown) {
 			const msg =
-				err?.response?.data?.message || "Error al eliminar conversación";
+				getAxiosData<{ message?: string }>(err)?.message ||
+				"Error al eliminar conversación";
 			setError(msg);
 			throw err;
 		}
@@ -385,7 +424,7 @@ export function useChat() {
 				);
 
 				return data;
-			} catch (err: any) {
+			} catch (err: unknown) {
 				const msg = getErrorMessage(err, "Error al actualizar conversación");
 				setError(msg);
 				throw err;
@@ -422,7 +461,7 @@ export function useChat() {
 				);
 
 				return data.member;
-			} catch (err: any) {
+			} catch (err: unknown) {
 				const msg = getErrorMessage(err, "Error al añadir miembro");
 				setError(msg);
 				throw err;
@@ -455,7 +494,7 @@ export function useChat() {
 				);
 
 				return true;
-			} catch (err: any) {
+			} catch (err: unknown) {
 				const msg = getErrorMessage(err, "Error al eliminar miembro");
 				setError(msg);
 				throw err;
@@ -507,7 +546,7 @@ export function useChat() {
 				}
 
 				return true;
-			} catch (err: any) {
+			} catch (err: unknown) {
 				const msg = getErrorMessage(err, "Error al eliminar mensaje");
 				setError(msg);
 				throw err;
@@ -538,9 +577,10 @@ export function useChat() {
 	// cargar conversaciones al montar el hook
 	useEffect(() => {
 		fetchConversations().catch(() => {});
+		const controllers = abortControllers.current;
 		// cleanup: abort any pending requests on unmount
 		return () => {
-			Object.values(abortControllers.current).forEach((ac) => {
+			Object.values(controllers).forEach((ac) => {
 				try {
 					ac.abort();
 				} catch {
