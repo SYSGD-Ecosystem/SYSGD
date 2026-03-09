@@ -64,7 +64,7 @@ export function Footer() {
             <ul className="space-y-3">
               <li>
                 <a
-                  href="mailto:lazaroyunier96@outlook.es"
+                  href="mailto:support@ecosysgd.com"
                   className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Mail className="w-4 h-4" />

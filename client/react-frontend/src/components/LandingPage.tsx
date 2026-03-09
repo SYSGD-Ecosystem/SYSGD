@@ -1,8 +1,6 @@
-/** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
 import {
 	ArrowRight,
 	BarChart,
-	BarChart3,
 	Building2,
 	CheckCircle,
 	Cpu,
@@ -16,7 +14,6 @@ import {
 	Menu,
 	MessageCircle,
 	Rocket,
-	ShoppingCart,
 	Sparkles,
 	Target,
 	Twitter,
@@ -248,11 +245,11 @@ export default function LandingPage() {
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 					<div className="flex justify-between items-center h-16">
 						<div className="flex items-center gap-3">
-							<div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-lg flex items-center justify-center">
+							<div className="w-10 h-10 bg-linear-to-br from-cyan-400 to-blue-600 rounded-lg flex items-center justify-center">
 								<Building2 className="w-6 h-6 text-white" />
 							</div>
 							<div>
-								<span className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+								<span className="text-2xl font-bold bg-linear-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
 									SYSGD
 								</span>
 								<div className="text-xs text-cyan-400">Ecosystem</div>
@@ -286,7 +283,7 @@ export default function LandingPage() {
 								Contacto
 							</a>
 							<Button
-								className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white"
+								className="bg-linear-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white"
 								asChild
 							>
 								<Link to="/login">
@@ -341,7 +338,7 @@ export default function LandingPage() {
 								</a>
 								<div className="flex gap-2 pt-4">
 									<Button
-										className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white"
+										className="flex-1 bg-linear-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white"
 										asChild
 									>
 										<Link to="/login">Acceder</Link>
@@ -363,14 +360,14 @@ export default function LandingPage() {
 							className="w-32 h-32 rounded overflow-hidden mx-auto mb-6 drop-shadow-2xl"
 						/>
 					</div>
-					<Badge className="mb-6 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border-cyan-400/30 text-cyan-300">
+					<Badge className="mb-6 bg-linear-to-r from-cyan-500/20 to-blue-500/20 border-cyan-400/30 text-cyan-300">
 						<Sparkles className="w-4 h-4 mr-2" />
 						Ecosistema Tecnológico en Expansión
 					</Badge>
 					<h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold mb-6">
 						El Futuro de la
 						<br />
-						<span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
+						<span className="bg-linear-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
 							Gestión Empresarial
 						</span>
 					</h1>
@@ -389,7 +386,7 @@ export default function LandingPage() {
 					<div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
 						<Button
 							size="lg"
-							className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-lg px-8 py-4"
+							className="bg-linear-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-lg px-8 py-4"
 							asChild
 						>
 							<Link to="/login">
@@ -421,11 +418,11 @@ export default function LandingPage() {
 			>
 				<div className="max-w-7xl mx-auto">
 					<div className="text-center mb-16">
-						<Badge className="mb-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-400/30 text-purple-300">
+						<Badge className="mb-4 bg-linear-to-r from-purple-500/20 to-pink-500/20 border-purple-400/30 text-purple-300">
 							<Cpu className="w-4 h-4 mr-2" />
 							Servicios del Ecosistema
 						</Badge>
-						<h2 className="text-3xl sm:text-4xl font-bold mb-4 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+						<h2 className="text-3xl sm:text-4xl font-bold mb-4 bg-linear-to-r from-white to-gray-300 bg-clip-text text-transparent">
 							Un Ecosistema que Crece Contigo
 						</h2>
 						<p className="text-xl text-gray-300 max-w-3xl mx-auto">
@@ -443,7 +440,7 @@ export default function LandingPage() {
 							>
 								<CardHeader>
 									<div className="flex items-start justify-between mb-4">
-										<div className="w-14 h-14 bg-gradient-to-br from-cyan-400/20 to-blue-600/20 rounded-xl flex items-center justify-center border border-cyan-400/30">
+										<div className="w-14 h-14 bg-linear-to-br from-cyan-400/20 to-blue-600/20 rounded-xl flex items-center justify-center border border-cyan-400/30">
 											<service.icon className="w-7 h-7 text-cyan-400" />
 										</div>
 										<div className="flex items-center gap-2">
@@ -474,7 +471,7 @@ export default function LandingPage() {
 										{service.features.map((feature, idx) => (
 											// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
 											<div key={idx} className="flex items-center gap-3">
-												<CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+												<CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
 												<span className="text-sm text-gray-300">{feature}</span>
 											</div>
 										))}
@@ -493,11 +490,11 @@ export default function LandingPage() {
 			>
 				<div className="max-w-7xl mx-auto">
 					<div className="text-center mb-16">
-						<Badge className="mb-4 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-yellow-400/30 text-yellow-300">
+						<Badge className="mb-4 bg-linear-to-r from-yellow-500/20 to-orange-500/20 border-yellow-400/30 text-yellow-300">
 							<Target className="w-4 h-4 mr-2" />
 							Powered By
 						</Badge>
-						<h2 className="text-3xl sm:text-4xl font-bold mb-4 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+						<h2 className="text-3xl sm:text-4xl font-bold mb-4 bg-linear-to-r from-white to-gray-300 bg-clip-text text-transparent">
 							Infraestructura y Tecnología
 						</h2>
 						<p className="text-xl text-gray-300 max-w-2xl mx-auto">
@@ -515,7 +512,7 @@ export default function LandingPage() {
 								className="bg-slate-800/30 backdrop-blur-md border-slate-700/30 hover:border-cyan-400/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10 group"
 							>
 								<CardContent className="p-6 text-center">
-									<div className="w-16 h-16 bg-gradient-to-br from-cyan-400/20 to-blue-600/20 rounded-xl flex items-center justify-center mx-auto mb-4 border border-cyan-400/30 group-hover:border-cyan-400/60 transition-colors">
+									<div className="w-16 h-16 bg-linear-to-br from-cyan-400/20 to-blue-600/20 rounded-xl flex items-center justify-center mx-auto mb-4 border border-cyan-400/30 group-hover:border-cyan-400/60 transition-colors">
 										<span className="text-xl font-bold text-cyan-400">
 											{sponsor.logo}
 										</span>
@@ -529,10 +526,10 @@ export default function LandingPage() {
 									<Badge
 										className={`text-xs ${
 											sponsor.tier === "Platinum"
-												? "bg-gradient-to-r from-gray-300/20 to-gray-100/20 border-gray-300/30 text-gray-200"
+												? "bg-linear-to-r from-gray-300/20 to-gray-100/20 border-gray-300/30 text-gray-200"
 												: sponsor.tier === "Gold"
-													? "bg-gradient-to-r from-yellow-500/20 to-yellow-400/20 border-yellow-400/30 text-yellow-300"
-													: "bg-gradient-to-r from-gray-500/20 to-gray-400/20 border-gray-400/30 text-gray-300"
+													? "bg-linear-to-r from-yellow-500/20 to-yellow-400/20 border-yellow-400/30 text-yellow-300"
+													: "bg-linear-to-r from-gray-500/20 to-gray-400/20 border-gray-400/30 text-gray-300"
 										}`}
 									>
 										{sponsor.tier}
@@ -563,11 +560,11 @@ export default function LandingPage() {
 				<div className="max-w-7xl mx-auto">
 					<div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
 						<div>
-							<Badge className="mb-6 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400/30 text-green-300">
+							<Badge className="mb-6 bg-linear-to-r from-green-500/20 to-emerald-500/20 border-green-400/30 text-green-300">
 								<Zap className="w-4 h-4 mr-2" />
 								Ventajas del Ecosistema
 							</Badge>
-							<h2 className="text-3xl sm:text-4xl font-bold mb-6 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+							<h2 className="text-3xl sm:text-4xl font-bold mb-6 bg-linear-to-r from-white to-gray-300 bg-clip-text text-transparent">
 								¿Por qué elegir SYSGD?
 							</h2>
 							<p className="text-xl text-gray-300 mb-8">
@@ -579,7 +576,7 @@ export default function LandingPage() {
 								{benefits.map((benefit, index) => (
 									// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
 									<div key={index} className="flex items-start gap-3">
-										<CheckCircle className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+										<CheckCircle className="w-5 h-5 text-green-400 mt-0.5 shrink-0" />
 										<span className="text-gray-300">{benefit}</span>
 									</div>
 								))}
@@ -621,11 +618,11 @@ export default function LandingPage() {
 			<section className="relative z-10 py-20 px-4 sm:px-6 lg:px-8 hidden">
 				<div className="max-w-7xl mx-auto">
 					<div className="text-center mb-16">
-						<Badge className="mb-4 bg-gradient-to-r from-pink-500/20 to-rose-500/20 border-pink-400/30 text-pink-300">
+						<Badge className="mb-4 bg-linear-to-r from-pink-500/20 to-rose-500/20 border-pink-400/30 text-pink-300">
 							<Users className="w-4 h-4 mr-2" />
 							Testimonios
 						</Badge>
-						<h2 className="text-3xl sm:text-4xl font-bold mb-4 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+						<h2 className="text-3xl sm:text-4xl font-bold mb-4 bg-linear-to-r from-white to-gray-300 bg-clip-text text-transparent">
 							Lo que Dicen Nuestros Usuarios
 						</h2>
 					</div>
@@ -669,7 +666,7 @@ export default function LandingPage() {
 			{/* CTA Section */}
 			<section className="relative z-10 py-20 px-4 sm:px-6 lg:px-8">
 				<div className="max-w-4xl mx-auto text-center">
-					<h2 className="text-3xl sm:text-4xl font-bold mb-6 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+					<h2 className="text-3xl sm:text-4xl font-bold mb-6 bg-linear-to-r from-white to-gray-300 bg-clip-text text-transparent">
 						¿Listo para el Futuro?
 					</h2>
 					<p className="text-xl text-gray-300 mb-8">
@@ -679,7 +676,7 @@ export default function LandingPage() {
 					<div className="flex flex-col sm:flex-row gap-4 justify-center">
 						<Button
 							size="lg"
-							className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-lg px-8 py-4"
+							className="bg-linear-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-lg px-8 py-4"
 							asChild
 						>
 							<Link to="/login">
@@ -701,11 +698,11 @@ export default function LandingPage() {
 					<div className="grid grid-cols-1 md:grid-cols-4 gap-8">
 						<div>
 							<div className="flex items-center gap-3 mb-4">
-								<div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-lg flex items-center justify-center">
+								<div className="w-10 h-10 bg-linear-to-br from-cyan-400 to-blue-600 rounded-lg flex items-center justify-center">
 									<Building2 className="w-6 h-6 text-white" />
 								</div>
 								<div>
-									<span className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+									<span className="text-xl font-bold bg-linear-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
 										SYSGD
 									</span>
 									<div className="text-xs text-cyan-400">Ecosystem</div>
@@ -773,18 +770,18 @@ export default function LandingPage() {
 							<div className="space-y-2 text-sm text-gray-400">
 								<Link
 									className="flex items-center gap-2"
-									to="mailto:lazaroyunier96@gmail.com"
+									to="mailto:support@ecosysgd.com"
 								>
 									<Mail className="w-4 h-4" />
-									lazaroyunier96@gmail.com
+									support@ecosysgd.com
 								</Link>
 								<Link
 									target="_blank"
 									className="flex items-center gap-2"
-									to="https://wa.me/+5353935724"
+									to="https://wa.me/+5351158544"
 								>
 									<IoLogoWhatsapp className="w-4 h-4" />
-									+53 53935724
+									+53 51158544
 								</Link>
 								<div className="flex items-center gap-2">
 									<MapPin className="w-4 h-4" />
