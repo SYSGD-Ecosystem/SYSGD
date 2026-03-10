@@ -435,7 +435,7 @@ private fun CantidadOperacionDialog(
     onConfirm: (Double) -> Unit
 ) {
     val permiteFraccion = permiteFraccion(unidad)
-    val paso = if (permiteFraccion) 0.1 else 1.0
+    val paso = 1.0
     var cantidadInput by remember(nombreProducto, unidad) { mutableStateOf(if (permiteFraccion) "1.0" else "1") }
 
     val cantidad = parseCantidad(cantidadInput, permiteFraccion)

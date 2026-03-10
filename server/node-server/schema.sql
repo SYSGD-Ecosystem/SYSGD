@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS cont_ledger_records (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   registro JSONB NOT NULL DEFAULT '{}'::jsonb,
+  inventario_registro JSONB,
   updated_at TIMESTAMP DEFAULT NOW()
 );
 

@@ -52,11 +52,39 @@ export interface TributoRow {
   cuotaMensual: string;
 }
 
+
+export interface ProductoInventario {
+  id: string;
+  nombre: string;
+  precio: number;
+  unidad: string;
+  tipo: 'venta' | 'compra';
+}
+
+export interface OperacionInventario {
+  id: string;
+  tipo: 'venta' | 'compra';
+  fecha: string;
+  productoId: string;
+  nombreProducto: string;
+  unidad: string;
+  cantidad: number;
+  precioUnitario: number;
+  total: number;
+}
+
+export interface InventarioRegistro {
+  productosVenta: ProductoInventario[];
+  productosCompra: ProductoInventario[];
+  operaciones: OperacionInventario[];
+}
+
 export interface RegistroTCP {
   generales: GeneralesData;
   ingresos: MonthEntries;
   gastos: MonthEntries;
   tributos: TributoRow[];
+  inventario: InventarioRegistro;
 }
 
 export interface MonthlyTotals {

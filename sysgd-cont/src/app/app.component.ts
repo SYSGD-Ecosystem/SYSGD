@@ -5,6 +5,7 @@ import {
   AlertMessage,
   AnnualReport,
   DayAmountRow,
+  OperacionInventario,
   MONTHS,
   MonthKey,
   RegistroTCP,
@@ -104,6 +105,12 @@ export class AppComponent implements OnInit {
 
   get selectedMonthGastosTotal(): number {
     return this.monthTotal(this.registro.gastos[this.selectedMonth]);
+  }
+
+  get historialOperacionesMes(): OperacionInventario[] {
+    const monthIndex = MONTHS.indexOf(this.selectedMonth) + 1;
+    const monthFormatted = String(monthIndex).padStart(2, '0');
+    return this.registro.inventario.operaciones.filter((op) => op.fecha.slice(5, 7) === monthFormatted);
   }
 
   get fiscalMunicipios(): string[] {
@@ -270,6 +277,18 @@ export class AppComponent implements OnInit {
     void this.syncToServer();
   }
 
+  addProductoInventario(payload: { tipo: 'venta' | 'compra'; nombre: string; precio: number; unidad: string }): void {
+    if (!payload.nombre.trim() || payload.precio <= 0) return;
+    this.registro = this.ledger.addProductoInventario(payload.tipo, payload.nombre, payload.precio, payload.unidad);
+    void this.syncToServer();
+  }
+
+  registrarOperacionInventario(payload: { tipo: 'venta' | 'compra'; productoId: string; cantidad: number; fecha: string }): void {
+    if (!payload.productoId || payload.cantidad <= 0 || !payload.fecha) return;
+    this.registro = this.ledger.addOperacionInventario(payload.tipo, payload.productoId, payload.cantidad, payload.fecha);
+    void this.syncToServer();
+  }
+
   saveTributos(): void {
     const raw = this.tributoForm.getRawValue();
     this.registro = this.ledger.updateTributos(raw.mes, {
@@ -410,7 +429,10 @@ export class AppComponent implements OnInit {
 
     const remote = await this.registroSync.pull(token);
     if (remote.registro) {
-      this.registro = remote.registro;
+      this.registro = {
+        ...remote.registro,
+        inventario: remote.inventarioRegistro ?? remote.registro.inventario
+      };
       this.ledger.saveRegistro(this.registro);
       this.patchForms();
       this.refreshReport();
@@ -443,7 +465,11 @@ export class AppComponent implements OnInit {
     const hasTributos = registro.tributos.some((row) =>
       Object.entries(row).some(([key, value]) => key !== 'mes' && String(value).trim() !== '')
     );
-    return hasGenerales || hasRows || hasTributos;
+    const hasInventario =
+      registro.inventario.productosVenta.length > 0 ||
+      registro.inventario.productosCompra.length > 0 ||
+      registro.inventario.operaciones.length > 0;
+    return hasGenerales || hasRows || hasTributos || hasInventario;
   }
 
   private formatError(error: unknown, fallback: string): string {

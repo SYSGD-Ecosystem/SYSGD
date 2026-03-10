@@ -67,8 +67,11 @@
       [registro]="registro"
       [selectedMonthIngresosTotal]="selectedMonthIngresosTotal"
       [selectedMonthGastosTotal]="selectedMonthGastosTotal"
+      [historialOperacionesMes]="historialOperacionesMes"
       [trackByDayAmount]="trackByDayAmount"
       (saveMovement)="saveMovement()"
+      (addProductoInventarioEvent)="addProductoInventario($event)"
+      (registrarOperacionInventarioEvent)="registrarOperacionInventario($event)"
     />
 
     <app-tributos-section
