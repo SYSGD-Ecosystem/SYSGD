@@ -32,6 +32,7 @@ import AboutPage from "./pages/AboutPage.tsx";
 import TcpIncomeExpenseRegisterPage from "./pages/TcpIncomeExpenseRegisterPage.tsx";
 import VerifyEmail from "./pages/VerifyEmail.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
+import AccountingWorkspace from "./cont/AccountingWorkspace.tsx";
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(
@@ -65,8 +66,10 @@ createRoot(document.getElementById("root")!).render(
 						<Route path="/billing/upgrade" element={<Purchase />} />
 						<Route path="/dashboard" element={<SystemDashboard />} />
 						<Route path="/about" element={<AboutPage/>} />
-						<Route path="/tcp-registro" element={<TcpIncomeExpenseRegisterPage />} />
-						<Route path="/tcp-registro/:documentId" element={<TcpIncomeExpenseRegisterPage />} />
+						<Route path="/tcp-registro" element={<AccountingWorkspace />} />
+						<Route path="/tcp-registro/:documentId" element={<AccountingWorkspace />} />
+						<Route path="/tcp-registro2" element={<TcpIncomeExpenseRegisterPage />} />
+						<Route path="/tcp-registro2/:documentId" element={<TcpIncomeExpenseRegisterPage />} />
 						<Route path="/*" element={<PageNotFound/>} />
 					</Routes>
 				</AppRouter>

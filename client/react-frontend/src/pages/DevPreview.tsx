@@ -1,9 +1,9 @@
 import type { FC } from "react";
 import "react-markdown-editor-lite/lib/index.css";
-import Plans from "@/components/billing/Plans";
+import AccountingWorkspace from "@/cont/AccountingWorkspace";
 
 const DevPreview: FC = () => {
-	return <Plans/>;
+	return <AccountingWorkspace/>;
 };
 
 export default DevPreview;
