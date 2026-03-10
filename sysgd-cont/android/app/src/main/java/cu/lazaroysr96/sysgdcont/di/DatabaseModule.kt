@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import cu.lazaroysr96.sysgdcont.data.AppDatabase
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_1_2
+import cu.lazaroysr96.sysgdcont.data.MIGRATION_2_3
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
 import cu.lazaroysr96.sysgdcont.data.dao.VentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoCompraDao
@@ -27,7 +28,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "sysgd_cont_database"
         )
-            .addMigrations(MIGRATION_1_2)
+                        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
     }
 

@@ -58,6 +58,49 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE lineas_venta RENAME TO lineas_venta_old")
+        database.execSQL("""
+            CREATE TABLE IF NOT EXISTS `lineas_venta` (
+                `id` TEXT NOT NULL,
+                `ventaId` TEXT NOT NULL,
+                `productoId` TEXT NOT NULL,
+                `nombreProducto` TEXT NOT NULL,
+                `precioUnitario` REAL NOT NULL,
+                `cantidad` REAL NOT NULL,
+                PRIMARY KEY (`id`),
+                FOREIGN KEY (`ventaId`) REFERENCES `ventas`(`id`) ON DELETE CASCADE,
+                FOREIGN KEY (`productoId`) REFERENCES `productos`(`id`) ON DELETE RESTRICT
+            )
+        """.trimIndent())
+        database.execSQL("INSERT INTO lineas_venta SELECT id, ventaId, productoId, nombreProducto, precioUnitario, cantidad FROM lineas_venta_old")
+        database.execSQL("DROP TABLE lineas_venta_old")
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_lineas_venta_ventaId` ON `lineas_venta` (`ventaId`)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_lineas_venta_productoId` ON `lineas_venta` (`productoId`)")
+
+        database.execSQL("ALTER TABLE lineas_compra RENAME TO lineas_compra_old")
+        database.execSQL("""
+            CREATE TABLE IF NOT EXISTS `lineas_compra` (
+                `id` TEXT NOT NULL,
+                `compraId` TEXT NOT NULL,
+                `productoId` TEXT NOT NULL,
+                `nombreProducto` TEXT NOT NULL,
+                `precioUnitario` REAL NOT NULL,
+                `cantidad` REAL NOT NULL,
+                PRIMARY KEY (`id`),
+                FOREIGN KEY (`compraId`) REFERENCES `compras`(`id`) ON DELETE CASCADE,
+                FOREIGN KEY (`productoId`) REFERENCES `productos_compra`(`id`) ON DELETE RESTRICT
+            )
+        """.trimIndent())
+        database.execSQL("INSERT INTO lineas_compra SELECT id, compraId, productoId, nombreProducto, precioUnitario, cantidad FROM lineas_compra_old")
+        database.execSQL("DROP TABLE lineas_compra_old")
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_lineas_compra_compraId` ON `lineas_compra` (`compraId`)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_lineas_compra_productoId` ON `lineas_compra` (`productoId`)")
+    }
+}
+
 @Database(
     entities = [
         Producto::class,
@@ -67,7 +110,7 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         Compra::class,
         LineaCompra::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

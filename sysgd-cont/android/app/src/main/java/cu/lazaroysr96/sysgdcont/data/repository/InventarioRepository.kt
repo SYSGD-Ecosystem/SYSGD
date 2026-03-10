@@ -90,7 +90,7 @@ class InventarioRepository @Inject constructor(
         return dias.size to total
     }
 
-    suspend fun registrarVenta(lineasCarrito: Map<Producto, Int>, fechaTrabajo: String = hoy()) {
+    suspend fun registrarVenta(lineasCarrito: Map<Producto, Double>, fechaTrabajo: String = hoy()) {
         require(lineasCarrito.isNotEmpty())
 
         val ventaId = UUID.randomUUID().toString()
@@ -183,7 +183,7 @@ class InventarioRepository @Inject constructor(
         return dias.size to total
     }
 
-    suspend fun registrarCompra(lineasCarrito: Map<ProductoCompra, Int>, fechaTrabajo: String = hoy()) {
+    suspend fun registrarCompra(lineasCarrito: Map<ProductoCompra, Double>, fechaTrabajo: String = hoy()) {
         require(lineasCarrito.isNotEmpty())
 
         val compraId = UUID.randomUUID().toString()

@@ -186,6 +186,7 @@ private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingVa
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
     val esHoy = uiState.fechaTrabajo == LocalDate.now()
+    var productoSeleccionado by remember { mutableStateOf<Producto?>(null) }
 
     Column(
         modifier = Modifier
@@ -280,11 +281,25 @@ private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingVa
                 items(uiState.productos) { producto ->
                     ProductCard(
                         producto = producto,
-                        onClick = { viewModel.addToCart(producto) }
+                        onClick = { productoSeleccionado = producto }
                     )
                 }
             }
         }
+    }
+
+    productoSeleccionado?.let { producto ->
+        CantidadOperacionDialog(
+            nombreProducto = producto.nombre,
+            unidad = producto.unidad,
+            precioUnitario = producto.precio,
+            titulo = "Cantidad a vender",
+            onDismiss = { productoSeleccionado = null },
+            onConfirm = { cantidad ->
+                viewModel.addToCart(producto, cantidad)
+                productoSeleccionado = null
+            }
+        )
     }
 }
 
@@ -294,7 +309,6 @@ private fun PuntoCompraContent(viewModel: InventarioViewModel, padding: PaddingV
     val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
     val esHoy = uiState.fechaTrabajo == LocalDate.now()
     var productoSeleccionado by remember { mutableStateOf<ProductoCompra?>(null) }
-    var cantidadSeleccionada by remember { mutableStateOf("1") }
 
     Column(
         modifier = Modifier
@@ -389,64 +403,114 @@ private fun PuntoCompraContent(viewModel: InventarioViewModel, padding: PaddingV
                 items(uiState.productosCompra) { producto ->
                     ProductCardCompra(
                         producto = producto,
-                        onClick = {
-                            productoSeleccionado = producto
-                            cantidadSeleccionada = "1"
-                        }
+                        onClick = { productoSeleccionado = producto }
                     )
                 }
             }
         }
     }
 
-    if (productoSeleccionado != null) {
-        val cantidad = cantidadSeleccionada.toIntOrNull() ?: 0
-        AlertDialog(
-            onDismissRequest = { productoSeleccionado = null },
-            title = { Text("Cantidad a comprar") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        productoSeleccionado?.nombre.orEmpty(),
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    OutlinedTextField(
-                        value = cantidadSeleccionada,
-                        onValueChange = { nueva ->
-                            if (nueva.isEmpty() || nueva.all(Char::isDigit)) {
-                                cantidadSeleccionada = nueva
-                            }
-                        },
-                        label = { Text("Cantidad") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Text(
-                        "Precio unitario: %.2f CUP".format(productoSeleccionado?.precio ?: 0.0),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        productoSeleccionado?.let { viewModel.addToCartCompra(it, cantidad) }
-                        productoSeleccionado = null
-                    },
-                    enabled = cantidad > 0
-                ) {
-                    Text("Aceptar")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { productoSeleccionado = null }) {
-                    Text("Cancelar")
-                }
+    productoSeleccionado?.let { producto ->
+        CantidadOperacionDialog(
+            nombreProducto = producto.nombre,
+            unidad = producto.unidad,
+            precioUnitario = producto.precio,
+            titulo = "Cantidad a comprar",
+            onDismiss = { productoSeleccionado = null },
+            onConfirm = { cantidad ->
+                viewModel.addToCartCompra(producto, cantidad)
+                productoSeleccionado = null
             }
         )
     }
+}
+
+@Composable
+private fun CantidadOperacionDialog(
+    nombreProducto: String,
+    unidad: String,
+    precioUnitario: Double,
+    titulo: String,
+    onDismiss: () -> Unit,
+    onConfirm: (Double) -> Unit
+) {
+    val permiteFraccion = permiteFraccion(unidad)
+    val paso = if (permiteFraccion) 0.1 else 1.0
+    var cantidadInput by remember(nombreProducto, unidad) { mutableStateOf(if (permiteFraccion) "1.0" else "1") }
+
+    val cantidad = parseCantidad(cantidadInput, permiteFraccion)
+    val subtotal = (cantidad ?: 0.0) * precioUnitario
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(titulo) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(nombreProducto, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Unidad: $unidad" + if (permiteFraccion) " (permite fracciones)" else " (solo enteros)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    IconButton(onClick = {
+                        val actual = cantidad ?: 0.0
+                        val nuevo = (actual - paso).coerceAtLeast(0.0)
+                        cantidadInput = formatCantidad(nuevo, permiteFraccion)
+                    }) {
+                        Icon(Icons.Default.Remove, contentDescription = "Disminuir")
+                    }
+                    OutlinedTextField(
+                        value = cantidadInput,
+                        onValueChange = { nueva ->
+                            if (nueva.isEmpty() || esEntradaCantidadValida(nueva, permiteFraccion)) {
+                                cantidadInput = nueva.replace(',', '.')
+                            }
+                        },
+                        label = { Text("Cantidad") },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = if (permiteFraccion) KeyboardType.Decimal else KeyboardType.Number
+                        ),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = {
+                        val actual = cantidad ?: 0.0
+                        val nuevo = actual + paso
+                        cantidadInput = formatCantidad(nuevo, permiteFraccion)
+                    }) {
+                        Icon(Icons.Default.Add, contentDescription = "Aumentar")
+                    }
+                }
+                Text(
+                    "Precio unitario: %.2f CUP".format(precioUnitario),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "Total: %.2f CUP".format(subtotal),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(cantidad ?: 0.0) },
+                enabled = (cantidad ?: 0.0) > 0.0
+            ) {
+                Text("Aceptar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1066,7 +1130,7 @@ private fun VentaItem(
 @Composable
 private fun LineaDetalleFactura(
     nombre: String,
-    cantidad: Int,
+    cantidad: Double,
     precioUnitario: Double,
     subtotal: Double
 ) {
@@ -1084,7 +1148,7 @@ private fun LineaDetalleFactura(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "%dx%.2f".format(cantidad, precioUnitario),
+                text = "${formatCantidad(cantidad)}x%.2f".format(precioUnitario),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -1107,6 +1171,37 @@ private fun LineaDetalleFactura(
             )
         }
     }
+}
+
+private fun permiteFraccion(unidad: String): Boolean {
+    val unidadNormalizada = unidad.trim().lowercase(Locale.ROOT)
+    return unidadNormalizada in setOf("kg", "g", "libra", "litro", "ml")
+}
+
+private fun esEntradaCantidadValida(valor: String, permiteFraccion: Boolean): Boolean {
+    val normalizado = valor.replace(',', '.')
+    val regex = if (permiteFraccion) Regex("^\\d*(\\.\\d{0,2})?$") else Regex("^\\d*$")
+    return regex.matches(normalizado)
+}
+
+private fun parseCantidad(valor: String, permiteFraccion: Boolean): Double? {
+    val normalizado = valor.replace(',', '.').trim()
+    if (normalizado.isEmpty()) return null
+    val numero = normalizado.toDoubleOrNull() ?: return null
+    return if (permiteFraccion) numero else if (numero % 1.0 == 0.0) numero else null
+}
+
+private fun formatCantidad(cantidad: Double, permiteFraccion: Boolean): String {
+    return if (!permiteFraccion || cantidad % 1.0 == 0.0) {
+        cantidad.toInt().toString()
+    } else {
+        "%.2f".format(cantidad).trimEnd('0').trimEnd('.')
+    }
+}
+
+private fun formatCantidad(cantidad: Double): String {
+    return if (cantidad % 1.0 == 0.0) cantidad.toInt().toString()
+    else "%.2f".format(cantidad).trimEnd('0').trimEnd('.')
 }
 
 private fun formatFechaHoraOperacion(fecha: String, hora: String): String {
@@ -1499,7 +1594,7 @@ private fun AddProductDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CartSheet(
-    cart: Map<Producto, Int>,
+    cart: Map<Producto, Double>,
     total: Double,
     onAdd: (Producto) -> Unit,
     onRemove: (Producto) -> Unit,
@@ -1544,7 +1639,7 @@ private fun CartSheet(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(producto.nombre, fontWeight = FontWeight.Medium)
                                 Text(
-                                    "%.2f CUP x %d".format(producto.precio, cantidad),
+                                    "%.2f CUP x %s".format(producto.precio, formatCantidad(cantidad, permiteFraccion(producto.unidad))),
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }
@@ -1553,7 +1648,7 @@ private fun CartSheet(
                                     Icon(Icons.Default.Remove, "Quitar")
                                 }
                                 Text(
-                                    cantidad.toString(),
+                                    formatCantidad(cantidad, permiteFraccion(producto.unidad)),
                                     modifier = Modifier.padding(horizontal = 8.dp)
                                 )
                                 IconButton(onClick = { onAdd(producto) }) {
@@ -1880,7 +1975,7 @@ private fun AddProductCompraDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PurchaseCartSheet(
-    cart: Map<ProductoCompra, Int>,
+    cart: Map<ProductoCompra, Double>,
     total: Double,
     onAdd: (ProductoCompra) -> Unit,
     onRemove: (ProductoCompra) -> Unit,
@@ -1924,7 +2019,7 @@ private fun PurchaseCartSheet(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(producto.nombre, fontWeight = FontWeight.Medium)
                                 Text(
-                                    "%.2f CUP x %d".format(producto.precio, cantidad),
+                                    "%.2f CUP x %s".format(producto.precio, formatCantidad(cantidad, permiteFraccion(producto.unidad))),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.secondary
                                 )
@@ -1934,7 +2029,7 @@ private fun PurchaseCartSheet(
                                     Icon(Icons.Default.Remove, "Quitar")
                                 }
                                 Text(
-                                    cantidad.toString(),
+                                    formatCantidad(cantidad, permiteFraccion(producto.unidad)),
                                     modifier = Modifier.padding(horizontal = 8.dp)
                                 )
                                 IconButton(onClick = { onAdd(producto) }) {
