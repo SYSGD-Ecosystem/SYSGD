@@ -160,31 +160,37 @@ h1 {
   border-color: #2563eb;
 }
 
-.content-area {
-  min-width: 0;
+
+.sidebar h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  color: #475569;
+  text-transform: uppercase;
 }
-.tabs {
+
+.bottom-tabs {
+  position: sticky;
+  bottom: 0;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  background: #f8fafc;
 }
 
-.tabs button {
+.bottom-tabs button {
   background: #ffffff;
-  color: #111827;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 8px 10px;
-  cursor: pointer;
+  color: #334155;
+  border: 1px solid #cbd5e1;
 }
 
-.tabs button.active {
-  background: #2563eb;
+.bottom-tabs button.active {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
   color: #ffffff;
-  border-color: #2563eb;
 }
-
+.content-area {
+  min-width: 0;
+}
 .instructions-card summary {
   cursor: pointer;
   font-weight: 700;

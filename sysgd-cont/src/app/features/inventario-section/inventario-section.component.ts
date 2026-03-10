@@ -30,7 +30,7 @@ export class InventarioSectionComponent {
     fecha: string;
   }>();
 
-  inventarioTab: 'venta' | 'compra' | 'historial' = 'venta';
+  @Input({ required: true }) inventarioTab!: 'venta' | 'compra' | 'historial';
 
   productoTipo: 'venta' | 'compra' = 'venta';
   productoNombre = '';

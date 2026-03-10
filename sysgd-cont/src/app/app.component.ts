@@ -82,7 +82,9 @@ export class AppComponent implements OnInit {
     'Isla de la Juventud': ['Isla de la Juventud']
   };
 
-  activeTab: 'generales' | 'movimientos' | 'inventario' | 'tributos' | 'resumen' | 'recursos' = 'generales';
+  activeTab: 'ledger' | 'inventario' | 'recursos' = 'ledger';
+  ledgerTab: 'generales' | 'movimientos' | 'tributos' | 'resumen' = 'generales';
+  inventarioTab: 'venta' | 'compra' | 'historial' = 'venta';
   months = MONTHS;
   threshold = SIMPLIFIED_THRESHOLD_CUP;
   isOnline = navigator.onLine;
@@ -250,7 +252,7 @@ export class AppComponent implements OnInit {
     this.registro = this.ledger.updateGenerales(this.generalesForm.getRawValue());
     this.refreshReport();
     void this.syncToServer();
-    this.activeTab = 'movimientos';
+    this.ledgerTab = 'movimientos';
   }
 
   saveMovement(): void {
@@ -310,7 +312,7 @@ export class AppComponent implements OnInit {
     this.patchTributoForm(raw.mes);
     this.refreshReport();
     void this.syncToServer();
-    this.activeTab = 'resumen';
+    this.ledgerTab = 'resumen';
   }
 
   autoCalculateTributos(): void {

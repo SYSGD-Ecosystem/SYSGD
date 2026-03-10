@@ -8,11 +8,6 @@
     </label>
   </div>
 
-  <div class="inventario-tabs">
-    <button type="button" [class.active]="inventarioTab === 'venta'" (click)="inventarioTab='venta'">Venta</button>
-    <button type="button" [class.active]="inventarioTab === 'compra'" (click)="inventarioTab='compra'">Compra</button>
-    <button type="button" [class.active]="inventarioTab === 'historial'" (click)="inventarioTab='historial'">Historial</button>
-  </div>
 
   <div *ngIf="inventarioTab !== 'historial'" class="form-grid">
     <label>Tipo producto

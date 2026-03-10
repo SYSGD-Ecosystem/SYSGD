@@ -27,16 +27,14 @@
   <ng-container *ngIf="sessionReady && currentUser">
     <section class="app-layout">
       <aside class="sidebar card">
-        <button [class.active]="activeTab === 'generales'" (click)="activeTab = 'generales'">1. Generales</button>
-        <button [class.active]="activeTab === 'movimientos'" (click)="activeTab = 'movimientos'">2-3. Ingresos/Gastos</button>
-        <button [class.active]="activeTab === 'inventario'" (click)="activeTab = 'inventario'">Módulo Compras/Ventas</button>
-        <button [class.active]="activeTab === 'tributos'" (click)="activeTab = 'tributos'">4. Tributos</button>
-        <button [class.active]="activeTab === 'resumen'" (click)="activeTab = 'resumen'">Resumen DJ</button>
+        <h3>Gestión contable</h3>
+        <button [class.active]="activeTab === 'ledger'" (click)="activeTab = 'ledger'">Ingresos y gastos</button>
+        <button [class.active]="activeTab === 'inventario'" (click)="activeTab = 'inventario'">Gestión de compras y ventas</button>
         <button [class.active]="activeTab === 'recursos'" (click)="activeTab = 'recursos'">Recursos</button>
       </aside>
 
       <div class="content-area">
-        <section class="card instructions-card">
+        <section class="card instructions-card" *ngIf="activeTab === 'ledger'">
           <details>
             <summary>Instrucciones de llenado y conservación del registro</summary>
             <p class="subtitle">Objetivo: facilitar el registro de operaciones para la Declaración Jurada. Todos los importes se registran en CUP.</p>
@@ -54,7 +52,7 @@
         </section>
 
         <app-generales-section
-          *ngIf="activeTab === 'generales'"
+          *ngIf="activeTab === 'ledger' && ledgerTab === 'generales'"
           [generalesForm]="generalesForm"
           [provinces]="provinces"
           [fiscalMunicipios]="fiscalMunicipios"
@@ -63,7 +61,7 @@
         />
 
         <app-movimientos-section
-          *ngIf="activeTab === 'movimientos'"
+          *ngIf="activeTab === 'ledger' && ledgerTab === 'movimientos'"
           [movForm]="movForm"
           [months]="months"
           [selectedMonth]="selectedMonth"
@@ -74,19 +72,8 @@
           (saveMovement)="saveMovement()"
         />
 
-        <app-inventario-section
-          *ngIf="activeTab === 'inventario'"
-          [months]="months"
-          [selectedMonth]="selectedMonth"
-          [registro]="registro"
-          [historialOperacionesMes]="historialOperacionesMes"
-          (selectedMonthChange)="selectedMonth = $event"
-          (addProductoInventarioEvent)="addProductoInventario($event)"
-          (registrarOperacionInventarioEvent)="registrarOperacionInventario($event)"
-        />
-
         <app-tributos-section
-          *ngIf="activeTab === 'tributos'"
+          *ngIf="activeTab === 'ledger' && ledgerTab === 'tributos'"
           [tributoForm]="tributoForm"
           [months]="months"
           [tributosRows]="registro.tributos"
@@ -95,7 +82,7 @@
         />
 
         <app-resumen-section
-          *ngIf="activeTab === 'resumen'"
+          *ngIf="activeTab === 'ledger' && ledgerTab === 'resumen'"
           [report]="report"
           [threshold]="threshold"
           [alerts]="alerts"
@@ -107,7 +94,32 @@
           (importJson)="importRegistroJson($event)"
         />
 
+        <app-inventario-section
+          *ngIf="activeTab === 'inventario'"
+          [months]="months"
+          [selectedMonth]="selectedMonth"
+          [registro]="registro"
+          [historialOperacionesMes]="historialOperacionesMes"
+          [inventarioTab]="inventarioTab"
+          (selectedMonthChange)="selectedMonth = $event"
+          (addProductoInventarioEvent)="addProductoInventario($event)"
+          (registrarOperacionInventarioEvent)="registrarOperacionInventario($event)"
+        />
+
         <app-resources-section *ngIf="activeTab === 'recursos'" />
+
+        <div class="bottom-tabs card" *ngIf="activeTab === 'ledger'">
+          <button [class.active]="ledgerTab === 'generales'" (click)="ledgerTab = 'generales'">Generales</button>
+          <button [class.active]="ledgerTab === 'movimientos'" (click)="ledgerTab = 'movimientos'">Ingresos/Gastos</button>
+          <button [class.active]="ledgerTab === 'tributos'" (click)="ledgerTab = 'tributos'">Tributos</button>
+          <button [class.active]="ledgerTab === 'resumen'" (click)="ledgerTab = 'resumen'">Resumen</button>
+        </div>
+
+        <div class="bottom-tabs card" *ngIf="activeTab === 'inventario'">
+          <button [class.active]="inventarioTab === 'venta'" (click)="inventarioTab = 'venta'">Venta</button>
+          <button [class.active]="inventarioTab === 'compra'" (click)="inventarioTab = 'compra'">Compra</button>
+          <button [class.active]="inventarioTab === 'historial'" (click)="inventarioTab = 'historial'">Historial</button>
+        </div>
       </div>
     </section>
   </ng-container>
