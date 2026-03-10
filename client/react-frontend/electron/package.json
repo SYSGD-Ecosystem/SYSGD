@@ -36,7 +36,7 @@
     "target": ["AppImage"],
     "icon": "assets/icon.png",
     "category": "Office",
-    "maintainer": "SYSGD Team <team@unisofthub.com>"
+    "maintainer": "SYSGD <support@ecosysgd.com>"
   }
 }
 }

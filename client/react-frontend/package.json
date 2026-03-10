@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build-electron": "tsc -b && vite build --mode electron",
+    "build-electron": "tsc -b && vite build --mode electron && node scripts/copy-electron-dist.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test:task-list": "node scripts/task-list-utils.test.mjs"

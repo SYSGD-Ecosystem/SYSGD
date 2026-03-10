@@ -57,14 +57,13 @@ export const TitleBar: React.FC = () => {
 			{/* Área de arrastre (título) */}
 			<div className="flex-1 flex items-center px-4 drag-region">
 				<div className="flex items-center gap-3">
-					<div className="w-8 h-8 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-lg flex items-center justify-center">
+					<div className="w-4 h-4 bg-linear-to-br from-cyan-400 to-blue-600 rounded flex items-center justify-center">
 						<span className="text-white font-bold text-sm">S</span>
 					</div>
 					<div>
-						<span className="text-lg font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-							SYSGD
+						<span className="text-base bg-linear-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+							SYSGD Ecosystem
 						</span>
-						<div className="text-xs text-cyan-400">Ecosystem</div>
 					</div>
 				</div>
 			</div>
@@ -72,24 +71,27 @@ export const TitleBar: React.FC = () => {
 			{/* Controles de ventana */}
 			<div className="flex no-drag-region">
 				<button
-					onMouseDown={handleMinimize}
-					className="h-10 w-12 flex items-center justify-center text-gray-400 hover:text-white hover:bg-slate-800/50 transition-all duration-200"
+					type="button"
+					onClick={handleMinimize}
+					className="h-10 w-12 flex items-center justify-center text-gray-400 hover:text-white hover:bg-slate-800/50 transition-all duration-200 no-drag-region cursor-pointer"
 					title="Minimizar"
 				>
 					<Minus className="w-4 h-4" />
 				</button>
 
 				<button
-					onMouseDown={handleMaximize}
-					className="h-10 w-12 flex items-center justify-center text-gray-400 hover:text-white hover:bg-slate-800/50 transition-all duration-200"
+					type="button"
+					onClick={handleMaximize}
+					className="h-10 w-12 flex items-center justify-center text-gray-400 hover:text-white hover:bg-slate-800/50 transition-all duration-200 no-drag-region cursor-pointer"
 					title={isMaximized ? "Restaurar" : "Maximizar"}
 				>
 					<Square className="w-3 h-3" />
 				</button>
 
 				<button
-					onMouseDown={handleClose}
-					className="h-10 w-12 flex items-center justify-center text-gray-400 hover:text-white hover:bg-red-500/80 transition-all duration-200"
+					type="button"
+					onClick={handleClose}
+					className="h-10 w-12 flex items-center justify-center text-gray-400 hover:text-white hover:bg-red-500/80 transition-all duration-200 no-drag-region cursor-pointer"
 					title="Cerrar"
 				>
 					<X className="w-4 h-4" />

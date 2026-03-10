@@ -39,31 +39,35 @@ function createMainWindow() {
         }
     });
 
-    // Cargar tu frontend build
-    //mainWindow.loadURL('http://localhost:5173'); // si usas vite en modo dev
-
-    // Para producción:
-    const indexPath = path.join(__dirname, 'www/index.html');
-    console.log('Loading index.html from:', indexPath);
-    
-    // Verificar si el archivo existe antes de cargarlo
-    const fs = require('fs');
-    if (fs.existsSync(indexPath)) {
-        mainWindow.loadFile(indexPath);
+    // En desarrollo puedes usar un dev server (Vite)
+    const devUrl = process.env.ELECTRON_DEV_URL;
+    if (devUrl) {
+        mainWindow.loadURL(devUrl);
     } else {
-        console.error('Index.html not found at:', indexPath);
-        // Intentar rutas alternativas
-        const alternativePaths = [
-            path.join(__dirname, '../www/index.html'),
-            path.join(process.resourcesPath, 'www/index.html'),
-            path.join(__dirname, 'dist/index.html')
-        ];
+        // Para producción: el build se copia a electron/www
+        const indexPath = path.join(__dirname, 'www/index.html');
+        console.log('Loading index.html from:', indexPath);
         
-        for (const altPath of alternativePaths) {
-            if (fs.existsSync(altPath)) {
-                console.log('Found index.html at alternative path:', altPath);
-                mainWindow.loadFile(altPath);
-                break;
+        // Verificar si el archivo existe antes de cargarlo
+        const fs = require('fs');
+        if (fs.existsSync(indexPath)) {
+            mainWindow.loadFile(indexPath);
+        } else {
+            console.error('Index.html not found at:', indexPath);
+            // Intentar rutas alternativas
+            const alternativePaths = [
+                path.join(__dirname, '../dist/index.html'),
+                path.join(__dirname, '../www/index.html'),
+                path.join(process.resourcesPath, 'www/index.html'),
+                path.join(__dirname, 'dist/index.html')
+            ];
+            
+            for (const altPath of alternativePaths) {
+                if (fs.existsSync(altPath)) {
+                    console.log('Found index.html at alternative path:', altPath);
+                    mainWindow.loadFile(altPath);
+                    break;
+                }
             }
         }
     }

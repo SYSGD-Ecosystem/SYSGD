@@ -32,7 +32,11 @@ Para iniciar la aplicación en modo de desarrollo:
 npm run dev
 ```
 
-Este comando iniciará la aplicación Electron y se conectará al servidor de desarrollo del frontend (generalmente ejecutándose en `http://localhost:5173`).
+Este comando iniciará la aplicación Electron. Si deseas conectar a Vite, exporta la URL:
+
+```bash
+ELECTRON_DEV_URL=http://localhost:5173 npm run dev
+```
 
 ## Producción
 
@@ -57,18 +61,14 @@ Este comando generará los ejecutables para el sistema operativo actual:
 
 ### Configuración de Producción
 
-Para desplegar en producción, descomenta la línea 17 en `main.js`:
+Para producción, el build de Vite se copia a `electron/www` usando el script (desde `client/react-frontend`):
 
-```javascript
-// Para producción:
-win.loadFile(path.join(__dirname, '../client/dist/index.html'));
+```bash
+npm run build-electron
 ```
 
-Y comenta la línea de desarrollo:
-
-```javascript
-// win.loadURL('http://localhost:5173'); // si usas vite en modo dev
-```
+Esto genera `client/react-frontend/dist` y lo copia a `client/react-frontend/electron/www`,
+que es la ruta que `main.js` carga por defecto.
 
 ## Scripts Disponibles
 
