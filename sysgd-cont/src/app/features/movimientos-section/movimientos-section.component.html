@@ -28,10 +28,20 @@
         <h4>Ingresos</h4>
         <div class="table-wrapper">
           <table class="mov-table">
-            <thead><tr><th>Día</th><th>Ingreso</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Día</th>
+                <th>Ingreso</th>
+              </tr>
+            </thead>
             <tbody>
-              <tr *ngFor="let row of registro.ingresos[selectedMonth]; trackBy: trackByDayAmount"><td>{{ row.dia }}</td><td>{{ row.importe | currency:'CUP':'symbol':'1.2-2' }}</td></tr>
-              <tr *ngIf="registro.ingresos[selectedMonth].length === 0"><td colspan="2" class="empty-cell">Sin ingresos en este mes.</td></tr>
+              <tr *ngFor="let row of registro.ingresos[selectedMonth]; trackBy: trackByDayAmount">
+                <td>{{ row.dia }}</td>
+                <td>{{ row.importe | currency:'CUP':'symbol':'1.2-2' }}</td>
+              </tr>
+              <tr *ngIf="registro.ingresos[selectedMonth].length === 0">
+                <td colspan="2" class="empty-cell">Sin ingresos en este mes.</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -41,10 +51,20 @@
         <h4>Gastos</h4>
         <div class="table-wrapper">
           <table class="mov-table">
-            <thead><tr><th>Día</th><th>Gasto</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Día</th>
+                <th>Gasto</th>
+              </tr>
+            </thead>
             <tbody>
-              <tr *ngFor="let row of registro.gastos[selectedMonth]; trackBy: trackByDayAmount"><td>{{ row.dia }}</td><td>{{ row.importe | currency:'CUP':'symbol':'1.2-2' }}</td></tr>
-              <tr *ngIf="registro.gastos[selectedMonth].length === 0"><td colspan="2" class="empty-cell">Sin gastos en este mes.</td></tr>
+              <tr *ngFor="let row of registro.gastos[selectedMonth]; trackBy: trackByDayAmount">
+                <td>{{ row.dia }}</td>
+                <td>{{ row.importe | currency:'CUP':'symbol':'1.2-2' }}</td>
+              </tr>
+              <tr *ngIf="registro.gastos[selectedMonth].length === 0">
+                <td colspan="2" class="empty-cell">Sin gastos en este mes.</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -53,67 +73,6 @@
     <div class="movement-totals">
       <span>Total ingresos: <strong>{{ selectedMonthIngresosTotal | currency:'CUP':'symbol':'1.2-2' }}</strong></span>
       <span>Total gastos: <strong>{{ selectedMonthGastosTotal | currency:'CUP':'symbol':'1.2-2' }}</strong></span>
-    </div>
-  </div>
-</section>
-
-<section class="card">
-  <h2>Compras / Ventas (Inventario)</h2>
-  <div class="form-grid">
-    <label>Tipo producto
-      <select [(ngModel)]="productoTipo" [ngModelOptions]="{standalone: true}">
-        <option value="venta">Venta</option>
-        <option value="compra">Compra</option>
-      </select>
-    </label>
-    <label>Nombre <input [(ngModel)]="productoNombre" [ngModelOptions]="{standalone: true}" /></label>
-    <label>Precio CUP <input type="number" min="0.01" step="0.01" [(ngModel)]="productoPrecio" [ngModelOptions]="{standalone: true}" /></label>
-    <label>Unidad <input [(ngModel)]="productoUnidad" [ngModelOptions]="{standalone: true}" /></label>
-    <div class="actions full">
-      <button type="button" (click)="addProductoInventario()">Agregar producto</button>
-    </div>
-  </div>
-
-  <div class="form-grid" style="margin-top:12px;">
-    <label>Tipo operación
-      <select [(ngModel)]="operacionTipo" [ngModelOptions]="{standalone: true}" (change)="operacionProductoId=''">
-        <option value="venta">Venta</option>
-        <option value="compra">Compra</option>
-      </select>
-    </label>
-    <label>Producto
-      <select [(ngModel)]="operacionProductoId" [ngModelOptions]="{standalone: true}">
-        <option value="">Selecciona...</option>
-        <option *ngFor="let p of productosOperacion" [value]="p.id">{{ p.nombre }} ({{ p.precio | number:'1.2-2' }} / {{ p.unidad }})</option>
-      </select>
-    </label>
-    <label>Cantidad <input type="number" min="0.01" step="0.01" [(ngModel)]="operacionCantidad" [ngModelOptions]="{standalone: true}" /></label>
-    <label>Fecha <input type="date" [(ngModel)]="operacionFecha" [ngModelOptions]="{standalone: true}" /></label>
-    <div class="actions full">
-      <button type="button" (click)="registrarOperacionInventario()">Registrar operación</button>
-    </div>
-  </div>
-
-  <div class="table-section">
-    <h3>Historial {{ selectedMonth }}</h3>
-    <div class="table-wrapper">
-      <table class="mov-table">
-        <thead>
-          <tr><th>Fecha</th><th>Tipo</th><th>Producto</th><th>Cantidad</th><th>Total</th></tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let op of historialOperacionesMes">
-            <td>{{ op.fecha }}</td>
-            <td>{{ op.tipo }}</td>
-            <td>{{ op.nombreProducto }}</td>
-            <td>{{ op.cantidad | number:'1.0-2' }} {{ op.unidad }}</td>
-            <td>{{ op.total | currency:'CUP':'symbol':'1.2-2' }}</td>
-          </tr>
-          <tr *ngIf="historialOperacionesMes.length === 0">
-            <td colspan="5" class="empty-cell">Sin operaciones en este mes.</td>
-          </tr>
-        </tbody>
-      </table>
     </div>
   </div>
 </section>

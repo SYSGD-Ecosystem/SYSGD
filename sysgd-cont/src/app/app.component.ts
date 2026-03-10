@@ -16,6 +16,7 @@ import { GeneralesSectionComponent } from './features/generales-section/generale
 import { MovimientosSectionComponent } from './features/movimientos-section/movimientos-section.component';
 import { ResourcesSectionComponent } from './features/resources-section/resources-section.component';
 import { ResumenSectionComponent } from './features/resumen-section/resumen-section.component';
+import { InventarioSectionComponent } from './features/inventario-section/inventario-section.component';
 import { TributosSectionComponent } from './features/tributos-section/tributos-section.component';
 import { LedgerService } from './services/ledger.service';
 import { AuthService, type AuthUser } from './services/auth.service';
@@ -31,7 +32,8 @@ import { RegistroSyncService } from './services/registro-sync.service';
     MovimientosSectionComponent,
     ResourcesSectionComponent,
     TributosSectionComponent,
-    ResumenSectionComponent
+    ResumenSectionComponent,
+    InventarioSectionComponent
   ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './app.component.html',
@@ -80,7 +82,7 @@ export class AppComponent implements OnInit {
     'Isla de la Juventud': ['Isla de la Juventud']
   };
 
-  activeTab: 'generales' | 'movimientos' | 'tributos' | 'resumen' | 'recursos' = 'generales';
+  activeTab: 'generales' | 'movimientos' | 'inventario' | 'tributos' | 'resumen' | 'recursos' = 'generales';
   months = MONTHS;
   threshold = SIMPLIFIED_THRESHOLD_CUP;
   isOnline = navigator.onLine;
