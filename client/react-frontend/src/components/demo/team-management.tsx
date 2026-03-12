@@ -1,4 +1,4 @@
-"use client";
+
 
 import { Calendar, Mail, MapPin, Phone, Plus } from "lucide-react";
 import { useState } from "react";

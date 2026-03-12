@@ -13,7 +13,7 @@ const AccountingWorkspace: FC = () => {
 	};
 
 	return (
-		<div className="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
+		<div className="h-full w-full bg-gray-100 dark:bg-gray-900 flex flex-col">
 			<AccountingToolBar
 				onMobileSidebarToggle={() =>
 					setIsMobileSidebarOpen(!isMobileSidebarOpen)

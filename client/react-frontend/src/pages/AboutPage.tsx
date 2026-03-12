@@ -22,7 +22,7 @@ const AboutPage: FC = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
+    <div className="min-h-screen h-full bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-5xl mx-auto">
         {/* Hero Section */}
         <div className="text-center mb-12">

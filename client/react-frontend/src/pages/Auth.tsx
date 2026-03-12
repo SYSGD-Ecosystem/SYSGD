@@ -1,7 +1,12 @@
-/** biome-ignore-all lint/a11y/noSvgWithoutTitle: <explanation> */
-/** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
-
-import { AlertCircle, CheckCircle, Lock, Mail, User } from "lucide-react";
+import {
+	AlertCircle,
+	CheckCircle,
+	Eye,
+	EyeOff,
+	Lock,
+	Mail,
+	User,
+} from "lucide-react";
 import { type FC, type FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Loading from "@/components/Loading";
@@ -19,6 +24,7 @@ const Auth: FC = () => {
 	const SUPPORT_WHATSAPP = "+5351158544";
 	const [isLoginPage, setIsLoginPage] = useState(true);
 	const [password, setPassword] = useState("");
+	const [showPassword, setShowPassword] = useState(false);
 	const [repetPassword, setRepetPassword] = useState("");
 	const [name, setName] = useState("");
 	const [user, setUser] = useState("");
@@ -105,7 +111,7 @@ const Auth: FC = () => {
 					);
 				});
 		}
-	}, [router]);
+	}, [checkUser, router, serverUrl]);
 
 	useEffect(() => {
 		if (status === "offline") {
@@ -183,61 +189,6 @@ const Auth: FC = () => {
 			setLoginStep("password");
 		}
 	}, [checkData]);
-
-	/* =======================
-	   HANDLERS
-	======================= */
-
-	// const handleRegisterSubmit = (e: FormEvent) => {
-	// 	e.preventDefault();
-	// 	if (password !== repetPassword) {
-	// 		alert("Las contraseñas no coinciden");
-	// 		return;
-	// 	}
-	// 	register({ name, email: user, password });
-	// };
-
-	// const handleLoginSubmit = async (e: FormEvent) => {
-	// 	e.preventDefault();
-
-	// 	if (loginStep === "email") {
-	// 		await checkUser(user);
-	// 		return;
-	// 	}
-
-	// 	if (loginStep === "password") {
-	// 		login({ email: user, password });
-	// 		return;
-	// 	}
-
-	// 	if (loginStep === "complete" && invitedUserId) {
-	// 		if (!name || !password || !confirmPassword) {
-	// 			alert("Por favor completa todos los campos");
-	// 			return;
-	// 		}
-	// 		if (password !== confirmPassword) {
-	// 			alert("Las contraseñas no coinciden");
-	// 			return;
-	// 		}
-	// 		try {
-	// 			const res = await fetch(`${serverUrl}/api/auth/complete-registration`, {
-	// 				method: "POST",
-	// 				headers: { "Content-Type": "application/json" },
-	// 				credentials: "include",
-	// 				body: JSON.stringify({
-	// 					userId: invitedUserId,
-	// 					name,
-	// 					password,
-	// 					email: user,
-	// 					confirmPassword,
-	// 				}),
-	// 			});
-	// 			if (res.ok) router("/dashboard");
-	// 		} catch {
-	// 			// feedback visual opcional
-	// 		}
-	// 	}
-	// };
 
 	// Actualiza el handleLoginSubmit para manejar invitaciones
 	const handleLoginSubmit = async (e: FormEvent) => {
@@ -327,7 +278,6 @@ const Auth: FC = () => {
 		}
 
 		await register({ name, email: user, password });
-
 	};
 
 	const handleForgotPassword = async () => {
@@ -341,11 +291,14 @@ const Auth: FC = () => {
 		setForgotError("");
 		setForgotMessage("");
 		try {
-			const res = await fetch(`${serverUrl}/api/verification/request-password-reset`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ email: user.trim() }),
-			});
+			const res = await fetch(
+				`${serverUrl}/api/verification/request-password-reset`,
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ email: user.trim() }),
+				},
+			);
 			const data = await res.json();
 			if (!res.ok) throw data;
 
@@ -358,7 +311,9 @@ const Auth: FC = () => {
 			const support = err?.support;
 			if (support?.whatsapp) {
 				setForgotError(
-					`${backendError} Soporte: ${support.whatsapp} (${support.responseTime || "72h hábiles"}).`,
+					`${backendError} Soporte: ${support.whatsapp} (${
+						support.responseTime || "72h hábiles"
+					}).`,
 				);
 			} else {
 				setForgotError(backendError);
@@ -366,6 +321,10 @@ const Auth: FC = () => {
 		} finally {
 			setForgotLoading(false);
 		}
+	};
+
+	const handleShowPassword = () => {
+		setShowPassword(!showPassword);
 	};
 
 	// Agrega un banner informativo cuando hay invitación
@@ -386,7 +345,6 @@ const Auth: FC = () => {
 		return (
 			<div className="flex h-screen flex-col items-center justify-center bg-slate-900">
 				<Loading />
-				<p className="text-white mt-4">Verificando sesión…</p>
 			</div>
 		);
 	}
@@ -425,13 +383,8 @@ const Auth: FC = () => {
 		}
 	};
 
-	/* ⚠️
-	   A partir de aquí tu JSX permanece igual
-	   (login / register / Google button, etc.)
-	   No lo toqué porque no era el problema.
-	*/
 	return (
-		<div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
+		<div className="flex items-center justify-center min-h-screen h-full bg-linear-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
 			<div className="fixed inset-0 z-0">
 				<div className="absolute inset-0 bg-black opacity-50" />
 				<div className="nebula" />
@@ -449,10 +402,10 @@ const Auth: FC = () => {
 								{loginStep === "email"
 									? "1"
 									: loginStep === "password"
-										? "2"
-										: loginStep === "two-factor"
-											? "3"
-											: "2"}{" "}
+									? "2"
+									: loginStep === "two-factor"
+									? "3"
+									: "2"}{" "}
 								de {twoFactorRequired || loginStep === "two-factor" ? "3" : "2"}
 							</div>
 							{loginStep !== "email" && (
@@ -469,6 +422,7 @@ const Auth: FC = () => {
 									}}
 									className="text-white/60 hover:text-white text-sm flex items-center gap-1 transition-colors"
 								>
+									{/* biome-ignore lint/a11y/noSvgWithoutTitle: <explanation> */}
 									<svg
 										className="w-4 h-4"
 										fill="none"
@@ -522,12 +476,23 @@ const Auth: FC = () => {
 									<Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" />
 									<Input
 										id="password"
-										type="password"
+										type={showPassword ? "text" : "password"}
 										placeholder="Tu contraseña"
 										value={password}
 										onChange={(e) => setPassword(e.target.value)}
-										className="w-full pl-10 bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-white/40"
+										className="w-full px-10 bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-white/40"
 									/>
+									<button
+										type="button"
+										onClick={handleShowPassword}
+										className="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer"
+									>
+										{showPassword ? (
+											<EyeOff className="w-4 h-4 text-white/50" />
+										) : (
+											<Eye className="w-4 h-4 text-white/50" />
+										)}
+									</button>
 								</div>
 								<div className="text-right">
 									<button
@@ -544,7 +509,10 @@ const Auth: FC = () => {
 
 						{loginStep === "two-factor" && (
 							<div className="space-y-2">
-								<Label htmlFor="two-factor-code" className="text-white/80 text-sm">
+								<Label
+									htmlFor="two-factor-code"
+									className="text-white/80 text-sm"
+								>
 									Código de verificación
 								</Label>
 								<div className="relative">
@@ -557,7 +525,9 @@ const Auth: FC = () => {
 										placeholder="000000"
 										value={twoFactorCode}
 										onChange={(e) =>
-											setTwoFactorCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+											setTwoFactorCode(
+												e.target.value.replace(/\D/g, "").slice(0, 6),
+											)
 										}
 										className="w-full pl-10 bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-white/40"
 									/>
@@ -578,7 +548,7 @@ const Auth: FC = () => {
 							<>
 								{invitationData && (
 									<div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-4 flex items-start gap-3 mb-4">
-										<AlertCircle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+										<AlertCircle className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
 										<div>
 											<p className="text-sm text-blue-100 font-medium mb-1">
 												Invitación de proyecto
@@ -674,7 +644,7 @@ const Auth: FC = () => {
 								<Button
 									type="button"
 									onClick={() => setIsLoginPage(false)}
-									className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 transition-all duration-200 shadow-lg hover:shadow-xl"
+									className="w-full bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 transition-all duration-200 shadow-lg hover:shadow-xl"
 								>
 									Crear cuenta nueva
 								</Button>
@@ -700,7 +670,7 @@ const Auth: FC = () => {
 									(loginStep === "complete" &&
 										(!name || !password || !confirmPassword || loginLoading))
 								}
-								className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 transition-all duration-200 shadow-lg hover:shadow-xl"
+								className="w-full bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 transition-all duration-200 shadow-lg hover:shadow-xl"
 							>
 								{checkingUser || loginLoading ? (
 									<>
@@ -745,7 +715,9 @@ const Auth: FC = () => {
 						)}
 						{forgotError && (
 							<div className="bg-amber-500/20 border border-amber-500/30 rounded-lg p-3">
-								<p className="text-amber-200 text-sm text-center">{forgotError}</p>
+								<p className="text-amber-200 text-sm text-center">
+									{forgotError}
+								</p>
 								<p className="text-amber-200/80 text-xs text-center mt-2">
 									Soporte WhatsApp:{" "}
 									<a
@@ -902,7 +874,7 @@ const Auth: FC = () => {
 							disabled={
 								loading || password === "" || user === "" || name === ""
 							}
-							className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 transition-all duration-200 shadow-lg hover:shadow-xl"
+							className="w-full bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 transition-all duration-200 shadow-lg hover:shadow-xl"
 						>
 							{loading ? (
 								<>
@@ -987,6 +959,7 @@ const ButtonGoogle: FC = () => {
 			}}
 			className="w-full px-4 py-3 bg-white/10 backdrop-blur border border-white/20 hover:bg-white/20 rounded-lg flex items-center justify-center text-white font-medium cursor-pointer transition-all duration-200"
 		>
+			{/* biome-ignore lint/a11y/noSvgWithoutTitle: <explanation> */}
 			<svg className="mr-3 h-5 w-5" viewBox="0 0 24 24">
 				<path
 					fill="currentColor"

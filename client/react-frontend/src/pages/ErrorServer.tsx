@@ -141,7 +141,7 @@ const ErrorServer: React.FC<ErrorServerProps> = ({
 	};
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+		<div className="min-h-screen h-full bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
 			{/* Background Pattern */}
 			{/* Background Pattern - Puntos con Tailwind */}
 			<div

@@ -1,4 +1,4 @@
-"use client";
+
 
 import type { Employee } from "../types/organigrama";
 import { EmployeeCard } from "./employee-card";

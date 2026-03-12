@@ -16,7 +16,6 @@ import {
 	Palette,
 	Shield,
 	Trash2,
-	Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -40,19 +39,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useTheme } from "@/contexts/theme-context";
 import { useUsers } from "@/hooks/connection/useUsers";
-import { useWeb3 } from "@/components/billing/hooks/useWeb3";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import SecuritySettingsSection from "@/components/SecuritySettingsSection";
 
 type Theme = "classic" | "red" | "green" | "fire" | "purple" | "pink";
-
-interface NetworkInfo {
-	chainId: number;
-	name: string;
-	testUsdtAddress: string;
-	paymentGatewayAddress: string;
-}
 
 const themes = [
 	{ id: "classic", name: "Clásico", colors: ["#3b82f6", "#1e40af"] },
@@ -320,34 +311,11 @@ const SettingsPage: FC = () => {
 	const navigate = useNavigate();
 	const [activeCategory, setActiveCategory] = useState("appearance");
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-	const [networkInfo, setNetworkInfo] = useState<NetworkInfo | null>(null);
+
 
 	const { theme, setTheme, isDark, setIsDark } = useTheme();
 	const { toggleUserPublic } = useUsers();
-	const usdtAddress = networkInfo?.testUsdtAddress ?? "";
-	const paymentGatewayAddress = networkInfo?.paymentGatewayAddress ?? "";
-
-	const { address, isConnected, usdtBalance, connect, disconnect, chainId } =
-		useWeb3(usdtAddress, paymentGatewayAddress);
-
-	useEffect(() => {
-		const loadNetworkInfo = async () => {
-			try {
-				const response = await api.get<NetworkInfo>("/api/crypto-payments/network");
-				setNetworkInfo(response.data);
-			} catch {
-				toast.error("No se pudo cargar la configuración de red");
-			}
-		};
-		void loadNetworkInfo();
-	}, []);
-
-	const networkName =
-		chainId === 11155111
-			? "Sepolia"
-			: chainId === 1
-				? "Ethereum"
-				: "Desconocida";
+	
 
 	const categories = [
 		{ id: "appearance", label: "Apariencia", icon: Palette },
@@ -409,7 +377,6 @@ const SettingsPage: FC = () => {
 		</div>
 	);
 
-	// ... (las demás funciones render: notifications, privacy, general → copiar tal cual del modal)
 
 	const renderNotificationSettings = () => (
 		<div className="space-y-6">
@@ -651,9 +618,9 @@ const SettingsPage: FC = () => {
 	};
 
 	return (
-		<div className="flex h-screen bg-background">
+		<div className="flex h-full w-full bg-background">
 			{/* Topbar */}
-			<header className="fixed top-0 left-0 right-0 h-16 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
+			<header className="fixed top-0 left-0 right-0 h-16 border-b border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 z-50">
 				<div className="flex items-center justify-between px-4 h-full">
 					<div className="flex items-center gap-2 md:gap-4">
 						<Button
@@ -698,38 +665,7 @@ const SettingsPage: FC = () => {
 						</Sheet>
 						<h1 className="text-lg font-semibold">Configuración</h1>
 					</div>
-
-					{/* Wallet status (igual que en Billing) */}
-					<div className="flex items-center gap-3">
-						{!isConnected ? (
-							<Button size="sm" onClick={connect}>
-								<Wallet className="w-4 h-4 mr-2" />
-								Conectar Wallet
-							</Button>
-						) : (
-							<>
-								<div className="hidden sm:block text-right">
-									<div className="text-xs text-muted-foreground">
-										Balance USDT
-									</div>
-									<div className="font-medium">${usdtBalance}</div>
-								</div>
-								<div className="text-right">
-									<Badge variant="secondary" className="text-xs">
-										{networkName}
-									</Badge>
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={disconnect}
-										className="block mt-1"
-									>
-										{address?.slice(0, 6)}...{address?.slice(-4)}
-									</Button>
-								</div>
-							</>
-						)}
-					</div>
+		
 				</div>
 			</header>
 

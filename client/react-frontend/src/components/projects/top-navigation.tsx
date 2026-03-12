@@ -1,4 +1,4 @@
-"use client";
+
 //import useTheme from "@/hooks/useTheme";
 import { ChevronRight, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";

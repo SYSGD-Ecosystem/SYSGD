@@ -5,13 +5,8 @@ import { TitleBar } from "./TitleBar";
 // Detección robusta del entorno
 const isElectron = () => {
 	return (
-		!!(
-			window &&
-			window.process &&
-			window.process.versions &&
-			window.process.versions.electron
-		) ||
-		!!(window && window.electronAPI) ||
+		!!window?.process?.versions?.electron ||
+		!!window?.electronAPI ||
 		navigator.userAgent.toLowerCase().indexOf("electron") > -1
 	);
 };
@@ -31,14 +26,14 @@ export const ElectronWrapper: React.FC<ElectronWrapperProps> = ({
 
 	// Si no estamos en Electron, renderizar children sin wrapper
 	if (!isElectronEnv) {
-		return <>{children}</>;
+		return <div className="h-screen relative">{children}</div>;
 	}
 
 	// Si estamos en Electron, renderizar con barra de título
 	return (
-		<div className="min-h-screen flex flex-col">
+		<div className="h-screen flex flex-col overflow-hidden">
 			<TitleBar />
-			<div className="flex-1">{children}</div>
+			<div className="flex-1 w-full overflow-y-auto relative">{children}</div>
 		</div>
 	);
 };

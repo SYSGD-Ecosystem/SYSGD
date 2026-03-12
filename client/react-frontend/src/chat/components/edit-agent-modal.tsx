@@ -1,4 +1,4 @@
-"use client";
+
 
 import { Loader2 } from "lucide-react";
 import { type FC, useEffect, useState } from "react";

@@ -51,7 +51,7 @@ const Dashboard: FC = () => {
 
 	// Si todo está bien, muestra la app
 	return (
-		<div className="flex h-screen w-full flex-col">
+		<div className="flex h-full w-full flex-col">
 			<HeadBar />
 			<div className="size-full flex overflow-auto">
 				<NavBar />

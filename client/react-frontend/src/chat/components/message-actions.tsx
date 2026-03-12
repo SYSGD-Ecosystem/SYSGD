@@ -1,4 +1,4 @@
-"use client";
+
 
 import { Copy, Edit, Reply, Trash2 } from "lucide-react";
 import React from "react";

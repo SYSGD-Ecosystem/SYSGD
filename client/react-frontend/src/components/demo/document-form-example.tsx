@@ -1,4 +1,4 @@
-"use client";
+
 
 import { FileText, Save } from "lucide-react";
 import type React from "react";

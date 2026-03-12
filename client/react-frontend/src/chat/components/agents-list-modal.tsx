@@ -1,4 +1,4 @@
-"use client";
+
 
 import { Bot, Loader2, Pause, Pencil, Play, Search, Trash2, User } from "lucide-react";
 import { type FC, useEffect, useState } from "react";

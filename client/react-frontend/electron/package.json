@@ -6,7 +6,8 @@
   "homepage": "https://github.com/unisofthub/SYSGD",
   "scripts": {
     "dev": "electron main.js",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win"
   },
   "keywords": ["electron", "desktop", "documents", "management", "sysgd"],
   "author": {
@@ -19,24 +20,32 @@
     "electron-builder": "^26.0.12"
   },
   "build": {
-  "appId": "com.unisofthub.sysgd",
-  "productName": "SYSGD",
-  "directories": {
-    "output": "dist"
-  },
-  "files": [
-    "main.js",
-    "preload.js",
-    "splash.html",
-    "aythen-splash.html",
-    "assets/**/*",
-    "www/**/*"
-  ],
-  "linux": {
-    "target": ["AppImage"],
-    "icon": "assets/icon.png",
-    "category": "Office",
-    "maintainer": "SYSGD <support@ecosysgd.com>"
+    "appId": "com.unisofthub.sysgd",
+    "productName": "SYSGD",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "splash.html",
+      "assets/**/*",
+      "www/**/*"
+    ],
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "assets/icon.png",
+      "category": "Office",
+      "maintainer": "SYSGD <support@ecosysgd.com>"
+    },
+    "win": {
+      "target": ["nsis"],
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "SYSGD"
+    }
   }
-}
 }

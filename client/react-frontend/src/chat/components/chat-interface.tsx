@@ -1,4 +1,4 @@
-"use client";
+
 
 import { Menu, MessageSquare, Settings, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -76,7 +76,7 @@ export function ChatInterface() {
 	}, [selectedChat]);
 
 	return (
-		<div className="flex h-screen bg-background overflow-hidden">
+		<div className="flex h-full bg-background overflow-hidden">
 			{sidebarOpen && (
 				<button
 					type="button"
@@ -187,7 +187,7 @@ export function ChatInterface() {
 							Miembros de la conversación
 						</DialogTitle>
 					</DialogHeader>
-					<ScrollArea className="max-h-[400px] mt-4">
+					<ScrollArea className="max-h-100 mt-4">
 						<div className="space-y-2">
 							{members.map((member) => (
 								<div

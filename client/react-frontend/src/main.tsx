@@ -17,7 +17,6 @@ import Dashboard from "./pages/Dashboard.tsx";
 import DevPreview from "./pages/DevPreview.tsx";
 import ErrorServer from "./pages/ErrorServer.tsx";
 import Help from "./pages/Help.tsx";
-import Login from "./pages/Login.tsx";
 import OrganigramaPage from "./pages/Organigrama.tsx";
 import Print from "./pages/Print.tsx";
 import PrivacyPolicy from "./pages/Privacy.tsx";
@@ -43,7 +42,6 @@ createRoot(document.getElementById("root")!).render(
 					<Routes>
 						<Route path="/" element={<App />} />
 						<Route path="/login" element={<Auth />} />
-						<Route path="/login-old" element={<Login />} />
 						<Route path="/print" element={<Print />} />
 						<Route path="/dev" element={<DevPreview />} />
 						<Route path="/error" element={<ErrorServer />} />

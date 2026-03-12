@@ -42,7 +42,7 @@ export default function OrganigramaPage() {
 	};
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-4">
+		<div className="min-h-screen h-full bg-linear-to-br from-background via-background to-muted/20 p-4">
 			<div className="max-w-7xl mx-auto">
 				{/* Header */}
 				<Card className="mb-8 shadow-lg">

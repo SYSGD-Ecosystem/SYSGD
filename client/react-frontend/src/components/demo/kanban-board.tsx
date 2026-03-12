@@ -1,4 +1,4 @@
-"use client";
+
 
 import { Calendar, GripVertical, Plus, User } from "lucide-react";
 import type React from "react";

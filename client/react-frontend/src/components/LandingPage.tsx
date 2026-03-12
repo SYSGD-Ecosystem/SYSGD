@@ -235,7 +235,7 @@ export default function LandingPage() {
 	];
 
 	return (
-		<div className="min-h-screen bg-slate-900 text-white">
+		<div className="min-h-screen over bg-slate-900 text-white">
 			<div className="fixed inset-0 z-0">
 				<div className="nebula" />
 			</div>
@@ -376,8 +376,8 @@ export default function LandingPage() {
 						<strong className="text-cyan-400">
 							ecosistema tecnológico completo
 						</strong>{" "}
-						que evoluciona con tu empresa. Desde gestión documental hasta
-						proyectos, e-commerce y análisis predictivo.
+						que evoluciona con tu empresa. Desde gestión documental, gestión de
+						proyectos, hasta gestión contable.
 						<br />
 						<span className="text-cyan-300">
 							Una plataforma. Infinitas posibilidades.
@@ -405,8 +405,8 @@ export default function LandingPage() {
 						</Button>
 					</div>
 					<p className="text-sm text-gray-400">
-						✨ Incluye SYSGD-DOCS • SYSGD-PROJECTS en desarrollo • E-Commerce
-						próximamente
+						✨ Incluye Gestión Documental • Gestión de proyectos • Chat •
+						Gestión Contable en desarrollo
 					</p>
 				</div>
 			</section>
@@ -528,8 +528,8 @@ export default function LandingPage() {
 											sponsor.tier === "Platinum"
 												? "bg-linear-to-r from-gray-300/20 to-gray-100/20 border-gray-300/30 text-gray-200"
 												: sponsor.tier === "Gold"
-													? "bg-linear-to-r from-yellow-500/20 to-yellow-400/20 border-yellow-400/30 text-yellow-300"
-													: "bg-linear-to-r from-gray-500/20 to-gray-400/20 border-gray-400/30 text-gray-300"
+												? "bg-linear-to-r from-yellow-500/20 to-yellow-400/20 border-yellow-400/30 text-yellow-300"
+												: "bg-linear-to-r from-gray-500/20 to-gray-400/20 border-gray-400/30 text-gray-300"
 										}`}
 									>
 										{sponsor.tier}

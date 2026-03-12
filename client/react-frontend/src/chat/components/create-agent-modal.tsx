@@ -1,5 +1,5 @@
 /** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
-"use client";
+
 
 import { Loader2 } from "lucide-react";
 import { type FC, useState } from "react";

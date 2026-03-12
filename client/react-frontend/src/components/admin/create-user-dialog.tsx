@@ -1,5 +1,5 @@
 /** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
-"use client";
+
 
 import type React from "react";
 

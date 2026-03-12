@@ -1,4 +1,4 @@
-"use client";
+
 
 import { Bot, Menu, MessageSquarePlus, Plus, Settings, X } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -66,7 +66,7 @@ export function AgentsChatInterface() {
 	};
 
 	return (
-		<div className="flex h-screen bg-background overflow-hidden">
+		<div className="flex h-full bg-background overflow-hidden">
 			{sidebarOpen && (
 				<button
 					type="button"

@@ -1,7 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
-"use client";
-
 import {
 	Bot,
 	Check,
@@ -28,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePublicUsers } from "@/hooks/connection/usePublicUsers";
 import type { PublicUser } from "@/types/user";
 import { useChat } from "../hooks/useChat";
+import useCurrentUser from "@/hooks/connection/useCurrentUser";
 
 interface NewChatModalProps {
 	open: boolean;
@@ -74,21 +72,13 @@ export function NewChatModal({
 		setPublicUsers(users ?? []);
 	}, [users]);
 
-	const serverUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
-
-	// helper: obtener usuario actual desde backend
-	// TODO: implementar el hook useCurrenUser aqui
+	const { user } = useCurrentUser();
 	const fetchCurrentUser = async (): Promise<{
 		id: string;
 		email: string;
 	} | null> => {
 		try {
-			const res = await fetch(`${serverUrl}/api/auth/me`, {
-				credentials: "include",
-			});
-			if (!res.ok) return null;
-			const data = await res.json();
-			return data;
+			return user;
 		} catch {
 			return null;
 		}
@@ -105,7 +95,9 @@ export function NewChatModal({
 	// Seleccionar contacto público -> crear/conseguir conversación privada con ese user
 	const handleSelectContact = async (contact: Contact) => {
 		try {
-			/*const conv = */ await createConversation({ contactemail: contact.email });
+			/*const conv = */ await createConversation({
+				contactemail: contact.email,
+			});
 			await fetchConversations();
 			onSelectContact(contact);
 			setSearchQuery("");
@@ -260,7 +252,9 @@ export function NewChatModal({
 			// token aleatorio corto
 			const token = Math.random().toString(36).slice(2, 10);
 			// link con email embebido; al usar el link el cliente intentará crear conversación con ?u=email
-			const link = `${location.origin}/invite?u=${encodeURIComponent(me.email)}&t=${token}`;
+			const link = `${location.origin}/invite?u=${encodeURIComponent(
+				me.email,
+			)}&t=${token}`;
 			setGeneratedLink(link);
 			// opcional: podrías POSTear el token al backend para registrar el invite (si tienes endpoint)
 			// try { await fetch("/api/chat/invitations/register-token", { method: "POST", credentials:'include', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token, conversation_id: null }) }) } catch(e){}
@@ -424,10 +418,9 @@ export function NewChatModal({
 								<div className="flex gap-2">
 									<div className="relative flex-1">
 										<Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-										{/** biome-ignore lint/correctness/useUniqueElementIds: <explanation> */}
 										<Input
 											id="invite-link"
-											placeholder="https://sysgd.app/invite?u=@usuario..."
+											placeholder="https://work.ecosysgd.com/login/invite?u=@usuario..."
 											value={pasteInviteLink}
 											onChange={(e) => setPasteInviteLink(e.target.value)}
 											className="pl-9"

@@ -1,4 +1,4 @@
-"use client";
+
 
 import { useState } from "react";
 import { CalendarSection } from "@/components/demo/calendar-section";

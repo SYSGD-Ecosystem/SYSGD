@@ -1,4 +1,4 @@
-"use client";
+
 
 import { Bell, MessageSquare, UserPlus, Users, Volume2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
