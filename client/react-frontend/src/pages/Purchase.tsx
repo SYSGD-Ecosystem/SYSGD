@@ -35,9 +35,10 @@ import PurchaseModal from "@/components/billing/components/PurchaseModal";
 import PurchasePlans from "@/components/billing/PurchasePlans";
 import type { Product } from "@/components/billing/components/ProductCard";
 import PurchaseCredits from "@/components/billing/PurchaseCredist";
+import LicenseStoreSection from "@/components/billing/LicenseStoreSection";
 
 // Definición de las secciones
-type Section = "credits" | "plans" | "transactions" | "categories";
+export type Section = "credits" | "plans" | "transactions" | "categories" | "licenses";
 
 interface NetworkInfo {
 	chainId: number;
@@ -106,6 +107,7 @@ const Purchase: FC = () => {
 	const navItems = [
 		{ id: "credits", label: "Comprar Créditos", icon: Zap },
 		{ id: "plans", label: "Planes Suscripción", icon: Package },
+		{ id: "licenses", label: "SYSGD Store", icon: Package },
 		{ id: "transactions", label: "Historial", icon: History },
 		{ id: "categories", label: "Uso de Créditos", icon: LayoutDashboard },
 	];
@@ -239,6 +241,11 @@ const Purchase: FC = () => {
 								onPurchaseStart={setSelectedProduct}
 								isConnected={isConnected}
 							/>
+						)}
+
+						{/* SYSGD Store - Licencias */}
+						{activeSection === "licenses" && (
+							<LicenseStoreSection />
 						)}
 
 						{/* Historial */}

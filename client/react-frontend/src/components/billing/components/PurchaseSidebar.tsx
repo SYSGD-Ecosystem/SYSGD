@@ -5,8 +5,7 @@ import {
   Settings,
   Home,
 } from "lucide-react";
-
-type Section = "credits" | "plans" | "transactions" | "categories";
+import type { Section } from "../../../pages/Purchase";
 
 type NavItem = {
   id: string;

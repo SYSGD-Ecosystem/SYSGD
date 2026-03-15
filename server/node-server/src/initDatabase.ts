@@ -587,5 +587,46 @@ CREATE TABLE IF NOT EXISTS agent_conversations (
     CREATE INDEX IF NOT EXISTS idx_organization_chart_file_id ON organization_chart(file_id);
   `);
 
+// ==============================
+// Licencias para app de escritorio (sistema RSA)
+// ==============================
+
+// 1. Crear tablas base si no existen
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS licenses (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    email        TEXT NOT NULL,
+    license_key  TEXT NOT NULL UNIQUE,
+    machine_id   TEXT NOT NULL,
+    tier         TEXT NOT NULL CHECK (tier IN ('monthly', 'quarterly', 'annual')),
+    issued_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at   TIMESTAMPTZ NOT NULL,
+    UNIQUE (user_id, machine_id)
+  );
+`);
+
+await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_licenses_user     ON licenses(user_id);
+  CREATE INDEX IF NOT EXISTS idx_licenses_machine  ON licenses(machine_id);
+`);
+
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS license_request_codes (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    request_code TEXT NOT NULL UNIQUE,
+    machine_id   TEXT NOT NULL,
+    used         BOOLEAN NOT NULL DEFAULT false,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at   TIMESTAMPTZ NOT NULL
+  );
+`);
+
+await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_request_codes_user ON license_request_codes(user_id);
+  CREATE INDEX IF NOT EXISTS idx_request_codes_code ON license_request_codes(request_code);
+`);
+
   console.log("✅ Tablas verificadas o creadas correctamente.");
 }
