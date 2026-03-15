@@ -384,11 +384,11 @@ const Auth: FC = () => {
 	};
 
 	return (
-		<div className="flex items-center justify-center min-h-screen h-full bg-linear-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
-			<div className="fixed inset-0 z-0">
-				<div className="absolute inset-0 bg-black opacity-50" />
-				<div className="nebula" />
-			</div>
+		<div className="flex items-center justify-center h-full bg-linear-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
+			{/* <div className="fixed inset-0 z-[-1] pointer-events-none">
+				<div className="absolute inset-0 bg-black opacity-50 pointer-events-none" />
+				<div className="nebula pointer-events-none" />
+			</div> */}
 
 			{isLoginPage ? (
 				<div className="w-full max-w-md relative bg-white/10 backdrop-blur-lg border border-white/20 overflow-hidden rounded-2xl px-8 py-8 flex items-center flex-col gap-6 shadow-2xl z-10">

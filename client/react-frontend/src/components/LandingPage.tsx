@@ -235,9 +235,9 @@ export default function LandingPage() {
 	];
 
 	return (
-		<div className="min-h-screen over bg-slate-900 text-white">
-			<div className="fixed inset-0 z-0">
-				<div className="nebula" />
+		<div className="min-h-screen bg-slate-900 text-white">
+			<div className="fixed inset-0 z-[-1] pointer-events-none">
+				<div className="nebula pointer-events-none" />
 			</div>
 
 			{/* Navigation */}

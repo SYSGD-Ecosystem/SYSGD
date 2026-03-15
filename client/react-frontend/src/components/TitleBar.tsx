@@ -58,7 +58,7 @@ export const TitleBar: React.FC = () => {
 	}
 
 	return (
-		<div className="flex items-center h-10 bg-linear-to-br from-slate-300 to-blue-400 dark:bg-slate-900 backdrop-blur-md border-b border-cyan-500/20 select-none drag-region">
+		<div className="flex items-center h-10 bg-linear-to-br from-slate-300 to-blue-400 dark:bg-slate-900 backdrop-blur-md border-b border-cyan-500/20 select-none drag-region z-50">
 			<div className="flex no-drag-region">
 				<button
 					type="button"
