@@ -16,6 +16,7 @@ export const getContLedger = async (req: Request, res: Response) => {
 		const record = await getContLedgerByUser(user.id);
 		res.status(200).json({
 			registro: record?.registro ?? null,
+			inventarioRegistro: record?.inventarioRegistro ?? null,
 			updatedAt: record?.updatedAt ?? null,
 		});
 	} catch (error) {
@@ -31,14 +32,14 @@ export const saveContLedger = async (req: Request, res: Response) => {
 		return;
 	}
 
-	const { registro } = req.body as { registro?: unknown };
+	const { registro, inventarioRegistro } = req.body as { registro?: unknown; inventarioRegistro?: unknown };
 	if (typeof registro === "undefined") {
 		res.status(400).json({ error: "Falta el campo registro" });
 		return;
 	}
 
 	try {
-		const saved = await upsertContLedgerByUser(user.id, registro);
+		const saved = await upsertContLedgerByUser(user.id, registro, inventarioRegistro);
 		res.status(200).json({
 			message: "Registro contable guardado",
 			updatedAt: saved.updatedAt,

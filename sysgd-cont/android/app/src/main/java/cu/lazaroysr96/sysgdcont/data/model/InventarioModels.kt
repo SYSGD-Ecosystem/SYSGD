@@ -48,7 +48,7 @@ data class LineaVenta(
     val productoId: String,
     val nombreProducto: String,
     val precioUnitario: Double,
-    val cantidad: Int
+    val cantidad: Double
 ) {
     val subtotal: Double get() = precioUnitario * cantidad
 }
@@ -103,7 +103,7 @@ data class LineaCompra(
     val productoId: String,
     val nombreProducto: String,
     val precioUnitario: Double,
-    val cantidad: Int
+    val cantidad: Double
 ) {
     val subtotal: Double get() = precioUnitario * cantidad
 }

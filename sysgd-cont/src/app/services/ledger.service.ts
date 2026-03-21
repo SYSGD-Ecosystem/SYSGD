@@ -6,9 +6,12 @@ import {
   GeneralesData,
   MAX_MONTH_ROWS,
   MONTHS,
+  InventarioRegistro,
   MonthEntries,
   MonthKey,
   MonthlyTotals,
+  OperacionInventario,
+  ProductoInventario,
   RegistroTCP,
   SIMPLIFIED_THRESHOLD_CUP,
   TributoRow
@@ -90,8 +93,72 @@ export class LedgerService {
       },
       ingresos: emptyRows(),
       gastos: emptyRows(),
-      tributos: MONTHS.map((month) => emptyTributo(monthLabel[month]))
+      tributos: MONTHS.map((month) => emptyTributo(monthLabel[month])),
+      inventario: this.emptyInventario()
     };
+  }
+
+  private emptyInventario(): InventarioRegistro {
+    return {
+      productosVenta: [],
+      productosCompra: [],
+      operaciones: []
+    };
+  }
+
+  addProductoInventario(tipo: 'venta' | 'compra', nombre: string, precio: number, unidad: string): RegistroTCP {
+    const registro = this.getRegistro();
+    const producto: ProductoInventario = {
+      id: crypto.randomUUID(),
+      nombre: nombre.trim(),
+      precio: this.round2(precio),
+      unidad: unidad.trim() || 'und',
+      tipo
+    };
+
+    const inventario = { ...registro.inventario };
+    if (tipo === 'venta') {
+      inventario.productosVenta = [...inventario.productosVenta, producto];
+    } else {
+      inventario.productosCompra = [...inventario.productosCompra, producto];
+    }
+
+    const next = { ...registro, inventario };
+    this.saveRegistro(next);
+    return next;
+  }
+
+  addOperacionInventario(tipo: 'venta' | 'compra', productoId: string, cantidad: number, fechaIso: string): RegistroTCP {
+    const registro = this.getRegistro();
+    const lista = tipo === 'venta' ? registro.inventario.productosVenta : registro.inventario.productosCompra;
+    const producto = lista.find((item) => item.id === productoId);
+    if (!producto) return registro;
+
+    const cantidadNormalizada = this.round2(cantidad);
+    if (!Number.isFinite(cantidadNormalizada) || cantidadNormalizada <= 0) return registro;
+
+    const operacion: OperacionInventario = {
+      id: crypto.randomUUID(),
+      tipo,
+      fecha: fechaIso,
+      productoId: producto.id,
+      nombreProducto: producto.nombre,
+      unidad: producto.unidad,
+      cantidad: cantidadNormalizada,
+      precioUnitario: producto.precio,
+      total: this.round2(producto.precio * cantidadNormalizada)
+    };
+
+    const next = {
+      ...registro,
+      inventario: {
+        ...registro.inventario,
+        operaciones: [operacion, ...registro.inventario.operaciones]
+      }
+    };
+
+    this.saveRegistro(next);
+    return next;
   }
 
   getRegistro(): RegistroTCP {
@@ -104,7 +171,8 @@ export class LedgerService {
         ...parsed,
         ingresos: { ...this.emptyRegistro(parsed.generales?.anio).ingresos, ...parsed.ingresos },
         gastos: { ...this.emptyRegistro(parsed.generales?.anio).gastos, ...parsed.gastos },
-        tributos: parsed.tributos?.length === 12 ? parsed.tributos : this.emptyRegistro(parsed.generales?.anio).tributos
+        tributos: parsed.tributos?.length === 12 ? parsed.tributos : this.emptyRegistro(parsed.generales?.anio).tributos,
+        inventario: this.normalizeInventario((parsed as Partial<RegistroTCP>).inventario)
       };
     } catch {
       return this.emptyRegistro();
@@ -415,7 +483,67 @@ export class LedgerService {
       };
     });
 
-    return { generales, ingresos, gastos, tributos };
+    const inventario = this.normalizeInventario(raw.inventario as unknown);
+
+    return { generales, ingresos, gastos, tributos, inventario };
+  }
+
+  private normalizeInventario(source: unknown): InventarioRegistro {
+    const base = this.emptyInventario();
+    if (!source || typeof source !== 'object') return base;
+
+    const raw = source as { productosVenta?: unknown; productosCompra?: unknown; operaciones?: unknown };
+
+    const normalizeProducto = (item: unknown, tipo: 'venta' | 'compra'): ProductoInventario | null => {
+      if (!item || typeof item !== 'object') return null;
+      const p = item as Partial<ProductoInventario>;
+      const nombre = String(p.nombre ?? '').trim();
+      const unidad = String(p.unidad ?? 'und').trim() || 'und';
+      const precio = Number(p.precio);
+      if (!nombre || !Number.isFinite(precio) || precio <= 0) return null;
+      return {
+        id: String(p.id ?? crypto.randomUUID()),
+        nombre,
+        unidad,
+        precio: this.round2(precio),
+        tipo
+      };
+    };
+
+    const productosVenta = Array.isArray(raw.productosVenta)
+      ? raw.productosVenta.map((item) => normalizeProducto(item, 'venta')).filter((item): item is ProductoInventario => item !== null)
+      : [];
+    const productosCompra = Array.isArray(raw.productosCompra)
+      ? raw.productosCompra.map((item) => normalizeProducto(item, 'compra')).filter((item): item is ProductoInventario => item !== null)
+      : [];
+
+    const operaciones = Array.isArray(raw.operaciones)
+      ? raw.operaciones
+          .map((item): OperacionInventario | null => {
+            if (!item || typeof item !== 'object') return null;
+            const op = item as Partial<OperacionInventario>;
+            const tipo = op.tipo === 'compra' ? 'compra' : op.tipo === 'venta' ? 'venta' : null;
+            if (!tipo) return null;
+            const cantidad = Number(op.cantidad);
+            const precioUnitario = Number(op.precioUnitario);
+            const total = Number(op.total);
+            if (!Number.isFinite(cantidad) || cantidad <= 0 || !Number.isFinite(precioUnitario) || precioUnitario <= 0 || !Number.isFinite(total) || total <= 0) return null;
+            return {
+              id: String(op.id ?? crypto.randomUUID()),
+              tipo,
+              fecha: String(op.fecha ?? ''),
+              productoId: String(op.productoId ?? ''),
+              nombreProducto: String(op.nombreProducto ?? ''),
+              unidad: String(op.unidad ?? 'und'),
+              cantidad: this.round2(cantidad),
+              precioUnitario: this.round2(precioUnitario),
+              total: this.round2(total)
+            };
+          })
+          .filter((item): item is OperacionInventario => item !== null)
+      : [];
+
+    return { productosVenta, productosCompra, operaciones };
   }
 
   private round2(value: number): number {

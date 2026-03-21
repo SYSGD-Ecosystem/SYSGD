@@ -2,10 +2,11 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from './auth.service';
-import type { RegistroTCP } from '../models/ledger-entry.model';
+import type { InventarioRegistro, RegistroTCP } from '../models/ledger-entry.model';
 
 interface ContLedgerResponse {
   registro: RegistroTCP | null;
+  inventarioRegistro: InventarioRegistro | null;
   updatedAt: string | null;
 }
 
@@ -72,7 +73,7 @@ export class RegistroSyncService {
     await firstValueFrom(
       this.http.put(
         `${this.auth.apiBaseUrl}/api/cont-ledger`,
-        { registro },
+        { registro, inventarioRegistro: registro.inventario },
         { headers: this.auth.authHeaders(token) }
       )
     );

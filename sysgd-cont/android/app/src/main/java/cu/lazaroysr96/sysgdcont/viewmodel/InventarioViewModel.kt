@@ -36,8 +36,8 @@ data class InventarioUiState(
     val showAddProductDialog: Boolean = false,
     val showAddProductCompraDialog: Boolean = false,
     val selectedProduct: Producto? = null,
-    val cart: Map<Producto, Int> = emptyMap(),
-    val cartCompra: Map<ProductoCompra, Int> = emptyMap(),
+    val cart: Map<Producto, Double> = emptyMap(),
+    val cartCompra: Map<ProductoCompra, Double> = emptyMap(),
     val currentTab: Int = 0,
     val mesActual: YearMonth = YearMonth.now(),
     val ventasDelMes: Map<String, List<Pair<Venta, List<LineaVenta>>>> = emptyMap(),
@@ -222,23 +222,24 @@ class InventarioViewModel @Inject constructor(
         }
     }
 
-    fun addToCart(producto: Producto) {
+    fun addToCart(producto: Producto, cantidad: Double = 1.0) {
+        if (cantidad <= 0.0) return
         _uiState.update { state ->
             val currentCart = state.cart.toMutableMap()
-            currentCart[producto] = (currentCart[producto] ?: 0) + 1
+            currentCart[producto] = (currentCart[producto] ?: 0.0) + cantidad
             state.copy(cart = currentCart, showSaleSheet = true)
         }
     }
 
     fun addToCartCompra(producto: ProductoCompra) {
-        addToCartCompra(producto, 1)
+        addToCartCompra(producto, 1.0)
     }
 
-    fun addToCartCompra(producto: ProductoCompra, cantidad: Int) {
-        if (cantidad <= 0) return
+    fun addToCartCompra(producto: ProductoCompra, cantidad: Double) {
+        if (cantidad <= 0.0) return
         _uiState.update { state ->
             val currentCart = state.cartCompra.toMutableMap()
-            currentCart[producto] = (currentCart[producto] ?: 0) + cantidad
+            currentCart[producto] = (currentCart[producto] ?: 0.0) + cantidad
             state.copy(cartCompra = currentCart, showPurchaseSheet = true)
         }
     }
@@ -246,9 +247,9 @@ class InventarioViewModel @Inject constructor(
     fun removeFromCart(producto: Producto) {
         _uiState.update { state ->
             val currentCart = state.cart.toMutableMap()
-            val currentQty = currentCart[producto] ?: 0
-            if (currentQty > 1) {
-                currentCart[producto] = currentQty - 1
+            val currentQty = currentCart[producto] ?: 0.0
+            if (currentQty > 1.0) {
+                currentCart[producto] = currentQty - 1.0
             } else {
                 currentCart.remove(producto)
             }
@@ -259,9 +260,9 @@ class InventarioViewModel @Inject constructor(
     fun removeFromCartCompra(producto: ProductoCompra) {
         _uiState.update { state ->
             val currentCart = state.cartCompra.toMutableMap()
-            val currentQty = currentCart[producto] ?: 0
-            if (currentQty > 1) {
-                currentCart[producto] = currentQty - 1
+            val currentQty = currentCart[producto] ?: 0.0
+            if (currentQty > 1.0) {
+                currentCart[producto] = currentQty - 1.0
             } else {
                 currentCart.remove(producto)
             }
@@ -377,11 +378,11 @@ class InventarioViewModel @Inject constructor(
         get() = _uiState.value.cart.entries.sumOf { (p, qty) -> p.precio * qty }
 
     val cartItemCount: Int
-        get() = _uiState.value.cart.values.sum()
+        get() = _uiState.value.cart.values.sumOf { kotlin.math.ceil(it).toInt() }
 
     val cartCompraTotal: Double
         get() = _uiState.value.cartCompra.entries.sumOf { (p, qty) -> p.precio * qty }
 
     val cartCompraItemCount: Int
-        get() = _uiState.value.cartCompra.values.sum()
+        get() = _uiState.value.cartCompra.values.sumOf { kotlin.math.ceil(it).toInt() }
 }
