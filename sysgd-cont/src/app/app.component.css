@@ -131,28 +131,66 @@ h1 {
   margin: 30px auto;
 }
 
-.tabs {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
+
+.app-layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
 }
 
-.tabs button {
+.sidebar {
+  position: sticky;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar button {
   background: #ffffff;
   color: #111827;
   border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 8px 10px;
-  cursor: pointer;
+  text-align: left;
 }
 
-.tabs button.active {
+.sidebar button.active {
   background: #2563eb;
   color: #ffffff;
   border-color: #2563eb;
 }
 
+
+.sidebar h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  color: #475569;
+  text-transform: uppercase;
+}
+
+.bottom-tabs {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: #f8fafc;
+}
+
+.bottom-tabs button {
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.bottom-tabs button.active {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+.content-area {
+  min-width: 0;
+}
 .instructions-card summary {
   cursor: pointer;
   font-weight: 700;
@@ -328,6 +366,16 @@ button {
   border-radius: 8px;
   padding: 10px;
   font-size: 13px;
+}
+
+@media (max-width: 980px) {
+  .app-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+  }
 }
 
 @media (max-width: 840px) {

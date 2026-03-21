@@ -159,6 +159,11 @@ export async function initDatabase() {
     );
   `);
 
+  await pool.query(`
+    ALTER TABLE cont_ledger_records
+    ADD COLUMN IF NOT EXISTS inventario_registro JSONB;
+  `);
+
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS accounting_documents (

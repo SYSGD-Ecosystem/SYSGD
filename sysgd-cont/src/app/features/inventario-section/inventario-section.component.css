@@ -1,0 +1,14 @@
+:host { display:block; }
+.inventario-header{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:12px}
+.inventario-tabs{display:flex;gap:8px;margin-bottom:12px}
+.inventario-tabs button{background:#fff;color:#111827;border:1px solid #d1d5db;border-radius:8px;padding:8px 10px}
+.inventario-tabs button.active{background:#0f766e;color:#fff;border-color:#0f766e}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.actions{display:flex;gap:8px}
+.full{grid-column:1/-1}
+.table-wrapper{border:1px solid #e5e7eb;border-radius:10px;overflow:auto}
+.mov-table{width:100%;border-collapse:collapse;min-width:420px}
+.mov-table th,.mov-table td{padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:left;font-size:14px}
+.mov-table th{background:#f8fafc;font-weight:600;color:#334155}
+.empty-cell{color:#64748b;text-align:center}
+@media (max-width:840px){.inventario-header{flex-direction:column;align-items:flex-start}.form-grid{grid-template-columns:1fr}}
