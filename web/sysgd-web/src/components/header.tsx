@@ -9,6 +9,7 @@ const navigation = [
   { name: "Roadmap", href: "/roadmap" },
   { name: "Novedades", href: "/updates" },
   { name: "Servicios", href: "/services" },
+  { name: "Aplicaciones", href: "/apps" },
   // { name: "API y Precios", href: "/api" },
   { name: "Filosofía", href: "/philosophy" },
 ]
@@ -19,7 +20,7 @@ export function Header() {
   
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
       <nav className="container mx-auto px-4 md:px-6 flex items-center justify-between h-16">
         <Link to="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">

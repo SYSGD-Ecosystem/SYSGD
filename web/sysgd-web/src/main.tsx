@@ -11,6 +11,7 @@ import PhilosophyPage from "./app/philosophy/page.tsx";
 import UpdatesPage from "./app/updates/page.tsx";
 import RoadmapPage from "./app/roadmap/page.tsx";
 import ServicesPage from "./app/services/Page.tsx";
+import AppsPage from "./app/apps/AppsPage.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -26,6 +27,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/updates" element={<UpdatesPage />} />
             <Route path="/roadmap" element={<RoadmapPage />} />
             <Route path="/services" element={<ServicesPage />} />
+            <Route path="/apps" element={<AppsPage />} />
           </Routes>
         </main>
         <Footer />

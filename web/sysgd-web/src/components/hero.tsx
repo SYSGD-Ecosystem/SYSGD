@@ -33,11 +33,11 @@ export function Hero() {
 
 							<h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-balance leading-tight text-gray-900">
 								<span className="relative inline-block">
-									<span className="relative inline-block animate-shine bg-gradient-to-r from-gray-900 via-blue-600 to-gray-900 bg-[length:200%_100%] text-transparent bg-clip-text">
+									<span className="relative inline-block animate-shine bg-linear-to-r from-gray-900 via-blue-600 to-gray-900 bg-size-[200%_100%] text-transparent bg-clip-text">
 										SYSGD
 									</span>
 								</span>{" "}
-								<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400">
+								<span className="text-transparent bg-clip-text bg-linear-to-r from-blue-600 via-blue-500 to-blue-400">
 									Ecosystem
 								</span>
 							</h1>
@@ -123,9 +123,9 @@ export function Hero() {
 								<p className="text-sm font-semibold text-green-800">Cont</p>
 								<p className="text-xs text-gray-600 mt-1">Registro de ingresos y gastos para TCP.</p>
 							</a>
-							<a href="/updates" className="rounded-lg border border-amber-200 bg-white/70 p-3 hover:bg-amber-50 transition-colors">
-								<p className="text-sm font-semibold text-amber-800">Institucional</p>
-								<p className="text-xs text-gray-600 mt-1">Novedades, estado del proyecto y comunidad.</p>
+							<a href="/apps" className="rounded-lg border border-amber-200 bg-white/70 p-3 hover:bg-amber-50 transition-colors">
+								<p className="text-sm font-semibold text-amber-800">Software</p>
+								<p className="text-xs text-gray-600 mt-1">Centro de desarrollo de software.</p>
 							</a>
 						</div>
 

@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
@@ -82,6 +83,7 @@ import cu.lazaroysr96.sysgdcont.ui.main.screens.GastosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.GeneralesScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.IngresosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.InventarioScreen
+import cu.lazaroysr96.sysgdcont.ui.main.screens.NomenclatorsScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.ResumenScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.SecuritySettingsScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.TributosScreen
@@ -99,6 +101,7 @@ private const val RESOURCES_ROUTE = "resources"
 private const val BACKUP_ROUTE = "backup_json"
 private const val SECURITY_ROUTE = "security_settings"
 private const val VENTAS_ROUTE = "ventas"
+private const val NOMENCLATORS_ROUTE = "nomencladores"
 
 private fun openWhatsAppContact(context: android.content.Context, message: String): Boolean {
     return try {
@@ -333,6 +336,17 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
+                            NavigationDrawerItem(
+                                    label = { Text("Nomescladores") },
+                                    selected = currentRoute == NOMENCLATORS_ROUTE,
+                                    icon = { Icon(Icons.Default.Search, contentDescription = null) },
+                                    onClick = {
+                                        navController.navigate(NOMENCLATORS_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
 
                             Spacer(modifier = Modifier.height(12.dp))
                             Divider()
@@ -398,12 +412,13 @@ fun MainScreen(
                                             BACKUP_ROUTE -> "Respaldo JSON"
                                             SECURITY_ROUTE -> "Seguridad y cuenta"
                                             VENTAS_ROUTE -> "Punto de Venta"
+                                            NOMENCLATORS_ROUTE -> "Nomescladores"
                                             else -> "Gestor Contable TCP"
                                         }
                                 )
                             },
                             navigationIcon = {
-                                if (currentRoute == ABOUT_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE) {
+                                if (currentRoute == ABOUT_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE || currentRoute == NOMENCLATORS_ROUTE) {
                                     IconButton(onClick = { navController.popBackStack() }) {
                                         Icon(
                                                 Icons.Default.ArrowBack,
@@ -484,6 +499,7 @@ fun MainScreen(
                 composable(MainTab.Tributos.route) { TributosScreen(ledgerViewModel) }
                 composable(MainTab.Resumen.route) { ResumenScreen(ledgerViewModel) }
                 composable(VENTAS_ROUTE) { InventarioScreen(inventarioViewModel) }
+                composable(NOMENCLATORS_ROUTE) { NomenclatorsScreen() }
                 composable(ABOUT_ROUTE) {
                     AboutScreen(
                             onContactWhatsApp = {
