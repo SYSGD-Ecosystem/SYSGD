@@ -80,7 +80,7 @@ fun TermsAndConditionsDialog(
                         title = "3. Almacenamiento y Seguridad",
                         items = listOf(
                             "✓ Tus datos se almacenan de forma segura en Supabase",
-                            "✓ Encriptación AES-256-GCM (nivel militar)",
+                            "✓ Encriptación AES-256-GCM (Encriptación de alto nivel, estándar bancario internacional)",
                             "✓ Nunca almacenamos datos en forma textual",
                             "✓ Clave de desencriptación en servidor separado",
                             "✓ Base de datos y servidor en ubicaciones distintas"
