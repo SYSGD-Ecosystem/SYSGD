@@ -294,6 +294,9 @@ class InventarioRepository @Inject constructor(
                     id = linea.id,
                     tipo = "venta",
                     fecha = venta.fecha,
+                    operacionId = venta.id,
+                    hora = venta.hora,
+                    anulada = venta.anulada,
                     productoId = linea.productoId,
                     nombreProducto = linea.nombreProducto,
                     unidad = "",
@@ -311,6 +314,9 @@ class InventarioRepository @Inject constructor(
                     id = linea.id,
                     tipo = "compra",
                     fecha = compra.fecha,
+                    operacionId = compra.id,
+                    hora = compra.hora,
+                    anulada = compra.anulada,
                     productoId = linea.productoId,
                     nombreProducto = linea.nombreProducto,
                     unidad = "",
@@ -358,18 +364,35 @@ class InventarioRepository @Inject constructor(
         }
         productoCompraDao.insertAll(productosCompra)
 
-        val ventasMap = mutableMapOf<String, MutableList<LineaVenta>>()
-        val comprasMap = mutableMapOf<String, MutableList<LineaCompra>>()
+        data class VentaRestaurada(
+            val venta: Venta,
+            val lineas: MutableList<LineaVenta>
+        )
+
+        data class CompraRestaurada(
+            val compra: Compra,
+            val lineas: MutableList<LineaCompra>
+        )
+
+        val ventasMap = mutableMapOf<String, VentaRestaurada>()
+        val comprasMap = mutableMapOf<String, CompraRestaurada>()
 
         inventario.operaciones.forEach { op ->
             if (op.tipo == "venta") {
-                val ventaId = op.id.takeLastWhile { it != '-' }.let {
-                    if (it.isEmpty()) UUID.randomUUID().toString() else it
+                val ventaId = op.operacionId.ifBlank { UUID.randomUUID().toString() }
+                val ventaRestaurada = ventasMap.getOrPut(ventaId) {
+                    VentaRestaurada(
+                        venta = Venta(
+                            id = ventaId,
+                            fecha = op.fecha,
+                            hora = op.hora.ifBlank { "00:00" },
+                            total = 0.0,
+                            anulada = op.anulada
+                        ),
+                        lineas = mutableListOf()
+                    )
                 }
-                if (!ventasMap.containsKey(op.fecha)) {
-                    ventasMap[op.fecha] = mutableListOf()
-                }
-                ventasMap[op.fecha]!!.add(
+                ventaRestaurada.lineas.add(
                     LineaVenta(
                         id = op.id,
                         ventaId = ventaId,
@@ -380,13 +403,20 @@ class InventarioRepository @Inject constructor(
                     )
                 )
             } else {
-                val compraId = op.id.takeLastWhile { it != '-' }.let {
-                    if (it.isEmpty()) UUID.randomUUID().toString() else it
+                val compraId = op.operacionId.ifBlank { UUID.randomUUID().toString() }
+                val compraRestaurada = comprasMap.getOrPut(compraId) {
+                    CompraRestaurada(
+                        compra = Compra(
+                            id = compraId,
+                            fecha = op.fecha,
+                            hora = op.hora.ifBlank { "00:00" },
+                            total = 0.0,
+                            anulada = op.anulada
+                        ),
+                        lineas = mutableListOf()
+                    )
                 }
-                if (!comprasMap.containsKey(op.fecha)) {
-                    comprasMap[op.fecha] = mutableListOf()
-                }
-                comprasMap[op.fecha]!!.add(
+                compraRestaurada.lineas.add(
                     LineaCompra(
                         id = op.id,
                         compraId = compraId,
@@ -399,36 +429,22 @@ class InventarioRepository @Inject constructor(
             }
         }
 
-        val ventasPorFecha = ventasMap.map { (fecha, lineas) ->
-            val total = lineas.sumOf { it.subtotal }
-            val venta = Venta(
-                id = lineas.firstOrNull()?.ventaId ?: UUID.randomUUID().toString(),
-                fecha = fecha,
-                hora = "00:00",
-                total = total,
-                anulada = false
-            )
-            venta to lineas
+        val ventasRestauradas = ventasMap.values.map { restaurada ->
+            val total = restaurada.lineas.sumOf { it.subtotal }
+            restaurada.venta.copy(total = total) to restaurada.lineas
         }
 
-        ventasPorFecha.forEach { (venta, lineas) ->
+        ventasRestauradas.forEach { (venta, lineas) ->
             ventaDao.insertVenta(venta)
             ventaDao.insertLineas(lineas)
         }
 
-        val comprasPorFecha = comprasMap.map { (fecha, lineas) ->
-            val total = lineas.sumOf { it.subtotal }
-            val compra = Compra(
-                id = lineas.firstOrNull()?.compraId ?: UUID.randomUUID().toString(),
-                fecha = fecha,
-                hora = "00:00",
-                total = total,
-                anulada = false
-            )
-            compra to lineas
+        val comprasRestauradas = comprasMap.values.map { restaurada ->
+            val total = restaurada.lineas.sumOf { it.subtotal }
+            restaurada.compra.copy(total = total) to restaurada.lineas
         }
 
-        comprasPorFecha.forEach { (compra, lineas) ->
+        comprasRestauradas.forEach { (compra, lineas) ->
             compraDao.insertCompra(compra)
             compraDao.insertLineas(lineas)
         }

@@ -162,6 +162,13 @@ class InventarioViewModel @Inject constructor(
         }
     }
 
+    fun refreshAfterRestore() {
+        val state = _uiState.value
+        observarDiaTrabajo(state.fechaTrabajo)
+        cargarVentasDelMes(state.mesActual)
+        cargarComprasDelMes(state.mesActual)
+    }
+
     fun setCurrentTab(tab: Int) {
         _uiState.update { it.copy(currentTab = tab) }
     }

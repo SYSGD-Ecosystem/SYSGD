@@ -168,6 +168,12 @@ fun MainScreen(
         }
     }
 
+    LaunchedEffect(ledgerState.backupMessage) {
+        if (ledgerState.backupMessage == "Backup JSON importado correctamente.") {
+            inventarioViewModel.refreshAfterRestore()
+        }
+    }
+
     // val drawerWidthFraction = if (isLandscape) 0.5f else 0.8f
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
