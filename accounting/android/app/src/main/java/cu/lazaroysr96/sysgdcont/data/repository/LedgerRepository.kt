@@ -17,6 +17,7 @@ import cu.lazaroysr96.sysgdcont.data.model.*
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -38,7 +39,8 @@ class InsufficientCreditsException(message: String) : Exception(message)
 class LedgerRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val apiService: ApiService,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val inventarioRepository: InventarioRepository
 ) {
     private data class RegistroBackupPayload(
         val app: String = "SYSGD Cont Android",
@@ -54,6 +56,7 @@ class LedgerRepository @Inject constructor(
         private val SERVER_VERSION_KEY = stringPreferencesKey("server_version")
         private val LAST_DOWNLOADED_VERSION_KEY = stringPreferencesKey("last_downloaded_version")
         private val BASELINE_REGISTRO_KEY = stringPreferencesKey("baseline_registro")
+        private val BASELINE_INVENTARIO_KEY = stringPreferencesKey("baseline_inventario")
     }
 
     private val gson = Gson()
@@ -75,8 +78,11 @@ class LedgerRepository @Inject constructor(
         prefs[LAST_SYNC_KEY]
     }
 
-    val localModified: Flow<Boolean> = context.ledgerDataStore.data.map { prefs ->
-        prefs[LOCAL_MODIFIED_KEY] == "true"
+    val localModified: Flow<Boolean> = combine(
+        context.ledgerDataStore.data.map { prefs -> prefs[LOCAL_MODIFIED_KEY] == "true" },
+        inventarioRepository.localModified
+    ) { ledgerModified, inventarioModified ->
+        ledgerModified || inventarioModified
     }
 
     suspend fun getRegistro(): RegistroTCP = registro.first()
@@ -88,7 +94,7 @@ class LedgerRepository @Inject constructor(
         }
     }
 
-    private suspend fun saveBaseline(registro: RegistroTCP, serverVersion: String) {
+    private suspend fun saveBaseline(registro: RegistroTCP, inventario: InventarioRegistro, serverVersion: String) {
         val resolvedVersion = if (serverVersion.isNotBlank()) {
             serverVersion
         } else {
@@ -96,20 +102,73 @@ class LedgerRepository @Inject constructor(
         }
         context.ledgerDataStore.edit { prefs ->
             prefs[BASELINE_REGISTRO_KEY] = gson.toJson(registro)
+            prefs[BASELINE_INVENTARIO_KEY] = gson.toJson(inventario)
             prefs[LAST_DOWNLOADED_VERSION_KEY] = resolvedVersion
             prefs[SERVER_VERSION_KEY] = resolvedVersion
             prefs[LOCAL_MODIFIED_KEY] = "false"
             prefs[LAST_SYNC_KEY] = java.time.Instant.now().toString()
         }
+        inventarioRepository.clearLocalModified()
     }
 
     suspend fun saveUserEditedRegistro(registro: RegistroTCP) {
         saveRegistro(registro, modifiedByUser = true)
     }
 
+    private suspend fun buildRegistroWithInventario(): RegistroTCP {
+        val current = getRegistro()
+        val inventarioRegistro = inventarioRepository.toInventarioRegistro()
+        return current.copy(inventario = inventarioRegistro)
+    }
+
+    private fun stripInventario(registro: RegistroTCP): RegistroTCP {
+        return registro.copy(inventario = InventarioRegistro())
+    }
+
+    private fun hasInventarioData(inventario: InventarioRegistro?): Boolean {
+        if (inventario == null) return false
+        return inventario.productosVenta.isNotEmpty() ||
+            inventario.productosCompra.isNotEmpty() ||
+            inventario.operaciones.isNotEmpty()
+    }
+
+    private fun buildRemoteRegistro(response: ContLedgerResponse): RegistroTCP? {
+        val registro = response.registro ?: return null
+        val inventario = response.inventarioRegistro
+        return if (inventario != null) {
+            registro.copy(inventario = inventario)
+        } else {
+            registro
+        }
+    }
+
+    private suspend fun getBaselineInventario(): InventarioRegistro {
+        val raw = context.ledgerDataStore.data.first()[BASELINE_INVENTARIO_KEY]
+        if (raw.isNullOrBlank()) return InventarioRegistro()
+        return try {
+            gson.fromJson(raw, InventarioRegistro::class.java) ?: InventarioRegistro()
+        } catch (_: Exception) {
+            InventarioRegistro()
+        }
+    }
+
+    private fun inventoriesEqual(left: InventarioRegistro, right: InventarioRegistro): Boolean {
+        return gson.toJson(left) == gson.toJson(right)
+    }
+
+    private fun hasInventarioConflicts(
+        local: InventarioRegistro,
+        remote: InventarioRegistro,
+        baseline: InventarioRegistro
+    ): Boolean {
+        val remoteChanged = !inventoriesEqual(remote, baseline)
+        val localChanged = !inventoriesEqual(local, baseline)
+        return localChanged && remoteChanged
+    }
+
     suspend fun exportBackupToUri(uri: Uri): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val current = getRegistro()
+            val current = buildRegistroWithInventario()
             val payload = RegistroBackupPayload(
                 exportedAt = java.time.Instant.now().toString(),
                 registro = current
@@ -140,8 +199,11 @@ class LedgerRepository @Inject constructor(
                 ?: throw Exception("No se pudo interpretar el registro del archivo")
 
             val normalized = normalizeImportedRegistro(imported)
-            saveUserEditedRegistro(normalized)
-            Result.success(normalized)
+            inventarioRepository.fromInventarioRegistro(normalized.inventario)
+
+            val registroSinInventario = stripInventario(normalized)
+            saveUserEditedRegistro(registroSinInventario)
+            Result.success(registroSinInventario)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -149,8 +211,10 @@ class LedgerRepository @Inject constructor(
 
     suspend fun replaceLocalWithRemote(registro: RegistroTCP, serverVersion: String): Result<SyncResult> {
         return try {
-            saveRegistro(registro, modifiedByUser = false)
-            saveBaseline(registro, serverVersion)
+            inventarioRepository.fromInventarioRegistro(registro.inventario)
+            val registroSinInventario = stripInventario(registro)
+            saveRegistro(registroSinInventario, modifiedByUser = false)
+            saveBaseline(registroSinInventario, registro.inventario, serverVersion)
             Result.success(
                 SyncResult(
                     success = true,
@@ -166,10 +230,14 @@ class LedgerRepository @Inject constructor(
     suspend fun uploadLocalToRemote(): Result<SyncResult> {
         return try {
             val token = authRepository.getToken() ?: return Result.failure(Exception("No token"))
-            val localRegistro = getRegistro()
+            val localRegistro = buildRegistroWithInventario()
+            val inventarioRegistro = inventarioRepository.toInventarioRegistro()
             val updateResponse = apiService.updateLedger(
                 "Bearer $token",
-                UpdateLedgerRequest(registro = localRegistro)
+                UpdateLedgerRequest(
+                    registro = stripInventario(localRegistro),
+                    inventarioRegistro = inventarioRegistro
+                )
             )
             if (!updateResponse.isSuccessful) {
                 return Result.failure(Exception("Error al subir datos: ${updateResponse.code()}"))
@@ -177,10 +245,9 @@ class LedgerRepository @Inject constructor(
 
             val refreshedRemote = fetchRemote(token)
             val refreshedVersion = refreshedRemote.updatedAt.orEmpty()
-            val registroFinal = refreshedRemote.registro ?: localRegistro
+            val registroFinal = buildRemoteRegistro(refreshedRemote) ?: buildRegistroWithInventario()
 
-            saveRegistro(registroFinal, modifiedByUser = false)
-            saveBaseline(registroFinal, refreshedVersion)
+            replaceLocalWithRemote(registroFinal, refreshedVersion).getOrThrow()
 
             Result.success(
                 SyncResult(
@@ -197,9 +264,19 @@ class LedgerRepository @Inject constructor(
     suspend fun uploadMergedToRemote(mergedRegistro: RegistroTCP): Result<SyncResult> {
         return try {
             val token = authRepository.getToken() ?: return Result.failure(Exception("No token"))
+            val registroConInventario = buildRegistroWithInventario().copy(
+                generales = mergedRegistro.generales,
+                ingresos = mergedRegistro.ingresos,
+                gastos = mergedRegistro.gastos,
+                tributos = mergedRegistro.tributos,
+                inventario = mergedRegistro.inventario
+            )
             val updateResponse = apiService.updateLedger(
                 "Bearer $token",
-                UpdateLedgerRequest(registro = mergedRegistro)
+                UpdateLedgerRequest(
+                    registro = stripInventario(registroConInventario),
+                    inventarioRegistro = registroConInventario.inventario
+                )
             )
             if (!updateResponse.isSuccessful) {
                 return Result.failure(Exception("Error al subir merge: ${updateResponse.code()}"))
@@ -207,10 +284,9 @@ class LedgerRepository @Inject constructor(
 
             val refreshedRemote = fetchRemote(token)
             val refreshedVersion = refreshedRemote.updatedAt.orEmpty()
-            val registroFinal = refreshedRemote.registro ?: mergedRegistro
+            val registroFinal = buildRemoteRegistro(refreshedRemote) ?: registroConInventario
 
-            saveRegistro(registroFinal, modifiedByUser = false)
-            saveBaseline(registroFinal, refreshedVersion)
+            replaceLocalWithRemote(registroFinal, refreshedVersion).getOrThrow()
 
             Result.success(
                 SyncResult(
@@ -225,7 +301,7 @@ class LedgerRepository @Inject constructor(
     }
 
     suspend fun isLocalModified(): Boolean {
-        return context.ledgerDataStore.data.first()[LOCAL_MODIFIED_KEY] == "true"
+        return localModified.first()
     }
 
     private suspend fun getLastDownloadedVersion(): String {
@@ -368,7 +444,7 @@ class LedgerRepository @Inject constructor(
         return try {
             val token = authRepository.getToken() ?: return Result.failure(Exception("No token"))
             val remote = fetchRemote(token)
-            val remoteRegistro = remote.registro ?: return Result.success(getRegistro())
+            val remoteRegistro = buildRemoteRegistro(remote) ?: return Result.success(getRegistro())
             replaceLocalWithRemote(remoteRegistro, remote.updatedAt.orEmpty())
                 .map { remoteRegistro }
         } catch (e: Exception) {
@@ -402,15 +478,20 @@ class LedgerRepository @Inject constructor(
     suspend fun sync(): Result<SyncResult> {
         return try {
             val token = authRepository.getToken() ?: return Result.failure(Exception("No token"))
-            val localRegistro = getRegistro()
+            val localRegistro = buildRegistroWithInventario()
             val localModified = isLocalModified()
             val hasBaseline = hasBaselineVersion()
             val hasLocalData = hasLocalSnapshot()
             val baselineVersion = getLastDownloadedVersion()
+            val baselineInventario = getBaselineInventario()
             val remote = fetchRemote(token)
-            val remoteRegistro = remote.registro
+            val remoteRegistro = buildRemoteRegistro(remote)
             val remoteVersion = remote.updatedAt.orEmpty()
             val serverChanged = hasBaseline && remoteVersion != baselineVersion
+            val remoteInventario = remoteRegistro?.inventario ?: InventarioRegistro()
+            val inventarioConflict = hasBaseline &&
+                remoteRegistro != null &&
+                hasInventarioConflicts(localRegistro.inventario, remoteInventario, baselineInventario)
 
             when {
                 remoteRegistro == null && !localModified -> {
@@ -446,9 +527,18 @@ class LedgerRepository @Inject constructor(
                 }
 
                 localModified && !hasBaseline && remoteRegistro != null -> {
-                    val conflictInfo = checkForConflicts(localRegistro, remoteRegistro)
+                    val conflictInfo = checkForConflicts(
+                        local = localRegistro,
+                        remote = remoteRegistro,
+                        forceConflict = inventarioConflict,
+                        extraConflictMessage = if (inventarioConflict) {
+                            "Conflicto en datos del punto de venta"
+                        } else {
+                            null
+                        }
+                    )
                     val merged = if (!conflictInfo.hasConflict) {
-                        mergeVersions(localRegistro, remoteRegistro)
+                        mergeVersions(localRegistro, remoteRegistro, baselineInventario)
                     } else {
                         null
                     }
@@ -483,9 +573,18 @@ class LedgerRepository @Inject constructor(
                 }
 
                 localModified && serverChanged -> {
-                    val conflictInfo = checkForConflicts(localRegistro, remoteRegistro)
+                    val conflictInfo = checkForConflicts(
+                        local = localRegistro,
+                        remote = remoteRegistro,
+                        forceConflict = inventarioConflict,
+                        extraConflictMessage = if (inventarioConflict) {
+                            "Conflicto en datos del punto de venta"
+                        } else {
+                            null
+                        }
+                    )
                     val merged = if (!conflictInfo.hasConflict && remoteRegistro != null) {
-                        mergeVersions(localRegistro, remoteRegistro)
+                        mergeVersions(localRegistro, remoteRegistro, baselineInventario)
                     } else {
                         null
                     }
@@ -527,7 +626,12 @@ class LedgerRepository @Inject constructor(
         return uploadMergedToRemote(mergedRegistro)
     }
 
-    private fun checkForConflicts(local: RegistroTCP, remote: RegistroTCP?): ConflictInfo {
+    private fun checkForConflicts(
+        local: RegistroTCP,
+        remote: RegistroTCP?,
+        forceConflict: Boolean = false,
+        extraConflictMessage: String? = null
+    ): ConflictInfo {
         if (remote == null) {
             return ConflictInfo(
                 hasConflict = false,
@@ -569,6 +673,10 @@ class LedgerRepository @Inject constructor(
         if (local.tributos != remote.tributos) {
             conflicts.add("Conflicto en tributos")
         }
+
+        if (forceConflict && !extraConflictMessage.isNullOrBlank()) {
+            conflicts.add(extraConflictMessage)
+        }
         
         return if (conflicts.isNotEmpty()) {
             ConflictInfo(
@@ -587,21 +695,34 @@ class LedgerRepository @Inject constructor(
         }
     }
 
-    suspend fun mergeVersions(local: RegistroTCP, remote: RegistroTCP): RegistroTCP {
+    suspend fun mergeVersions(
+        local: RegistroTCP,
+        remote: RegistroTCP,
+        baselineInventario: InventarioRegistro = InventarioRegistro()
+    ): RegistroTCP {
         val mergedIngresos = mergeEntries(local.ingresos, remote.ingresos)
         val mergedGastos = mergeEntries(local.gastos, remote.gastos)
         
-        // Los tributos se reemplazan (son más complejos)
         val mergedTributos = if (remote.tributos.isNotEmpty()) remote.tributos else local.tributos
         
-        // Generales del más completo
         val mergedGenerales = if (remote.generales.nombre.isNotEmpty()) remote.generales else local.generales
+        
+        val remoteInventarioChanged = !inventoriesEqual(remote.inventario, baselineInventario)
+        val localInventarioChanged = !inventoriesEqual(local.inventario, baselineInventario)
+        val mergedInventario = when {
+            remoteInventarioChanged && !localInventarioChanged -> remote.inventario
+            !remoteInventarioChanged && localInventarioChanged -> local.inventario
+            remoteInventarioChanged && localInventarioChanged -> local.inventario
+            hasInventarioData(remote.inventario) -> remote.inventario
+            else -> local.inventario
+        }
         
         return RegistroTCP(
             generales = mergedGenerales,
             ingresos = mergedIngresos,
             gastos = mergedGastos,
-            tributos = mergedTributos
+            tributos = mergedTributos,
+            inventario = mergedInventario
         )
     }
 
@@ -769,7 +890,8 @@ class LedgerRepository @Inject constructor(
             generales = generales,
             ingresos = ingresos,
             gastos = gastos,
-            tributos = tributos
+            tributos = tributos,
+            inventario = source.inventario
         )
     }
 
@@ -795,7 +917,8 @@ class LedgerRepository @Inject constructor(
             GeneralesData(anio = year),
             emptyMonthEntries,
             emptyMonthEntries,
-            emptyTributos
+            emptyTributos,
+            InventarioRegistro()
         )
     }
 

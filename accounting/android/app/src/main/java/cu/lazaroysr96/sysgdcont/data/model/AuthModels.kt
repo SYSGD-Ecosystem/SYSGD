@@ -67,11 +67,13 @@ data class ApiMessageResponse(
 
 data class ContLedgerResponse(
     val registro: RegistroTCP?,
+    val inventarioRegistro: InventarioRegistro? = null,
     val updatedAt: String?
 )
 
 data class UpdateLedgerRequest(
-    val registro: RegistroTCP
+    val registro: RegistroTCP,
+    val inventarioRegistro: InventarioRegistro? = null
 )
 
 data class UpdateLedgerResponse(

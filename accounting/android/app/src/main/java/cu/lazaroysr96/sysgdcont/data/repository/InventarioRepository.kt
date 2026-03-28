@@ -1,5 +1,11 @@
 package cu.lazaroysr96.sysgdcont.data.repository
 
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
 import cu.lazaroysr96.sysgdcont.data.dao.VentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoCompraDao
@@ -10,6 +16,10 @@ import cu.lazaroysr96.sysgdcont.data.model.Venta
 import cu.lazaroysr96.sysgdcont.data.model.ProductoCompra
 import cu.lazaroysr96.sysgdcont.data.model.Compra
 import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
+import cu.lazaroysr96.sysgdcont.data.model.InventarioRegistro
+import cu.lazaroysr96.sysgdcont.data.model.ProductoInventario
+import cu.lazaroysr96.sysgdcont.data.model.OperacionInventario
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -20,14 +30,37 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
+private val Context.inventarioDataStore: DataStore<Preferences> by preferencesDataStore(name = "inventario_prefs")
+
 @Singleton
 class InventarioRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val productoDao: ProductoDao,
     private val ventaDao: VentaDao,
     private val productoCompraDao: ProductoCompraDao,
     private val compraDao: CompraDao
 ) {
+    companion object {
+        private val INVENTARIO_LOCAL_MODIFIED_KEY = stringPreferencesKey("inventario_local_modified")
+    }
+
     private fun hoy(): String = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+
+    val localModified: Flow<Boolean> = context.inventarioDataStore.data.map { prefs ->
+        prefs[INVENTARIO_LOCAL_MODIFIED_KEY] == "true"
+    }
+
+    private suspend fun markLocalModified() {
+        context.inventarioDataStore.edit { prefs ->
+            prefs[INVENTARIO_LOCAL_MODIFIED_KEY] = "true"
+        }
+    }
+
+    suspend fun clearLocalModified() {
+        context.inventarioDataStore.edit { prefs ->
+            prefs[INVENTARIO_LOCAL_MODIFIED_KEY] = "false"
+        }
+    }
 
     fun getProductos(): Flow<List<Producto>> = productoDao.getAllActivos()
 
@@ -46,9 +79,13 @@ class InventarioRepository @Inject constructor(
                 unidad = unidad
             )
         )
+        markLocalModified()
     }
 
-    suspend fun eliminarProducto(id: String) = productoDao.deactivate(id)
+    suspend fun eliminarProducto(id: String) {
+        productoDao.deactivate(id)
+        markLocalModified()
+    }
 
     fun getVentasDelDia(fecha: String = hoy()): Flow<List<Venta>> =
         ventaDao.getVentasDelDia(fecha)
@@ -116,10 +153,12 @@ class InventarioRepository @Inject constructor(
         }
 
         ventaDao.insertVentaCompleta(venta, lineas)
+        markLocalModified()
     }
 
     suspend fun anularVenta(ventaId: String) {
         ventaDao.anularVenta(ventaId)
+        markLocalModified()
     }
 
     fun getProductosCompra(): Flow<List<ProductoCompra>> = productoCompraDao.getAllActivos()
@@ -139,9 +178,13 @@ class InventarioRepository @Inject constructor(
                 unidad = unidad
             )
         )
+        markLocalModified()
     }
 
-    suspend fun eliminarProductoCompra(id: String) = productoCompraDao.deactivate(id)
+    suspend fun eliminarProductoCompra(id: String) {
+        productoCompraDao.deactivate(id)
+        markLocalModified()
+    }
 
     fun getComprasDelDia(fecha: String = hoy()): Flow<List<Compra>> =
         compraDao.getComprasDelDia(fecha)
@@ -209,9 +252,187 @@ class InventarioRepository @Inject constructor(
         }
 
         compraDao.insertCompraCompleta(compra, lineas)
+        markLocalModified()
     }
 
     suspend fun anularCompra(compraId: String) {
         compraDao.anularCompra(compraId)
+        markLocalModified()
+    }
+
+    suspend fun toInventarioRegistro(): InventarioRegistro {
+        val productos = productoDao.getAll()
+        val productosVenta = productos.map { p ->
+            ProductoInventario(
+                id = p.id,
+                nombre = p.nombre,
+                precio = p.precio,
+                unidad = p.unidad,
+                tipo = "venta"
+            )
+        }
+
+        val productosCompra = productoCompraDao.getAll().map { p ->
+            ProductoInventario(
+                id = p.id,
+                nombre = p.nombre,
+                precio = p.precio,
+                unidad = p.unidad,
+                tipo = "compra"
+            )
+        }
+
+        val todasVentas = ventaDao.getAll()
+        val todasLineasVenta = ventaDao.getAllLineas()
+        val todasCompras = compraDao.getAll()
+        val todasLineasCompra = compraDao.getAllLineas()
+
+        val operacionesVenta = todasVentas.flatMap { venta ->
+            val lineas = todasLineasVenta.filter { it.ventaId == venta.id }
+            lineas.map { linea ->
+                OperacionInventario(
+                    id = linea.id,
+                    tipo = "venta",
+                    fecha = venta.fecha,
+                    productoId = linea.productoId,
+                    nombreProducto = linea.nombreProducto,
+                    unidad = "",
+                    cantidad = linea.cantidad,
+                    precioUnitario = linea.precioUnitario,
+                    total = linea.subtotal
+                )
+            }
+        }
+
+        val operacionesCompra = todasCompras.flatMap { compra ->
+            val lineas = todasLineasCompra.filter { it.compraId == compra.id }
+            lineas.map { linea ->
+                OperacionInventario(
+                    id = linea.id,
+                    tipo = "compra",
+                    fecha = compra.fecha,
+                    productoId = linea.productoId,
+                    nombreProducto = linea.nombreProducto,
+                    unidad = "",
+                    cantidad = linea.cantidad,
+                    precioUnitario = linea.precioUnitario,
+                    total = linea.subtotal
+                )
+            }
+        }
+
+        return InventarioRegistro(
+            productosVenta = productosVenta,
+            productosCompra = productosCompra,
+            operaciones = operacionesVenta + operacionesCompra
+        )
+    }
+
+    suspend fun fromInventarioRegistro(inventario: InventarioRegistro) {
+        ventaDao.deleteAllLineas()
+        ventaDao.deleteAllVentas()
+        compraDao.deleteAllLineas()
+        compraDao.deleteAllCompras()
+        productoDao.deleteAll()
+        productoCompraDao.deleteAll()
+
+        val productos = inventario.productosVenta.map { p ->
+            Producto(
+                id = p.id,
+                nombre = p.nombre,
+                precio = p.precio,
+                unidad = p.unidad,
+                activo = true
+            )
+        }
+        productoDao.insertAll(productos)
+
+        val productosCompra = inventario.productosCompra.map { p ->
+            ProductoCompra(
+                id = p.id,
+                nombre = p.nombre,
+                precio = p.precio,
+                unidad = p.unidad,
+                activo = true
+            )
+        }
+        productoCompraDao.insertAll(productosCompra)
+
+        val ventasMap = mutableMapOf<String, MutableList<LineaVenta>>()
+        val comprasMap = mutableMapOf<String, MutableList<LineaCompra>>()
+
+        inventario.operaciones.forEach { op ->
+            if (op.tipo == "venta") {
+                val ventaId = op.id.takeLastWhile { it != '-' }.let {
+                    if (it.isEmpty()) UUID.randomUUID().toString() else it
+                }
+                if (!ventasMap.containsKey(op.fecha)) {
+                    ventasMap[op.fecha] = mutableListOf()
+                }
+                ventasMap[op.fecha]!!.add(
+                    LineaVenta(
+                        id = op.id,
+                        ventaId = ventaId,
+                        productoId = op.productoId,
+                        nombreProducto = op.nombreProducto,
+                        precioUnitario = op.precioUnitario,
+                        cantidad = op.cantidad
+                    )
+                )
+            } else {
+                val compraId = op.id.takeLastWhile { it != '-' }.let {
+                    if (it.isEmpty()) UUID.randomUUID().toString() else it
+                }
+                if (!comprasMap.containsKey(op.fecha)) {
+                    comprasMap[op.fecha] = mutableListOf()
+                }
+                comprasMap[op.fecha]!!.add(
+                    LineaCompra(
+                        id = op.id,
+                        compraId = compraId,
+                        productoId = op.productoId,
+                        nombreProducto = op.nombreProducto,
+                        precioUnitario = op.precioUnitario,
+                        cantidad = op.cantidad
+                    )
+                )
+            }
+        }
+
+        val ventasPorFecha = ventasMap.map { (fecha, lineas) ->
+            val total = lineas.sumOf { it.subtotal }
+            val venta = Venta(
+                id = lineas.firstOrNull()?.ventaId ?: UUID.randomUUID().toString(),
+                fecha = fecha,
+                hora = "00:00",
+                total = total,
+                anulada = false
+            )
+            venta to lineas
+        }
+
+        ventasPorFecha.forEach { (venta, lineas) ->
+            ventaDao.insertVenta(venta)
+            ventaDao.insertLineas(lineas)
+        }
+
+        val comprasPorFecha = comprasMap.map { (fecha, lineas) ->
+            val total = lineas.sumOf { it.subtotal }
+            val compra = Compra(
+                id = lineas.firstOrNull()?.compraId ?: UUID.randomUUID().toString(),
+                fecha = fecha,
+                hora = "00:00",
+                total = total,
+                anulada = false
+            )
+            compra to lineas
+        }
+
+        comprasPorFecha.forEach { (compra, lineas) ->
+            compraDao.insertCompra(compra)
+            compraDao.insertLineas(lineas)
+        }
+
+        clearLocalModified()
     }
 }

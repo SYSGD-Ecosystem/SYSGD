@@ -5,7 +5,6 @@ import {
   AlertMessage,
   AnnualReport,
   DayAmountRow,
-  OperacionInventario,
   MONTHS,
   MonthKey,
   RegistroTCP,
@@ -84,7 +83,6 @@ export class AppComponent implements OnInit {
 
   activeTab: 'ledger' | 'inventario' | 'recursos' = 'ledger';
   ledgerTab: 'generales' | 'movimientos' | 'tributos' | 'resumen' = 'generales';
-  inventarioTab: 'venta' | 'compra' | 'historial' = 'venta';
   months = MONTHS;
   threshold = SIMPLIFIED_THRESHOLD_CUP;
   isOnline = navigator.onLine;
@@ -109,12 +107,6 @@ export class AppComponent implements OnInit {
 
   get selectedMonthGastosTotal(): number {
     return this.monthTotal(this.registro.gastos[this.selectedMonth]);
-  }
-
-  get historialOperacionesMes(): OperacionInventario[] {
-    const monthIndex = MONTHS.indexOf(this.selectedMonth) + 1;
-    const monthFormatted = String(monthIndex).padStart(2, '0');
-    return this.registro.inventario.operaciones.filter((op) => op.fecha.slice(5, 7) === monthFormatted);
   }
 
   get fiscalMunicipios(): string[] {
@@ -281,15 +273,9 @@ export class AppComponent implements OnInit {
     void this.syncToServer();
   }
 
-  addProductoInventario(payload: { tipo: 'venta' | 'compra'; nombre: string; precio: number; unidad: string }): void {
-    if (!payload.nombre.trim() || payload.precio <= 0) return;
-    this.registro = this.ledger.addProductoInventario(payload.tipo, payload.nombre, payload.precio, payload.unidad);
-    void this.syncToServer();
-  }
-
-  registrarOperacionInventario(payload: { tipo: 'venta' | 'compra'; productoId: string; cantidad: number; fecha: string }): void {
-    if (!payload.productoId || payload.cantidad <= 0 || !payload.fecha) return;
-    this.registro = this.ledger.addOperacionInventario(payload.tipo, payload.productoId, payload.cantidad, payload.fecha);
+  onInventarioChange(registro: RegistroTCP): void {
+    this.registro = registro;
+    this.ledger.saveRegistro(registro);
     void this.syncToServer();
   }
 

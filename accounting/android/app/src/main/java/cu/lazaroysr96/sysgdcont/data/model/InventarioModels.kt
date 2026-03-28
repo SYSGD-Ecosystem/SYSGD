@@ -5,6 +5,32 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+data class ProductoInventario(
+    val id: String,
+    val nombre: String,
+    val precio: Double,
+    val unidad: String,
+    val tipo: String
+)
+
+data class OperacionInventario(
+    val id: String,
+    val tipo: String,
+    val fecha: String,
+    val productoId: String,
+    val nombreProducto: String,
+    val unidad: String,
+    val cantidad: Double,
+    val precioUnitario: Double,
+    val total: Double
+)
+
+data class InventarioRegistro(
+    val productosVenta: List<ProductoInventario> = emptyList(),
+    val productosCompra: List<ProductoInventario> = emptyList(),
+    val operaciones: List<OperacionInventario> = emptyList()
+)
+
 @Entity(tableName = "productos")
 data class Producto(
     @PrimaryKey val id: String,

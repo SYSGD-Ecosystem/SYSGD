@@ -1,67 +1,404 @@
-<section class="card">
+<section class="inventario-container">
+  <!-- Header -->
   <div class="inventario-header">
-    <h2>Módulo de Compras y Ventas</h2>
-    <label>Mes
-      <select [ngModel]="selectedMonth" (ngModelChange)="selectedMonthChange.emit($event)">
-        <option *ngFor="let m of months" [ngValue]="m">{{ m }}</option>
-      </select>
-    </label>
-  </div>
-
-
-  <div *ngIf="inventarioTab !== 'historial'" class="form-grid">
-    <label>Tipo producto
-      <select [(ngModel)]="productoTipo">
-        <option value="venta">Venta</option>
-        <option value="compra">Compra</option>
-      </select>
-    </label>
-    <label>Nombre <input [(ngModel)]="productoNombre" /></label>
-    <label>Precio CUP <input type="number" min="0.01" step="0.01" [(ngModel)]="productoPrecio" /></label>
-    <label>Unidad <input [(ngModel)]="productoUnidad" /></label>
-    <div class="actions full">
-      <button type="button" (click)="addProductoInventario()">Agregar producto</button>
-    </div>
-
-    <label>Tipo operación
-      <select [(ngModel)]="operacionTipo" (change)="operacionProductoId=''">
-        <option value="venta">Venta</option>
-        <option value="compra">Compra</option>
-      </select>
-    </label>
-    <label>Producto
-      <select [(ngModel)]="operacionProductoId">
-        <option value="">Selecciona...</option>
-        <option *ngFor="let p of productosOperacion" [value]="p.id">{{ p.nombre }} ({{ p.precio | number:'1.2-2' }} / {{ p.unidad }})</option>
-      </select>
-    </label>
-    <label>Cantidad <input type="number" min="0.01" step="0.01" [(ngModel)]="operacionCantidad" /></label>
-    <label>Fecha <input type="date" [(ngModel)]="operacionFecha" /></label>
-    <div class="actions full">
-      <button type="button" (click)="registrarOperacionInventario()">Registrar operación</button>
+    <h2>Gestión de negocios</h2>
+    <div class="header-actions">
+      <button class="btn-icon" (click)="openCart()" *ngIf="cartItemCount > 0 || cartCompraItemCount > 0" title="Ver carrito">
+        🛒 Carrito ({{ currentTab === 'venta' ? cartItemCount : cartCompraItemCount }})
+      </button>
+      <button class="btn-icon" (click)="openCatalog()" title="Catálogo">
+        📦 Catálogo
+      </button>
     </div>
   </div>
 
-  <div class="table-section" *ngIf="inventarioTab === 'historial'">
-    <h3>Historial {{ selectedMonth }}</h3>
-    <div class="table-wrapper">
-      <table class="mov-table">
-        <thead>
-          <tr><th>Fecha</th><th>Tipo</th><th>Producto</th><th>Cantidad</th><th>Total</th></tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let op of historialOperacionesMes">
-            <td>{{ op.fecha }}</td>
-            <td>{{ op.tipo }}</td>
-            <td>{{ op.nombreProducto }}</td>
-            <td>{{ op.cantidad | number:'1.0-2' }} {{ op.unidad }}</td>
-            <td>{{ op.total | currency:'CUP':'symbol':'1.2-2' }}</td>
-          </tr>
-          <tr *ngIf="historialOperacionesMes.length === 0">
-            <td colspan="5" class="empty-cell">Sin operaciones en este mes.</td>
-          </tr>
-        </tbody>
-      </table>
+  <!-- Tabs de navegación -->
+  <div class="top-tabs">
+    <button class="tab-btn" [class.active]="currentTab === 'venta'" (click)="currentTab = 'venta'">
+      💰 Venta
+    </button>
+    <button class="tab-btn" [class.active]="currentTab === 'compra'" (click)="currentTab = 'compra'">
+      🛒 Compra
+    </button>
+    <button class="tab-btn" [class.active]="currentTab === 'inventario'" (click)="currentTab = 'inventario'">
+      📦 Inventario
+    </button>
+    <button class="tab-btn" [class.active]="currentTab === 'historial'" (click)="currentTab = 'historial'">
+      📋 Historial
+    </button>
+  </div>
+
+  <!-- Content based on tab -->
+  <div class="tab-content" [ngSwitch]="currentTab">
+    
+    <!-- TAB VENTA -->
+    <div *ngSwitchCase="'venta'" class="venta-content">
+      <!-- Resumen del día -->
+      <div class="resumen-card">
+        <div class="resumen-header">
+          <span class="fecha-label">{{ fechaTrabajo | date:'fullDate' }}</span>
+          <input type="date" class="date-input" [(ngModel)]="fechaTrabajo" />
+        </div>
+        <div class="resumen-stats">
+          <div class="stat">
+            <span class="stat-label">Ventas del día</span>
+            <span class="stat-value positive">{{ totalVentasDia | currency:'CUP ':'symbol':'1.2-2' }}</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Items</span>
+            <span class="stat-value">{{ cartItemCount }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid de productos -->
+      <div class="productos-grid">
+        <div class="producto-card" *ngFor="let p of productosVenta" (click)="selectProducto(p, 'venta')">
+          <div class="producto-emoji">{{ p.emoji || '📦' }}</div>
+          <div class="producto-nombre">{{ p.nombre }}</div>
+          <div class="producto-precio">{{ p.precio | currency:'CUP ':'symbol':'1.2-2' }}</div>
+          <div class="producto-unidad">/{{ p.unidad }}</div>
+        </div>
+        <div class="empty-products" *ngIf="productosVenta.length === 0">
+          <p>No hay productos de venta</p>
+          <button class="btn-primary" (click)="openCatalog()">Agregar productos</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB COMPRA -->
+    <div *ngSwitchCase="'compra'" class="compra-content">
+      <!-- Resumen del día -->
+      <div class="resumen-card compra-card">
+        <div class="resumen-header">
+          <span class="fecha-label">{{ fechaTrabajo | date:'fullDate' }}</span>
+          <input type="date" class="date-input" [(ngModel)]="fechaTrabajo" />
+        </div>
+        <div class="resumen-stats">
+          <div class="stat">
+            <span class="stat-label">Compras del día</span>
+            <span class="stat-value negative">{{ totalComprasDia | currency:'CUP ':'symbol':'1.2-2' }}</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Items</span>
+            <span class="stat-value">{{ cartCompraItemCount }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid de insumos -->
+      <div class="productos-grid">
+        <div class="producto-card" *ngFor="let p of productosCompra" (click)="selectProducto(p, 'compra')">
+          <div class="producto-emoji">{{ p.emoji || '🛒' }}</div>
+          <div class="producto-nombre">{{ p.nombre }}</div>
+          <div class="producto-precio">{{ p.precio | currency:'CUP ':'symbol':'1.2-2' }}</div>
+          <div class="producto-unidad">/{{ p.unidad }}</div>
+        </div>
+        <div class="empty-products" *ngIf="productosCompra.length === 0">
+          <p>No hay insumos para compra</p>
+          <button class="btn-primary" (click)="openCatalog()">Agregar insumos</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB INVENTARIO -->
+    <div *ngSwitchCase="'inventario'" class="inventario-content">
+      <div class="resumen-card compra-card">
+        <div class="resumen-header">
+          <span class="fecha-label">Inventario</span>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+          <span class="fecha-label">Almacenes</span>
+          <div style="display: flex; gap: 4px;">
+            <select class="date-input">
+            <option class="date-input">Inventario de productos en venta</option>
+            <option class="date-input">Inventario de productos en almacen</option>
+            <option class="date-input">Inventario de productos vendidos</option>
+          </select>
+          <button class="btn-icon">🆕</button>
+          </div>
+          
+          </div>
+        </div>
+      </div>
+     <!-- Almacenes -->
+      <div>
+          <table class="tab-inventario">
+            <thead>
+              <th>Acciones</th>
+              <th style="width: 100%;">Nombre del producto</th>
+              <th>Precio(CUP)</th>
+              <th>Unidad</th>
+              <th>Cantidad</th>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of productosCompra">
+                <td></td>
+                <td>{{ p.nombre }}</td>
+                <td>{{ p.precio | currency:'$ ':'symbol':'1.2-2' }}</td>
+                <td>{{ p.unidad }}</td>
+                <td>{{ totalInventario(p.id) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+    </div>
+
+    <!-- TAB HISTORIAL -->
+    <div *ngSwitchCase="'historial'" class="historial-content">
+      <!-- Navegación por meses -->
+      <div class="mes-nav">
+        <button class="btn-icon" (click)="mesAnterior()">◀</button>
+        <span class="mes-actual">{{ mesActualLabel }} {{ anioActual }}</span>
+        <button class="btn-icon" (click)="mesSiguiente()">▶</button>
+      </div>
+
+      <!-- Resumen del mes -->
+      <div class="resumen-card historial-card">
+        <div class="resumen-stats">
+          <div class="stat">
+            <span class="stat-label">Ventas</span>
+            <span class="stat-value positive">{{ totalVentasMes | currency:'CUP ':'symbol':'1.2-2' }}</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Compras</span>
+            <span class="stat-value negative">{{ totalComprasMes | currency:'CUP ':'symbol':'1.2-2' }}</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Balance</span>
+            <span class="stat-value" [class.positive]="balanceMes > 0" [class.negative]="balanceMes < 0">
+              {{ balanceMes | currency:'CUP ':'symbol':'1.2-2' }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de operaciones por fecha -->
+      <div class="operaciones-lista" *ngIf="operacionesPorDia.length > 0; else emptyHistorial">
+        <div class="dia-group" *ngFor="let dia of operacionesPorDia">
+          <div class="dia-header" (click)="toggleDia(dia.fecha)" [class.expanded]="isDiaExpanded(dia.fecha)">
+            <div class="dia-info">
+              <span class="dia-nombre">{{ getDiaNombre(dia.fecha) }}</span>
+              <span class="dia-cantidad">{{ dia.operaciones.length }} operacion{{ dia.operaciones.length !== 1 ? 'es' : '' }}</span>
+            </div>
+            <div class="dia-derecha">
+              <span class="dia-total" [class.positive]="dia.totalVentas > 0" [class.negative]="dia.totalCompras > 0">
+                {{ dia.totalVentas > 0 ? '+' : '' }}{{ dia.totalVentas | currency:'CUP ':'symbol':'1.2-2' }}
+                <span *ngIf="dia.totalCompras > 0" class="compras-total">(-{{ dia.totalCompras | currency:'CUP ':'symbol':'1.2-2' }})</span>
+              </span>
+              <span class="expand-icon">{{ isDiaExpanded(dia.fecha) ? '▲' : '▼' }}</span>
+            </div>
+          </div>
+          
+          <div class="dia-content" *ngIf="isDiaExpanded(dia.fecha)">
+            <div class="operacion-item" *ngFor="let op of dia.operaciones">
+              <div class="operacion-main" (click)="toggleOperacion(op.id)" [class.expanded]="isOperacionExpanded(op.id)">
+                <span class="op-tipo" [class.venta]="op.tipo === 'venta'" [class.compra]="op.tipo === 'compra'">
+                  {{ op.tipo === 'venta' ? '📤' : '📥' }}
+                </span>
+                <div class="op-info">
+                  <span class="op-nombre">{{ op.nombreProducto }}</span>
+                  <span class="op-fecha">{{ op.fecha }} {{ op.fecha }}</span>
+                </div>
+                <span class="op-total" [class.positive]="op.tipo === 'venta'" [class.negative]="op.tipo === 'compra'">
+                  {{ op.tipo === 'venta' ? '+' : '-' }}{{ op.total | currency:'CUP ':'symbol':'1.2-2' }}
+                </span>
+                <span class="expand-icon-small">{{ isOperacionExpanded(op.id) ? '▲' : '▼' }}</span>
+              </div>
+              
+              <div class="operacion-detalles" *ngIf="isOperacionExpanded(op.id)">
+                <div class="detalle-row">
+                  <span>Cantidad:</span>
+                  <span>{{ op.cantidad }} {{ op.unidad }}</span>
+                </div>
+                <div class="detalle-row">
+                  <span>Precio unitario:</span>
+                  <span>{{ op.precioUnitario | currency:'CUP ':'symbol':'1.2-2' }}</span>
+                </div>
+                <div class="detalle-row">
+                  <span>Total:</span>
+                  <span class="total-value">{{ op.total | currency:'CUP ':'symbol':'1.2-2' }}</span>
+                </div>
+                <div class="detalle-actions">
+                  <button class="btn-delete" (click)="eliminarOperacion(op)">
+                    🗑️ Eliminar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <ng-template #emptyHistorial>
+        <div class="empty-historial">
+          <span class="empty-icon">📊</span>
+          <p>No hay operaciones este mes</p>
+        </div>
+      </ng-template>
+    </div>
+  </div>
+
+  <!-- Modal: Cantidad -->
+  <div class="modal-overlay" *ngIf="showCantidadDialog" (click)="closeCantidadDialog()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <h3>{{ selectedProducto?.nombre }}</h3>
+      <p class="modal-precio">{{ selectedProducto?.precio | currency:'CUP ':'symbol':'1.2-2' }} / {{ selectedProducto?.unidad }}</p>
+      
+      <div class="cantidad-input">
+        <button class="btn-cantidad" (click)="decrementarCantidad()">−</button>
+        <input type="number" [(ngModel)]="cantidadInput" min="0.01" step="0.01" />
+        <button class="btn-cantidad" (click)="incrementarCantidad()">+</button>
+      </div>
+      
+      <div class="cantidad-rapida">
+        <button *ngFor="let cant of cantidadesRapidas" (click)="cantidadInput = cant">{{ cant }}</button>
+      </div>
+
+      <div class="modal-subtotal" *ngIf="cantidadInput > 0">
+        Subtotal: <strong>{{ (cantidadInput * (selectedProducto?.precio || 0)) | currency:'CUP ':'symbol':'1.2-2' }}</strong>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" (click)="closeCantidadDialog()">Cancelar</button>
+        <button class="btn-primary" (click)="agregarAlCarrito()" [disabled]="!cantidadInput || cantidadInput <= 0">
+          Agregar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Carrito -->
+  <div class="modal-overlay" *ngIf="showCartModal" (click)="closeCart()">
+    <div class="modal-content cart-modal" (click)="$event.stopPropagation()">
+      <h3>{{ carritoTipo === 'venta' ? 'Carrito de Venta' : 'Carrito de Compra' }}</h3>
+      
+      <div class="cart-items" *ngIf="carritoTipo === 'venta'">
+        <div class="cart-item" *ngFor="let item of cartEntries">
+          <div class="cart-item-info">
+            <span class="cart-item-nombre">{{ item.producto.nombre }}</span>
+            <span class="cart-item-precio">{{ item.producto.precio | currency:'CUP ':'symbol':'1.2-2' }} × {{ item.cantidad }}</span>
+          </div>
+          <div class="cart-item-controls">
+            <button (click)="removeFromCart(item.producto)">−</button>
+            <span>{{ item.cantidad }}</span>
+            <button (click)="addToCart(item.producto)">+</button>
+          </div>
+          <span class="cart-item-subtotal">{{ item.producto.precio * item.cantidad | currency:'CUP ':'symbol':'1.2-2' }}</span>
+        </div>
+        <div class="empty-cart" *ngIf="cartEntries.length === 0">
+          <p>Carrito vacío</p>
+        </div>
+      </div>
+
+      <div class="cart-items" *ngIf="carritoTipo === 'compra'">
+        <div class="cart-item" *ngFor="let item of cartCompraEntries">
+          <div class="cart-item-info">
+            <span class="cart-item-nombre">{{ item.producto.nombre }}</span>
+            <span class="cart-item-precio">{{ item.producto.precio | currency:'CUP':'symbol':'1.2-2' }} × {{ item.cantidad }}</span>
+          </div>
+          <div class="cart-item-controls">
+            <button (click)="removeFromCartCompra(item.producto)">−</button>
+            <span>{{ item.cantidad }}</span>
+            <button (click)="addToCartCompra(item.producto)">+</button>
+          </div>
+          <span class="cart-item-subtotal">{{ item.producto.precio * item.cantidad | currency:'CUP':'symbol':'1.2-2' }}</span>
+        </div>
+        <div class="empty-cart" *ngIf="cartCompraEntries.length === 0">
+          <p>Carrito vacío</p>
+        </div>
+      </div>
+
+      <div class="cart-total">
+        <span>Total:</span>
+        <strong>{{ carritoTipo === 'venta' ? cartTotal : cartCompraTotal | currency:'CUP':'symbol':'1.2-2' }}</strong>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" (click)="closeCart()">Seguir comprando</button>
+        <button class="btn-primary" (click)="registrarOperacion()" [disabled]="(carritoTipo === 'venta' ? cartEntries.length : cartCompraEntries.length) === 0">
+          Confirmar {{ carritoTipo === 'venta' ? 'Venta' : 'Compra' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Catálogo -->
+  <div class="modal-overlay" *ngIf="showCatalogModal" (click)="closeCatalog()">
+    <div class="modal-content catalog-modal" (click)="$event.stopPropagation()">
+      <h3>Catálogo de Productos</h3>
+      
+      <div class="catalog-tabs">
+        <button [class.active]="catalogTab === 'venta'" (click)="catalogTab = 'venta'">Venta ({{ productosVenta.length }})</button>
+        <button [class.active]="catalogTab === 'compra'" (click)="catalogTab = 'compra'">Compra ({{ productosCompra.length }})</button>
+      </div>
+
+      <div class="catalog-list">
+        <div class="catalog-item" *ngFor="let p of (catalogTab === 'venta' ? productosVenta : productosCompra)">
+          <div class="catalog-item-info">
+            <span class="catalog-emoji">{{ p.emoji || (catalogTab === 'venta' ? '📦' : '🛒') }}</span>
+            <span class="catalog-nombre">{{ p.nombre }}</span>
+            <span class="catalog-precio">{{ p.precio | currency:'CUP ':'symbol':'1.2-2' }}/{{ p.unidad }}</span>
+          </div>
+          <button class="btn-icon" style="margin-left: 8px;" (click)="eliminarProducto(p)">🗑️</button>
+        </div>
+        <div class="empty-catalog" *ngIf="(catalogTab === 'venta' ? productosVenta : productosCompra).length === 0">
+          <p>No hay productos</p>
+        </div>
+      </div>
+
+      <!-- Formulario agregar producto -->
+      <div class="add-product-form">
+        <h4>Agregar {{ catalogTab === 'venta' ? 'Producto' : 'Insumo' }}</h4>
+        
+        <div class="form-field">
+          <label>Nombre</label>
+          <input [(ngModel)]="nuevoProductoNombre" placeholder="Nombre del producto" />
+        </div>
+
+        <div class="form-field">
+          <label>Precio (CUP)</label>
+          <input type="number" [(ngModel)]="nuevoProductoPrecio" placeholder="0.00" step="0.01" />
+        </div>
+
+        <div class="form-field">
+          <div class="emoji-label">
+            <span>Emoji:</span>
+          </div>
+          <div class="emoji-grid">
+            <button *ngFor="let e of emojis" 
+                    class="emoji-btn" 
+                    [class.selected]="selectedEmoji === e"
+                    (click)="selectedEmoji = e">
+              {{ e }}
+            </button>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label>Unidad</label>
+          <select [(ngModel)]="nuevoProductoUnidad">
+            <option value="und">und</option>
+            <option value="libra">libra</option>
+            <option value="kg">kg</option>
+            <option value="g">g</option>
+            <option value="litro">litro</option>
+            <option value="ml">ml</option>
+            <option value="docena">docena</option>
+            <option value="paquete">paquete</option>
+            <option value="caja">caja</option>
+            <option value="bolsa">bolsa</option>
+            <option value="par">par</option>
+          </select>
+        </div>
+
+        <button class="btn-primary full" (click)="agregarProducto()">
+          Agregar
+        </button>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" (click)="closeCatalog()">Cerrar</button>
+      </div>
     </div>
   </div>
 </section>

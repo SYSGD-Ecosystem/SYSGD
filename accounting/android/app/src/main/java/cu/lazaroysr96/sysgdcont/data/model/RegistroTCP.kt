@@ -39,7 +39,8 @@ data class RegistroTCP(
     val generales: GeneralesData = GeneralesData(),
     val ingresos: Map<String, List<DayAmountRow>> = emptyMap(),
     val gastos: Map<String, List<DayAmountRow>> = emptyMap(),
-    val tributos: List<TributoRow> = emptyList()
+    val tributos: List<TributoRow> = emptyList(),
+    val inventario: InventarioRegistro = InventarioRegistro()
 )
 
 data class TcpPdfPayload(

@@ -59,6 +59,7 @@ export interface ProductoInventario {
   precio: number;
   unidad: string;
   tipo: 'venta' | 'compra';
+  emoji?: string;
 }
 
 export interface OperacionInventario {
@@ -71,6 +72,19 @@ export interface OperacionInventario {
   cantidad: number;
   precioUnitario: number;
   total: number;
+}
+
+export interface Almacen {
+  id: string;
+  name: string;
+  tipo: 'venta' | 'compra' | 'insumos';
+}
+
+export interface Inventario {
+  id: string;
+  product_id: ProductoInventario["id"]
+  almacen_id: Almacen["id"]
+  cantidad: number
 }
 
 export interface InventarioRegistro {

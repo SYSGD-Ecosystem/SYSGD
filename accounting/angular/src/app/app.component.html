@@ -96,14 +96,8 @@
 
         <app-inventario-section
           *ngIf="activeTab === 'inventario'"
-          [months]="months"
-          [selectedMonth]="selectedMonth"
           [registro]="registro"
-          [historialOperacionesMes]="historialOperacionesMes"
-          [inventarioTab]="inventarioTab"
-          (selectedMonthChange)="selectedMonth = $event"
-          (addProductoInventarioEvent)="addProductoInventario($event)"
-          (registrarOperacionInventarioEvent)="registrarOperacionInventario($event)"
+          (registroChange)="onInventarioChange($event)"
         />
 
         <app-resources-section *ngIf="activeTab === 'recursos'" />
@@ -115,12 +109,7 @@
           <button [class.active]="ledgerTab === 'resumen'" (click)="ledgerTab = 'resumen'">Resumen</button>
         </div>
 
-        <div class="bottom-tabs card" *ngIf="activeTab === 'inventario'">
-          <button [class.active]="inventarioTab === 'venta'" (click)="inventarioTab = 'venta'">Venta</button>
-          <button [class.active]="inventarioTab === 'compra'" (click)="inventarioTab = 'compra'">Compra</button>
-          <button [class.active]="inventarioTab === 'historial'" (click)="inventarioTab = 'historial'">Historial</button>
         </div>
-      </div>
     </section>
   </ng-container>
 

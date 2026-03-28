@@ -10,10 +10,11 @@
 		"dev-server": "cd server && npm run dev",
 		"dev-admin": "cd admin && npm run dev",
 		"dev-web": "cd web && npm run dev",
-		"dev-cont": "cd sysgd-cont && npm start",
+		"dev-cont": "cd accounting/angular && npm start",
 		"build-client": "cd client && npm run build",
 		"build-server": "cd server && npm run build",
-		"start-server": "cd server && npm start"
+		"start-server": "cd server && npm start",
+		"build-cont": "cd accounting/android && PASS=$(tr -d '\r\n' < firma/password.txt) && JAVA_HOME=/usr/lib/jvm/java-17-openjdk ./gradlew :app:assembleRelease   -Pandroid.injected.signing.store.file=\"$(pwd)/firma/firma-release.p12\"   -Pandroid.injected.signing.store.password=\"$PASS\"   -Pandroid.injected.signing.key.alias=\"lázaro yunier\"   -Pandroid.injected.signing.key.password=\"$PASS\""
 	},
 	"devDependencies": {
 		"biome": "^0.3.3",
