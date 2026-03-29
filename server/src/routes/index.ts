@@ -8,8 +8,9 @@ import members from "./members";
 import ideas from "./ideas";
 import notes from "./notes";
 import authRoutes from "./auth.routes";
-import generate from "./generate"; // new route for Gemini API
-import qwen from "./qwen"; // new route for Gemini API
+import generate from "./generate"; 
+import qwen from "./qwen"; 
+import gema from "./gema";
 import openrouterai from "./openrouterai.routes";
 import openrouter from "./openrouter"; // new route for OpenRouter Agent
 import docApi from "./api"; // existing large router with document-management endpoints
@@ -40,10 +41,11 @@ router.use("/invitations", invitations);
 router.use("/members", members);
 router.use("/generate", generate);
 router.use("/qwen", qwen);
+router.use("/gema", gema);
 router.use("/openrouterai", openrouterai);
 router.use("/openrouter", openrouter);
 router.use("/ideas", ideas);
-router.use("/", notes); // notas tienen rutas mixtas (/projects/:id/notes y /notes/:id)
+router.use("/", notes);
 router.use("/auth", authRoutes);
 router.use("/chat", chat);
 router.use("/agents", agents);

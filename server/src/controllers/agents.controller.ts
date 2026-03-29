@@ -175,7 +175,7 @@ export const updateAgent = async (req: Request, res: Response) => {
       updateFields.push(`description = $${paramCount++}`);
       values.push(updates.description);
     }
-    
+
     if (updates.systemPrompt !== undefined) {
       updateFields.push(`system_prompt = $${paramCount++}`);
       values.push(updates.systemPrompt);
@@ -294,6 +294,7 @@ export const sendMessageToAgent = async (req: Request, res: Response) => {
 
     let resolvedAgentResponse = '';
 
+    // TODO: Aqui se esta harcodeando un agente fijo para openrouter, el problema es que en la url del agente ya se debe estar indicando la direccion a un agente listo y esto simplemente intercepta la respuesta, como causa, no es posible crear agentes con otros proveedores o indicar un modelo diferente. la solucion aqui deveria ser usar la url del agente indicado, y verificar o crear wrapeds internos para hacer lo que se parece intento hacer aqui.
     if (agent.url.includes('/api/openrouter')) {
       const openRouterResult = await openRouterAgent({
         prompt: content,
@@ -312,14 +313,15 @@ export const sendMessageToAgent = async (req: Request, res: Response) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization' : req.headers.authorization ?? ''
         },
         body: JSON.stringify({
           prompt: content,
           systemPrompt: agent.system_prompt || '',
           ...(attachment_type && attachment_url
             ? {
-                [attachment_type]: attachment_url,
-              }
+              [attachment_type]: attachment_url,
+            }
             : {}),
           ...(useCustomToken ? { customToken } : {}),
         }),
