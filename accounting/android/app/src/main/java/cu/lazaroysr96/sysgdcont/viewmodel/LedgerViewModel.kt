@@ -292,7 +292,7 @@ class LedgerViewModel @Inject constructor(
         }
     }
 
-    fun importBackup(uri: Uri) {
+    fun importBackup(uri: Uri, onSuccess: (() -> Unit)? = null) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, backupMessage = null, backupError = null) }
             ledgerRepository.importBackupFromUri(uri)
@@ -306,6 +306,7 @@ class LedgerViewModel @Inject constructor(
                             backupMessage = "Backup JSON importado correctamente."
                         )
                     }
+                    onSuccess?.invoke()
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isLoading = false, backupError = e.message ?: "No se pudo importar el backup.") }

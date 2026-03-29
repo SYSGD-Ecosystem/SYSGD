@@ -164,13 +164,9 @@ fun MainScreen(
             contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
-            ledgerViewModel.importBackup(uri)
-        }
-    }
-
-    LaunchedEffect(ledgerState.backupMessage) {
-        if (ledgerState.backupMessage == "Backup JSON importado correctamente.") {
-            inventarioViewModel.refreshAfterRestore()
+            ledgerViewModel.importBackup(uri) {
+                inventarioViewModel.refreshAfterRestore()
+            }
         }
     }
 
@@ -606,6 +602,12 @@ fun MainScreen(
     LaunchedEffect(authState.accountDeleted) {
         if (authState.accountDeleted) {
             onLogout()
+        }
+    }
+
+    LaunchedEffect(ledgerState.syncSuccess) {
+        if (ledgerState.syncSuccess) {
+            inventarioViewModel.refreshAfterRestore()
         }
     }
 
