@@ -7,7 +7,7 @@ const router = express.Router();
 router.post("/", isAuthenticated, async (req, res) => {
     console.log('🔄 Nueva petición a Gema Agent:', req.body);
 
-    const { prompt, image, audio, video, file } = req.body;
+    const { prompt, systemPrompt, image, audio, video, file } = req.body;
 
     if (!prompt) {
         res.status(400).json({ error: "Falta el prompt" });
@@ -16,8 +16,9 @@ router.post("/", isAuthenticated, async (req, res) => {
 
     try {
         // Usar el nuevo agente inteligente
+        console.log(req.body)
         const result = await gemaAgent({
-            prompt
+            prompt, systemPrompt
         });
 
         console.log('✅ Respuesta generada exitosamente');

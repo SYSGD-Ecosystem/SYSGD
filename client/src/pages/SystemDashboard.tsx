@@ -222,7 +222,7 @@ const SystemDashboard: FC = () => {
 		},
 		{
 			id: "accounting",
-			label: "Registros Contables",
+			label: "Contabilidad",
 			icon: BookMarked,
 			count: accountingDocuments.length,
 		},

@@ -26,6 +26,7 @@ import updates from "./updates.routes";
 import timeEntries from "./time-entries";
 import contLedger from "./cont-ledger";
 import accountingDocuments from "./accounting-documents.routes";
+import nomenclators from "./nomenclators.routes";
 import adminRoutes from "./admin.routes";
 import statsRoutes from "./stats.routes";
 import notificationsRoutes from "./notifications.routes";
@@ -59,6 +60,7 @@ router.use("/", taskConfig);
 router.use("/time-entries", timeEntries);
 router.use("/cont-ledger", contLedger);
 router.use("/accounting-documents", accountingDocuments);
+router.use("/nomenclators", nomenclators);
 router.use("/admin", adminRoutes);
 
 router.use(updates);

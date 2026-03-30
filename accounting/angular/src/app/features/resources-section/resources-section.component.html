@@ -10,3 +10,130 @@
     </article>
   </div>
 </section>
+
+<section class="card nomenclator-card">
+  <div class="nomenclator-header">
+    <div>
+      <h2>Nomencladores de consulta</h2>
+      <p class="subtitle">Busca cuentas contables y actividades CNAE directamente desde el servidor.</p>
+    </div>
+    <div class="reference-tabs">
+      <button type="button" [class.active]="activeReferenceTab === 'accounting'" (click)="activeReferenceTab = 'accounting'">
+        Contable
+      </button>
+      <button type="button" [class.active]="activeReferenceTab === 'cnae'" (click)="activeReferenceTab = 'cnae'">
+        CNAE
+      </button>
+    </div>
+  </div>
+
+  <p class="error-box" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+  <ng-container *ngIf="activeReferenceTab === 'accounting'">
+    <form class="search-panel" (ngSubmit)="searchAccounting()">
+      <label>
+        <span>Término</span>
+        <input
+          type="text"
+          name="accountingQuery"
+          [(ngModel)]="accountingQuery"
+          placeholder="Ej: caja, inventario, gastos"
+        />
+      </label>
+
+      <label>
+        <span>Categoría</span>
+        <select name="categoryCode" [(ngModel)]="selectedCategoryCode">
+          <option value="">Todas</option>
+          <option *ngFor="let category of accountingCategories" [value]="category.code">
+            {{ category.code }} - {{ category.name }}
+          </option>
+        </select>
+      </label>
+
+      <label>
+        <span>Subcategoría</span>
+        <select name="subcategoryCode" [(ngModel)]="selectedSubcategoryCode">
+          <option value="">Todas</option>
+          <option *ngFor="let subcategory of accountingSubcategories" [value]="subcategory.code">
+            {{ subcategory.code }} - {{ subcategory.name }}
+          </option>
+        </select>
+      </label>
+
+      <div class="search-actions">
+        <button type="submit">Buscar</button>
+        <button type="button" class="secondary" (click)="clearAccountingFilters()">Limpiar</button>
+      </div>
+    </form>
+
+    <p class="state-text" *ngIf="isLoadingAccounting">Consultando nomenclador contable...</p>
+    <p class="state-text" *ngIf="!isLoadingAccounting && accountingResults.length === 0">
+      No hay resultados con los filtros actuales.
+    </p>
+
+    <div class="results-list" *ngIf="!isLoadingAccounting && accountingResults.length > 0">
+      <article class="result-card" *ngFor="let item of accountingResults">
+        <div class="result-topline">
+          <strong>{{ item.displayCode }}</strong>
+          <span class="pill">{{ item.itemType }}</span>
+          <span class="pill nature">{{ item.displayNature }}</span>
+        </div>
+        <h3>{{ item.displayName }}</h3>
+        <p>{{ item.categoryCode }} - {{ item.categoryName }}</p>
+        <p *ngIf="item.subcategoryCode">{{ item.subcategoryCode }} - {{ item.subcategoryName }}</p>
+        <p class="muted">Cuenta base: {{ item.accountCode }} - {{ item.accountName }}</p>
+      </article>
+    </div>
+  </ng-container>
+
+  <ng-container *ngIf="activeReferenceTab === 'cnae'">
+    <form class="search-panel cnae-panel" (ngSubmit)="searchCnae()">
+      <label>
+        <span>Término o código</span>
+        <input
+          type="text"
+          name="cnaeQuery"
+          [(ngModel)]="cnaeQuery"
+          placeholder="Ej: elaborador, 5610"
+        />
+      </label>
+
+      <div class="search-actions">
+        <button type="submit">Buscar</button>
+      </div>
+    </form>
+
+    <p class="state-text" *ngIf="isLoadingCnae">Consultando CNAE...</p>
+    <p class="state-text" *ngIf="!isLoadingCnae && cnaeResults.length === 0">
+      Escribe un término o código para buscar en el CNAE.
+    </p>
+
+    <div class="results-list" *ngIf="!isLoadingCnae && cnaeResults.length > 0">
+      <article class="result-card" *ngFor="let item of cnaeResults">
+        <div class="result-topline">
+          <strong>{{ item.code }}</strong>
+          <span class="pill">{{ item.section }}</span>
+        </div>
+        <h3>{{ item.description }}</h3>
+        <p class="muted">Estructura: {{ item.structure }}</p>
+
+        <div *ngIf="item.notes.length > 0" class="detail-block">
+          <h4>Notas</h4>
+          <ul>
+            <li *ngFor="let note of item.notes">{{ note }}</li>
+          </ul>
+        </div>
+
+        <div *ngIf="item.correlations.length > 0" class="detail-block">
+          <h4>Correlaciones</h4>
+          <ul>
+            <li *ngFor="let correlation of item.correlations">
+              NAE {{ correlation.codeNae }} | CIIU {{ correlation.codeCiiu }}
+            </li>
+          </ul>
+        </div>
+      </article>
+    </div>
+  </ng-container>
+</section>

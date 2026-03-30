@@ -54,13 +54,14 @@ export interface GemaResponse {
 /**
  * Genera una respuesta de texto usando Gema
  */
-export async function generateTextResponse(prompt: string): Promise<string> {
+export async function generateTextResponse(prompt: string, systemPrompt?: string): Promise<string> {
+    console.log("rrr",systemPrompt)
 	const result = await fetch("http://localhost:11434/api/generate", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({
 			model: "gemma3:1b",
-			system: SYSTEM_PROMPTS.text,
+			system: systemPrompt ?? SYSTEM_PROMPTS.text,
 			prompt,
 			think: false,
 			stream: false,
@@ -76,7 +77,8 @@ export async function generateTextResponse(prompt: string): Promise<string> {
 export async function processAgentRequest(
 	request: AgentRequest,
 ): Promise<AgentResponse> {
-	const { prompt } = request;
+    console.log("reqqqqqq",request)
+	const { prompt, systemPrompt } = request;
 
 	if (!prompt) {
 		throw new Error("El prompt es requerido");
@@ -88,7 +90,7 @@ export async function processAgentRequest(
 		let attachment_type: "image" | "audio" | "video" | "file" | string | null;
 		let attachment_url: string | null;
 
-		response = await generateTextResponse(prompt);
+		response = await generateTextResponse(prompt, systemPrompt);
         console.log({response})
 
         const gemaResponse: GemaResponse = JSON.parse(response);
