@@ -7,6 +7,7 @@ import cu.lazaroysr96.sysgdcont.data.model.Venta
 import cu.lazaroysr96.sysgdcont.data.model.ProductoCompra
 import cu.lazaroysr96.sysgdcont.data.model.Compra
 import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
+import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -171,4 +172,39 @@ interface CompraDao {
 
     @Query("DELETE FROM compras")
     suspend fun deleteAllCompras()
+}
+
+
+@Dao
+interface ItemInventarioDao {
+
+    @Query("SELECT * FROM items_inventario WHERE tipoProducto = 'COMPRA' ORDER BY ultimaActualizacion DESC")
+    fun getItemsCompra(): Flow<List<ItemInventario>>
+
+    @Query("SELECT * FROM items_inventario WHERE tipoProducto = 'VENTA' ORDER BY ultimaActualizacion DESC")
+    fun getItemsVenta(): Flow<List<ItemInventario>>
+
+    @Query("SELECT * FROM items_inventario WHERE productoId = :productoId AND tipoProducto = :tipo LIMIT 1")
+    suspend fun getByProductoId(productoId: String, tipo: String): ItemInventario?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(item: ItemInventario)
+
+    @Update
+    suspend fun update(item: ItemInventario)
+
+    @Query("UPDATE items_inventario SET stockDisponible = :stock, ultimaActualizacion = :fecha WHERE id = :id")
+    suspend fun actualizarStock(id: String, stock: Double, fecha: String)
+
+    @Query("UPDATE items_inventario SET modoStock = :modo, ultimaActualizacion = :fecha WHERE id = :id")
+    suspend fun actualizarModo(id: String, modo: String, fecha: String)
+
+    @Query("UPDATE items_inventario SET stockDisponible = stockDisponible + :cantidad, ultimaActualizacion = :fecha WHERE productoId = :productoId AND tipoProducto = 'COMPRA'")
+    suspend fun sumarStockCompra(productoId: String, cantidad: Double, fecha: String)
+
+    @Query("UPDATE items_inventario SET stockDisponible = stockDisponible - :cantidad, ultimaActualizacion = :fecha WHERE productoId = :productoId AND tipoProducto = 'VENTA'")
+    suspend fun descontarStockVenta(productoId: String, cantidad: Double, fecha: String)
+
+    @Query("DELETE FROM items_inventario WHERE id = :id")
+    suspend fun delete(id: String)
 }

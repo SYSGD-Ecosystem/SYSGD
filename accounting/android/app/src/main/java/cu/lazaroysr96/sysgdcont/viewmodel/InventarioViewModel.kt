@@ -8,7 +8,10 @@ import cu.lazaroysr96.sysgdcont.data.model.Venta
 import cu.lazaroysr96.sysgdcont.data.model.ProductoCompra
 import cu.lazaroysr96.sysgdcont.data.model.Compra
 import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
+import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
+import cu.lazaroysr96.sysgdcont.data.model.TipoProductoInv
 import cu.lazaroysr96.sysgdcont.data.repository.InventarioRepository
+// import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -19,6 +22,8 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 import javax.inject.Inject
+
+
 
 data class InventarioUiState(
     val productos: List<Producto> = emptyList(),
@@ -46,7 +51,15 @@ data class InventarioUiState(
     val cantidadVentasMes: Int = 0,
     val totalComprasMes: Double = 0.0,
     val cantidadComprasMes: Int = 0,
-    val fechaTrabajo: LocalDate = LocalDate.now()
+    val fechaTrabajo: LocalDate = LocalDate.now(),
+    // Inventario
+    val itemsInventarioCompra: List<ItemInventario> = emptyList(),
+    val itemsInventarioVenta: List<ItemInventario> = emptyList(),
+    // UI inventario
+    val showMoverDialog: Boolean = false,
+    val itemMoviendo: ItemInventario? = null,
+    val showAjusteStockDialog: Boolean = false,
+    val itemAjustando: ItemInventario? = null
 )
 
 @HiltViewModel
@@ -79,7 +92,62 @@ class InventarioViewModel @Inject constructor(
 
         cargarVentasDelMes(YearMonth.now())
         cargarComprasDelMes(YearMonth.now())
+
+        viewModelScope.launch {
+        repo.getItemsInventarioCompra().collect { items ->
+        _uiState.update { it.copy(itemsInventarioCompra = items) }
     }
+}
+        viewModelScope.launch {
+        repo.getItemsInventarioVenta().collect { items ->
+        _uiState.update { it.copy(itemsInventarioVenta = items) }
+    }
+}
+    }
+
+    fun showMoverDialog(item: ItemInventario?) {
+    _uiState.update { it.copy(showMoverDialog = item != null, itemMoviendo = item) }
+}
+
+fun showAjusteStockDialog(item: ItemInventario?) {
+    _uiState.update { it.copy(showAjusteStockDialog = item != null, itemAjustando = item) }
+}
+
+fun ajustarStockManual(id: String, cantidad: Double) {
+    viewModelScope.launch {
+        try {
+            repo.ajustarStock(id, cantidad)
+            _uiState.update { it.copy(snackbarMessage = "Stock actualizado", showAjusteStockDialog = false, itemAjustando = null) }
+        } catch (e: Exception) {
+            _uiState.update { it.copy(snackbarMessage = "Error al actualizar stock") }
+        }
+    }
+}
+
+fun moverAVentas(
+    productoCompraId: String,
+    cantidadMover: Double,
+    productoVentaId: String,
+    precioVenta: Double,
+    vinculados: List<String>,
+    ratios: List<Double>
+) {
+    viewModelScope.launch {
+        try {
+            repo.moverAVentas(productoCompraId, cantidadMover, productoVentaId, precioVenta, ratios, vinculados)
+            _uiState.update { it.copy(snackbarMessage = "Movimiento registrado", showMoverDialog = false, itemMoviendo = null) }
+        } catch (e: Exception) {
+            _uiState.update { it.copy(snackbarMessage = "Error al mover producto") }
+        }
+    }
+}
+
+fun activarItemEnInventario(productoId: String, tipo: TipoProductoInv) {
+    viewModelScope.launch {
+        repo.ensureItemInventario(productoId, tipo)
+        _uiState.update { it.copy(snackbarMessage = "Producto agregado al inventario") }
+    }
+}
 
     private fun observarDiaTrabajo(fecha: LocalDate) {
         val fechaIso = fecha.format(DateTimeFormatter.ISO_LOCAL_DATE)

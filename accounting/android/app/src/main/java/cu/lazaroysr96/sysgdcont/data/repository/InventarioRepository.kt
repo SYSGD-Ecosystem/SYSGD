@@ -10,6 +10,7 @@ import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
 import cu.lazaroysr96.sysgdcont.data.dao.VentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoCompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.CompraDao
+import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
 import cu.lazaroysr96.sysgdcont.data.model.LineaVenta
 import cu.lazaroysr96.sysgdcont.data.model.Producto
 import cu.lazaroysr96.sysgdcont.data.model.Venta
@@ -19,6 +20,9 @@ import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.data.model.InventarioRegistro
 import cu.lazaroysr96.sysgdcont.data.model.ProductoInventario
 import cu.lazaroysr96.sysgdcont.data.model.OperacionInventario
+import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
+import cu.lazaroysr96.sysgdcont.data.model.TipoProductoInv
+import cu.lazaroysr96.sysgdcont.data.model.ModoStock
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -38,7 +42,8 @@ class InventarioRepository @Inject constructor(
     private val productoDao: ProductoDao,
     private val ventaDao: VentaDao,
     private val productoCompraDao: ProductoCompraDao,
-    private val compraDao: CompraDao
+    private val compraDao: CompraDao,
+    private val itemInventarioDao: ItemInventarioDao,
 ) {
     companion object {
         private val INVENTARIO_LOCAL_MODIFIED_KEY = stringPreferencesKey("inventario_local_modified")
@@ -451,4 +456,69 @@ class InventarioRepository @Inject constructor(
 
         clearLocalModified()
     }
+
+
+        // Flows para la UI
+fun getItemsInventarioCompra(): Flow<List<ItemInventario>> =
+    itemInventarioDao.getItemsCompra()
+
+fun getItemsInventarioVenta(): Flow<List<ItemInventario>> =
+    itemInventarioDao.getItemsVenta()
+
+// Crear entrada en inventario si no existe
+suspend fun ensureItemInventario(productoId: String, tipo: TipoProductoInv): ItemInventario {
+    val existing = itemInventarioDao.getByProductoId(productoId, tipo.name)
+    if (existing != null) return existing
+    val nuevo = ItemInventario(
+        id = UUID.randomUUID().toString(),
+        productoId = productoId,
+        tipoProducto = tipo.name,
+        ultimaActualizacion = LocalDate.now().toString()
+    )
+    itemInventarioDao.insert(nuevo)
+    return nuevo
+}
+
+// Actualizar modo de stock
+suspend fun actualizarModoStock(id: String, modo: ModoStock) {
+    itemInventarioDao.actualizarModo(id, modo.name, LocalDate.now().toString())
+}
+
+// Ajuste manual de stock
+suspend fun ajustarStock(id: String, cantidad: Double) {
+    itemInventarioDao.actualizarStock(id, cantidad, LocalDate.now().toString())
+}
+
+// Mover producto de compras a ventas
+suspend fun moverAVentas(
+    productoCompraId: String,
+    cantidad: Double,
+    productoVentaId: String,
+    precioVenta: Double,
+    ratios: List<Double>,
+    vinculados: List<String>
+) {
+    val fecha = LocalDate.now().toString()
+    // Descontar del almacén compras
+    itemInventarioDao.sumarStockCompra(productoCompraId, -cantidad, fecha)
+    // Asegurar entrada en ventas y actualizar
+    val itemVenta = ensureItemInventario(productoVentaId, TipoProductoInv.VENTA)
+    val nuevoStock = itemVenta.stockDisponible + cantidad
+    val modoFinal = if (vinculados.isEmpty()) ModoStock.MANUAL.name else ModoStock.VINCULADO.name
+    
+    itemInventarioDao.insert(
+        itemVenta.copy(
+            stockDisponible = nuevoStock,
+            modoStock = modoFinal,
+            productosVinculadosIds = vinculados.toJsonStringArray(),
+            ratiosConversion = ratios.toJsonDoubleArray(),
+            ultimaActualizacion = fecha
+        )
+    )
+}
+
+// Helper extensions
+private fun List<String>.toJsonStringArray() = "[${joinToString(",") { "\"$it\"" }}]"
+private fun List<Double>.toJsonDoubleArray() = "[${joinToString(",")}]"
+
 }

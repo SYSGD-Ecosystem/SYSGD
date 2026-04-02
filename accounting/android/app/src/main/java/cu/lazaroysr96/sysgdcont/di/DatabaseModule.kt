@@ -9,6 +9,8 @@ import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
 import cu.lazaroysr96.sysgdcont.data.dao.VentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoCompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.CompraDao
+import cu.lazaroysr96.sysgdcont.data.MIGRATION_3_4
+import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,7 +30,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "sysgd_cont_database"
         )
-                        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
     }
 
@@ -55,4 +57,11 @@ object DatabaseModule {
     fun provideCompraDao(database: AppDatabase): CompraDao {
         return database.compraDao()
     }
+
+    
+    @Provides
+    @Singleton
+    fun provideItemInventarioDao(database: AppDatabase): ItemInventarioDao {
+    return database.itemInventarioDao()
+}
 }

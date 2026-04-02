@@ -35,6 +35,9 @@ import cu.lazaroysr96.sysgdcont.data.model.Venta
 import cu.lazaroysr96.sysgdcont.data.model.ProductoCompra
 import cu.lazaroysr96.sysgdcont.data.model.Compra
 import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
+import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
+import cu.lazaroysr96.sysgdcont.data.model.TipoProductoInv
+import cu.lazaroysr96.sysgdcont.data.model.ModoStock
 import cu.lazaroysr96.sysgdcont.viewmodel.InventarioViewModel
 import java.time.Instant
 import java.time.LocalDate
@@ -73,6 +76,12 @@ fun InventarioScreen(viewModel: InventarioViewModel) {
                     onClick = { viewModel.setCurrentTab(1) },
                     icon = { Icon(Icons.Default.ShoppingCart, "Comprar") },
                     label = { Text("Compra") }
+                )
+                NavigationBarItem(
+                    selected = uiState.currentTab == 3,
+                    onClick = { viewModel.setCurrentTab(3) },
+                    icon = { Icon(Icons.Default.List, "Inventario") },
+                    label = { Text("Inventario") }
                 )
                 NavigationBarItem(
                     selected = uiState.currentTab == 2,
@@ -126,12 +135,22 @@ fun InventarioScreen(viewModel: InventarioViewModel) {
                         Icon(Icons.Default.Add, "Agregar insumo")
                     }
                 }
+
+                if (uiState.currentTab == 3) {
+                    FloatingActionButton(
+                        onClick = {  },
+                        containerColor = MaterialTheme.colorScheme.tertiary
+                    ) {
+                        Icon(Icons.Default.Add, "Agregar almacén")
+                    }
+                }
             }
         }
     ) { padding ->
         when (uiState.currentTab) {
             0 -> PuntoVentaContent(viewModel, padding)
             1 -> PuntoCompraContent(viewModel, padding)
+            3 -> InventarioContent(viewModel, padding)
             2 -> HistorialContent(viewModel, padding)
         }
     }
@@ -566,6 +585,438 @@ private fun DiaTrabajoSelector(
         }
     }
 }
+
+@Composable
+private fun InventarioContent(viewModel: InventarioViewModel, padding: PaddingValues) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            "Inventario",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        AlmacenSection(
+            titulo = "Almacén de Compras",
+            icono = Icons.Default.ShoppingCart,
+            color = MaterialTheme.colorScheme.secondary,
+            items = uiState.itemsInventarioCompra,
+            productos = uiState.productosCompra,
+            productosVenta = uiState.productos,
+            onAjustarStock = { viewModel.showAjusteStockDialog(it) },
+            onMover = { viewModel.showMoverDialog(it) },
+            tipoAlmacen = TipoProductoInv.COMPRA
+        )
+
+        AlmacenSection(
+            titulo = "Almacén de Ventas",
+            icono = Icons.Default.PointOfSale,
+            color = MaterialTheme.colorScheme.primary,
+            items = uiState.itemsInventarioVenta,
+            productos = uiState.productosCompra,
+            productosVenta = uiState.productos,
+            onAjustarStock = { viewModel.showAjusteStockDialog(it) },
+            onMover = null,
+            tipoAlmacen = TipoProductoInv.VENTA
+        )
+    }
+
+    if (uiState.showAjusteStockDialog && uiState.itemAjustando != null) {
+        AjusteStockDialog(
+            item = uiState.itemAjustando!!,
+            onDismiss = { viewModel.showAjusteStockDialog(null) },
+            onConfirm = { cantidad -> viewModel.ajustarStockManual(uiState.itemAjustando!!.id, cantidad) }
+        )
+    }
+
+    if (uiState.showMoverDialog && uiState.itemMoviendo != null) {
+        MoverProductoDialog(
+            item = uiState.itemMoviendo!!,
+            productosVenta = uiState.productos,
+            onDismiss = { viewModel.showMoverDialog(null) },
+            onConfirm = { productoVentaId, cantidad, precioVenta, vinculados, ratios ->
+                viewModel.moverAVentas(
+                    productoCompraId = uiState.itemMoviendo!!.productoId,
+                    cantidadMover = cantidad,
+                    productoVentaId = productoVentaId,
+                    precioVenta = precioVenta,
+                    vinculados = vinculados,
+                    ratios = ratios
+                )
+            }
+        )
+    }
+}
+
+@Composable
+private fun AlmacenSection(
+    titulo: String,
+    icono: androidx.compose.ui.graphics.vector.ImageVector,
+    color: androidx.compose.ui.graphics.Color,
+    items: List<ItemInventario>,
+    productos: List<ProductoCompra>,
+    productosVenta: List<Producto>,
+    onAjustarStock: (ItemInventario) -> Unit,
+    onMover: ((ItemInventario) -> Unit)?,
+    tipoAlmacen: TipoProductoInv
+) {
+    var expanded by remember { mutableStateOf(true) }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(icono, contentDescription = null, tint = color)
+                    Text(titulo, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = color.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            "${items.size} productos",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = color
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null
+                    )
+                }
+            }
+
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    if (items.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("📦", fontSize = 32.sp)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    "Sin productos en inventario",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        Divider(modifier = Modifier.padding(bottom = 8.dp))
+                        items.forEach { item ->
+                            val nombreProducto = when (tipoAlmacen) {
+                                TipoProductoInv.COMPRA -> productos.find { it.id == item.productoId }?.nombre ?: item.productoId
+                                TipoProductoInv.VENTA -> productosVenta.find { it.id == item.productoId }?.nombre ?: item.productoId
+                            }
+                            val emojiProducto = when (tipoAlmacen) {
+                                TipoProductoInv.COMPRA -> productos.find { it.id == item.productoId }?.emoji ?: "📦"
+                                TipoProductoInv.VENTA -> productosVenta.find { it.id == item.productoId }?.emoji ?: "📦"
+                            }
+                            ItemInventarioRow(
+                                item = item,
+                                nombre = nombreProducto,
+                                emoji = emojiProducto,
+                                color = color,
+                                onAjustarStock = { onAjustarStock(item) },
+                                onMover = onMover?.let { { it(item) } }
+                            )
+                            Divider(modifier = Modifier.padding(vertical = 4.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ItemInventarioRow(
+    item: ItemInventario,
+    nombre: String,
+    emoji: String,
+    color: androidx.compose.ui.graphics.Color,
+    onAjustarStock: () -> Unit,
+    onMover: (() -> Unit)?
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val modo = runCatching { ModoStock.valueOf(item.modoStock) }.getOrElse { ModoStock.ILIMITADO }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(emoji, fontSize = 24.sp)
+                Column {
+                    Text(nombre, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    Text(
+                        when (modo) {
+                            ModoStock.ILIMITADO -> "Disponibilidad ilimitada"
+                            ModoStock.MANUAL -> "Stock manual"
+                            ModoStock.VINCULADO -> "Vinculado a compras"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (modo != ModoStock.ILIMITADO) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (item.stockDisponible > 0) color.copy(alpha = 0.15f)
+                               else MaterialTheme.colorScheme.errorContainer
+                    ) {
+                        Text(
+                            "%.1f".format(item.stockDisponible),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (item.stockDisponible > 0) color
+                                   else MaterialTheme.colorScheme.error
+                        )
+                    }
+                } else {
+                    Icon(
+                        Icons.Default.AllInclusive,
+                        contentDescription = "Ilimitado",
+                        tint = color,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Icon(
+                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 32.dp, bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    "Última actualización: ${item.ultimaActualizacion.ifEmpty { "Sin registro" }}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "Modo: ${item.modoStock}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = onAjustarStock,
+                        modifier = Modifier.height(32.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Ajustar stock", style = MaterialTheme.typography.labelSmall)
+                    }
+
+                    if (onMover != null) {
+                        OutlinedButton(
+                            onClick = onMover,
+                            modifier = Modifier.height(32.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                        ) {
+                            Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Mover a ventas", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AjusteStockDialog(
+    item: ItemInventario,
+    onDismiss: () -> Unit,
+    onConfirm: (Double) -> Unit
+) {
+    var cantidadInput by remember { mutableStateOf(item.stockDisponible.toString()) }
+    val cantidad = cantidadInput.toDoubleOrNull()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Ajustar stock") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Indica la cantidad disponible actual.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = cantidadInput,
+                    onValueChange = { cantidadInput = it.replace(',', '.') },
+                    label = { Text("Cantidad disponible") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { cantidad?.let { onConfirm(it) } },
+                enabled = cantidad != null && cantidad >= 0.0
+            ) { Text("Guardar") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MoverProductoDialog(
+    item: ItemInventario,
+    productosVenta: List<Producto>,
+    onDismiss: () -> Unit,
+    onConfirm: (productoVentaId: String, cantidad: Double, precioVenta: Double, vinculados: List<String>, ratios: List<Double>) -> Unit
+) {
+    var productoSeleccionadoId by remember { mutableStateOf(productosVenta.firstOrNull()?.id ?: "") }
+    var cantidadInput by remember { mutableStateOf("") }
+    var precioVentaInput by remember { mutableStateOf("") }
+    var dropdownExpanded by remember { mutableStateOf(false) }
+
+    val cantidad = cantidadInput.toDoubleOrNull()
+    val precioVenta = precioVentaInput.toDoubleOrNull()
+    val puedeConfirmar = productoSeleccionadoId.isNotEmpty() && (cantidad ?: 0.0) > 0.0 && (precioVenta ?: 0.0) > 0.0
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Mover a ventas") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "Stock disponible: ${"%.1f".format(item.stockDisponible)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                ExposedDropdownMenuBox(
+                    expanded = dropdownExpanded,
+                    onExpandedChange = { dropdownExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = productosVenta.find { it.id == productoSeleccionadoId }?.nombre ?: "Seleccionar producto",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Producto de venta destino") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(dropdownExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = dropdownExpanded,
+                        onDismissRequest = { dropdownExpanded = false }
+                    ) {
+                        productosVenta.forEach { p ->
+                            DropdownMenuItem(
+                                text = { Text("${p.emoji} ${p.nombre}") },
+                                onClick = {
+                                    productoSeleccionadoId = p.id
+                                    dropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = cantidadInput,
+                    onValueChange = { cantidadInput = it.replace(',', '.') },
+                    label = { Text("Cantidad a mover") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = precioVentaInput,
+                    onValueChange = { precioVentaInput = it.replace(',', '.') },
+                    label = { Text("Precio de venta (CUP)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onConfirm(
+                        productoSeleccionadoId,
+                        cantidad!!,
+                        precioVenta!!,
+                        listOf(item.productoId),
+                        listOf(1.0)
+                    )
+                },
+                enabled = puedeConfirmar
+            ) { Text("Mover") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
+}
+
 
 @Composable
 private fun HistorialContent(viewModel: InventarioViewModel, padding: PaddingValues) {
@@ -2076,4 +2527,42 @@ private fun PurchaseCartSheet(
             }
         }
     }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun addStore(){
+    AlertDialog(
+            onDismissRequest = {
+                
+            },
+            title = { Text("Agregar almacén") },
+            text = {
+                OutlinedTextField(
+                    value = "",
+                    onValueChange = {  },
+                    label = { Text("Nombre") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                    },
+                    enabled = true
+                ) {
+                    Text("Añadir")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
 }
