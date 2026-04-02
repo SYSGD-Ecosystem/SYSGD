@@ -11,6 +11,7 @@ import cu.lazaroysr96.sysgdcont.data.dao.ProductoCompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.CompraDao
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_3_4
 import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
+import cu.lazaroysr96.sysgdcont.data.dao.TarjetaDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -64,4 +65,10 @@ object DatabaseModule {
     fun provideItemInventarioDao(database: AppDatabase): ItemInventarioDao {
     return database.itemInventarioDao()
 }
+
+    @Provides
+    @Singleton
+    fun provideTarjetaDao(database: AppDatabase): TarjetaDao {
+        return database.tarjetaDao()
+    }
 }

@@ -28,10 +28,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
@@ -86,12 +88,14 @@ import cu.lazaroysr96.sysgdcont.ui.main.screens.InventarioScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.NomenclatorsScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.ResumenScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.SecuritySettingsScreen
+import cu.lazaroysr96.sysgdcont.ui.main.screens.TarjetaScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.TributosScreen
 import cu.lazaroysr96.sysgdcont.ui.navigation.MainTab
 import cu.lazaroysr96.sysgdcont.ui.navigation.mainTabs
 import cu.lazaroysr96.sysgdcont.viewmodel.AuthViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.InventarioViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
+import cu.lazaroysr96.sysgdcont.viewmodel.TarjetaViewModel
 import kotlinx.coroutines.launch
 
 private const val ADMIN_PHONE = "5351158544"
@@ -102,6 +106,7 @@ private const val BACKUP_ROUTE = "backup_json"
 private const val SECURITY_ROUTE = "security_settings"
 private const val VENTAS_ROUTE = "ventas"
 private const val NOMENCLATORS_ROUTE = "nomencladores"
+private const val TARJETAS_ROUTE = "tarjetas"
 
 private fun openWhatsAppContact(context: android.content.Context, message: String): Boolean {
     return try {
@@ -138,7 +143,8 @@ fun MainScreen(
         onLogout: () -> Unit,
         authViewModel: AuthViewModel = hiltViewModel(),
         ledgerViewModel: LedgerViewModel = hiltViewModel(),
-        inventarioViewModel: InventarioViewModel = hiltViewModel()
+        inventarioViewModel: InventarioViewModel = hiltViewModel(),
+        tarjetaViewModel: TarjetaViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     // val configuration = LocalConfiguration.current
@@ -349,6 +355,17 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
+                            NavigationDrawerItem(
+                                    label = { Text("Tarjetas") },
+                                    selected = currentRoute == TARJETAS_ROUTE,
+                                    icon = { Icon(Icons.Default.CreditCard, contentDescription = null) },
+                                    onClick = {
+                                        navController.navigate(TARJETAS_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
 
                             Spacer(modifier = Modifier.height(12.dp))
                             Divider()
@@ -415,12 +432,13 @@ fun MainScreen(
                                             SECURITY_ROUTE -> "Seguridad y cuenta"
                                             VENTAS_ROUTE -> "Punto de Venta"
                                             NOMENCLATORS_ROUTE -> "Nomescladores"
+                                            TARJETAS_ROUTE -> "Tarjetas"
                                             else -> "Gestor Contable TCP"
                                         }
                                 )
                             },
                             navigationIcon = {
-                                if (currentRoute == ABOUT_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE || currentRoute == NOMENCLATORS_ROUTE) {
+                                if (currentRoute == ABOUT_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE || currentRoute == NOMENCLATORS_ROUTE || currentRoute == TARJETAS_ROUTE) {
                                     IconButton(onClick = { navController.popBackStack() }) {
                                         Icon(
                                                 Icons.Default.ArrowBack,
@@ -502,6 +520,7 @@ fun MainScreen(
                 composable(MainTab.Resumen.route) { ResumenScreen(ledgerViewModel) }
                 composable(VENTAS_ROUTE) { InventarioScreen(inventarioViewModel) }
                 composable(NOMENCLATORS_ROUTE) { NomenclatorsScreen() }
+                composable(TARJETAS_ROUTE) { TarjetaScreen(tarjetaViewModel) }
                 composable(ABOUT_ROUTE) {
                     AboutScreen(
                             onContactWhatsApp = {

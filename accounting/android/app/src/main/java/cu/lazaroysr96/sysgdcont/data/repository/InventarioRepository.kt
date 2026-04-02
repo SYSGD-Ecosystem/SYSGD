@@ -237,6 +237,7 @@ class InventarioRepository @Inject constructor(
         val compraId = UUID.randomUUID().toString()
         val now = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
         val total = lineasCarrito.entries.sumOf { (p, qty) -> p.precio * qty }
+        val fecha = LocalDate.now().toString()
 
         val compra = Compra(
             id = compraId,
@@ -257,6 +258,12 @@ class InventarioRepository @Inject constructor(
         }
 
         compraDao.insertCompraCompleta(compra, lineas)
+
+        for ((producto, cantidad) in lineasCarrito) {
+            ensureItemInventario(producto.id, TipoProductoInv.COMPRA)
+            itemInventarioDao.sumarStockCompra(producto.id, cantidad, fecha)
+        }
+
         markLocalModified()
     }
 
@@ -473,6 +480,7 @@ suspend fun ensureItemInventario(productoId: String, tipo: TipoProductoInv): Ite
         id = UUID.randomUUID().toString(),
         productoId = productoId,
         tipoProducto = tipo.name,
+        modoStock = ModoStock.MANUAL.name,
         ultimaActualizacion = LocalDate.now().toString()
     )
     itemInventarioDao.insert(nuevo)

@@ -8,6 +8,7 @@ import cu.lazaroysr96.sysgdcont.data.dao.VentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoCompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.CompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
+import cu.lazaroysr96.sysgdcont.data.dao.TarjetaDao
 import cu.lazaroysr96.sysgdcont.data.model.LineaVenta
 import cu.lazaroysr96.sysgdcont.data.model.Producto
 import cu.lazaroysr96.sysgdcont.data.model.Venta
@@ -15,6 +16,7 @@ import cu.lazaroysr96.sysgdcont.data.model.ProductoCompra
 import cu.lazaroysr96.sysgdcont.data.model.Compra
 import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
+import cu.lazaroysr96.sysgdcont.data.model.Tarjeta
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
@@ -106,6 +108,7 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
 // En AppDatabase.kt, agregar:
 val MIGRATION_3_4 = object : Migration(3, 4) {
     override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+        // Tabla items_inventario
         database.execSQL("""
             CREATE TABLE IF NOT EXISTS `items_inventario` (
                 `id` TEXT NOT NULL,
@@ -122,6 +125,19 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         database.execSQL(
             "CREATE INDEX IF NOT EXISTS `index_items_inventario_productoId` ON `items_inventario` (`productoId`)"
         )
+
+        // Tabla tarjetas
+        database.execSQL("""
+            CREATE TABLE IF NOT EXISTS `tarjetas` (
+                `id` TEXT NOT NULL,
+                `nombre` TEXT NOT NULL,
+                `numero` TEXT NOT NULL,
+                `telefono` TEXT NOT NULL,
+                `esFavorita` INTEGER NOT NULL DEFAULT 0,
+                `createdAt` TEXT NOT NULL,
+                PRIMARY KEY (`id`)
+            )
+        """.trimIndent())
     }
 }
 
@@ -133,9 +149,10 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         ProductoCompra::class,
         Compra::class,
         LineaCompra::class,
-        ItemInventario::class          // <-- agregar
+        ItemInventario::class,
+        Tarjeta::class
     ],
-    version = 4,                       // <-- 3 → 4
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -143,5 +160,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun ventaDao(): VentaDao
     abstract fun productoCompraDao(): ProductoCompraDao
     abstract fun compraDao(): CompraDao
-    abstract fun itemInventarioDao(): ItemInventarioDao   // <-- agregar
+    abstract fun itemInventarioDao(): ItemInventarioDao
+    abstract fun tarjetaDao(): TarjetaDao
 }
