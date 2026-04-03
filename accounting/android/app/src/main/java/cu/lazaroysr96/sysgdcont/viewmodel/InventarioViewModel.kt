@@ -10,6 +10,7 @@ import cu.lazaroysr96.sysgdcont.data.model.Compra
 import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
 import cu.lazaroysr96.sysgdcont.data.model.TipoProductoInv
+import cu.lazaroysr96.sysgdcont.data.model.ModoStock
 import cu.lazaroysr96.sysgdcont.data.repository.InventarioRepository
 // import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -113,10 +114,20 @@ fun showAjusteStockDialog(item: ItemInventario?) {
     _uiState.update { it.copy(showAjusteStockDialog = item != null, itemAjustando = item) }
 }
 
-fun ajustarStockManual(id: String, cantidad: Double) {
+fun ajustarStockManual(id: String, cantidad: Double, modo: String, vinculados: List<String> = emptyList(), ratios: List<Double> = emptyList()) {
     viewModelScope.launch {
         try {
-            repo.ajustarStock(id, cantidad)
+            when (modo) {
+                ModoStock.ILIMITADO.name -> {
+                    repo.actualizarModoStock(id, ModoStock.ILIMITADO)
+                }
+                ModoStock.VINCULADO.name -> {
+                    repo.actualizarModoYVinculados(id, ModoStock.VINCULADO, vinculados, ratios)
+                }
+                else -> {
+                    repo.ajustarStock(id, cantidad)
+                }
+            }
             _uiState.update { it.copy(snackbarMessage = "Stock actualizado", showAjusteStockDialog = false, itemAjustando = null) }
         } catch (e: Exception) {
             _uiState.update { it.copy(snackbarMessage = "Error al actualizar stock") }

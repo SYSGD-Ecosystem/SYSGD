@@ -126,6 +126,19 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
             "CREATE INDEX IF NOT EXISTS `index_items_inventario_productoId` ON `items_inventario` (`productoId`)"
         )
 
+        // Crear entradas de inventario para productos de venta existentes con stock ILIMITADO
+        database.execSQL("""
+            INSERT INTO items_inventario (id, productoId, tipoProducto, modoStock, ultimaActualizacion)
+            SELECT 
+                'inv_venta_' || id,
+                id,
+                'VENTA',
+                'ILIMITADO',
+                ''
+            FROM productos
+            WHERE activo = 1
+        """)
+
         // Tabla tarjetas
         database.execSQL("""
             CREATE TABLE IF NOT EXISTS `tarjetas` (

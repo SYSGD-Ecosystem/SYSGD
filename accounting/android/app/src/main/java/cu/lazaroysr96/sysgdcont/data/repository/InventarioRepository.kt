@@ -492,6 +492,14 @@ suspend fun actualizarModoStock(id: String, modo: ModoStock) {
     itemInventarioDao.actualizarModo(id, modo.name, LocalDate.now().toString())
 }
 
+// Actualizar modo de stock con productos vinculados
+suspend fun actualizarModoYVinculados(id: String, modo: ModoStock, vinculados: List<String>, ratios: List<Double>) {
+    val fecha = LocalDate.now().toString()
+    val vinculadosJson = vinculados.toJsonStringArray()
+    val ratiosJson = ratios.toJsonDoubleArray()
+    itemInventarioDao.actualizarModoYVinculados(id, modo.name, vinculadosJson, ratiosJson, fecha)
+}
+
 // Ajuste manual de stock
 suspend fun ajustarStock(id: String, cantidad: Double) {
     itemInventarioDao.actualizarStock(id, cantidad, LocalDate.now().toString())

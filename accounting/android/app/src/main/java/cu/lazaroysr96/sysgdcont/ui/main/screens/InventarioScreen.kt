@@ -632,8 +632,11 @@ private fun InventarioContent(viewModel: InventarioViewModel, padding: PaddingVa
     if (uiState.showAjusteStockDialog && uiState.itemAjustando != null) {
         AjusteStockDialog(
             item = uiState.itemAjustando!!,
+            productosCompra = uiState.productosCompra,
             onDismiss = { viewModel.showAjusteStockDialog(null) },
-            onConfirm = { cantidad -> viewModel.ajustarStockManual(uiState.itemAjustando!!.id, cantidad) }
+            onConfirm = { cantidad, modo, vinculados, ratios -> 
+                viewModel.ajustarStockManual(uiState.itemAjustando!!.id, cantidad, modo, vinculados, ratios) 
+            }
         )
     }
 
@@ -881,45 +884,250 @@ private fun ItemInventarioRow(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AjusteStockDialog(
     item: ItemInventario,
+    productosCompra: List<ProductoCompra>,
     onDismiss: () -> Unit,
-    onConfirm: (Double) -> Unit
+    onConfirm: (Double, String, List<String>, List<Double>) -> Unit
 ) {
-    var cantidadInput by remember { mutableStateOf(item.stockDisponible.toString()) }
+    var cantidadInput by remember { mutableStateOf(if (item.stockDisponible > 0) item.stockDisponible.toString() else "") }
+    var unidad by remember { mutableStateOf(item.modoStock) }
     val cantidad = cantidadInput.toDoubleOrNull()
+    val unidades = listOf(ModoStock.ILIMITADO, ModoStock.MANUAL, ModoStock.VINCULADO)
+    var unitExpanded by remember { mutableStateOf(false) }
+    
+    // Productos vinculados
+    val vinculadosIniciales = try {
+        item.productosVinculadosIds
+            .removePrefix("[")
+            .removeSuffix("]")
+            .split(",")
+            .map { it.trim().removeSurrounding("\"") }
+            .filter { it.isNotEmpty() }
+    } catch (e: Exception) { emptyList() }
+    
+    val ratiosIniciales = try {
+        item.ratiosConversion
+            .removePrefix("[")
+            .removeSuffix("]")
+            .split(",")
+            .map { it.trim().toDoubleOrNull() ?: 1.0 }
+    } catch (e: Exception) { emptyList() }
+    
+    var productosVinculados by remember { 
+        mutableStateOf(vinculadosIniciales.mapIndexed { index, id -> 
+            VinculadoTemp(id, ratiosIniciales.getOrElse(index) { 1.0 })
+        }) 
+    }
+
+    fun parseJsonArray(json: String): List<String> {
+        return try {
+            json.removeSurrounding("[").removeSuffix("]")
+                .split(",")
+                .map { it.trim().removeSurrounding("\"") }
+                .filter { it.isNotEmpty() }
+        } catch (e: Exception) { emptyList() }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Ajustar stock") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "Indica la cantidad disponible actual.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                OutlinedTextField(
-                    value = cantidadInput,
-                    onValueChange = { cantidadInput = it.replace(',', '.') },
-                    label = { Text("Cantidad disponible") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                Text("Tipo de stock:", style = MaterialTheme.typography.bodyMedium)
+
+                ExposedDropdownMenuBox(
+                    expanded = unitExpanded,
+                    onExpandedChange = { unitExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = unidad,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Seleccionar") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(unitExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = unitExpanded,
+                        onDismissRequest = { unitExpanded = false }
+                    ) {
+                        unidades.forEach { u ->
+                            DropdownMenuItem(
+                                text = { Text(u.name) },
+                                onClick = {
+                                    unidad = u.name
+                                    unitExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                if (unidad == ModoStock.MANUAL.name) {
+                    Text(
+                        "Indica la cantidad disponible actual.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedTextField(
+                        value = cantidadInput,
+                        onValueChange = { cantidadInput = it.replace(',', '.') },
+                        label = { Text("Cantidad disponible") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                if (unidad == ModoStock.VINCULADO.name) {
+                    Text(
+                        "Vincula este producto con productos de compra. Cuando se descuente stock, se descontará de los productos vinculados según la cantidad.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        productosVinculados.forEachIndexed { index, vinculado ->
+                            VinculadoItemRow(
+                                vinculado = vinculado,
+                                productosCompra = productosCompra,
+                                productosVinculados = productosVinculados.map { it.productoId },
+                                onProductoCambiado = { nuevoId ->
+                                    productosVinculados = productosVinculados.toMutableList().apply {
+                                        this[index] = vinculado.copy(productoId = nuevoId)
+                                    }
+                                },
+                                onRatioCambiado = { nuevoRatio ->
+                                    productosVinculados = productosVinculados.toMutableList().apply {
+                                        this[index] = vinculado.copy(ratio = nuevoRatio)
+                                    }
+                                },
+                                onEliminar = {
+                                    productosVinculados = productosVinculados.filterIndexed { i, _ -> i != index }
+                                }
+                            )
+                        }
+                        
+                        OutlinedButton(
+                            onClick = {
+                                val siguienteId = productosCompra.firstOrNull { 
+                                    p -> productosVinculados.none { it.productoId == p.id } 
+                                }?.id ?: ""
+                                productosVinculados = productosVinculados + VinculadoTemp(siguienteId, 1.0)
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Agregar producto vinculado")
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { cantidad?.let { onConfirm(it) } },
-                enabled = cantidad != null && cantidad >= 0.0
+                onClick = { 
+                    val ids = productosVinculados.map { it.productoId }.filter { it.isNotEmpty() }
+                    val ratios = productosVinculados.map { it.ratio }
+                    onConfirm(cantidad ?: 0.0, unidad, ids, ratios)
+                },
+                enabled = when (unidad) {
+                    ModoStock.VINCULADO.name -> productosVinculados.isNotEmpty() && productosVinculados.all { it.productoId.isNotEmpty() }
+                    else -> cantidad != null && cantidad >= 0.0
+                }
             ) { Text("Guardar") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancelar") }
         }
     )
+}
+
+data class VinculadoTemp(
+    val productoId: String,
+    val ratio: Double
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VinculadoItemRow(
+    vinculado: VinculadoTemp,
+    productosCompra: List<ProductoCompra>,
+    productosVinculados: List<String>,
+    onProductoCambiado: (String) -> Unit,
+    onRatioCambiado: (Double) -> Unit,
+    onEliminar: () -> Unit
+) {
+    var dropdownExpanded by remember { mutableStateOf(false) }
+    var ratioInput by remember { mutableStateOf(if (vinculado.ratio > 0) vinculado.ratio.toString() else "1") }
+    
+    val productosDisponibles = productosCompra.filter { p -> 
+        p.id == vinculado.productoId || !productosVinculados.contains(p.id)
+    }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            ExposedDropdownMenuBox(
+                expanded = dropdownExpanded,
+                onExpandedChange = { dropdownExpanded = it }
+            ) {
+                OutlinedTextField(
+                    value = productosCompra.find { it.id == vinculado.productoId }?.nombre ?: "Seleccionar",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Producto") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(dropdownExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = dropdownExpanded,
+                    onDismissRequest = { dropdownExpanded = false }
+                ) {
+                    productosDisponibles.forEach { p ->
+                        DropdownMenuItem(
+                            text = { Text("${p.emoji} ${p.nombre}") },
+                            onClick = {
+                                onProductoCambiado(p.id)
+                                dropdownExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                OutlinedTextField(
+                    value = ratioInput,
+                    onValueChange = { 
+                        ratioInput = it.replace(',', '.')
+                        it.replace(',', '.').toDoubleOrNull()?.let { ratio -> onRatioCambiado(ratio) }
+                    },
+                    label = { Text("Cantidad a descontar") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onEliminar) {
+                    Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1863,7 +2071,7 @@ private fun AddProductDialog(
     var emoji by remember { mutableStateOf("📦") }
     var unidad by remember { mutableStateOf("und") }
 
-    val unidades = listOf("und", "kg", "g", "litro", "ml", "docena", "paquete", "caja", "bolsa", "par")
+    val unidades = listOf("und", "kg", "g", "litro", "ml", "docena", "paquete", "caja", "bolsa", "par", "libra")
     var unitExpanded by remember { mutableStateOf(false) }
 
     val puedeAgregar = nombre.isNotBlank() && precio.toDoubleOrNull() != null && (precio.toDoubleOrNull() ?: 0.0) > 0

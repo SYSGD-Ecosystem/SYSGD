@@ -199,6 +199,9 @@ interface ItemInventarioDao {
     @Query("UPDATE items_inventario SET modoStock = :modo, ultimaActualizacion = :fecha WHERE id = :id")
     suspend fun actualizarModo(id: String, modo: String, fecha: String)
 
+    @Query("UPDATE items_inventario SET modoStock = :modo, productosVinculadosIds = :vinculados, ratiosConversion = :ratios, ultimaActualizacion = :fecha WHERE id = :id")
+    suspend fun actualizarModoYVinculados(id: String, modo: String, vinculados: String, ratios: String, fecha: String)
+
     @Query("UPDATE items_inventario SET stockDisponible = stockDisponible + :cantidad, ultimaActualizacion = :fecha WHERE productoId = :productoId AND tipoProducto = 'COMPRA'")
     suspend fun sumarStockCompra(productoId: String, cantidad: Double, fecha: String)
 
