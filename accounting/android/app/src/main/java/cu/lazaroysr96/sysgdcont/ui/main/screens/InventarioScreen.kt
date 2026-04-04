@@ -102,6 +102,12 @@ fun InventarioScreen(
                     icon = { Icon(Icons.Default.History, "Historial") },
                     label = { Text("Historial") }
                 )
+                NavigationBarItem(
+                    selected = uiState.currentTab == 4,
+                    onClick = { viewModel.setCurrentTab(4) },
+                    icon = { Icon(Icons.Default.MoreHoriz, "Más") },
+                    label = { Text("Más") }
+                )
             }
         },
         floatingActionButton = {
@@ -165,6 +171,7 @@ fun InventarioScreen(
             1 -> PuntoCompraContent(viewModel, padding)
             3 -> InventarioContent(viewModel, padding)
             2 -> HistorialContent(viewModel, facturaViewModel, padding)
+            4 -> MasContent(viewModel, padding)
         }
     }
 
@@ -578,6 +585,230 @@ private fun DiaTrabajoSelector(
                 .atStartOfDay(ZoneOffset.UTC)
                 .toInstant()
                 .toEpochMilli()
+        }
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialSelectedDateMillis)
+
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val millis = datePickerState.selectedDateMillis
+                        if (millis != null) {
+                            val selectedDate = Instant.ofEpochMilli(millis)
+                                .atZone(ZoneOffset.UTC)
+                                .toLocalDate()
+                            onFechaChange(selectedDate)
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancelar")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+}
+
+@Composable
+private fun MasContent(viewModel: InventarioViewModel, padding: PaddingValues) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val resumenBalanceMes = uiState.totalVentasMes - uiState.totalComprasMes
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(padding),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    "Más",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "Configuración, resumen y reportes del módulo de ventas",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        item {
+            Card {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Datos del establecimiento", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    OutlinedTextField(
+                        value = uiState.nombreEstablecimiento,
+                        onValueChange = viewModel::updateNombreEstablecimiento,
+                        label = { Text("Nombre para facturas y reportes") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    Button(
+                        onClick = viewModel::guardarNombreEstablecimiento,
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Icon(Icons.Default.Save, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Guardar")
+                    }
+                }
+            }
+        }
+
+        item {
+            Card {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Resumen rápido", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    ResumenOperacionRow("Ventas del día", "%.2f CUP".format(uiState.totalHoy))
+                    ResumenOperacionRow("Compras del día", "%.2f CUP".format(uiState.totalComprasHoy))
+                    ResumenOperacionRow("Ventas del mes", "%.2f CUP".format(uiState.totalVentasMes))
+                    ResumenOperacionRow("Compras del mes", "%.2f CUP".format(uiState.totalComprasMes))
+                    ResumenOperacionRow("Cantidad de ventas", uiState.cantidadVentasMes.toString())
+                    ResumenOperacionRow("Cantidad de compras", uiState.cantidadComprasMes.toString())
+                    Divider()
+                    ResumenOperacionRow(
+                        "Balance mensual",
+                        "%.2f CUP".format(resumenBalanceMes),
+                        destacado = true
+                    )
+                }
+            }
+        }
+
+        item {
+            Card {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Reportes PDF", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Selecciona el periodo y genera un documento con todas las operaciones registradas.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            DateField(
+                                label = "Desde",
+                                fecha = uiState.reporteDesde,
+                                onFechaChange = viewModel::setReporteDesde
+                            )
+                        }
+                        Box(modifier = Modifier.weight(1f)) {
+                            DateField(
+                                label = "Hasta",
+                                fecha = uiState.reporteHasta,
+                                onFechaChange = viewModel::setReporteHasta
+                            )
+                        }
+                    }
+                    Button(
+                        onClick = viewModel::generarReporteVentasPdf,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.PictureAsPdf, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Generar reporte de ventas")
+                    }
+                    OutlinedButton(
+                        onClick = viewModel::generarReporteComprasPdf,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.ReceiptLong, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Generar reporte de compras")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResumenOperacionRow(
+    label: String,
+    value: String,
+    destacado: Boolean = false
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            label,
+            style = if (destacado) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
+            fontWeight = if (destacado) FontWeight.Bold else FontWeight.Normal
+        )
+        Text(
+            value,
+            style = if (destacado) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
+            fontWeight = if (destacado) FontWeight.Bold else FontWeight.Medium,
+            color = if (destacado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DateField(
+    label: String,
+    fecha: LocalDate,
+    onFechaChange: (LocalDate) -> Unit
+) {
+    val formatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = fecha.format(formatter),
+            onValueChange = {},
+            modifier = Modifier.fillMaxWidth(),
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = {
+                Icon(Icons.Default.DateRange, contentDescription = null)
+            }
+        )
+
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clickable { showDatePicker = true }
+        )
+    }
+
+    if (showDatePicker) {
+        val initialSelectedDateMillis = remember(fecha) {
+            fecha.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
         }
         val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialSelectedDateMillis)
 

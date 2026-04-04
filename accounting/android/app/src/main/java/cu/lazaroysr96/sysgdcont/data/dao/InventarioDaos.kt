@@ -54,6 +54,9 @@ interface VentaDao {
     @Query("SELECT * FROM ventas ORDER BY fecha DESC, hora DESC")
     suspend fun getAll(): List<Venta>
 
+    @Query("SELECT * FROM ventas WHERE fecha BETWEEN :desde AND :hasta AND anulada = 0 ORDER BY fecha ASC, hora ASC")
+    suspend fun getVentasEnRango(desde: String, hasta: String): List<Venta>
+
     @Query("SELECT * FROM lineas_venta ORDER BY ventaId")
     suspend fun getAllLineas(): List<LineaVenta>
 
@@ -135,6 +138,9 @@ interface CompraDao {
 
     @Query("SELECT * FROM compras ORDER BY fecha DESC, hora DESC")
     suspend fun getAll(): List<Compra>
+
+    @Query("SELECT * FROM compras WHERE fecha BETWEEN :desde AND :hasta AND anulada = 0 ORDER BY fecha ASC, hora ASC")
+    suspend fun getComprasEnRango(desde: String, hasta: String): List<Compra>
 
     @Query("SELECT * FROM lineas_compra ORDER BY compraId")
     suspend fun getAllLineas(): List<LineaCompra>

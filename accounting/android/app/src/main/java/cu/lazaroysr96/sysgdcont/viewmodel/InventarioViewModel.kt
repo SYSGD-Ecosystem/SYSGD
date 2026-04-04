@@ -11,6 +11,7 @@ import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
 import cu.lazaroysr96.sysgdcont.data.model.TipoProductoInv
 import cu.lazaroysr96.sysgdcont.data.model.ModoStock
+import cu.lazaroysr96.sysgdcont.data.repository.FacturaRepository
 import cu.lazaroysr96.sysgdcont.data.repository.InventarioRepository
 // import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -60,12 +61,16 @@ data class InventarioUiState(
     val showMoverDialog: Boolean = false,
     val itemMoviendo: ItemInventario? = null,
     val showAjusteStockDialog: Boolean = false,
-    val itemAjustando: ItemInventario? = null
+    val itemAjustando: ItemInventario? = null,
+    val nombreEstablecimiento: String = "",
+    val reporteDesde: LocalDate = LocalDate.now().withDayOfMonth(1),
+    val reporteHasta: LocalDate = LocalDate.now()
 )
 
 @HiltViewModel
 class InventarioViewModel @Inject constructor(
-    private val repo: InventarioRepository
+    private val repo: InventarioRepository,
+    private val facturaRepository: FacturaRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(InventarioUiState())
@@ -104,6 +109,11 @@ class InventarioViewModel @Inject constructor(
         _uiState.update { it.copy(itemsInventarioVenta = items) }
     }
 }
+        viewModelScope.launch {
+            facturaRepository.configuracionFacturacion.collect { config ->
+                _uiState.update { it.copy(nombreEstablecimiento = config.nombreEstablecimiento) }
+            }
+        }
     }
 
     fun showMoverDialog(item: ItemInventario?) {
@@ -158,6 +168,59 @@ fun activarItemEnInventario(productoId: String, tipo: TipoProductoInv) {
         _uiState.update { it.copy(snackbarMessage = "Producto agregado al inventario") }
     }
 }
+
+    fun updateNombreEstablecimiento(nombre: String) {
+        _uiState.update { it.copy(nombreEstablecimiento = nombre) }
+    }
+
+    fun guardarNombreEstablecimiento() {
+        viewModelScope.launch {
+            try {
+                facturaRepository.guardarNombreEstablecimiento(_uiState.value.nombreEstablecimiento)
+                _uiState.update { it.copy(snackbarMessage = "Datos del establecimiento guardados") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = "No se pudo guardar la configuración") }
+            }
+        }
+    }
+
+    fun setReporteDesde(fecha: LocalDate) {
+        _uiState.update { state ->
+            val fechaHasta = if (fecha.isAfter(state.reporteHasta)) fecha else state.reporteHasta
+            state.copy(reporteDesde = fecha, reporteHasta = fechaHasta)
+        }
+    }
+
+    fun setReporteHasta(fecha: LocalDate) {
+        _uiState.update { state ->
+            val fechaDesde = if (fecha.isBefore(state.reporteDesde)) fecha else state.reporteDesde
+            state.copy(reporteDesde = fechaDesde, reporteHasta = fecha)
+        }
+    }
+
+    fun generarReporteVentasPdf() {
+        viewModelScope.launch {
+            try {
+                val state = _uiState.value
+                val path = facturaRepository.generarReporteVentasPdf(state.reporteDesde, state.reporteHasta)
+                _uiState.update { it.copy(snackbarMessage = "Reporte de ventas generado: $path") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al generar reporte de ventas") }
+            }
+        }
+    }
+
+    fun generarReporteComprasPdf() {
+        viewModelScope.launch {
+            try {
+                val state = _uiState.value
+                val path = facturaRepository.generarReporteComprasPdf(state.reporteDesde, state.reporteHasta)
+                _uiState.update { it.copy(snackbarMessage = "Reporte de compras generado: $path") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al generar reporte de compras") }
+            }
+        }
+    }
 
     private fun observarDiaTrabajo(fecha: LocalDate) {
         val fechaIso = fecha.format(DateTimeFormatter.ISO_LOCAL_DATE)

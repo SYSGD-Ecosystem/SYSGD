@@ -123,6 +123,13 @@ class InventarioRepository @Inject constructor(
         return result
     }
 
+    suspend fun getVentasConLineasEnRango(desde: String, hasta: String): List<Pair<Venta, List<LineaVenta>>> {
+        val ventas = ventaDao.getVentasEnRango(desde, hasta)
+        return ventas.map { venta ->
+            venta to ventaDao.getLineasDeVenta(venta.id)
+        }
+    }
+
     suspend fun getResumenMensual(mes: String): Pair<Int, Double> {
         val dias = ventaDao.getDiasConVentas(mes)
         var total = 0.0
@@ -241,6 +248,13 @@ class InventarioRepository @Inject constructor(
         }
         
         return result
+    }
+
+    suspend fun getComprasConLineasEnRango(desde: String, hasta: String): List<Pair<Compra, List<LineaCompra>>> {
+        val compras = compraDao.getComprasEnRango(desde, hasta)
+        return compras.map { compra ->
+            compra to compraDao.getLineasDeCompra(compra.id)
+        }
     }
 
     suspend fun getResumenComprasMensual(mes: String): Pair<Int, Double> {
