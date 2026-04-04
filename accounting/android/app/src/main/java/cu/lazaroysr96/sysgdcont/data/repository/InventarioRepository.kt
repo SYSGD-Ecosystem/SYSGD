@@ -135,6 +135,18 @@ class InventarioRepository @Inject constructor(
     suspend fun registrarVenta(lineasCarrito: Map<Producto, Double>, fechaTrabajo: String = hoy()) {
         require(lineasCarrito.isNotEmpty())
 
+        val fecha = fechaTrabajo
+
+        // Verificar stock disponible antes de procesar
+        for ((producto, cantidad) in lineasCarrito) {
+            val itemInventario = ensureItemInventario(producto.id, TipoProductoInv.VENTA)
+            if (itemInventario.modoStock != ModoStock.ILIMITADO.name) {
+                if (itemInventario.stockDisponible < cantidad) {
+                    throw IllegalStateException("Stock insuficiente para ${producto.nombre}. Disponible: ${itemInventario.stockDisponible}")
+                }
+            }
+        }
+
         val ventaId = UUID.randomUUID().toString()
         val now = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
         val total = lineasCarrito.entries.sumOf { (p, qty) -> p.precio * qty }
@@ -158,6 +170,15 @@ class InventarioRepository @Inject constructor(
         }
 
         ventaDao.insertVentaCompleta(venta, lineas)
+
+        // Descontar stock del inventario de ventas
+        for ((producto, cantidad) in lineasCarrito) {
+            val itemInventario = ensureItemInventario(producto.id, TipoProductoInv.VENTA)
+            if (itemInventario.modoStock != ModoStock.ILIMITADO.name) {
+                itemInventarioDao.descontarStockPorId(itemInventario.id, cantidad, fecha)
+            }
+        }
+
         markLocalModified()
     }
 
@@ -505,32 +526,50 @@ suspend fun ajustarStock(id: String, cantidad: Double) {
     itemInventarioDao.actualizarStock(id, cantidad, LocalDate.now().toString())
 }
 
-// Mover producto de compras a ventas
+// Mover producto de compras a ventas (crear nuevo producto en ventas)
 suspend fun moverAVentas(
     productoCompraId: String,
     cantidad: Double,
-    productoVentaId: String,
-    precioVenta: Double,
-    ratios: List<Double>,
-    vinculados: List<String>
+    nombreProductoVenta: String,
+    emojiProductoVenta: String,
+    precioVenta: Double
 ) {
     val fecha = LocalDate.now().toString()
-    // Descontar del almacén compras
-    itemInventarioDao.sumarStockCompra(productoCompraId, -cantidad, fecha)
-    // Asegurar entrada en ventas y actualizar
-    val itemVenta = ensureItemInventario(productoVentaId, TipoProductoInv.VENTA)
-    val nuevoStock = itemVenta.stockDisponible + cantidad
-    val modoFinal = if (vinculados.isEmpty()) ModoStock.MANUAL.name else ModoStock.VINCULADO.name
     
-    itemInventarioDao.insert(
-        itemVenta.copy(
-            stockDisponible = nuevoStock,
-            modoStock = modoFinal,
-            productosVinculadosIds = vinculados.toJsonStringArray(),
-            ratiosConversion = ratios.toJsonDoubleArray(),
-            ultimaActualizacion = fecha
-        )
+    // 1. Obtener el item de inventario en compras
+    val itemCompra = itemInventarioDao.getByProductoId(productoCompraId, TipoProductoInv.COMPRA.name)
+        ?: throw IllegalStateException("No existe item en inventario de compras")
+    
+    // 2. Descontar stock del almacén de compras (si no es ilimitado)
+    if (itemCompra.modoStock != ModoStock.ILIMITADO.name) {
+        val nuevoStock = itemCompra.stockDisponible - cantidad
+        if (nuevoStock < 0) throw IllegalStateException("Stock insuficiente en compras")
+        itemInventarioDao.actualizarStock(itemCompra.id, nuevoStock, fecha)
+    }
+    
+    // 3. Crear nuevo producto en el catálogo de ventas
+    val nuevoProductoVentaId = UUID.randomUUID().toString()
+    val nuevoProductoVenta = Producto(
+        id = nuevoProductoVentaId,
+        nombre = nombreProductoVenta.trim(),
+        precio = precioVenta,
+        emoji = emojiProductoVenta,
+        unidad = "und"
     )
+    productoDao.insert(nuevoProductoVenta)
+    
+    // 4. Crear item de inventario en ventas con stock MANUAL
+    val itemVenta = ItemInventario(
+        id = "inv_venta_$nuevoProductoVentaId",
+        productoId = nuevoProductoVentaId,
+        tipoProducto = TipoProductoInv.VENTA.name,
+        stockDisponible = cantidad,
+        modoStock = ModoStock.MANUAL.name,
+        productosVinculadosIds = "[]",
+        ratiosConversion = "[]",
+        ultimaActualizacion = fecha
+    )
+    itemInventarioDao.insert(itemVenta)
 }
 
 // Helper extensions

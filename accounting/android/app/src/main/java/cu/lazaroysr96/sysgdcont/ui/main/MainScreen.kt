@@ -96,6 +96,7 @@ import cu.lazaroysr96.sysgdcont.viewmodel.AuthViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.InventarioViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.TarjetaViewModel
+import cu.lazaroysr96.sysgdcont.viewmodel.FacturaViewModel
 import kotlinx.coroutines.launch
 
 private const val ADMIN_PHONE = "5351158544"
@@ -144,7 +145,8 @@ fun MainScreen(
         authViewModel: AuthViewModel = hiltViewModel(),
         ledgerViewModel: LedgerViewModel = hiltViewModel(),
         inventarioViewModel: InventarioViewModel = hiltViewModel(),
-        tarjetaViewModel: TarjetaViewModel = hiltViewModel()
+        tarjetaViewModel: TarjetaViewModel = hiltViewModel(),
+        facturaViewModel: FacturaViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     // val configuration = LocalConfiguration.current
@@ -518,7 +520,7 @@ fun MainScreen(
                 composable(MainTab.Gastos.route) { GastosScreen(ledgerViewModel) }
                 composable(MainTab.Tributos.route) { TributosScreen(ledgerViewModel) }
                 composable(MainTab.Resumen.route) { ResumenScreen(ledgerViewModel) }
-                composable(VENTAS_ROUTE) { InventarioScreen(inventarioViewModel) }
+                composable(VENTAS_ROUTE) { InventarioScreen(inventarioViewModel,facturaViewModel) }
                 composable(NOMENCLATORS_ROUTE) { NomenclatorsScreen() }
                 composable(TARJETAS_ROUTE) { TarjetaScreen(tarjetaViewModel) }
                 composable(ABOUT_ROUTE) {

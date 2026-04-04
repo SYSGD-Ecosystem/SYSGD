@@ -103,6 +103,9 @@ dependencies {
     // Accompanist for permissions
     implementation 'com.google.accompanist:accompanist-permissions:0.32.0'
 
+    // PDF Generation
+    implementation 'com.itextpdf:itext7-core:7.2.5'
+
     // Room Database
     implementation 'androidx.room:room-runtime:2.6.1'
     implementation 'androidx.room:room-ktx:2.6.1'

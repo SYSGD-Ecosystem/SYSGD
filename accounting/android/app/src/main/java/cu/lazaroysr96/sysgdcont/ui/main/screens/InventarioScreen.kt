@@ -38,7 +38,9 @@ import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
 import cu.lazaroysr96.sysgdcont.data.model.TipoProductoInv
 import cu.lazaroysr96.sysgdcont.data.model.ModoStock
+import cu.lazaroysr96.sysgdcont.data.model.FormaPago
 import cu.lazaroysr96.sysgdcont.viewmodel.InventarioViewModel
+import cu.lazaroysr96.sysgdcont.viewmodel.FacturaViewModel
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -50,14 +52,25 @@ import java.time.ZoneOffset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InventarioScreen(viewModel: InventarioViewModel) {
+fun InventarioScreen(
+    viewModel: InventarioViewModel,
+    facturaViewModel: FacturaViewModel // = hiltViewModel()
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val facturaState by facturaViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearSnackbar()
+        }
+    }
+
+    LaunchedEffect(facturaState.snackbarMessage) {
+        facturaState.snackbarMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            facturaViewModel.clearSnackbar()
         }
     }
 
@@ -151,7 +164,7 @@ fun InventarioScreen(viewModel: InventarioViewModel) {
             0 -> PuntoVentaContent(viewModel, padding)
             1 -> PuntoCompraContent(viewModel, padding)
             3 -> InventarioContent(viewModel, padding)
-            2 -> HistorialContent(viewModel, padding)
+            2 -> HistorialContent(viewModel, facturaViewModel, padding)
         }
     }
 
@@ -196,6 +209,17 @@ fun InventarioScreen(viewModel: InventarioViewModel) {
             onRemove = viewModel::removeFromCartCompra,
             onRegistrar = viewModel::registrarCompra,
             onDismiss = { viewModel.showPurchaseSheet(false) }
+        )
+    }
+
+    if (facturaState.showDialog && facturaState.venta != null) {
+        FacturaDialog(
+            // venta = facturaState.venta,
+            lineas = facturaState.lineasVenta,
+            onDismiss = { facturaViewModel.hideDialog() },
+            onConfirm = { nombre, ci, direccion, telefono, formaPago, transaccion ->
+                facturaViewModel.generarFactura(nombre, ci, direccion, telefono, formaPago, transaccion)
+            }
         )
     }
 }
@@ -643,16 +667,15 @@ private fun InventarioContent(viewModel: InventarioViewModel, padding: PaddingVa
     if (uiState.showMoverDialog && uiState.itemMoviendo != null) {
         MoverProductoDialog(
             item = uiState.itemMoviendo!!,
-            productosVenta = uiState.productos,
+            productosCompra = uiState.productosCompra,
             onDismiss = { viewModel.showMoverDialog(null) },
-            onConfirm = { productoVentaId, cantidad, precioVenta, vinculados, ratios ->
+            onConfirm = { nombreProducto, emojiProducto, cantidad, precioVenta ->
                 viewModel.moverAVentas(
                     productoCompraId = uiState.itemMoviendo!!.productoId,
                     cantidadMover = cantidad,
-                    productoVentaId = productoVentaId,
-                    precioVenta = precioVenta,
-                    vinculados = vinculados,
-                    ratios = ratios
+                    nombreProductoVenta = nombreProducto,
+                    emojiProductoVenta = emojiProducto,
+                    precioVenta = precioVenta
                 )
             }
         )
@@ -1134,62 +1157,83 @@ private fun VinculadoItemRow(
 @Composable
 private fun MoverProductoDialog(
     item: ItemInventario,
-    productosVenta: List<Producto>,
+    productosCompra: List<ProductoCompra>,
     onDismiss: () -> Unit,
-    onConfirm: (productoVentaId: String, cantidad: Double, precioVenta: Double, vinculados: List<String>, ratios: List<Double>) -> Unit
+    onConfirm: (nombre: String, emoji: String, cantidad: Double, precioVenta: Double) -> Unit
 ) {
-    var productoSeleccionadoId by remember { mutableStateOf(productosVenta.firstOrNull()?.id ?: "") }
-    var cantidadInput by remember { mutableStateOf("") }
-    var precioVentaInput by remember { mutableStateOf("") }
-    var dropdownExpanded by remember { mutableStateOf(false) }
-
+    val productoCompra = productosCompra.find { it.id == item.productoId }
+    var nombreProducto by remember { mutableStateOf(productoCompra?.nombre ?: "") }
+    var emojiProducto by remember { mutableStateOf(productoCompra?.emoji ?: "📦") }
+    var cantidadInput by remember { mutableStateOf(if (item.stockDisponible > 0) item.stockDisponible.toString() else "") }
+    var precioVentaInput by remember { mutableStateOf(productoCompra?.precio?.toString() ?: "") }
+    var dropdownEmojiExpanded by remember { mutableStateOf(false) }
+    
     val cantidad = cantidadInput.toDoubleOrNull()
     val precioVenta = precioVentaInput.toDoubleOrNull()
-    val puedeConfirmar = productoSeleccionadoId.isNotEmpty() && (cantidad ?: 0.0) > 0.0 && (precioVenta ?: 0.0) > 0.0
+    val puedeConfirmar = nombreProducto.isNotBlank() && (cantidad ?: 0.0) > 0.0 && (precioVenta ?: 0.0) > 0.0
+    
+    val listaEmojis = listOf("📦", "🥚", "🍞", "🥛", "🧼", "🍚", "🍬", "🥫", "🧃", "🍟", "🍔", "🌭")
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Mover a ventas") },
+        title = { Text("Crear producto en ventas") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
                 Text(
-                    "Stock disponible: ${"%.1f".format(item.stockDisponible)}",
+                    "Stock disponible en compras: ${"%.1f".format(item.stockDisponible)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                ExposedDropdownMenuBox(
-                    expanded = dropdownExpanded,
-                    onExpandedChange = { dropdownExpanded = it }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedTextField(
-                        value = productosVenta.find { it.id == productoSeleccionadoId }?.nombre ?: "Seleccionar producto",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Producto de venta destino") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(dropdownExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = dropdownExpanded,
-                        onDismissRequest = { dropdownExpanded = false }
+                    ExposedDropdownMenuBox(
+                        expanded = dropdownEmojiExpanded,
+                        onExpandedChange = { dropdownEmojiExpanded = it },
+                        modifier = Modifier.width(80.dp)
                     ) {
-                        productosVenta.forEach { p ->
-                            DropdownMenuItem(
-                                text = { Text("${p.emoji} ${p.nombre}") },
-                                onClick = {
-                                    productoSeleccionadoId = p.id
-                                    dropdownExpanded = false
-                                }
-                            )
+                        OutlinedTextField(
+                            value = emojiProducto,
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(dropdownEmojiExpanded) },
+                            modifier = Modifier.menuAnchor()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = dropdownEmojiExpanded,
+                            onDismissRequest = { dropdownEmojiExpanded = false }
+                        ) {
+                            listaEmojis.forEach { emoji ->
+                                DropdownMenuItem(
+                                    text = { Text(emoji, fontSize = 24.sp) },
+                                    onClick = {
+                                        emojiProducto = emoji
+                                        dropdownEmojiExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
+                    
+                    OutlinedTextField(
+                        value = nombreProducto,
+                        onValueChange = { nombreProducto = it },
+                        label = { Text("Nombre del producto") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
 
                 OutlinedTextField(
                     value = cantidadInput,
                     onValueChange = { cantidadInput = it.replace(',', '.') },
-                    label = { Text("Cantidad a mover") },
+                    label = { Text("Cantidad a transferir") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -1209,15 +1253,14 @@ private fun MoverProductoDialog(
             TextButton(
                 onClick = {
                     onConfirm(
-                        productoSeleccionadoId,
+                        nombreProducto,
+                        emojiProducto,
                         cantidad!!,
-                        precioVenta!!,
-                        listOf(item.productoId),
-                        listOf(1.0)
+                        precioVenta!!
                     )
                 },
                 enabled = puedeConfirmar
-            ) { Text("Mover") }
+            ) { Text("Crear y Transferir") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancelar") }
@@ -1227,7 +1270,7 @@ private fun MoverProductoDialog(
 
 
 @Composable
-private fun HistorialContent(viewModel: InventarioViewModel, padding: PaddingValues) {
+private fun HistorialContent(viewModel: InventarioViewModel, facturaViewModel: FacturaViewModel, padding: PaddingValues) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Column(
@@ -1359,7 +1402,8 @@ private fun HistorialContent(viewModel: InventarioViewModel, padding: PaddingVal
                             DiaVentasCard(
                                 fecha = fecha,
                                 ventas = ventas,
-                                onAnular = { ventaId -> viewModel.anularVenta(ventaId) }
+                                onAnular = { ventaId -> viewModel.anularVenta(ventaId) },
+                                onGenerarFactura = { venta, lineas -> facturaViewModel.showFacturaDialog(venta, lineas) }
                             )
                         }
                     }
@@ -1602,7 +1646,8 @@ private fun CompraItem(
 private fun DiaVentasCard(
     fecha: String,
     ventas: List<Pair<Venta, List<LineaVenta>>>,
-    onAnular: (String) -> Unit
+    onAnular: (String) -> Unit,
+    onGenerarFactura: (Venta, List<LineaVenta>) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     val totalDia = ventas.sumOf { it.first.total }
@@ -1660,7 +1705,8 @@ private fun DiaVentasCard(
                             fecha = fecha,
                             venta = venta,
                             lineas = lineas,
-                            onAnular = { onAnular(venta.id) }
+                            onAnular = { onAnular(venta.id) },
+                            onGenerarFactura = { onGenerarFactura(venta, lineas) }
                         )
                     }
                 }
@@ -1674,8 +1720,10 @@ private fun VentaItem(
     fecha: String,
     venta: Venta,
     lineas: List<LineaVenta>,
-    onAnular: () -> Unit
+    onAnular: () -> Unit,
+    onGenerarFactura: () -> Unit
 ) {
+
     var expanded by remember { mutableStateOf(false) }
     var showAnularDialog by remember { mutableStateOf(false) }
 
@@ -1750,11 +1798,18 @@ private fun VentaItem(
                     color = MaterialTheme.colorScheme.primary
                 )
 
-                TextButton(
-                    onClick = { showAnularDialog = true },
-                    modifier = Modifier.align(Alignment.End)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    Text("Anular", color = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = onGenerarFactura) {
+                        Icon(Icons.Default.Receipt, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Factura")
+                    }
+                    TextButton(onClick = { showAnularDialog = true }) {
+                        Text("Anular", color = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
         }
@@ -2773,4 +2828,117 @@ private fun addStore(){
                 }
             }
         )
+    }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FacturaDialog(
+    // venta: Venta,
+    lineas: List<LineaVenta>,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String, String, String, FormaPago, String?) -> Unit
+) {
+    var nombre by remember { mutableStateOf("") }
+    var ci by remember { mutableStateOf("") }
+    var direccion by remember { mutableStateOf("") }
+    var telefono by remember { mutableStateOf("") }
+    var formaPago by remember { mutableStateOf(FormaPago.EFECTIVO) }
+    var idTransaccion by remember { mutableStateOf("") }
+    var formaPagoExpanded by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Generar Factura") },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                OutlinedTextField(
+                    value = nombre,
+                    onValueChange = { nombre = it },
+                    label = { Text("Nombre del cliente") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = ci,
+                    onValueChange = { ci = it },
+                    label = { Text("No. de Carnet de Identidad") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = direccion,
+                    onValueChange = { direccion = it },
+                    label = { Text("Dirección") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = telefono,
+                    onValueChange = { telefono = it },
+                    label = { Text("Teléfono") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                ExposedDropdownMenuBox(
+                    expanded = formaPagoExpanded,
+                    onExpandedChange = { formaPagoExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = if (formaPago == FormaPago.EFECTIVO) "Efectivo" else "Tarjeta",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Forma de pago") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(formaPagoExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = formaPagoExpanded,
+                        onDismissRequest = { formaPagoExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Efectivo") },
+                            onClick = {
+                                formaPago = FormaPago.EFECTIVO
+                                formaPagoExpanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Tarjeta") },
+                            onClick = {
+                                formaPago = FormaPago.TARJETA
+                                formaPagoExpanded = false
+                            }
+                        )
+                    }
+                }
+
+                if (formaPago == FormaPago.TARJETA) {
+                    OutlinedTextField(
+                        value = idTransaccion,
+                        onValueChange = { idTransaccion = it },
+                        label = { Text("I de transacción") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onConfirm(nombre, ci, direccion, telefono, formaPago, idTransaccion.ifBlank { null })
+                },
+                enabled = nombre.isNotBlank() && ci.isNotBlank()
+            ) {
+                Text("Generar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
 }

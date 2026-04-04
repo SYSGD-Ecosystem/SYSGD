@@ -138,17 +138,16 @@ fun ajustarStockManual(id: String, cantidad: Double, modo: String, vinculados: L
 fun moverAVentas(
     productoCompraId: String,
     cantidadMover: Double,
-    productoVentaId: String,
-    precioVenta: Double,
-    vinculados: List<String>,
-    ratios: List<Double>
+    nombreProductoVenta: String,
+    emojiProductoVenta: String,
+    precioVenta: Double
 ) {
     viewModelScope.launch {
         try {
-            repo.moverAVentas(productoCompraId, cantidadMover, productoVentaId, precioVenta, ratios, vinculados)
-            _uiState.update { it.copy(snackbarMessage = "Movimiento registrado", showMoverDialog = false, itemMoviendo = null) }
+            repo.moverAVentas(productoCompraId, cantidadMover, nombreProductoVenta, emojiProductoVenta, precioVenta)
+            _uiState.update { it.copy(snackbarMessage = "Producto creado en ventas", showMoverDialog = false, itemMoviendo = null) }
         } catch (e: Exception) {
-            _uiState.update { it.copy(snackbarMessage = "Error al mover producto") }
+            _uiState.update { it.copy(snackbarMessage = "Error al mover producto: ${e.message}") }
         }
     }
 }
@@ -381,7 +380,7 @@ fun activarItemEnInventario(productoId: String, tipo: TipoProductoInv) {
                 }
                 cargarVentasDelMes(_uiState.value.mesActual)
             } catch (e: Exception) {
-                _uiState.update { it.copy(snackbarMessage = "Error al registrar venta") }
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al registrar venta") }
             }
         }
     }

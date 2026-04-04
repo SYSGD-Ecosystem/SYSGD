@@ -208,6 +208,9 @@ interface ItemInventarioDao {
     @Query("UPDATE items_inventario SET stockDisponible = stockDisponible - :cantidad, ultimaActualizacion = :fecha WHERE productoId = :productoId AND tipoProducto = 'VENTA'")
     suspend fun descontarStockVenta(productoId: String, cantidad: Double, fecha: String)
 
+    @Query("UPDATE items_inventario SET stockDisponible = stockDisponible - :cantidad, ultimaActualizacion = :fecha WHERE id = :id")
+    suspend fun descontarStockPorId(id: String, cantidad: Double, fecha: String)
+
     @Query("DELETE FROM items_inventario WHERE id = :id")
     suspend fun delete(id: String)
 }
