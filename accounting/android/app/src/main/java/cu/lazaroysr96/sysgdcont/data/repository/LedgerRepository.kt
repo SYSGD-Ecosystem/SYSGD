@@ -10,6 +10,21 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.itextpdf.io.font.constants.StandardFonts
+import com.itextpdf.kernel.colors.ColorConstants
+import com.itextpdf.kernel.font.PdfFont
+import com.itextpdf.kernel.font.PdfFontFactory
+import com.itextpdf.kernel.geom.PageSize
+import com.itextpdf.kernel.pdf.PdfDocument
+import com.itextpdf.kernel.pdf.PdfWriter
+import com.itextpdf.layout.Document
+import com.itextpdf.layout.borders.SolidBorder
+import com.itextpdf.layout.element.Cell
+import com.itextpdf.layout.element.Paragraph
+import com.itextpdf.layout.element.Table
+import com.itextpdf.layout.properties.HorizontalAlignment
+import com.itextpdf.layout.properties.TextAlignment
+import com.itextpdf.layout.properties.UnitValue
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import cu.lazaroysr96.sysgdcont.data.api.ApiService
@@ -27,6 +42,7 @@ import org.json.JSONObject
 import retrofit2.Response
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -985,6 +1001,54 @@ class LedgerRepository @Inject constructor(
         }
     }
 
+    suspend fun downloadPdfOffline(): Result<Intent> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val registro = getRegistro()
+                val pdfPayload = TcpPdfPayload(
+                    generalData = PdfGeneralData(
+                        anio = registro.generales.anio.toString(),
+                        nombre = registro.generales.nombre,
+                        nit = registro.generales.nit,
+                        fiscalCalle = registro.generales.fiscalCalle,
+                        fiscalMunicipio = registro.generales.fiscalMunicipio,
+                        fiscalProvincia = registro.generales.fiscalProvincia,
+                        legalCalle = registro.generales.legalCalle,
+                        legalMunicipio = registro.generales.legalMunicipio,
+                        legalProvincia = registro.generales.legalProvincia,
+                        actividad = registro.generales.actividad,
+                        codigo = registro.generales.codigo
+                    ),
+                    ingresos = registro.ingresos,
+                    gastos = registro.gastos,
+                    tributos = registro.tributos.map { row ->
+                        TributoPdfRow(
+                            mes = row.mes,
+                            b = row.ventas,
+                            c = row.fuerza,
+                            d = row.sellos,
+                            e = row.anuncios,
+                            f = row.css20,
+                            h = row.css14,
+                            i = row.otros,
+                            j = row.restauracion,
+                            l = row.arrendamiento,
+                            m = row.exonerado,
+                            n = row.otrosMFP,
+                            o = row.cuotaMensual,
+                            p = ""
+                        )
+                    }
+                )
+
+                val file = generateOfflineTcpPdf(pdfPayload)
+                buildPdfIntent(file)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
     private suspend fun processPdfResponse(response: Response<ResponseBody>): Result<Intent> {
         return withContext(Dispatchers.IO) {
             val body = response.body()
@@ -1003,20 +1067,430 @@ class LedgerRepository @Inject constructor(
                 }
             }
 
-            val uri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                file
-            )
-
-            val shareIntent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "application/pdf")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-
-            Result.success(Intent.createChooser(shareIntent, "Abrir PDF"))
+            buildPdfIntent(file)
         }
     }
+
+    private fun buildPdfIntent(file: File): Result<Intent> {
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+
+        val shareIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/pdf")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+        return Result.success(Intent.createChooser(shareIntent, "Abrir PDF"))
+    }
+
+    private fun generateOfflineTcpPdf(payload: TcpPdfPayload): File {
+        val fileName = "Registro_TCP_${payload.generalData.anio}_offline_experimental.pdf"
+        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val file = File(downloadsDir, fileName)
+        val writer = PdfWriter(file)
+        val pdfDocument = PdfDocument(writer)
+        val document = Document(pdfDocument, PageSize.A4.rotate())
+        document.setMargins(10f, 10f, 10f, 10f)
+
+        val regularFont = PdfFontFactory.createFont(StandardFonts.HELVETICA)
+        val boldFont = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD)
+        document.setFont(regularFont)
+
+        addTcpCoverPage(document, payload.generalData, boldFont, regularFont)
+        document.add(com.itextpdf.layout.element.AreaBreak())
+        addMonthSection(document, "INGRESOS", "Total de Ingresos Anuales", payload.ingresos, boldFont, regularFont)
+        document.add(com.itextpdf.layout.element.AreaBreak())
+        addMonthSection(document, "GASTOS", "Total de Gastos Anuales", payload.gastos, boldFont, regularFont)
+        document.add(com.itextpdf.layout.element.AreaBreak())
+        addTributosSection(document, payload.tributos, boldFont, regularFont)
+
+        document.close()
+        return file
+    }
+
+    private fun addTcpCoverPage(
+        document: Document,
+        generalData: PdfGeneralData,
+        boldFont: PdfFont,
+        regularFont: PdfFont
+    ) {
+        val outer = Table(floatArrayOf(1f, 700f, 1f)).useAllAvailableWidth()
+        outer.setBorder(com.itextpdf.layout.borders.Border.NO_BORDER)
+        outer.addCell(blankCell())
+        outer.addCell(
+            Cell().setBorder(com.itextpdf.layout.borders.Border.NO_BORDER)
+                .add(buildHeaderTable(generalData, boldFont, regularFont))
+        )
+        outer.addCell(blankCell())
+        document.add(Paragraph("\n"))
+        document.add(outer)
+
+        val firmaOuter = Table(floatArrayOf(1f, 700f, 1f)).useAllAvailableWidth()
+        firmaOuter.setBorder(com.itextpdf.layout.borders.Border.NO_BORDER)
+        firmaOuter.addCell(blankCell())
+        val firmaContainer = Cell().setBorder(com.itextpdf.layout.borders.Border.NO_BORDER)
+        val firmaInner = Table(floatArrayOf(220f, 480f)).useAllAvailableWidth()
+        firmaInner.setBorder(com.itextpdf.layout.borders.Border.NO_BORDER)
+        firmaInner.addCell(buildFirmaTable(generalData, boldFont, regularFont))
+        firmaInner.addCell(blankCell())
+        firmaContainer.add(firmaInner)
+        firmaContainer.setPaddingTop(14f)
+        firmaOuter.addCell(firmaContainer)
+        firmaOuter.addCell(blankCell())
+        document.add(firmaOuter)
+    }
+
+    private fun buildHeaderTable(
+        generalData: PdfGeneralData,
+        boldFont: PdfFont,
+        regularFont: PdfFont
+    ): Table {
+        val widths = floatArrayOf(60f, 60f, 125f, 125f, 95f, 95f, 55f, 85f)
+        val table = Table(widths)
+        table.setWidth(700f)
+
+        val onatCell = baseCell(rowspan = 2, colspan = 2).setPaddingTop(8f)
+        onatCell.add(
+            Paragraph("ONAT")
+                .setFont(boldFont)
+                .setFontSize(16f)
+                .setTextAlignment(TextAlignment.CENTER)
+        )
+        onatCell.add(
+            Paragraph("OFICINA NACIONAL DE\nADMINISTRACION TRIBUTARIA")
+                .setFont(regularFont)
+                .setFontSize(6f)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMultipliedLeading(1f)
+        )
+        table.addCell(onatCell)
+        table.addCell(
+            textCell(
+                "REGISTRO DE INGRESOS Y GASTOS PARA EL TRABAJO POR CUENTA\nPROPIA",
+                boldFont,
+                11f,
+                TextAlignment.CENTER,
+                rowspan = 2,
+                colspan = 4
+            ).setPaddingTop(10f)
+        )
+        table.addCell(textCell("Año", boldFont, 10f, TextAlignment.CENTER, colspan = 2))
+        table.addCell(textCell(generalData.anio, boldFont, 11f, TextAlignment.CENTER, colspan = 2))
+        table.addCell(textCell("Nombre(s) y Apellidos del Contribuyente", regularFont, 9f, TextAlignment.CENTER, colspan = 6))
+        table.addCell(textCell("NIT", boldFont, 10f, TextAlignment.CENTER, colspan = 2))
+        table.addCell(textCell(generalData.nombre, regularFont, 10f, TextAlignment.LEFT, colspan = 6))
+        table.addCell(textCell(generalData.nit, regularFont, 10f, TextAlignment.LEFT, colspan = 2))
+        table.addCell(textCell("Domicilio fiscal: (lugar donde desarrolla la actividad): calle, No, apto, entre calles:", regularFont, 9f, TextAlignment.LEFT, colspan = 8))
+        table.addCell(textCell(generalData.fiscalCalle, regularFont, 10f, TextAlignment.LEFT, colspan = 8))
+        table.addCell(textCell("Municipio:", regularFont, 10f, TextAlignment.LEFT, colspan = 2))
+        table.addCell(textCell(generalData.fiscalMunicipio, regularFont, 10f, TextAlignment.LEFT, colspan = 2))
+        table.addCell(textCell("Provincia:", regularFont, 10f, TextAlignment.LEFT, colspan = 2))
+        table.addCell(textCell(generalData.fiscalProvincia, regularFont, 10f, TextAlignment.LEFT, colspan = 2))
+        table.addCell(textCell("Domicilio legal: (según Carnet de Identidad): calle, No, Apto, entre calles.", regularFont, 9f, TextAlignment.LEFT, colspan = 8))
+        table.addCell(textCell(generalData.legalCalle, regularFont, 10f, TextAlignment.LEFT, colspan = 8))
+        table.addCell(textCell("Municipio:", regularFont, 10f, TextAlignment.LEFT, colspan = 2))
+        table.addCell(textCell(generalData.legalMunicipio, regularFont, 10f, TextAlignment.LEFT, colspan = 2))
+        table.addCell(textCell("Provincia:", regularFont, 10f, TextAlignment.LEFT, colspan = 2))
+        table.addCell(textCell(generalData.legalProvincia, regularFont, 10f, TextAlignment.LEFT, colspan = 2))
+        table.addCell(textCell("Actividad:", regularFont, 10f, TextAlignment.LEFT))
+        table.addCell(textCell(generalData.actividad, regularFont, 10f, TextAlignment.LEFT, colspan = 5))
+        table.addCell(textCell("Código:", regularFont, 10f, TextAlignment.LEFT))
+        table.addCell(textCell(generalData.codigo, regularFont, 10f, TextAlignment.LEFT))
+
+        return table
+    }
+
+    private fun buildFirmaTable(
+        generalData: PdfGeneralData,
+        boldFont: PdfFont,
+        regularFont: PdfFont
+    ): Table {
+        val table = Table(floatArrayOf(80f, 70f, 70f))
+        table.setWidth(220f)
+        table.addCell(textCell("D", regularFont, 10f, TextAlignment.CENTER))
+        table.addCell(textCell("M", regularFont, 10f, TextAlignment.CENTER))
+        table.addCell(textCell("A", regularFont, 10f, TextAlignment.CENTER))
+        table.addCell(textCell(generalData.firmaDia, regularFont, 10f, TextAlignment.CENTER))
+        table.addCell(textCell(generalData.firmaMes, regularFont, 10f, TextAlignment.CENTER))
+        table.addCell(textCell(generalData.firmaAnio, regularFont, 10f, TextAlignment.CENTER))
+        return table
+    }
+
+    private fun addMonthSection(
+        document: Document,
+        title: String,
+        annualLabel: String,
+        entries: Map<String, List<DayAmountRow>>,
+        boldFont: PdfFont,
+        regularFont: PdfFont
+    ) {
+        val widths = LedgerConstants.MONTHS.flatMap { listOf(16f, 34f) }.toFloatArray()
+        val table = Table(widths)
+        table.useAllAvailableWidth()
+
+        table.addCell(textCell(title, boldFont, 9f, TextAlignment.CENTER, colspan = 24))
+        LedgerConstants.MONTHS.forEach { month ->
+            table.addCell(textCell("D", boldFont, 6f, TextAlignment.CENTER))
+            table.addCell(textCell(month, boldFont, 7f, TextAlignment.CENTER))
+        }
+
+        for (rowIndex in 0 until 36) {
+            LedgerConstants.MONTHS.forEach { month ->
+                val row = entries[month].orEmpty().getOrNull(rowIndex)
+                table.addCell(textCell(row?.dia.orEmpty(), regularFont, 6f, TextAlignment.CENTER))
+                table.addCell(textCell(row?.importe.orEmpty(), regularFont, 7f, TextAlignment.RIGHT))
+            }
+        }
+
+        LedgerConstants.MONTHS.forEach { month ->
+            table.addCell(textCell("", regularFont, 6f, TextAlignment.CENTER))
+            table.addCell(textCell(monthTotalText(entries[month].orEmpty()), boldFont, 7f, TextAlignment.RIGHT))
+        }
+
+        document.add(table)
+
+        val summaryWrap = Table(floatArrayOf(1f, 240f)).useAllAvailableWidth()
+        summaryWrap.setBorder(com.itextpdf.layout.borders.Border.NO_BORDER)
+        summaryWrap.addCell(blankCell())
+        val annualTotal = LedgerConstants.MONTHS.sumOf { month ->
+            entries[month].orEmpty().sumOf { parseCurrency(it.importe) }
+        }
+        val summaryTable = Table(floatArrayOf(170f, 70f))
+        summaryTable.addCell(textCell(annualLabel, boldFont, 9f, TextAlignment.LEFT))
+        summaryTable.addCell(textCell(String.format(Locale.US, "%.2f", annualTotal), regularFont, 9f, TextAlignment.RIGHT))
+        summaryWrap.addCell(
+            Cell().setBorder(com.itextpdf.layout.borders.Border.NO_BORDER)
+                .setPaddingTop(8f)
+                .add(summaryTable)
+                .setHorizontalAlignment(HorizontalAlignment.RIGHT)
+        )
+        document.add(summaryWrap)
+    }
+
+    private fun addTributosSection(
+        document: Document,
+        tributos: List<TributoPdfRow>,
+        boldFont: PdfFont,
+        regularFont: PdfFont
+    ) {
+        val tributosRows = buildTributosRows(tributos)
+        val totals = buildTributosTotals(tributosRows)
+        val widths = floatArrayOf(64f, 44f, 44f, 44f, 44f, 44f, 44f, 44f, 44f, 44f, 44f, 44f, 44f, 44f, 44f, 44f)
+        val table = Table(widths).useAllAvailableWidth()
+
+        table.addCell(textCell("TRIBUTOS  Y OTROS GASTOS  ASOCIADOS A LA ACTIVIDAD", boldFont, 12f, TextAlignment.CENTER, colspan = 16))
+
+        table.addCell(textCell("Mes", boldFont, 9f, TextAlignment.CENTER, rowspan = 3))
+        table.addCell(textCell("TRIBUTOS PAGADOS DEDUCIBLES EN LA DECLARACIÓN JURADA", boldFont, 10f, TextAlignment.CENTER, colspan = 9))
+        table.addCell(textCell("Subtotal", boldFont, 9f, TextAlignment.CENTER, rowspan = 3))
+        table.addCell(textCell("Otros Gastos deducibles de la base imponible", boldFont, 10f, TextAlignment.CENTER, colspan = 4))
+        table.addCell(textCell("Cuota Mensual (5 %)051012", boldFont, 8f, TextAlignment.CENTER, rowspan = 3))
+
+        table.addCell(textCell("Impuesto sobre Ventas o Servicios (10%) 011402", boldFont, 7f, TextAlignment.CENTER, rowspan = 2))
+        table.addCell(textCell("Impuesto por la Utilización de la Fuerza de Trabajo 061032", boldFont, 7f, TextAlignment.CENTER, rowspan = 2))
+        table.addCell(textCell("Impuesto sobre Documentos y sellos 073012", boldFont, 7f, TextAlignment.CENTER, rowspan = 2))
+        table.addCell(textCell("Tasa por la Radicación de Anuncios. Cartel 090012", boldFont, 7f, TextAlignment.CENTER, rowspan = 2))
+        table.addCell(textCell("Contribución Especial a la Seguridad Social (20%) 082013", boldFont, 7f, TextAlignment.CENTER, rowspan = 2))
+        table.addCell(textCell("Contribución a la Seguridad Social (14%) 081013", boldFont, 7f, TextAlignment.CENTER, colspan = 3))
+        table.addCell(textCell("Otros", boldFont, 8f, TextAlignment.CENTER, rowspan = 2))
+        table.addCell(textCell("Contribución para la Restauración y Preservación de las Zonas donde Desarrolla su Activ.", boldFont, 7f, TextAlignment.CENTER, rowspan = 2))
+        table.addCell(textCell("Pago por arrendamiento de bienes estatales autorizadas", boldFont, 7f, TextAlignment.CENTER, rowspan = 2))
+        table.addCell(textCell("Importes exonerados por arrendam. por asumir gastos de reparaciones", boldFont, 7f, TextAlignment.CENTER, rowspan = 2))
+        table.addCell(textCell("Otros Gastos autorizados MFP", boldFont, 7f, TextAlignment.CENTER, rowspan = 2))
+
+        table.addCell(textCell("Total", boldFont, 8f, TextAlignment.CENTER))
+        table.addCell(textCell("12.5%", boldFont, 8f, TextAlignment.CENTER))
+        table.addCell(textCell("1.5%", boldFont, 8f, TextAlignment.CENTER))
+
+        listOf("", "-1", "-2", "-3", "-4", "-5", "-6", "-7", "-8", "-9", "-10", "-11", "-12", "-13", "-14", "-15")
+            .forEachIndexed { index, label ->
+                table.addCell(textCell(label, if (index == 0) regularFont else boldFont, if (index == 0) 8f else 9f, if (index == 0) TextAlignment.LEFT else TextAlignment.CENTER))
+            }
+
+        tributosRows.forEach { row ->
+            table.addCell(textCell(row.mes, regularFont, 9f, TextAlignment.LEFT))
+            table.addCell(textCell(row.b, regularFont, 8f, TextAlignment.RIGHT))
+            table.addCell(textCell(row.c, regularFont, 8f, TextAlignment.RIGHT))
+            table.addCell(textCell(row.d, regularFont, 8f, TextAlignment.RIGHT))
+            table.addCell(textCell(row.e, regularFont, 8f, TextAlignment.RIGHT))
+            table.addCell(textCell(row.f, regularFont, 8f, TextAlignment.RIGHT))
+            table.addCell(textCell(decimalOrBlank(row.g), regularFont, 8f, TextAlignment.RIGHT))
+            table.addCell(textCell(row.h, regularFont, 8f, TextAlignment.RIGHT))
+            table.addCell(textCell(row.i, regularFont, 8f, TextAlignment.RIGHT))
+            table.addCell(textCell(row.j, regularFont, 8f, TextAlignment.RIGHT))
+            table.addCell(textCell(decimalOrBlank(row.k), regularFont, 8f, TextAlignment.RIGHT))
+            table.addCell(textCell(row.l, regularFont, 8f, TextAlignment.RIGHT))
+            table.addCell(textCell(row.m, regularFont, 8f, TextAlignment.RIGHT))
+            table.addCell(textCell(row.n, regularFont, 8f, TextAlignment.RIGHT))
+            table.addCell(textCell(row.o, regularFont, 8f, TextAlignment.RIGHT))
+            table.addCell(textCell(row.p, regularFont, 8f, TextAlignment.RIGHT))
+        }
+
+        table.addCell(textCell("Total pagado", boldFont, 10f, TextAlignment.LEFT))
+        table.addCell(textCell(decimal(totals.b), boldFont, 8f, TextAlignment.RIGHT))
+        table.addCell(textCell(decimal(totals.c), boldFont, 8f, TextAlignment.RIGHT))
+        table.addCell(textCell(decimal(totals.d), boldFont, 8f, TextAlignment.RIGHT))
+        table.addCell(textCell(decimal(totals.e), boldFont, 8f, TextAlignment.RIGHT))
+        table.addCell(textCell(decimal(totals.f), boldFont, 8f, TextAlignment.RIGHT))
+        table.addCell(textCell(decimal(totals.g), boldFont, 8f, TextAlignment.RIGHT))
+        table.addCell(textCell(decimal(totals.h), boldFont, 8f, TextAlignment.RIGHT))
+        table.addCell(textCell(decimal(totals.i), boldFont, 8f, TextAlignment.RIGHT))
+        table.addCell(textCell(decimal(totals.j), boldFont, 8f, TextAlignment.RIGHT))
+        table.addCell(textCell(decimal(totals.k), boldFont, 8f, TextAlignment.RIGHT))
+        table.addCell(textCell(decimal(totals.l), boldFont, 8f, TextAlignment.RIGHT))
+        table.addCell(textCell(decimal(totals.m), boldFont, 8f, TextAlignment.RIGHT))
+        table.addCell(textCell(decimal(totals.n), boldFont, 8f, TextAlignment.RIGHT))
+        table.addCell(textCell(decimal(totals.o), boldFont, 8f, TextAlignment.RIGHT))
+        table.addCell(textCell(decimal(totals.p), boldFont, 8f, TextAlignment.RIGHT))
+
+        document.add(table)
+    }
+
+    private data class OfflineTributoRow(
+        val mes: String,
+        val b: String,
+        val c: String,
+        val d: String,
+        val e: String,
+        val f: String,
+        val g: Double,
+        val h: String,
+        val i: String,
+        val j: String,
+        val k: Double,
+        val l: String,
+        val m: String,
+        val n: String,
+        val o: String,
+        val p: String
+    )
+
+    private data class OfflineTributoTotals(
+        val b: Double = 0.0,
+        val c: Double = 0.0,
+        val d: Double = 0.0,
+        val e: Double = 0.0,
+        val f: Double = 0.0,
+        val g: Double = 0.0,
+        val h: Double = 0.0,
+        val i: Double = 0.0,
+        val j: Double = 0.0,
+        val k: Double = 0.0,
+        val l: Double = 0.0,
+        val m: Double = 0.0,
+        val n: Double = 0.0,
+        val o: Double = 0.0,
+        val p: Double = 0.0
+    )
+
+    private fun buildTributosRows(tributos: List<TributoPdfRow>): List<OfflineTributoRow> {
+        val tributosByMonth = tributos.associateBy { normalizeMonth(it.mes) }
+        return LedgerConstants.MONTHS.mapIndexed { index, monthCode ->
+            val monthLabel = LedgerConstants.monthLabels[monthCode].orEmpty()
+            val source = tributosByMonth[normalizeMonth(monthLabel)] ?: tributos.getOrNull(index)
+            val h = source?.h.orEmpty()
+            val i = source?.i.orEmpty()
+            val g = parseCurrency(h) + parseCurrency(i)
+            val k = parseCurrency(source?.b.orEmpty()) +
+                parseCurrency(source?.c.orEmpty()) +
+                parseCurrency(source?.d.orEmpty()) +
+                parseCurrency(source?.e.orEmpty()) +
+                parseCurrency(source?.f.orEmpty()) +
+                g +
+                parseCurrency(source?.j.orEmpty())
+            OfflineTributoRow(
+                mes = monthLabel,
+                b = source?.b.orEmpty(),
+                c = source?.c.orEmpty(),
+                d = source?.d.orEmpty(),
+                e = source?.e.orEmpty(),
+                f = source?.f.orEmpty(),
+                g = g,
+                h = h,
+                i = i,
+                j = source?.j.orEmpty(),
+                k = k,
+                l = source?.l.orEmpty(),
+                m = source?.m.orEmpty(),
+                n = source?.n.orEmpty(),
+                o = source?.o.orEmpty(),
+                p = source?.p.orEmpty()
+            )
+        }
+    }
+
+    private fun buildTributosTotals(rows: List<OfflineTributoRow>): OfflineTributoTotals =
+        rows.fold(OfflineTributoTotals()) { acc, row ->
+            OfflineTributoTotals(
+                b = acc.b + parseCurrency(row.b),
+                c = acc.c + parseCurrency(row.c),
+                d = acc.d + parseCurrency(row.d),
+                e = acc.e + parseCurrency(row.e),
+                f = acc.f + parseCurrency(row.f),
+                g = acc.g + row.g,
+                h = acc.h + parseCurrency(row.h),
+                i = acc.i + parseCurrency(row.i),
+                j = acc.j + parseCurrency(row.j),
+                k = acc.k + row.k,
+                l = acc.l + parseCurrency(row.l),
+                m = acc.m + parseCurrency(row.m),
+                n = acc.n + parseCurrency(row.n),
+                o = acc.o + parseCurrency(row.o),
+                p = acc.p + parseCurrency(row.p)
+            )
+        }
+
+    private fun blankCell(): Cell =
+        Cell().setBorder(com.itextpdf.layout.borders.Border.NO_BORDER)
+
+    private fun baseCell(rowspan: Int = 1, colspan: Int = 1): Cell =
+        Cell(rowspan, colspan)
+            .setBorder(SolidBorder(ColorConstants.BLACK, 1f))
+            .setPaddingTop(4f)
+            .setPaddingBottom(4f)
+            .setPaddingLeft(3f)
+            .setPaddingRight(3f)
+
+    private fun textCell(
+        text: String,
+        font: PdfFont,
+        fontSize: Float,
+        alignment: TextAlignment,
+        rowspan: Int = 1,
+        colspan: Int = 1
+    ): Cell =
+        baseCell(rowspan, colspan).add(
+            Paragraph(text)
+                .setFont(font)
+                .setFontSize(fontSize)
+                .setTextAlignment(alignment)
+                .setMultipliedLeading(1f)
+        )
+
+    private fun monthTotalText(entries: List<DayAmountRow>): String =
+        String.format(Locale.US, "%.2f", entries.sumOf { parseCurrency(it.importe) })
+
+    private fun parseCurrency(value: String): Double {
+        val normalized = value.replace(",", ".").trim()
+        return normalized.toDoubleOrNull() ?: 0.0
+    }
+
+    private fun normalizeMonth(value: String): String =
+        value.lowercase(Locale.ROOT)
+            .normalize()
+            .trim()
+
+    private fun String.normalize(): String =
+        java.text.Normalizer.normalize(this, java.text.Normalizer.Form.NFD)
+            .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
+
+    private fun decimal(value: Double): String = String.format(Locale.US, "%.2f", value)
+
+    private fun decimalOrBlank(value: Double): String =
+        if (value == 0.0) "" else decimal(value)
 
     private fun buildPdfError(response: Response<ResponseBody>): Exception {
         val code = response.code()

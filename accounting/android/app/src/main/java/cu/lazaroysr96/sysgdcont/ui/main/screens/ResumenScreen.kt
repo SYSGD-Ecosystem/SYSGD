@@ -26,14 +26,20 @@ fun ResumenScreen(viewModel: LedgerViewModel) {
     val report = uiState.annualReport
     val context = LocalContext.current
     var hasStoragePermission by remember { mutableStateOf(false) }
+    var pendingOfflineGeneration by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasStoragePermission = isGranted
         if (isGranted) {
-            viewModel.downloadPdf()
+            if (pendingOfflineGeneration) {
+                viewModel.downloadPdfOffline()
+            } else {
+                viewModel.downloadPdf()
+            }
         }
+        pendingOfflineGeneration = false
     }
 
     LaunchedEffect(uiState.pdfIntent) {
@@ -100,6 +106,7 @@ fun ResumenScreen(viewModel: LedgerViewModel) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         viewModel.downloadPdf()
                     } else {
+                        pendingOfflineGeneration = false
                         hasStoragePermission = ContextCompat.checkSelfPermission(
                             context,
                             Manifest.permission.WRITE_EXTERNAL_STORAGE
@@ -113,7 +120,7 @@ fun ResumenScreen(viewModel: LedgerViewModel) {
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isDownloadingPdf
+                enabled = !uiState.isDownloadingPdf && !uiState.isDownloadingOfflinePdf
             ) {
                 if (uiState.isDownloadingPdf) {
                     CircularProgressIndicator(
@@ -127,6 +134,43 @@ fun ResumenScreen(viewModel: LedgerViewModel) {
                     Icon(Icons.Default.Download, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Descargar PDF")
+                }
+            }
+        }
+
+        item {
+            OutlinedButton(
+                onClick = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        viewModel.downloadPdfOffline()
+                    } else {
+                        pendingOfflineGeneration = true
+                        hasStoragePermission = ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE
+                        ) == PackageManager.PERMISSION_GRANTED
+
+                        if (hasStoragePermission) {
+                            viewModel.downloadPdfOffline()
+                        } else {
+                            permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isDownloadingPdf && !uiState.isDownloadingOfflinePdf
+            ) {
+                if (uiState.isDownloadingOfflinePdf) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Generando PDF offline...")
+                } else {
+                    Icon(Icons.Default.Download, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Experimental: generar PDF offline")
                 }
             }
         }

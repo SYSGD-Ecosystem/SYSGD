@@ -24,6 +24,7 @@ data class LedgerUiState(
     val syncMessage: String? = null,
     val pendingSyncDecision: SyncResult? = null,
     val isDownloadingPdf: Boolean = false,
+    val isDownloadingOfflinePdf: Boolean = false,
     val pdfError: String? = null,
     val pdfIntent: Intent? = null,
     val pdfRetryMessage: String? = null,
@@ -323,6 +324,7 @@ class LedgerViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     isDownloadingPdf = true,
+                    isDownloadingOfflinePdf = false,
                     pdfError = null,
                     pdfIntent = null,
                     pdfRetryMessage = null,
@@ -349,6 +351,42 @@ class LedgerViewModel @Inject constructor(
                         }
                     } else {
                         _uiState.update { it.copy(isDownloadingPdf = false, pdfError = e.message, pdfRetryMessage = null) }
+                    }
+                }
+        }
+    }
+
+    fun downloadPdfOffline() {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isDownloadingPdf = false,
+                    isDownloadingOfflinePdf = true,
+                    pdfError = null,
+                    pdfIntent = null,
+                    pdfRetryMessage = "Modo experimental: generando PDF offline con la plantilla local.",
+                    showNoCreditsDialog = false,
+                    noCreditsMessage = null
+                )
+            }
+
+            ledgerRepository.downloadPdfOffline()
+                .onSuccess { intent ->
+                    _uiState.update {
+                        it.copy(
+                            isDownloadingOfflinePdf = false,
+                            pdfIntent = intent,
+                            pdfRetryMessage = null
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            isDownloadingOfflinePdf = false,
+                            pdfError = e.message,
+                            pdfRetryMessage = null
+                        )
                     }
                 }
         }
