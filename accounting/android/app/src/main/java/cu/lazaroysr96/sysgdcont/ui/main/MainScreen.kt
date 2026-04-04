@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerValue
@@ -56,6 +57,7 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -519,8 +521,8 @@ fun MainScreen(
                 composable(MainTab.Ingresos.route) { IngresosScreen(ledgerViewModel) }
                 composable(MainTab.Gastos.route) { GastosScreen(ledgerViewModel) }
                 composable(MainTab.Tributos.route) { TributosScreen(ledgerViewModel) }
-                composable(MainTab.Resumen.route) { ResumenScreen(ledgerViewModel) }
-                composable(VENTAS_ROUTE) { InventarioScreen(inventarioViewModel,facturaViewModel) }
+                composable(MainTab.Resumen.route) { ResumenScreen(ledgerViewModel, ledgerState.experimentalFeaturesEnabled) }
+                composable(VENTAS_ROUTE) { InventarioScreen(inventarioViewModel, facturaViewModel, ledgerState.experimentalFeaturesEnabled) }
                 composable(NOMENCLATORS_ROUTE) { NomenclatorsScreen() }
                 composable(TARJETAS_ROUTE) { TarjetaScreen(tarjetaViewModel) }
                 composable(ABOUT_ROUTE) {
@@ -547,6 +549,8 @@ fun MainScreen(
                                     }
                                 }
                             },
+                            experimentalFeaturesEnabled = ledgerState.experimentalFeaturesEnabled,
+                            onExperimentalFeaturesChange = ledgerViewModel::setExperimentalFeaturesEnabled
                     )
                 }
                 composable(HELP_ROUTE) {
@@ -816,7 +820,12 @@ fun MainScreen(
 }
 
 @Composable
-private fun AboutScreen(onContactWhatsApp: () -> Unit, onOpenUrl: (String) -> Unit) {
+private fun AboutScreen(
+    onContactWhatsApp: () -> Unit,
+    onOpenUrl: (String) -> Unit,
+    experimentalFeaturesEnabled: Boolean,
+    onExperimentalFeaturesChange: (Boolean) -> Unit
+) {
     val context = LocalContext.current
     val appVersion = remember { getAppVersionName(context) }
 
@@ -867,6 +876,32 @@ private fun AboutScreen(onContactWhatsApp: () -> Unit, onOpenUrl: (String) -> Un
         }
 
         TextButton(onClick = onContactWhatsApp) { Text("Contactar por WhatsApp") }
+
+        Divider()
+
+        Text(text = "Opciones avanzadas", style = MaterialTheme.typography.titleMedium)
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Activar funciones experimentales", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        "Permite probar herramientas en desarrollo como inventario de almacenes y PDF offline.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = experimentalFeaturesEnabled,
+                    onCheckedChange = onExperimentalFeaturesChange
+                )
+            }
+        }
 
         Divider()
 

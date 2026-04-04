@@ -18,6 +18,7 @@ data class LedgerUiState(
     val annualReport: AnnualReport? = null,
     val lastSync: String? = null,
     val hasLocalChanges: Boolean = false,
+    val experimentalFeaturesEnabled: Boolean = false,
     val isSyncing: Boolean = false,
     val syncError: String? = null,
     val syncSuccess: Boolean = false,
@@ -57,6 +58,11 @@ class LedgerViewModel @Inject constructor(
         viewModelScope.launch {
             ledgerRepository.localModified.collect { modified ->
                 _uiState.update { it.copy(hasLocalChanges = modified) }
+            }
+        }
+        viewModelScope.launch {
+            ledgerRepository.experimentalFeaturesEnabled.collect { enabled ->
+                _uiState.update { it.copy(experimentalFeaturesEnabled = enabled) }
             }
         }
     }
@@ -394,6 +400,12 @@ class LedgerViewModel @Inject constructor(
 
     fun clearPdfIntent() {
         _uiState.update { it.copy(pdfIntent = null) }
+    }
+
+    fun setExperimentalFeaturesEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            ledgerRepository.setExperimentalFeaturesEnabled(enabled)
+        }
     }
 
     fun dismissNoCreditsDialog() {

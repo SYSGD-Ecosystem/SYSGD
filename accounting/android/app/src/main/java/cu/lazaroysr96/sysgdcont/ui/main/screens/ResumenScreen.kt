@@ -21,7 +21,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
 
 @Composable
-fun ResumenScreen(viewModel: LedgerViewModel) {
+fun ResumenScreen(viewModel: LedgerViewModel, experimentalFeaturesEnabled: Boolean) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val report = uiState.annualReport
     val context = LocalContext.current
@@ -138,39 +138,41 @@ fun ResumenScreen(viewModel: LedgerViewModel) {
             }
         }
 
-        item {
-            OutlinedButton(
-                onClick = {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        viewModel.downloadPdfOffline()
-                    } else {
-                        pendingOfflineGeneration = true
-                        hasStoragePermission = ContextCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.WRITE_EXTERNAL_STORAGE
-                        ) == PackageManager.PERMISSION_GRANTED
-
-                        if (hasStoragePermission) {
+        if (experimentalFeaturesEnabled) {
+            item {
+                OutlinedButton(
+                    onClick = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                             viewModel.downloadPdfOffline()
                         } else {
-                            permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                            pendingOfflineGeneration = true
+                            hasStoragePermission = ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.WRITE_EXTERNAL_STORAGE
+                            ) == PackageManager.PERMISSION_GRANTED
+
+                            if (hasStoragePermission) {
+                                viewModel.downloadPdfOffline()
+                            } else {
+                                permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                            }
                         }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !uiState.isDownloadingPdf && !uiState.isDownloadingOfflinePdf
+                ) {
+                    if (uiState.isDownloadingOfflinePdf) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Generando PDF offline...")
+                    } else {
+                        Icon(Icons.Default.Download, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Experimental: generar PDF offline")
                     }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isDownloadingPdf && !uiState.isDownloadingOfflinePdf
-            ) {
-                if (uiState.isDownloadingOfflinePdf) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Generando PDF offline...")
-                } else {
-                    Icon(Icons.Default.Download, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Experimental: generar PDF offline")
                 }
             }
         }

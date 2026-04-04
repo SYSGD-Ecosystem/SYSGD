@@ -1,5 +1,12 @@
 package cu.lazaroysr96.sysgdcont.ui.main.screens
 
+import android.content.Intent
+import android.Manifest
+import android.net.Uri
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -21,13 +28,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cu.lazaroysr96.sysgdcont.data.model.LineaVenta
 import cu.lazaroysr96.sysgdcont.data.model.Producto
@@ -54,11 +64,41 @@ import java.time.ZoneOffset
 @Composable
 fun InventarioScreen(
     viewModel: InventarioViewModel,
-    facturaViewModel: FacturaViewModel // = hiltViewModel()
+    facturaViewModel: FacturaViewModel, // = hiltViewModel()
+    experimentalFeaturesEnabled: Boolean
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val facturaState by facturaViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    var showExperimentalDialog by rememberSaveable { mutableStateOf(false) }
+    var pendingFacturaData by remember {
+        mutableStateOf<FacturaRequestData?>(null)
+    }
+    var hasStoragePermission by remember { mutableStateOf(false) }
+    val storagePermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasStoragePermission = isGranted
+        if (isGranted) {
+            pendingFacturaData?.let { request ->
+                facturaViewModel.generarFactura(
+                    nombreCliente = request.nombreCliente,
+                    ciCliente = request.ciCliente,
+                    correoCliente = request.correoCliente,
+                    direccionCliente = request.direccionCliente,
+                    telefonoCliente = request.telefonoCliente,
+                    formaPago = request.formaPago,
+                    idTransaccion = request.idTransaccion,
+                    nota = request.nota,
+                    firmaClienteUri = request.firmaClienteUri
+                )
+            }
+        } else {
+            facturaViewModel.clearSnackbar()
+        }
+        pendingFacturaData = null
+    }
 
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let {
@@ -71,6 +111,21 @@ fun InventarioScreen(
         facturaState.snackbarMessage?.let {
             snackbarHostState.showSnackbar(it)
             facturaViewModel.clearSnackbar()
+        }
+    }
+
+    LaunchedEffect(facturaState.pdfIntent) {
+        facturaState.pdfIntent?.let { intent ->
+            runCatching { context.startActivity(intent) }
+            facturaViewModel.clearPdfIntent()
+        }
+    }
+
+    LaunchedEffect(experimentalFeaturesEnabled, uiState.currentTab) {
+        if (!experimentalFeaturesEnabled && uiState.currentTab == 3) {
+            viewModel.setCurrentTab(0)
+        } else if (experimentalFeaturesEnabled && uiState.currentTab == 3) {
+            showExperimentalDialog = true
         }
     }
 
@@ -90,12 +145,14 @@ fun InventarioScreen(
                     icon = { Icon(Icons.Default.ShoppingCart, "Comprar") },
                     label = { Text("Compra") }
                 )
-                NavigationBarItem(
-                    selected = uiState.currentTab == 3,
-                    onClick = { viewModel.setCurrentTab(3) },
-                    icon = { Icon(Icons.Default.List, "Inventario") },
-                    label = { Text("Inventario") }
-                )
+                if (experimentalFeaturesEnabled) {
+                    NavigationBarItem(
+                        selected = uiState.currentTab == 3,
+                        onClick = { viewModel.setCurrentTab(3) },
+                        icon = { Icon(Icons.Default.List, "Inventario") },
+                        label = { Text("Inventario") }
+                    )
+                }
                 NavigationBarItem(
                     selected = uiState.currentTab == 2,
                     onClick = { viewModel.setCurrentTab(2) },
@@ -155,7 +212,7 @@ fun InventarioScreen(
                     }
                 }
 
-                if (uiState.currentTab == 3) {
+                if (experimentalFeaturesEnabled && uiState.currentTab == 3) {
                     FloatingActionButton(
                         onClick = {  },
                         containerColor = MaterialTheme.colorScheme.tertiary
@@ -169,10 +226,27 @@ fun InventarioScreen(
         when (uiState.currentTab) {
             0 -> PuntoVentaContent(viewModel, padding)
             1 -> PuntoCompraContent(viewModel, padding)
-            3 -> InventarioContent(viewModel, padding)
+            3 -> if (experimentalFeaturesEnabled) InventarioContent(viewModel, padding)
             2 -> HistorialContent(viewModel, facturaViewModel, padding)
             4 -> MasContent(viewModel, padding)
         }
+    }
+
+    if (showExperimentalDialog && experimentalFeaturesEnabled && uiState.currentTab == 3) {
+        AlertDialog(
+            onDismissRequest = { showExperimentalDialog = false },
+            title = { Text("Inventario en desarrollo") },
+            text = {
+                Text(
+                    "La gestión de inventarios y almacenes aún está en desarrollo. Puede contener cambios de estructura, comportamientos incompletos y resultados no definitivos."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showExperimentalDialog = false }) {
+                    Text("Entendido")
+                }
+            }
+        )
     }
 
     if (uiState.showCatalog) {
@@ -224,12 +298,70 @@ fun InventarioScreen(
             // venta = facturaState.venta,
             lineas = facturaState.lineasVenta,
             onDismiss = { facturaViewModel.hideDialog() },
-            onConfirm = { nombre, ci, direccion, telefono, formaPago, transaccion ->
-                facturaViewModel.generarFactura(nombre, ci, direccion, telefono, formaPago, transaccion)
+            onConfirm = { nombre, ci, correo, direccion, telefono, formaPago, transaccion, nota, firmaClienteUri ->
+                val request = FacturaRequestData(
+                    nombreCliente = nombre,
+                    ciCliente = ci,
+                    correoCliente = correo,
+                    direccionCliente = direccion,
+                    telefonoCliente = telefono,
+                    formaPago = formaPago,
+                    idTransaccion = transaccion,
+                    nota = nota,
+                    firmaClienteUri = firmaClienteUri
+                )
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    facturaViewModel.generarFactura(
+                        nombre,
+                        ci,
+                        correo,
+                        direccion,
+                        telefono,
+                        formaPago,
+                        transaccion,
+                        nota,
+                        firmaClienteUri
+                    )
+                } else {
+                    pendingFacturaData = request
+                    hasStoragePermission = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    ) == PackageManager.PERMISSION_GRANTED
+
+                    if (hasStoragePermission) {
+                        facturaViewModel.generarFactura(
+                            nombre,
+                            ci,
+                            correo,
+                            direccion,
+                            telefono,
+                            formaPago,
+                            transaccion,
+                            nota,
+                            firmaClienteUri
+                        )
+                        pendingFacturaData = null
+                    } else {
+                        storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    }
+                }
             }
         )
     }
 }
+
+private data class FacturaRequestData(
+    val nombreCliente: String,
+    val ciCliente: String,
+    val correoCliente: String,
+    val direccionCliente: String,
+    val telefonoCliente: String,
+    val formaPago: FormaPago,
+    val idTransaccion: String?,
+    val nota: String,
+    val firmaClienteUri: String?
+)
 
 @Composable
 private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingValues) {
@@ -621,6 +753,15 @@ private fun DiaTrabajoSelector(
 private fun MasContent(viewModel: InventarioViewModel, padding: PaddingValues) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val resumenBalanceMes = uiState.totalVentasMes - uiState.totalComprasMes
+    val context = LocalContext.current
+    val logoPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { tomarPermisoLecturaPersistente(context, it) }
+        viewModel.updateLogoFacturaUri(uri?.toString())
+    }
+    val firmaVendedorPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { tomarPermisoLecturaPersistente(context, it) }
+        viewModel.updateFirmaVendedorFacturaUri(uri?.toString())
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -652,16 +793,50 @@ private fun MasContent(viewModel: InventarioViewModel, padding: PaddingValues) {
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Datos del establecimiento", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Datos de facturación", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     OutlinedTextField(
-                        value = uiState.nombreEstablecimiento,
-                        onValueChange = viewModel::updateNombreEstablecimiento,
-                        label = { Text("Nombre para facturas y reportes") },
+                        value = uiState.nombreVendedorFactura,
+                        onValueChange = viewModel::updateNombreVendedorFactura,
+                        label = { Text("Nombre del vendedor o empresa") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
+                    OutlinedTextField(
+                        value = uiState.correoVendedorFactura,
+                        onValueChange = viewModel::updateCorreoVendedorFactura,
+                        label = { Text("Correo electrónico") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = uiState.telefonoVendedorFactura,
+                        onValueChange = viewModel::updateTelefonoVendedorFactura,
+                        label = { Text("Teléfono") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = uiState.direccionVendedorFactura,
+                        onValueChange = viewModel::updateDireccionVendedorFactura,
+                        label = { Text("Dirección") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    DocumentoAdjuntoField(
+                        titulo = "Logo de la empresa",
+                        descripcion = "Opcional. Se ajusta automáticamente en la factura.",
+                        valor = uiState.logoFacturaUri,
+                        onSeleccionar = { logoPicker.launch(arrayOf("image/*")) },
+                        onLimpiar = { viewModel.updateLogoFacturaUri(null) }
+                    )
+                    DocumentoAdjuntoField(
+                        titulo = "Firma del vendedor",
+                        descripcion = "Opcional. Usa una imagen clara sobre fondo simple.",
+                        valor = uiState.firmaVendedorFacturaUri,
+                        onSeleccionar = { firmaVendedorPicker.launch(arrayOf("image/*")) },
+                        onLimpiar = { viewModel.updateFirmaVendedorFacturaUri(null) }
+                    )
                     Button(
-                        onClick = viewModel::guardarNombreEstablecimiento,
+                        onClick = viewModel::guardarConfiguracionFacturacion,
                         modifier = Modifier.align(Alignment.End)
                     ) {
                         Icon(Icons.Default.Save, contentDescription = null)
@@ -2118,6 +2293,58 @@ private fun LineaDetalleFactura(
     }
 }
 
+@Composable
+private fun DocumentoAdjuntoField(
+    titulo: String,
+    descripcion: String,
+    valor: String?,
+    onSeleccionar: () -> Unit,
+    onLimpiar: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        tonalElevation = 1.dp,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(titulo, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = descripcion,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = valor?.let(::resumenDocumentoAdjunto) ?: "No seleccionado",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(onClick = onSeleccionar) {
+                    Icon(Icons.Default.AttachFile, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(if (valor == null) "Seleccionar" else "Cambiar")
+                }
+                if (valor != null) {
+                    TextButton(onClick = onLimpiar) {
+                        Icon(Icons.Default.Close, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Quitar")
+                    }
+                }
+            }
+        }
+    }
+}
+
 private fun permiteFraccion(unidad: String): Boolean {
     val unidadNormalizada = unidad.trim().lowercase(Locale.ROOT)
     return unidadNormalizada in setOf("kg", "g", "libra", "litro", "ml")
@@ -3067,15 +3294,23 @@ private fun FacturaDialog(
     // venta: Venta,
     lineas: List<LineaVenta>,
     onDismiss: () -> Unit,
-    onConfirm: (String, String, String, String, FormaPago, String?) -> Unit
+    onConfirm: (String, String, String, String, String, FormaPago, String?, String, String?) -> Unit
 ) {
+    val context = LocalContext.current
     var nombre by remember { mutableStateOf("") }
     var ci by remember { mutableStateOf("") }
+    var correo by remember { mutableStateOf("") }
     var direccion by remember { mutableStateOf("") }
     var telefono by remember { mutableStateOf("") }
     var formaPago by remember { mutableStateOf(FormaPago.EFECTIVO) }
     var idTransaccion by remember { mutableStateOf("") }
+    var nota by remember { mutableStateOf("") }
+    var firmaClienteUri by remember { mutableStateOf<String?>(null) }
     var formaPagoExpanded by remember { mutableStateOf(false) }
+    val firmaClientePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { tomarPermisoLecturaPersistente(context, it) }
+        firmaClienteUri = uri?.toString()
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -3100,10 +3335,16 @@ private fun FacturaDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
+                    value = correo,
+                    onValueChange = { correo = it },
+                    label = { Text("Correo electrónico") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
                     value = direccion,
                     onValueChange = { direccion = it },
                     label = { Text("Dirección") },
-                    singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
@@ -3156,12 +3397,47 @@ private fun FacturaDialog(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
+
+                DocumentoAdjuntoField(
+                    titulo = "Firma del cliente",
+                    descripcion = "Opcional. Si no se agrega, se deja el espacio para firmar.",
+                    valor = firmaClienteUri,
+                    onSeleccionar = { firmaClientePicker.launch(arrayOf("image/*")) },
+                    onLimpiar = { firmaClienteUri = null }
+                )
+
+                OutlinedTextField(
+                    value = nota,
+                    onValueChange = { nota = it },
+                    label = { Text("Nota en la factura") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 5
+                )
+
+                if (lineas.isNotEmpty()) {
+                    Text(
+                        text = "Productos: ${lineas.size}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
-                    onConfirm(nombre, ci, direccion, telefono, formaPago, idTransaccion.ifBlank { null })
+                    onConfirm(
+                        nombre.trim(),
+                        ci.trim(),
+                        correo.trim(),
+                        direccion.trim(),
+                        telefono.trim(),
+                        formaPago,
+                        idTransaccion.trim().ifBlank { null },
+                        nota.trim(),
+                        firmaClienteUri
+                    )
                 },
                 enabled = nombre.isNotBlank() && ci.isNotBlank()
             ) {
@@ -3172,4 +3448,18 @@ private fun FacturaDialog(
             TextButton(onClick = onDismiss) { Text("Cancelar") }
         }
     )
+}
+
+private fun tomarPermisoLecturaPersistente(context: android.content.Context, uri: Uri) {
+    runCatching {
+        context.contentResolver.takePersistableUriPermission(
+            uri,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION
+        )
+    }
+}
+
+private fun resumenDocumentoAdjunto(uri: String): String {
+    val ultimoSegmento = runCatching { Uri.parse(uri).lastPathSegment }.getOrNull().orEmpty()
+    return ultimoSegmento.substringAfterLast('/').ifBlank { "Archivo seleccionado" }
 }

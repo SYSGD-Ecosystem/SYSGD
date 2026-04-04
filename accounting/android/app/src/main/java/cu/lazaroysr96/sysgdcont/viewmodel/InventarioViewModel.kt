@@ -11,6 +11,7 @@ import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
 import cu.lazaroysr96.sysgdcont.data.model.TipoProductoInv
 import cu.lazaroysr96.sysgdcont.data.model.ModoStock
+import cu.lazaroysr96.sysgdcont.data.repository.ConfiguracionFacturacion
 import cu.lazaroysr96.sysgdcont.data.repository.FacturaRepository
 import cu.lazaroysr96.sysgdcont.data.repository.InventarioRepository
 // import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
@@ -62,7 +63,12 @@ data class InventarioUiState(
     val itemMoviendo: ItemInventario? = null,
     val showAjusteStockDialog: Boolean = false,
     val itemAjustando: ItemInventario? = null,
-    val nombreEstablecimiento: String = "",
+    val nombreVendedorFactura: String = "",
+    val correoVendedorFactura: String = "",
+    val telefonoVendedorFactura: String = "",
+    val direccionVendedorFactura: String = "",
+    val logoFacturaUri: String? = null,
+    val firmaVendedorFacturaUri: String? = null,
     val reporteDesde: LocalDate = LocalDate.now().withDayOfMonth(1),
     val reporteHasta: LocalDate = LocalDate.now()
 )
@@ -108,10 +114,19 @@ class InventarioViewModel @Inject constructor(
         repo.getItemsInventarioVenta().collect { items ->
         _uiState.update { it.copy(itemsInventarioVenta = items) }
     }
-}
+        }
         viewModelScope.launch {
             facturaRepository.configuracionFacturacion.collect { config ->
-                _uiState.update { it.copy(nombreEstablecimiento = config.nombreEstablecimiento) }
+                _uiState.update {
+                    it.copy(
+                        nombreVendedorFactura = config.nombreVendedor,
+                        correoVendedorFactura = config.correoVendedor,
+                        telefonoVendedorFactura = config.telefonoVendedor,
+                        direccionVendedorFactura = config.direccionVendedor,
+                        logoFacturaUri = config.logoUri,
+                        firmaVendedorFacturaUri = config.firmaVendedorUri
+                    )
+                }
             }
         }
     }
@@ -169,15 +184,45 @@ fun activarItemEnInventario(productoId: String, tipo: TipoProductoInv) {
     }
 }
 
-    fun updateNombreEstablecimiento(nombre: String) {
-        _uiState.update { it.copy(nombreEstablecimiento = nombre) }
+    fun updateNombreVendedorFactura(nombre: String) {
+        _uiState.update { it.copy(nombreVendedorFactura = nombre) }
     }
 
-    fun guardarNombreEstablecimiento() {
+    fun updateCorreoVendedorFactura(correo: String) {
+        _uiState.update { it.copy(correoVendedorFactura = correo) }
+    }
+
+    fun updateTelefonoVendedorFactura(telefono: String) {
+        _uiState.update { it.copy(telefonoVendedorFactura = telefono) }
+    }
+
+    fun updateDireccionVendedorFactura(direccion: String) {
+        _uiState.update { it.copy(direccionVendedorFactura = direccion) }
+    }
+
+    fun updateLogoFacturaUri(uri: String?) {
+        _uiState.update { it.copy(logoFacturaUri = uri) }
+    }
+
+    fun updateFirmaVendedorFacturaUri(uri: String?) {
+        _uiState.update { it.copy(firmaVendedorFacturaUri = uri) }
+    }
+
+    fun guardarConfiguracionFacturacion() {
         viewModelScope.launch {
             try {
-                facturaRepository.guardarNombreEstablecimiento(_uiState.value.nombreEstablecimiento)
-                _uiState.update { it.copy(snackbarMessage = "Datos del establecimiento guardados") }
+                val state = _uiState.value
+                facturaRepository.guardarConfiguracionFacturacion(
+                    ConfiguracionFacturacion(
+                        nombreVendedor = state.nombreVendedorFactura,
+                        correoVendedor = state.correoVendedorFactura,
+                        telefonoVendedor = state.telefonoVendedorFactura,
+                        direccionVendedor = state.direccionVendedorFactura,
+                        logoUri = state.logoFacturaUri,
+                        firmaVendedorUri = state.firmaVendedorFacturaUri
+                    )
+                )
+                _uiState.update { it.copy(snackbarMessage = "Datos de facturación guardados") }
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = "No se pudo guardar la configuración") }
             }

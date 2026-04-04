@@ -25,6 +25,7 @@ import com.itextpdf.layout.element.Table
 import com.itextpdf.layout.properties.HorizontalAlignment
 import com.itextpdf.layout.properties.TextAlignment
 import com.itextpdf.layout.properties.UnitValue
+import com.itextpdf.layout.properties.VerticalAlignment
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import cu.lazaroysr96.sysgdcont.data.api.ApiService
@@ -66,9 +67,13 @@ class LedgerRepository @Inject constructor(
     )
 
     companion object {
+        private const val TCP_MONTH_DAY_COLUMN_WIDTH = 16f
+        private const val TCP_MONTH_VALUE_COLUMN_WIDTH = 34f
+        private const val TCP_MONTH_TABLE_WIDTH = 600f
         private val REGISTRO_KEY = stringPreferencesKey("registro_tcp")
         private val LAST_SYNC_KEY = stringPreferencesKey("last_sync")
         private val LOCAL_MODIFIED_KEY = stringPreferencesKey("local_modified")
+        private val EXPERIMENTAL_FEATURES_KEY = stringPreferencesKey("experimental_features_enabled")
         private val SERVER_VERSION_KEY = stringPreferencesKey("server_version")
         private val LAST_DOWNLOADED_VERSION_KEY = stringPreferencesKey("last_downloaded_version")
         private val BASELINE_REGISTRO_KEY = stringPreferencesKey("baseline_registro")
@@ -92,6 +97,10 @@ class LedgerRepository @Inject constructor(
 
     val lastSync: Flow<String?> = context.ledgerDataStore.data.map { prefs ->
         prefs[LAST_SYNC_KEY]
+    }
+
+    val experimentalFeaturesEnabled: Flow<Boolean> = context.ledgerDataStore.data.map { prefs ->
+        prefs[EXPERIMENTAL_FEATURES_KEY] == "true"
     }
 
     val localModified: Flow<Boolean> = combine(
@@ -129,6 +138,12 @@ class LedgerRepository @Inject constructor(
 
     suspend fun saveUserEditedRegistro(registro: RegistroTCP) {
         saveRegistro(registro, modifiedByUser = true)
+    }
+
+    suspend fun setExperimentalFeaturesEnabled(enabled: Boolean) {
+        context.ledgerDataStore.edit { prefs ->
+            prefs[EXPERIMENTAL_FEATURES_KEY] = if (enabled) "true" else "false"
+        }
     }
 
     private suspend fun buildRegistroWithInventario(): RegistroTCP {
@@ -1227,27 +1242,53 @@ class LedgerRepository @Inject constructor(
         boldFont: PdfFont,
         regularFont: PdfFont
     ) {
-        val widths = LedgerConstants.MONTHS.flatMap { listOf(16f, 34f) }.toFloatArray()
+        val widths = LedgerConstants.MONTHS.flatMap { listOf(TCP_MONTH_DAY_COLUMN_WIDTH, TCP_MONTH_VALUE_COLUMN_WIDTH) }.toFloatArray()
         val table = Table(widths)
-        table.useAllAvailableWidth()
+        table.setWidth(TCP_MONTH_TABLE_WIDTH)
+        table.setFixedLayout()
+        val monthCellHeight = 14f
 
         table.addCell(textCell(title, boldFont, 9f, TextAlignment.CENTER, colspan = 24))
         LedgerConstants.MONTHS.forEach { month ->
-            table.addCell(textCell("D", boldFont, 6f, TextAlignment.CENTER))
-            table.addCell(textCell(month, boldFont, 7f, TextAlignment.CENTER))
+            table.addCell(monthGridCell("D", boldFont, 6f, TextAlignment.CENTER, monthCellHeight))
+            table.addCell(monthGridCell(month, boldFont, 7f, TextAlignment.CENTER, monthCellHeight))
         }
 
         for (rowIndex in 0 until 36) {
             LedgerConstants.MONTHS.forEach { month ->
                 val row = entries[month].orEmpty().getOrNull(rowIndex)
-                table.addCell(textCell(row?.dia.orEmpty(), regularFont, 6f, TextAlignment.CENTER))
-                table.addCell(textCell(row?.importe.orEmpty(), regularFont, 7f, TextAlignment.RIGHT))
+                table.addCell(
+                    monthGridCell(
+                        sanitizeMonthDayCell(row?.dia.orEmpty()),
+                        regularFont,
+                        6f,
+                        TextAlignment.CENTER,
+                        monthCellHeight
+                    )
+                )
+                table.addCell(
+                    monthGridCell(
+                        sanitizeMonthAmountCell(row?.importe.orEmpty()),
+                        regularFont,
+                        7f,
+                        TextAlignment.RIGHT,
+                        monthCellHeight
+                    )
+                )
             }
         }
 
         LedgerConstants.MONTHS.forEach { month ->
-            table.addCell(textCell("", regularFont, 6f, TextAlignment.CENTER))
-            table.addCell(textCell(monthTotalText(entries[month].orEmpty()), boldFont, 7f, TextAlignment.RIGHT))
+            table.addCell(monthGridCell("", regularFont, 6f, TextAlignment.CENTER, monthCellHeight))
+            table.addCell(
+                monthGridCell(
+                    sanitizeMonthAmountCell(monthTotalText(entries[month].orEmpty())),
+                    boldFont,
+                    7f,
+                    TextAlignment.RIGHT,
+                    monthCellHeight
+                )
+            )
         }
 
         document.add(table)
@@ -1469,6 +1510,46 @@ class LedgerRepository @Inject constructor(
                 .setTextAlignment(alignment)
                 .setMultipliedLeading(1f)
         )
+
+    private fun monthGridCell(
+        text: String,
+        font: PdfFont,
+        fontSize: Float,
+        alignment: TextAlignment,
+        height: Float
+    ): Cell =
+        baseCell().apply {
+            setHeight(height)
+            setMinHeight(height)
+            setMaxHeight(height)
+            setVerticalAlignment(VerticalAlignment.MIDDLE)
+            setPaddingTop(0f)
+            setPaddingBottom(0f)
+            setKeepTogether(true)
+            add(
+                Paragraph(text)
+                    .setFont(font)
+                    .setFontSize(fontSize)
+                    .setTextAlignment(alignment)
+                    .setMultipliedLeading(1f)
+                    .setMargin(0f)
+            )
+        }
+
+    private fun sanitizeMonthDayCell(value: String): String {
+        val digits = value.trim().filter { it.isDigit() }
+        return digits.take(2)
+    }
+
+    private fun sanitizeMonthAmountCell(value: String): String {
+        val normalized = value.replace(',', '.').trim()
+        val amount = normalized.toDoubleOrNull()
+        return if (amount != null) {
+            String.format(Locale.US, "%.2f", amount)
+        } else {
+            normalized.take(10)
+        }
+    }
 
     private fun monthTotalText(entries: List<DayAmountRow>): String =
         String.format(Locale.US, "%.2f", entries.sumOf { parseCurrency(it.importe) })
