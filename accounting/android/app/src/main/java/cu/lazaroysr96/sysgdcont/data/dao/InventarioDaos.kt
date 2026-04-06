@@ -12,6 +12,7 @@ import cu.lazaroysr96.sysgdcont.data.model.ProductoCompra
 import cu.lazaroysr96.sysgdcont.data.model.Compra
 import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
+import cu.lazaroysr96.sysgdcont.data.model.InventarioVinculo
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -248,6 +249,9 @@ interface ItemInventarioDao {
     @Query("SELECT * FROM items_inventario WHERE productoId = :productoId AND almacenId = :almacenId LIMIT 1")
     suspend fun getByProductoId(productoId: String, almacenId: String): ItemInventario?
 
+    @Query("SELECT * FROM items_inventario WHERE id = :id LIMIT 1")
+    suspend fun getById(id: String): ItemInventario?
+
     @Query("DELETE FROM items_inventario")
     suspend fun deleteAll()
 
@@ -259,6 +263,9 @@ interface ItemInventarioDao {
 
     @Query("UPDATE items_inventario SET stockDisponible = :stock, ultimaActualizacion = :fecha WHERE id = :id")
     suspend fun actualizarStock(id: String, stock: Double, fecha: String)
+
+    @Query("UPDATE items_inventario SET stockDisponible = :stock, modoStock = :modo, productosVinculadosIds = '[]', ratiosConversion = '[]', ultimaActualizacion = :fecha WHERE id = :id")
+    suspend fun actualizarStockYModo(id: String, stock: Double, modo: String, fecha: String)
 
     @Query("UPDATE items_inventario SET modoStock = :modo, ultimaActualizacion = :fecha WHERE id = :id")
     suspend fun actualizarModo(id: String, modo: String, fecha: String)
@@ -277,6 +284,30 @@ interface ItemInventarioDao {
 
     @Query("DELETE FROM items_inventario WHERE id = :id")
     suspend fun delete(id: String)
+}
+
+@Dao
+interface InventarioVinculoDao {
+    @Query("SELECT * FROM inventario_vinculos ORDER BY createdAt ASC")
+    suspend fun getAll(): List<InventarioVinculo>
+
+    @Query("SELECT * FROM inventario_vinculos WHERE itemInventarioId = :itemInventarioId ORDER BY createdAt ASC")
+    suspend fun getByItemInventarioId(itemInventarioId: String): List<InventarioVinculo>
+
+    @Query("SELECT * FROM inventario_vinculos WHERE productoComponenteId = :productoId")
+    suspend fun getByProductoComponenteId(productoId: String): List<InventarioVinculo>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(vinculo: InventarioVinculo)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(vinculos: List<InventarioVinculo>)
+
+    @Query("DELETE FROM inventario_vinculos WHERE itemInventarioId = :itemInventarioId")
+    suspend fun deleteByItemInventarioId(itemInventarioId: String)
+
+    @Query("DELETE FROM inventario_vinculos")
+    suspend fun deleteAll()
 }
 
 @Dao

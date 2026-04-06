@@ -46,6 +46,7 @@ import cu.lazaroysr96.sysgdcont.data.model.ProductoCompra
 import cu.lazaroysr96.sysgdcont.data.model.Compra
 import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
+import cu.lazaroysr96.sysgdcont.data.model.InventarioVinculoEdicion
 import cu.lazaroysr96.sysgdcont.data.model.TipoProductoInv
 import cu.lazaroysr96.sysgdcont.data.model.ModoStock
 import cu.lazaroysr96.sysgdcont.data.model.FormaPago
@@ -1081,6 +1082,7 @@ private fun InventarioContent(viewModel: InventarioViewModel, padding: PaddingVa
         AjusteStockDialog(
             item = uiState.itemAjustando!!,
             productosCompra = uiState.productosCompra,
+            vinculadosIniciales = uiState.vinculadosItemAjustando,
             onDismiss = { viewModel.showAjusteStockDialog(null) },
             onConfirm = { cantidad, modo, vinculados, ratios -> 
                 viewModel.ajustarStockManual(uiState.itemAjustando!!.id, cantidad, modo, vinculados, ratios) 
@@ -1240,7 +1242,7 @@ private fun ItemInventarioRow(
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (modo != ModoStock.ILIMITADO) {
+                if (modo != ModoStock.ILIMITADO && item.stockDisponible.isFinite()) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = if (item.stockDisponible > 0) color.copy(alpha = 0.15f)
@@ -1328,6 +1330,7 @@ private fun ItemInventarioRow(
 private fun AjusteStockDialog(
     item: ItemInventario,
     productosCompra: List<ProductoCompra>,
+    vinculadosIniciales: List<InventarioVinculoEdicion>,
     onDismiss: () -> Unit,
     onConfirm: (Double, String, List<String>, List<Double>) -> Unit
 ) {
@@ -1337,37 +1340,12 @@ private fun AjusteStockDialog(
     val unidades = listOf(ModoStock.ILIMITADO, ModoStock.MANUAL, ModoStock.VINCULADO)
     var unitExpanded by remember { mutableStateOf(false) }
     
-    // Productos vinculados
-    val vinculadosIniciales = try {
-        item.productosVinculadosIds
-            .removePrefix("[")
-            .removeSuffix("]")
-            .split(",")
-            .map { it.trim().removeSurrounding("\"") }
-            .filter { it.isNotEmpty() }
-    } catch (e: Exception) { emptyList() }
-    
-    val ratiosIniciales = try {
-        item.ratiosConversion
-            .removePrefix("[")
-            .removeSuffix("]")
-            .split(",")
-            .map { it.trim().toDoubleOrNull() ?: 1.0 }
-    } catch (e: Exception) { emptyList() }
-    
-    var productosVinculados by remember { 
-        mutableStateOf(vinculadosIniciales.mapIndexed { index, id -> 
-            VinculadoTemp(id, ratiosIniciales.getOrElse(index) { 1.0 })
-        }) 
-    }
-
-    fun parseJsonArray(json: String): List<String> {
-        return try {
-            json.removeSurrounding("[").removeSuffix("]")
-                .split(",")
-                .map { it.trim().removeSurrounding("\"") }
-                .filter { it.isNotEmpty() }
-        } catch (e: Exception) { emptyList() }
+    var productosVinculados by remember(item.id, vinculadosIniciales) {
+        mutableStateOf(
+            vinculadosIniciales.map {
+                VinculadoTemp(it.productoId, it.cantidad)
+            }
+        )
     }
 
     AlertDialog(
@@ -1428,7 +1406,7 @@ private fun AjusteStockDialog(
 
                 if (unidad == ModoStock.VINCULADO.name) {
                     Text(
-                        "Vincula este producto con productos de compra. Cuando se descuente stock, se descontará de los productos vinculados según la cantidad.",
+                        "Vincula este producto con productos de compra. Al venderlo, el sistema descontará esos componentes en el almacén.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1480,6 +1458,7 @@ private fun AjusteStockDialog(
                     onConfirm(cantidad ?: 0.0, unidad, ids, ratios)
                 },
                 enabled = when (unidad) {
+                    ModoStock.ILIMITADO.name -> true
                     ModoStock.VINCULADO.name -> productosVinculados.isNotEmpty() && productosVinculados.all { it.productoId.isNotEmpty() }
                     else -> cantidad != null && cantidad >= 0.0
                 }

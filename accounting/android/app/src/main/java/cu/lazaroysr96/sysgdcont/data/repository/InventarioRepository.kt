@@ -11,6 +11,7 @@ import cu.lazaroysr96.sysgdcont.data.dao.CatalogoCompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.CatalogoVentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.CompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
+import cu.lazaroysr96.sysgdcont.data.dao.InventarioVinculoDao
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
 import cu.lazaroysr96.sysgdcont.data.dao.VentaDao
 import cu.lazaroysr96.sysgdcont.data.model.Almacen
@@ -22,6 +23,9 @@ import cu.lazaroysr96.sysgdcont.data.model.CatalogoVentaRegistro
 import cu.lazaroysr96.sysgdcont.data.model.Compra
 import cu.lazaroysr96.sysgdcont.data.model.InventarioRegistro
 import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
+import cu.lazaroysr96.sysgdcont.data.model.InventarioVinculo
+import cu.lazaroysr96.sysgdcont.data.model.InventarioVinculoEdicion
+import cu.lazaroysr96.sysgdcont.data.model.InventarioVinculoRegistro
 import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.data.model.LineaVenta
 import cu.lazaroysr96.sysgdcont.data.model.ModoStock
@@ -55,6 +59,7 @@ class InventarioRepository @Inject constructor(
     private val ventaDao: VentaDao,
     private val compraDao: CompraDao,
     private val itemInventarioDao: ItemInventarioDao,
+    private val inventarioVinculoDao: InventarioVinculoDao,
     private val almacenDao: AlmacenDao,
 ) {
     companion object {
@@ -212,8 +217,9 @@ class InventarioRepository @Inject constructor(
 
         for ((producto, cantidad) in lineasCarrito) {
             val itemInventario = ensureItemInventario(producto.id, TipoProductoInv.VENTA, producto.almacenId)
-            if (itemInventario.modoStock != ModoStock.ILIMITADO.name && itemInventario.stockDisponible < cantidad) {
-                throw IllegalStateException("Stock insuficiente para ${producto.nombre}. Disponible: ${itemInventario.stockDisponible}")
+            val disponible = calcularStockDisponible(itemInventario)
+            if (disponible.isFinite() && disponible < cantidad) {
+                throw IllegalStateException("Stock insuficiente para ${producto.nombre}. Disponible: $disponible")
             }
         }
 
@@ -245,9 +251,7 @@ class InventarioRepository @Inject constructor(
 
         for ((producto, cantidad) in lineasCarrito) {
             val itemInventario = ensureItemInventario(producto.id, TipoProductoInv.VENTA, producto.almacenId)
-            if (itemInventario.modoStock != ModoStock.ILIMITADO.name) {
-                itemInventarioDao.descontarStockPorId(itemInventario.id, cantidad, fechaTrabajo)
-            }
+            descontarSegunModo(itemInventario, cantidad, fechaTrabajo)
         }
 
         markLocalModified()
@@ -367,6 +371,7 @@ class InventarioRepository @Inject constructor(
         val lineasVenta = ventaDao.getAllLineas()
         val compras = compraDao.getAll()
         val lineasCompra = compraDao.getAllLineas()
+        val vinculos = stock.flatMap { item -> obtenerVinculos(item) }
 
         val productosRegistro = productos.map { p ->
             ProductoInventario(
@@ -475,6 +480,14 @@ class InventarioRepository @Inject constructor(
                     visibleEnVentas = it.visibleEnVentas
                 )
             },
+            vinculos = vinculos.map {
+                InventarioVinculoRegistro(
+                    id = it.id,
+                    itemInventarioId = it.itemInventarioId,
+                    productoComponenteId = it.productoComponenteId,
+                    cantidad = it.cantidad
+                )
+            },
             operaciones = operacionesVenta + operacionesCompra,
             productosVenta = productosVentaLegacy,
             productosCompra = productosCompraLegacy
@@ -489,6 +502,7 @@ class InventarioRepository @Inject constructor(
         catalogoVentaDao.deleteAll()
         catalogoCompraDao.deleteAll()
         productoDao.deleteAll()
+        inventarioVinculoDao.deleteAll()
         itemInventarioDao.deleteAll()
         almacenDao.deleteAll()
 
@@ -608,6 +622,28 @@ class InventarioRepository @Inject constructor(
             )
         }
 
+        val vinculosFuente = if (inventario.vinculos.isNotEmpty()) {
+            inventario.vinculos
+        } else {
+            stockFuente.flatMap { item ->
+                val vinculados = item.productosVinculadosIds.toProductoIds()
+                val ratios = item.ratiosConversion.toRatios()
+                vinculados.mapIndexedNotNull { index, productoId ->
+                    val cantidad = ratios.getOrElse(index) { 1.0 }
+                    if (productoId.isBlank() || cantidad <= 0.0) {
+                        null
+                    } else {
+                        InventarioVinculoRegistro(
+                            id = UUID.randomUUID().toString(),
+                            itemInventarioId = item.id,
+                            productoComponenteId = productoId,
+                            cantidad = cantidad
+                        )
+                    }
+                }
+            }
+        }
+
         data class VentaRestaurada(val venta: Venta, val lineas: MutableList<LineaVenta>)
         data class CompraRestaurada(val compra: Compra, val lineas: MutableList<LineaCompra>)
 
@@ -700,14 +736,43 @@ class InventarioRepository @Inject constructor(
             almacenDao.insert(defaultAlmacen)
         }
 
+        val itemIdsExistentes = (itemInventarioDao.getItemsVenta().first() + itemInventarioDao.getItemsCompra().first())
+            .map { it.id }
+            .toSet()
+        val productosExistentes = productoDao.getAll().map { it.id }.toSet()
+        val vinculos = vinculosFuente.filter {
+            it.itemInventarioId in itemIdsExistentes &&
+                it.productoComponenteId in productosExistentes &&
+                it.cantidad > 0.0
+        }.distinctBy { it.itemInventarioId to it.productoComponenteId }
+        if (vinculos.isNotEmpty()) {
+            val fecha = LocalDate.now().toString()
+            inventarioVinculoDao.insertAll(
+                vinculos.map {
+                    InventarioVinculo(
+                        id = it.id.ifBlank { UUID.randomUUID().toString() },
+                        itemInventarioId = it.itemInventarioId,
+                        productoComponenteId = it.productoComponenteId,
+                        cantidad = it.cantidad,
+                        createdAt = fecha,
+                        updatedAt = fecha
+                    )
+                }
+            )
+        }
+
         clearLocalModified()
     }
 
     fun getItemsInventarioCompra(): Flow<List<ItemInventario>> =
-        itemInventarioDao.getItemsCompra()
+        itemInventarioDao.getItemsCompra().map { items ->
+            items.map { item -> enriquecerItemInventario(item) }
+        }
 
     fun getItemsInventarioVenta(): Flow<List<ItemInventario>> =
-        itemInventarioDao.getItemsVenta()
+        itemInventarioDao.getItemsVenta().map { items ->
+            items.map { item -> enriquecerItemInventario(item) }
+        }
 
     suspend fun ensureItemInventario(productoId: String, tipo: TipoProductoInv): ItemInventario {
         return ensureItemInventario(productoId, tipo, ensureDefaultAlmacen().id)
@@ -730,16 +795,61 @@ class InventarioRepository @Inject constructor(
     }
 
     suspend fun actualizarModoStock(id: String, modo: ModoStock) {
-        itemInventarioDao.actualizarModo(id, modo.name, LocalDate.now().toString())
+        val fecha = LocalDate.now().toString()
+        inventarioVinculoDao.deleteByItemInventarioId(id)
+        itemInventarioDao.actualizarModoYVinculados(id, modo.name, "[]", "[]", fecha)
+        markLocalModified()
     }
 
     suspend fun actualizarModoYVinculados(id: String, modo: ModoStock, vinculados: List<String>, ratios: List<Double>) {
+        require(modo == ModoStock.VINCULADO) { "Solo el modo vinculado admite componentes" }
+        require(vinculados.size == ratios.size) { "La cantidad de productos y ratios no coincide" }
+
+        val item = itemInventarioDao.getById(id)
+            ?: throw IllegalStateException("No existe el item de inventario")
+        val itemProductoId = item.productoId
+        val componentes = vinculados.zip(ratios)
+            .map { (productoId, cantidad) -> productoId.trim() to cantidad }
+            .filter { (productoId, cantidad) -> productoId.isNotBlank() && cantidad > 0.0 }
+
+        require(componentes.isNotEmpty()) { "Debes seleccionar al menos un producto vinculado" }
+        require(componentes.map { it.first }.distinct().size == componentes.size) { "No se puede repetir un producto vinculado" }
+        require(componentes.none { it.first == itemProductoId }) { "Un producto no puede vincularse consigo mismo" }
+
+        componentes.forEach { (productoId, _) ->
+            if (productoDependeDe(productoId, itemProductoId, item.almacenId, mutableSetOf())) {
+                throw IllegalStateException("La vinculación crea un ciclo entre productos")
+            }
+        }
+
         val fecha = LocalDate.now().toString()
-        itemInventarioDao.actualizarModoYVinculados(id, modo.name, vinculados.toJsonStringArray(), ratios.toJsonDoubleArray(), fecha)
+        itemInventarioDao.actualizarModoYVinculados(
+            id,
+            modo.name,
+            componentes.map { it.first }.toJsonStringArray(),
+            componentes.map { it.second }.toJsonDoubleArray(),
+            fecha
+        )
+        inventarioVinculoDao.deleteByItemInventarioId(id)
+        inventarioVinculoDao.insertAll(
+            componentes.map { (productoId, cantidad) ->
+                InventarioVinculo(
+                    id = UUID.randomUUID().toString(),
+                    itemInventarioId = id,
+                    productoComponenteId = productoId,
+                    cantidad = cantidad,
+                    createdAt = fecha,
+                    updatedAt = fecha
+                )
+            }
+        )
+        markLocalModified()
     }
 
     suspend fun ajustarStock(id: String, cantidad: Double) {
-        itemInventarioDao.actualizarStock(id, cantidad, LocalDate.now().toString())
+        itemInventarioDao.actualizarStockYModo(id, cantidad, ModoStock.MANUAL.name, LocalDate.now().toString())
+        inventarioVinculoDao.deleteByItemInventarioId(id)
+        markLocalModified()
     }
 
     suspend fun ponerProductoEnVenta(
@@ -753,6 +863,127 @@ class InventarioRepository @Inject constructor(
         markLocalModified()
     }
 
+    suspend fun getVinculosEdicion(itemId: String): List<InventarioVinculoEdicion> =
+        obtenerVinculos(
+            itemInventarioDao.getById(itemId)
+                ?: throw IllegalStateException("No existe el item de inventario")
+        ).map {
+            InventarioVinculoEdicion(
+                productoId = it.productoComponenteId,
+                cantidad = it.cantidad
+            )
+        }
+
+    private suspend fun enriquecerItemInventario(item: ItemInventario): ItemInventario {
+        if (item.modoStock != ModoStock.VINCULADO.name) return item
+        return item.copy(stockDisponible = calcularStockDisponible(item))
+    }
+
+    private suspend fun calcularStockDisponible(
+        item: ItemInventario,
+        visitados: MutableSet<String> = mutableSetOf()
+    ): Double {
+        if (!visitados.add(item.id)) return 0.0
+
+        return when (runCatching { ModoStock.valueOf(item.modoStock) }.getOrElse { ModoStock.ILIMITADO }) {
+            ModoStock.ILIMITADO -> Double.POSITIVE_INFINITY
+            ModoStock.MANUAL -> item.stockDisponible.coerceAtLeast(0.0)
+            ModoStock.VINCULADO -> {
+                val vinculos = obtenerVinculos(item)
+                if (vinculos.isEmpty()) {
+                    0.0
+                } else {
+                    vinculos.minOf { vinculo ->
+                        val itemComponente = itemInventarioDao.getByProductoId(vinculo.productoComponenteId, item.almacenId)
+                        val disponible = itemComponente?.let { calcularStockDisponible(it, visitados.toMutableSet()) } ?: 0.0
+                        if (vinculo.cantidad <= 0.0) 0.0 else disponible / vinculo.cantidad
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun descontarSegunModo(
+        item: ItemInventario,
+        cantidad: Double,
+        fecha: String,
+        visitados: MutableSet<String> = mutableSetOf()
+    ) {
+        if (!visitados.add(item.id)) {
+            throw IllegalStateException("Se detectó un ciclo en el inventario vinculado")
+        }
+
+        when (runCatching { ModoStock.valueOf(item.modoStock) }.getOrElse { ModoStock.ILIMITADO }) {
+            ModoStock.ILIMITADO -> Unit
+            ModoStock.MANUAL -> itemInventarioDao.descontarStockPorId(item.id, cantidad, fecha)
+            ModoStock.VINCULADO -> {
+                val vinculos = obtenerVinculos(item)
+                if (vinculos.isEmpty()) {
+                    throw IllegalStateException("El producto vinculado no tiene componentes configurados")
+                }
+                vinculos.forEach { vinculo ->
+                    val itemComponente = itemInventarioDao.getByProductoId(vinculo.productoComponenteId, item.almacenId)
+                        ?: throw IllegalStateException("Falta inventario para un producto vinculado")
+                    descontarSegunModo(itemComponente, vinculo.cantidad * cantidad, fecha, visitados.toMutableSet())
+                }
+            }
+        }
+    }
+
+    private suspend fun productoDependeDe(
+        productoOrigenId: String,
+        productoObjetivoId: String,
+        almacenId: String,
+        visitados: MutableSet<String>
+    ): Boolean {
+        if (!visitados.add(productoOrigenId)) return false
+        if (productoOrigenId == productoObjetivoId) return true
+
+        val item = itemInventarioDao.getByProductoId(productoOrigenId, almacenId) ?: return false
+        val vinculos = obtenerVinculos(item)
+        return vinculos.any { vinculo ->
+            vinculo.productoComponenteId == productoObjetivoId ||
+                productoDependeDe(vinculo.productoComponenteId, productoObjetivoId, almacenId, visitados)
+        }
+    }
+
+    private suspend fun obtenerVinculos(item: ItemInventario): List<InventarioVinculo> {
+        val persistidos = inventarioVinculoDao.getByItemInventarioId(item.id)
+        if (persistidos.isNotEmpty()) return persistidos
+
+        val vinculados = item.productosVinculadosIds.toProductoIds()
+        if (vinculados.isEmpty()) return emptyList()
+        val ratios = item.ratiosConversion.toRatios()
+        val fecha = item.ultimaActualizacion.ifBlank { LocalDate.now().toString() }
+        return vinculados.mapIndexedNotNull { index, productoId ->
+            val cantidad = ratios.getOrElse(index) { 1.0 }
+            if (productoId.isBlank() || cantidad <= 0.0) {
+                null
+            } else {
+                InventarioVinculo(
+                    id = "legacy_${item.id}_$index",
+                    itemInventarioId = item.id,
+                    productoComponenteId = productoId,
+                    cantidad = cantidad,
+                    createdAt = fecha,
+                    updatedAt = fecha
+                )
+            }
+        }
+    }
+
     private fun List<String>.toJsonStringArray() = "[${joinToString(",") { "\"$it\"" }}]"
     private fun List<Double>.toJsonDoubleArray() = "[${joinToString(",")}]"
+    private fun String.toProductoIds(): List<String> =
+        removePrefix("[")
+            .removeSuffix("]")
+            .split(",")
+            .map { it.trim().removeSurrounding("\"") }
+            .filter { it.isNotBlank() }
+
+    private fun String.toRatios(): List<Double> =
+        removePrefix("[")
+            .removeSuffix("]")
+            .split(",")
+            .mapNotNull { it.trim().toDoubleOrNull() }
 }

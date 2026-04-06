@@ -54,6 +54,7 @@ data class InventarioRegistro(
     val catalogoCompras: List<CatalogoCompraRegistro> = emptyList(),
     val almacenes: List<AlmacenRegistro> = emptyList(),
     val stock: List<StockRegistro> = emptyList(),
+    val vinculos: List<InventarioVinculoRegistro> = emptyList(),
     val operaciones: List<OperacionInventario> = emptyList(),
     val productosVenta: List<ProductoInventario> = emptyList(),
     val productosCompra: List<ProductoInventario> = emptyList()

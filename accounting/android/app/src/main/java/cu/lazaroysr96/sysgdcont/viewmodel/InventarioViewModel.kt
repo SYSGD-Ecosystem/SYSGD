@@ -9,6 +9,7 @@ import cu.lazaroysr96.sysgdcont.data.model.ProductoCompra
 import cu.lazaroysr96.sysgdcont.data.model.Compra
 import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
+import cu.lazaroysr96.sysgdcont.data.model.InventarioVinculoEdicion
 import cu.lazaroysr96.sysgdcont.data.model.TipoProductoInv
 import cu.lazaroysr96.sysgdcont.data.model.ModoStock
 import cu.lazaroysr96.sysgdcont.data.repository.ConfiguracionFacturacion
@@ -63,6 +64,7 @@ data class InventarioUiState(
     val itemMoviendo: ItemInventario? = null,
     val showAjusteStockDialog: Boolean = false,
     val itemAjustando: ItemInventario? = null,
+    val vinculadosItemAjustando: List<InventarioVinculoEdicion> = emptyList(),
     val nombreVendedorFactura: String = "",
     val correoVendedorFactura: String = "",
     val telefonoVendedorFactura: String = "",
@@ -136,7 +138,34 @@ class InventarioViewModel @Inject constructor(
 }
 
 fun showAjusteStockDialog(item: ItemInventario?) {
-    _uiState.update { it.copy(showAjusteStockDialog = item != null, itemAjustando = item) }
+    if (item == null) {
+        _uiState.update {
+            it.copy(
+                showAjusteStockDialog = false,
+                itemAjustando = null,
+                vinculadosItemAjustando = emptyList()
+            )
+        }
+        return
+    }
+
+    _uiState.update {
+        it.copy(
+            showAjusteStockDialog = true,
+            itemAjustando = item,
+            vinculadosItemAjustando = emptyList()
+        )
+    }
+    viewModelScope.launch {
+        val vinculados = repo.getVinculosEdicion(item.id)
+        _uiState.update { state ->
+            if (state.itemAjustando?.id == item.id) {
+                state.copy(vinculadosItemAjustando = vinculados)
+            } else {
+                state
+            }
+        }
+    }
 }
 
 fun ajustarStockManual(id: String, cantidad: Double, modo: String, vinculados: List<String> = emptyList(), ratios: List<Double> = emptyList()) {
@@ -153,9 +182,16 @@ fun ajustarStockManual(id: String, cantidad: Double, modo: String, vinculados: L
                     repo.ajustarStock(id, cantidad)
                 }
             }
-            _uiState.update { it.copy(snackbarMessage = "Stock actualizado", showAjusteStockDialog = false, itemAjustando = null) }
+            _uiState.update {
+                it.copy(
+                    snackbarMessage = "Stock actualizado",
+                    showAjusteStockDialog = false,
+                    itemAjustando = null,
+                    vinculadosItemAjustando = emptyList()
+                )
+            }
         } catch (e: Exception) {
-            _uiState.update { it.copy(snackbarMessage = "Error al actualizar stock") }
+            _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al actualizar stock") }
         }
     }
 }

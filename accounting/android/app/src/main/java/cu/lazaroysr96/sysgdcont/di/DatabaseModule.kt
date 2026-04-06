@@ -6,12 +6,14 @@ import cu.lazaroysr96.sysgdcont.data.AppDatabase
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_1_2
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_2_3
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_3_4
+import cu.lazaroysr96.sysgdcont.data.MIGRATION_4_5
 import cu.lazaroysr96.sysgdcont.data.dao.CatalogoCompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.CatalogoVentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
 import cu.lazaroysr96.sysgdcont.data.dao.VentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.CompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
+import cu.lazaroysr96.sysgdcont.data.dao.InventarioVinculoDao
 import cu.lazaroysr96.sysgdcont.data.dao.AlmacenDao
 import cu.lazaroysr96.sysgdcont.data.dao.TarjetaDao
 import dagger.Module
@@ -33,7 +35,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "sysgd_cont_database"
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .build()
     }
 
@@ -71,8 +73,14 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideItemInventarioDao(database: AppDatabase): ItemInventarioDao {
-    return database.itemInventarioDao()
-}
+        return database.itemInventarioDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideInventarioVinculoDao(database: AppDatabase): InventarioVinculoDao {
+        return database.inventarioVinculoDao()
+    }
 
     @Provides
     @Singleton

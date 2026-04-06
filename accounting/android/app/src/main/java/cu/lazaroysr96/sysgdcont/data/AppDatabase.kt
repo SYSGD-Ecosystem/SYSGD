@@ -9,6 +9,7 @@ import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
 import cu.lazaroysr96.sysgdcont.data.dao.VentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.CompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
+import cu.lazaroysr96.sysgdcont.data.dao.InventarioVinculoDao
 import cu.lazaroysr96.sysgdcont.data.dao.AlmacenDao
 import cu.lazaroysr96.sysgdcont.data.dao.TarjetaDao
 import cu.lazaroysr96.sysgdcont.data.model.LineaVenta
@@ -20,6 +21,7 @@ import cu.lazaroysr96.sysgdcont.data.model.Venta
 import cu.lazaroysr96.sysgdcont.data.model.Compra
 import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
+import cu.lazaroysr96.sysgdcont.data.model.InventarioVinculo
 import cu.lazaroysr96.sysgdcont.data.model.Tarjeta
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -356,6 +358,29 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
     }
 }
 
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+        database.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `inventario_vinculos` (
+                `id` TEXT NOT NULL,
+                `itemInventarioId` TEXT NOT NULL,
+                `productoComponenteId` TEXT NOT NULL,
+                `cantidad` REAL NOT NULL,
+                `createdAt` TEXT NOT NULL,
+                `updatedAt` TEXT NOT NULL,
+                PRIMARY KEY(`id`),
+                FOREIGN KEY(`itemInventarioId`) REFERENCES `items_inventario`(`id`) ON DELETE CASCADE,
+                FOREIGN KEY(`productoComponenteId`) REFERENCES `productos`(`id`) ON DELETE RESTRICT
+            )
+            """.trimIndent()
+        )
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_inventario_vinculos_itemInventarioId` ON `inventario_vinculos` (`itemInventarioId`)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_inventario_vinculos_productoComponenteId` ON `inventario_vinculos` (`productoComponenteId`)")
+        database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_inventario_vinculos_itemInventarioId_productoComponenteId` ON `inventario_vinculos` (`itemInventarioId`, `productoComponenteId`)")
+    }
+}
+
 @Database(
     entities = [
         Producto::class,
@@ -367,9 +392,10 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         Compra::class,
         LineaCompra::class,
         ItemInventario::class,
+        InventarioVinculo::class,
         Tarjeta::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -379,6 +405,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun ventaDao(): VentaDao
     abstract fun compraDao(): CompraDao
     abstract fun itemInventarioDao(): ItemInventarioDao
+    abstract fun inventarioVinculoDao(): InventarioVinculoDao
     abstract fun almacenDao(): AlmacenDao
     abstract fun tarjetaDao(): TarjetaDao
 }
