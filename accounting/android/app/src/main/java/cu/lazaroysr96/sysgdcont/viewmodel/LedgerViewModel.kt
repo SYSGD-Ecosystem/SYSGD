@@ -19,6 +19,7 @@ data class LedgerUiState(
     val lastSync: String? = null,
     val hasLocalChanges: Boolean = false,
     val experimentalFeaturesEnabled: Boolean = false,
+    val hideInventarioDisclaimer: Boolean = false,
     val isSyncing: Boolean = false,
     val syncError: String? = null,
     val syncSuccess: Boolean = false,
@@ -65,6 +66,11 @@ class LedgerViewModel @Inject constructor(
                 _uiState.update { it.copy(experimentalFeaturesEnabled = enabled) }
             }
         }
+        viewModelScope.launch {
+            ledgerRepository.hideInventarioDisclaimer.collect { hide ->
+                _uiState.update { it.copy(hideInventarioDisclaimer = hide) }
+            }
+        }
     }
 
     fun updateGenerales(data: GeneralesData) {
@@ -106,6 +112,12 @@ class LedgerViewModel @Inject constructor(
     fun deleteGasto(month: String, dia: Int) {
         viewModelScope.launch {
             ledgerRepository.deleteGasto(month, dia)
+        }
+    }
+
+    fun setHideInventarioDisclaimer(hide: Boolean) {
+        viewModelScope.launch {
+            ledgerRepository.setHideInventarioDisclaimer(hide)
         }
     }
 

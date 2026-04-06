@@ -548,7 +548,15 @@ fun MainScreen(
                 composable(MainTab.Gastos.route) { GastosScreen(ledgerViewModel) }
                 composable(MainTab.Tributos.route) { TributosScreen(ledgerViewModel) }
                 composable(MainTab.Resumen.route) { ResumenScreen(ledgerViewModel, ledgerState.experimentalFeaturesEnabled) }
-                composable(VENTAS_ROUTE) { InventarioScreen(inventarioViewModel, facturaViewModel, ledgerState.experimentalFeaturesEnabled) }
+                composable(VENTAS_ROUTE) {
+                    InventarioScreen(
+                        inventarioViewModel,
+                        facturaViewModel,
+                        ledgerState.experimentalFeaturesEnabled,
+                        ledgerState.hideInventarioDisclaimer,
+                        ledgerViewModel::setHideInventarioDisclaimer
+                    )
+                }
                 composable(NOMENCLATORS_ROUTE) { NomenclatorsScreen() }
                 composable(TARJETAS_ROUTE) { TarjetaScreen(tarjetaViewModel) }
                 composable(ABOUT_ROUTE) {

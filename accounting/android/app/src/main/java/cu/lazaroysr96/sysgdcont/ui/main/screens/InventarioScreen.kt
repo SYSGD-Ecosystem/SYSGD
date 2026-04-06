@@ -65,13 +65,16 @@ import java.time.ZoneOffset
 fun InventarioScreen(
     viewModel: InventarioViewModel,
     facturaViewModel: FacturaViewModel, // = hiltViewModel()
-    experimentalFeaturesEnabled: Boolean
+    experimentalFeaturesEnabled: Boolean,
+    hideExperimentalDialogPermanently: Boolean,
+    onHideExperimentalDialogChange: (Boolean) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val facturaState by facturaViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     var showExperimentalDialog by rememberSaveable { mutableStateOf(false) }
+    var dontShowAgainChecked by rememberSaveable { mutableStateOf(false) }
     var pendingFacturaData by remember {
         mutableStateOf<FacturaRequestData?>(null)
     }
@@ -124,7 +127,7 @@ fun InventarioScreen(
     LaunchedEffect(experimentalFeaturesEnabled, uiState.currentTab) {
         if (!experimentalFeaturesEnabled && uiState.currentTab == 3) {
             viewModel.setCurrentTab(0)
-        } else if (experimentalFeaturesEnabled && uiState.currentTab == 3) {
+        } else if (experimentalFeaturesEnabled && uiState.currentTab == 3 && !hideExperimentalDialogPermanently) {
             showExperimentalDialog = true
         }
     }
@@ -232,17 +235,36 @@ fun InventarioScreen(
         }
     }
 
-    if (showExperimentalDialog && experimentalFeaturesEnabled && uiState.currentTab == 3) {
+    if (showExperimentalDialog && experimentalFeaturesEnabled && uiState.currentTab == 3 && !hideExperimentalDialogPermanently) {
         AlertDialog(
             onDismissRequest = { showExperimentalDialog = false },
             title = { Text("Inventario en desarrollo") },
             text = {
-                Text(
-                    "La gestión de inventarios y almacenes aún está en desarrollo. Puede contener cambios de estructura, comportamientos incompletos y resultados no definitivos."
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "La gestión de inventarios y almacenes aún está en desarrollo. Puede contener cambios de estructura, comportamientos incompletos y resultados no definitivos."
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { dontShowAgainChecked = !dontShowAgainChecked },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = dontShowAgainChecked,
+                            onCheckedChange = { dontShowAgainChecked = it }
+                        )
+                        Text("No volver a mostrar")
+                    }
+                }
             },
             confirmButton = {
-                TextButton(onClick = { showExperimentalDialog = false }) {
+                TextButton(
+                    onClick = {
+                        onHideExperimentalDialogChange(dontShowAgainChecked)
+                        showExperimentalDialog = false
+                    }
+                ) {
                     Text("Entendido")
                 }
             }

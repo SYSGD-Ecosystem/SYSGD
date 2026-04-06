@@ -148,6 +148,7 @@ class LedgerRepository @Inject constructor(
         private val LAST_SYNC_KEY = stringPreferencesKey("last_sync")
         private val LOCAL_MODIFIED_KEY = stringPreferencesKey("local_modified")
         private val EXPERIMENTAL_FEATURES_KEY = stringPreferencesKey("experimental_features_enabled")
+        private val HIDE_INVENTARIO_DISCLAIMER_KEY = stringPreferencesKey("hide_inventario_disclaimer")
         private val SERVER_VERSION_KEY = stringPreferencesKey("server_version")
         private val LAST_DOWNLOADED_VERSION_KEY = stringPreferencesKey("last_downloaded_version")
         private val BASELINE_REGISTRO_KEY = stringPreferencesKey("baseline_registro")
@@ -175,6 +176,10 @@ class LedgerRepository @Inject constructor(
 
     val experimentalFeaturesEnabled: Flow<Boolean> = context.ledgerDataStore.data.map { prefs ->
         prefs[EXPERIMENTAL_FEATURES_KEY] == "true"
+    }
+
+    val hideInventarioDisclaimer: Flow<Boolean> = context.ledgerDataStore.data.map { prefs ->
+        prefs[HIDE_INVENTARIO_DISCLAIMER_KEY] == "true"
     }
 
     val localModified: Flow<Boolean> = combine(
@@ -217,6 +222,12 @@ class LedgerRepository @Inject constructor(
     suspend fun setExperimentalFeaturesEnabled(enabled: Boolean) {
         context.ledgerDataStore.edit { prefs ->
             prefs[EXPERIMENTAL_FEATURES_KEY] = if (enabled) "true" else "false"
+        }
+    }
+
+    suspend fun setHideInventarioDisclaimer(hide: Boolean) {
+        context.ledgerDataStore.edit { prefs ->
+            prefs[HIDE_INVENTARIO_DISCLAIMER_KEY] = if (hide) "true" else "false"
         }
     }
 
