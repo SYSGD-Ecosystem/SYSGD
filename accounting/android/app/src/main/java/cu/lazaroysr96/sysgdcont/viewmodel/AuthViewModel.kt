@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.net.Uri
 
 data class AuthUiState(
     val isLoading: Boolean = false,
@@ -35,6 +36,8 @@ data class AuthUiState(
     val isSecurityLoading: Boolean = false,
     val isSecuritySaving: Boolean = false,
     val accountDeleted: Boolean = false,
+    val accessKeyExported: Boolean = false,
+    val accessKeyImported: Boolean = false,
 )
 
 @HiltViewModel
@@ -367,5 +370,49 @@ class AuthViewModel @Inject constructor(
                     // No bloqueamos la app si falla la consulta de créditos.
                 }
         }
+    }
+
+    fun exportAccessKey(uri: Uri, password: String) {
+        if (_uiState.value.isLoading) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null, infoMessage = null, accessKeyExported = false) }
+            authRepository.exportAccessKeyToUri(uri, password)
+                .onSuccess {
+                    _uiState.update { it.copy(isLoading = false, accessKeyExported = true, infoMessage = "Llave de acceso creada correctamente") }
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isLoading = false, error = e.message ?: "Error al crear llave de acceso") }
+                }
+        }
+    }
+
+    fun importAccessKey(uri: Uri, password: String) {
+        if (_uiState.value.isLoading) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null, infoMessage = null, accessKeyImported = false) }
+            authRepository.importAccessKeyFromUri(uri, password)
+                .onSuccess { user ->
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false, 
+                            accessKeyImported = true, 
+                            isAuthenticated = true, 
+                            currentUser = user,
+                            infoMessage = "Sesión restaurada sin conexión a internet"
+                        ) 
+                    }
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isLoading = false, error = e.message ?: "Contraseña incorrecta o archivo inválido") }
+                }
+        }
+    }
+
+    fun consumeAccessKeyExported() {
+        _uiState.update { it.copy(accessKeyExported = false) }
+    }
+
+    fun consumeAccessKeyImported() {
+        _uiState.update { it.copy(accessKeyImported = false) }
     }
 }

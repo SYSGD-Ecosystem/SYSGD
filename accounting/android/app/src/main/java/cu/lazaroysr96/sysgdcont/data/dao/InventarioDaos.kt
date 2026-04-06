@@ -2,7 +2,11 @@ package cu.lazaroysr96.sysgdcont.data.dao
 
 import androidx.room.*
 import cu.lazaroysr96.sysgdcont.data.model.LineaVenta
+import cu.lazaroysr96.sysgdcont.data.model.Almacen
+import cu.lazaroysr96.sysgdcont.data.model.CatalogoCompra
+import cu.lazaroysr96.sysgdcont.data.model.CatalogoVenta
 import cu.lazaroysr96.sysgdcont.data.model.Producto
+import cu.lazaroysr96.sysgdcont.data.model.ProductoVenta
 import cu.lazaroysr96.sysgdcont.data.model.Venta
 import cu.lazaroysr96.sysgdcont.data.model.ProductoCompra
 import cu.lazaroysr96.sysgdcont.data.model.Compra
@@ -12,11 +16,14 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ProductoDao {
-    @Query("SELECT * FROM productos WHERE activo = 1 ORDER BY nombre ASC")
-    fun getAllActivos(): Flow<List<Producto>>
-
     @Query("SELECT * FROM productos ORDER BY nombre ASC")
     suspend fun getAll(): List<Producto>
+
+    @Query("SELECT * FROM productos WHERE id = :id LIMIT 1")
+    suspend fun getById(id: String): Producto?
+
+    @Query("SELECT * FROM productos WHERE LOWER(nombre) = LOWER(:nombre) LIMIT 1")
+    suspend fun getByNombre(nombre: String): Producto?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(producto: Producto)
@@ -34,6 +41,81 @@ interface ProductoDao {
     suspend fun activate(id: String)
 
     @Query("DELETE FROM productos")
+    suspend fun deleteAll()
+}
+
+@Dao
+interface CatalogoVentaDao {
+    @Query("""
+        SELECT
+            p.id AS id,
+            cv.id AS catalogoId,
+            p.nombre AS nombre,
+            cv.precioReferencia AS precio,
+            p.emoji AS emoji,
+            p.unidad AS unidad,
+            cv.almacenId AS almacenId
+        FROM catalogo_ventas cv
+        INNER JOIN productos p ON p.id = cv.productoId
+        WHERE cv.activo = 1 AND p.activo = 1
+        ORDER BY p.nombre ASC
+    """)
+    fun getAllActivos(): Flow<List<ProductoVenta>>
+
+    @Query("SELECT * FROM catalogo_ventas")
+    suspend fun getAll(): List<CatalogoVenta>
+
+    @Query("SELECT * FROM catalogo_ventas WHERE productoId = :productoId AND almacenId = :almacenId LIMIT 1")
+    suspend fun getByProductoId(productoId: String, almacenId: String): CatalogoVenta?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(catalogo: CatalogoVenta)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(catalogos: List<CatalogoVenta>)
+
+    @Query("UPDATE catalogo_ventas SET activo = 0 WHERE productoId = :productoId")
+    suspend fun deactivateByProductoId(productoId: String)
+
+    @Query("DELETE FROM catalogo_ventas")
+    suspend fun deleteAll()
+}
+
+@Dao
+interface CatalogoCompraDao {
+    @Query("""
+        SELECT
+            p.id AS id,
+            cc.id AS catalogoId,
+            p.nombre AS nombre,
+            cc.precioReferencia AS precio,
+            p.emoji AS emoji,
+            p.unidad AS unidad,
+            p.activo AS activo,
+            cc.almacenDestinoId AS almacenDestinoId
+        FROM catalogo_compras cc
+        INNER JOIN productos p ON p.id = cc.productoId
+        WHERE cc.activo = 1 AND p.activo = 1
+        ORDER BY p.nombre ASC
+    """)
+    fun getAllActivos(): Flow<List<ProductoCompra>>
+
+    @Query("SELECT * FROM catalogo_compras")
+    suspend fun getAll(): List<CatalogoCompra>
+
+    @Query("SELECT * FROM catalogo_compras WHERE productoId = :productoId AND almacenDestinoId = :almacenId LIMIT 1")
+    suspend fun getByProductoId(productoId: String, almacenId: String): CatalogoCompra?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(catalogo: CatalogoCompra)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(catalogos: List<CatalogoCompra>)
+
+    @Query("UPDATE catalogo_compras SET activo = 0 WHERE productoId = :productoId")
+    suspend fun deactivateByProductoId(productoId: String)
+
+    @Query("DELETE FROM catalogo_compras")
     suspend fun deleteAll()
 }
 
@@ -93,33 +175,6 @@ interface VentaDao {
 
     @Query("DELETE FROM ventas")
     suspend fun deleteAllVentas()
-}
-
-@Dao
-interface ProductoCompraDao {
-    @Query("SELECT * FROM productos_compra WHERE activo = 1 ORDER BY nombre ASC")
-    fun getAllActivos(): Flow<List<ProductoCompra>>
-
-    @Query("SELECT * FROM productos_compra ORDER BY nombre ASC")
-    suspend fun getAll(): List<ProductoCompra>
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(producto: ProductoCompra)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAll(productos: List<ProductoCompra>)
-
-    @Update
-    suspend fun update(producto: ProductoCompra)
-
-    @Query("UPDATE productos_compra SET activo = 0 WHERE id = :id")
-    suspend fun deactivate(id: String)
-
-    @Query("UPDATE productos_compra SET activo = 1 WHERE id = :id")
-    suspend fun activate(id: String)
-
-    @Query("DELETE FROM productos_compra")
-    suspend fun deleteAll()
 }
 
 @Dao
@@ -184,14 +239,17 @@ interface CompraDao {
 @Dao
 interface ItemInventarioDao {
 
-    @Query("SELECT * FROM items_inventario WHERE tipoProducto = 'COMPRA' ORDER BY ultimaActualizacion DESC")
+    @Query("SELECT * FROM items_inventario WHERE visibleEnVentas = 0 ORDER BY ultimaActualizacion DESC")
     fun getItemsCompra(): Flow<List<ItemInventario>>
 
-    @Query("SELECT * FROM items_inventario WHERE tipoProducto = 'VENTA' ORDER BY ultimaActualizacion DESC")
+    @Query("SELECT * FROM items_inventario WHERE visibleEnVentas = 1 ORDER BY ultimaActualizacion DESC")
     fun getItemsVenta(): Flow<List<ItemInventario>>
 
-    @Query("SELECT * FROM items_inventario WHERE productoId = :productoId AND tipoProducto = :tipo LIMIT 1")
-    suspend fun getByProductoId(productoId: String, tipo: String): ItemInventario?
+    @Query("SELECT * FROM items_inventario WHERE productoId = :productoId AND almacenId = :almacenId LIMIT 1")
+    suspend fun getByProductoId(productoId: String, almacenId: String): ItemInventario?
+
+    @Query("DELETE FROM items_inventario")
+    suspend fun deleteAll()
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(item: ItemInventario)
@@ -208,15 +266,33 @@ interface ItemInventarioDao {
     @Query("UPDATE items_inventario SET modoStock = :modo, productosVinculadosIds = :vinculados, ratiosConversion = :ratios, ultimaActualizacion = :fecha WHERE id = :id")
     suspend fun actualizarModoYVinculados(id: String, modo: String, vinculados: String, ratios: String, fecha: String)
 
-    @Query("UPDATE items_inventario SET stockDisponible = stockDisponible + :cantidad, ultimaActualizacion = :fecha WHERE productoId = :productoId AND tipoProducto = 'COMPRA'")
-    suspend fun sumarStockCompra(productoId: String, cantidad: Double, fecha: String)
+    @Query("UPDATE items_inventario SET stockDisponible = stockDisponible + :cantidad, ultimaActualizacion = :fecha WHERE productoId = :productoId AND almacenId = :almacenId")
+    suspend fun sumarStock(productoId: String, almacenId: String, cantidad: Double, fecha: String)
 
-    @Query("UPDATE items_inventario SET stockDisponible = stockDisponible - :cantidad, ultimaActualizacion = :fecha WHERE productoId = :productoId AND tipoProducto = 'VENTA'")
-    suspend fun descontarStockVenta(productoId: String, cantidad: Double, fecha: String)
+    @Query("UPDATE items_inventario SET stockDisponible = stockDisponible - :cantidad, ultimaActualizacion = :fecha WHERE productoId = :productoId AND almacenId = :almacenId")
+    suspend fun descontarStock(productoId: String, almacenId: String, cantidad: Double, fecha: String)
 
     @Query("UPDATE items_inventario SET stockDisponible = stockDisponible - :cantidad, ultimaActualizacion = :fecha WHERE id = :id")
     suspend fun descontarStockPorId(id: String, cantidad: Double, fecha: String)
 
     @Query("DELETE FROM items_inventario WHERE id = :id")
     suspend fun delete(id: String)
+}
+
+@Dao
+interface AlmacenDao {
+    @Query("SELECT * FROM almacenes WHERE activo = 1 ORDER BY principal DESC, nombre ASC")
+    fun getAllActivos(): Flow<List<Almacen>>
+
+    @Query("SELECT * FROM almacenes WHERE principal = 1 LIMIT 1")
+    suspend fun getPrincipal(): Almacen?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(almacen: Almacen)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(almacenes: List<Almacen>)
+
+    @Query("DELETE FROM almacenes")
+    suspend fun deleteAll()
 }

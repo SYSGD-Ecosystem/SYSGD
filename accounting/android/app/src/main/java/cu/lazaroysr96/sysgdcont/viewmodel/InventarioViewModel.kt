@@ -3,7 +3,7 @@ package cu.lazaroysr96.sysgdcont.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cu.lazaroysr96.sysgdcont.data.model.LineaVenta
-import cu.lazaroysr96.sysgdcont.data.model.Producto
+import cu.lazaroysr96.sysgdcont.data.model.ProductoVenta
 import cu.lazaroysr96.sysgdcont.data.model.Venta
 import cu.lazaroysr96.sysgdcont.data.model.ProductoCompra
 import cu.lazaroysr96.sysgdcont.data.model.Compra
@@ -29,7 +29,7 @@ import javax.inject.Inject
 
 
 data class InventarioUiState(
-    val productos: List<Producto> = emptyList(),
+    val productos: List<ProductoVenta> = emptyList(),
     val ventasHoy: List<Pair<Venta, List<LineaVenta>>> = emptyList(),
     val totalHoy: Double = 0.0,
     val productosCompra: List<ProductoCompra> = emptyList(),
@@ -43,8 +43,8 @@ data class InventarioUiState(
     val showCatalogCompra: Boolean = false,
     val showAddProductDialog: Boolean = false,
     val showAddProductCompraDialog: Boolean = false,
-    val selectedProduct: Producto? = null,
-    val cart: Map<Producto, Double> = emptyMap(),
+    val selectedProduct: ProductoVenta? = null,
+    val cart: Map<ProductoVenta, Double> = emptyMap(),
     val cartCompra: Map<ProductoCompra, Double> = emptyMap(),
     val currentTab: Int = 0,
     val mesActual: YearMonth = YearMonth.now(),
@@ -415,7 +415,7 @@ fun activarItemEnInventario(productoId: String, tipo: TipoProductoInv) {
         }
     }
 
-    fun addToCart(producto: Producto, cantidad: Double = 1.0) {
+    fun addToCart(producto: ProductoVenta, cantidad: Double = 1.0) {
         if (cantidad <= 0.0) return
         _uiState.update { state ->
             val currentCart = state.cart.toMutableMap()
@@ -437,7 +437,7 @@ fun activarItemEnInventario(productoId: String, tipo: TipoProductoInv) {
         }
     }
 
-    fun removeFromCart(producto: Producto) {
+    fun removeFromCart(producto: ProductoVenta) {
         _uiState.update { state ->
             val currentCart = state.cart.toMutableMap()
             val currentQty = currentCart[producto] ?: 0.0

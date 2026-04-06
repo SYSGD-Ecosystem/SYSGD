@@ -5,12 +5,14 @@ import androidx.room.Room
 import cu.lazaroysr96.sysgdcont.data.AppDatabase
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_1_2
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_2_3
+import cu.lazaroysr96.sysgdcont.data.dao.CatalogoCompraDao
+import cu.lazaroysr96.sysgdcont.data.dao.CatalogoVentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
 import cu.lazaroysr96.sysgdcont.data.dao.VentaDao
-import cu.lazaroysr96.sysgdcont.data.dao.ProductoCompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.CompraDao
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_3_4
 import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
+import cu.lazaroysr96.sysgdcont.data.dao.AlmacenDao
 import cu.lazaroysr96.sysgdcont.data.dao.TarjetaDao
 import dagger.Module
 import dagger.Provides
@@ -43,14 +45,20 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideVentaDao(database: AppDatabase): VentaDao {
-        return database.ventaDao()
+    fun provideCatalogoVentaDao(database: AppDatabase): CatalogoVentaDao {
+        return database.catalogoVentaDao()
     }
 
     @Provides
     @Singleton
-    fun provideProductoCompraDao(database: AppDatabase): ProductoCompraDao {
-        return database.productoCompraDao()
+    fun provideCatalogoCompraDao(database: AppDatabase): CatalogoCompraDao {
+        return database.catalogoCompraDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideVentaDao(database: AppDatabase): VentaDao {
+        return database.ventaDao()
     }
 
     @Provides
@@ -65,6 +73,12 @@ object DatabaseModule {
     fun provideItemInventarioDao(database: AppDatabase): ItemInventarioDao {
     return database.itemInventarioDao()
 }
+
+    @Provides
+    @Singleton
+    fun provideAlmacenDao(database: AppDatabase): AlmacenDao {
+        return database.almacenDao()
+    }
 
     @Provides
     @Singleton

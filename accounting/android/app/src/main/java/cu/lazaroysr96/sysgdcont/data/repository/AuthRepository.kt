@@ -1,11 +1,13 @@
 package cu.lazaroysr96.sysgdcont.data.repository
 
 import android.content.Context
+import android.net.Uri
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.google.gson.Gson
 import cu.lazaroysr96.sysgdcont.data.api.ApiService
 import cu.lazaroysr96.sysgdcont.data.model.AuthUser
 import cu.lazaroysr96.sysgdcont.data.model.DeleteAccountRequest
@@ -24,6 +26,13 @@ import org.json.JSONObject
 import retrofit2.Response
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.security.MessageDigest
+import android.util.Base64
+import javax.crypto.Cipher
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 private val Context.authDataStore: DataStore<Preferences> by preferencesDataStore(name = "auth_prefs")
 
@@ -46,6 +55,8 @@ class AuthRepository @Inject constructor(
         private val USER_PRIVILEGES_KEY = stringPreferencesKey("user_privileges")
         private val FIRST_LOGIN_KEY = stringPreferencesKey("first_login_sync")
     }
+
+    private val gson = Gson()
 
     val isAuthenticated: Flow<Boolean> = context.authDataStore.data.map { prefs ->
         prefs[TOKEN_KEY] != null
@@ -102,6 +113,10 @@ class AuthRepository @Inject constructor(
                 val available = response.body()?.credits?.available ?: 0
                 Result.success(available)
             } else {
+                if (response.code() == 401 || response.code() == 403) {
+                    logout()
+                    return Result.failure(Exception("Tu sesión expiró. Inicia sesión de nuevo."))
+                }
                 Result.failure(Exception(extractApiError(response, "No se pudieron obtener los créditos")))
             }
         } catch (e: Exception) {
@@ -198,6 +213,10 @@ class AuthRepository @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
             } else {
+                if (response.code() == 401 || response.code() == 403) {
+                    logout()
+                    return Result.failure(Exception("Tu sesión expiró. Inicia sesión de nuevo."))
+                }
                 Result.failure(Exception(extractApiError(response, "No se pudo cargar estado de 2FA")))
             }
         } catch (e: Exception) {
@@ -212,6 +231,10 @@ class AuthRepository @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!.verified)
             } else {
+                if (response.code() == 401 || response.code() == 403) {
+                    logout()
+                    return Result.failure(Exception("Tu sesión expiró. Inicia sesión de nuevo."))
+                }
                 Result.failure(Exception(extractApiError(response, "No se pudo cargar estado de verificación")))
             }
         } catch (e: Exception) {
@@ -226,6 +249,10 @@ class AuthRepository @Inject constructor(
             if (response.isSuccessful) {
                 Result.success(response.body()?.message ?: "Correo de verificación enviado")
             } else {
+                if (response.code() == 401 || response.code() == 403) {
+                    logout()
+                    return Result.failure(Exception("Tu sesión expiró. Inicia sesión de nuevo."))
+                }
                 Result.failure(Exception(extractApiError(response, "No se pudo enviar el correo de verificación")))
             }
         } catch (e: Exception) {
@@ -243,6 +270,10 @@ class AuthRepository @Inject constructor(
             if (response.isSuccessful) {
                 Result.success(response.body()?.message ?: "Configuración actualizada")
             } else {
+                if (response.code() == 401 || response.code() == 403) {
+                    logout()
+                    return Result.failure(Exception("Tu sesión expiró. Inicia sesión de nuevo."))
+                }
                 Result.failure(Exception(extractApiError(response, "No se pudo actualizar 2FA")))
             }
         } catch (e: Exception) {
@@ -261,6 +292,10 @@ class AuthRepository @Inject constructor(
                 logout()
                 Result.success(response.body()?.message ?: "Cuenta eliminada")
             } else {
+                if (response.code() == 401 || response.code() == 403) {
+                    logout()
+                    return Result.failure(Exception("Tu sesión expiró. Inicia sesión de nuevo."))
+                }
                 Result.failure(Exception(extractApiError(response, "No se pudo eliminar la cuenta")))
             }
         } catch (e: Exception) {
@@ -304,6 +339,147 @@ class AuthRepository @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    suspend fun setAccessKey(accessKey: String): Result<AuthUser> {
+        return try {
+            val auth = accessKey.split("\n")
+            if (auth.size >= 5) {
+                context.authDataStore.edit { prefs ->
+                    prefs[TOKEN_KEY] = auth[0]
+                    prefs[USER_ID_KEY] = auth[1]
+                    prefs[USER_NAME_KEY] = auth[2]
+                    prefs[USER_EMAIL_KEY] = auth[3]
+                    prefs[USER_PRIVILEGES_KEY] = auth[4]
+                }
+                Result.success(AuthUser(
+                    id = auth[1],
+                    name = auth[2],
+                    email = auth[3],
+                    privileges = auth[4]
+                ))
+            } else {
+                Result.failure(Exception("Token inválido o expirado"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    internal data class AccessKeyPayload(
+        val app: String = "SYSGD Cont Android",
+        val version: Int = 1,
+        val token: String,
+        val userId: String,
+        val userName: String,
+        val userEmail: String,
+        val userPrivileges: String,
+        val createdAt: String
+    )
+
+    suspend fun exportAccessKeyToUri(uri: Uri, userPassword: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val prefs = context.authDataStore.data.first()
+            val token = prefs[TOKEN_KEY] ?: return@withContext Result.failure(Exception("No hay sesión activa"))
+            val userId = prefs[USER_ID_KEY] ?: return@withContext Result.failure(Exception("No hay usuario"))
+            val userName = prefs[USER_NAME_KEY] ?: ""
+            val userEmail = prefs[USER_EMAIL_KEY] ?: ""
+            val userPrivileges = prefs[USER_PRIVILEGES_KEY] ?: ""
+
+            val payload = AccessKeyPayload(
+                token = token,
+                userId = userId,
+                userName = userName,
+                userEmail = userEmail,
+                userPrivileges = userPrivileges,
+                createdAt = java.time.Instant.now().toString()
+            )
+
+            val json = gson.toJson(payload)
+            val encrypted = encryptData(json, userPassword)
+
+            context.contentResolver.openOutputStream(uri)?.use { output ->
+                output.write(encrypted.toByteArray(Charsets.UTF_8))
+            } ?: throw Exception("No se pudo abrir el destino para guardar el archivo")
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun importAccessKeyFromUri(uri: Uri, userPassword: String): Result<AuthUser> = withContext(Dispatchers.IO) {
+        try {
+            val rawEncrypted = context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                ?: throw Exception("No se pudo leer el archivo seleccionado")
+
+            val decrypted = decryptData(rawEncrypted, userPassword)
+            val payload = gson.fromJson(decrypted, AccessKeyPayload::class.java)
+                ?: throw Exception("El archivo no contiene una llave de acceso válida")
+
+            context.authDataStore.edit { prefs ->
+                prefs[TOKEN_KEY] = payload.token
+                prefs[USER_ID_KEY] = payload.userId
+                prefs[USER_NAME_KEY] = payload.userName
+                prefs[USER_EMAIL_KEY] = payload.userEmail
+                prefs[USER_PRIVILEGES_KEY] = payload.userPrivileges
+            }
+
+            Result.success(AuthUser(
+                id = payload.userId,
+                name = payload.userName,
+                email = payload.userEmail,
+                privileges = payload.userPrivileges
+            ))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private fun encryptData(data: String, password: String): String {
+        val salt = ByteArray(16)
+        java.security.SecureRandom().nextBytes(salt)
+        val key = deriveKey(password, salt)
+        val iv = ByteArray(12)
+        java.security.SecureRandom().nextBytes(iv)
+
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        val spec = GCMParameterSpec(128, iv)
+        cipher.init(Cipher.ENCRYPT_MODE, key, spec)
+        val encrypted = cipher.doFinal(data.toByteArray(Charsets.UTF_8))
+
+        val combined = ByteArray(salt.size + iv.size + encrypted.size)
+        System.arraycopy(salt, 0, combined, 0, salt.size)
+        System.arraycopy(iv, 0, combined, salt.size, iv.size)
+        System.arraycopy(encrypted, 0, combined, salt.size + iv.size, encrypted.size)
+
+        return Base64.encodeToString(combined, Base64.NO_WRAP)
+    }
+
+    private fun decryptData(encryptedData: String, password: String): String {
+        val combined = Base64.decode(encryptedData, Base64.NO_WRAP)
+
+        val salt = ByteArray(16)
+        val iv = ByteArray(12)
+        val encrypted = ByteArray(combined.size - 28)
+
+        System.arraycopy(combined, 0, salt, 0, 16)
+        System.arraycopy(combined, 16, iv, 0, 12)
+        System.arraycopy(combined, 28, encrypted, 0, encrypted.size)
+
+        val key = deriveKey(password, salt)
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        val spec = GCMParameterSpec(128, iv)
+        cipher.init(Cipher.DECRYPT_MODE, key, spec)
+
+        return String(cipher.doFinal(encrypted), Charsets.UTF_8)
+    }
+
+    private fun deriveKey(password: String, salt: ByteArray): SecretKeySpec {
+        val factory = MessageDigest.getInstance("SHA-256")
+        factory.update(salt)
+        val hash = factory.digest(password.toByteArray(Charsets.UTF_8))
+        return SecretKeySpec(hash, "AES")
     }
 
     private fun extractApiError(response: Response<*>, fallback: String): String {

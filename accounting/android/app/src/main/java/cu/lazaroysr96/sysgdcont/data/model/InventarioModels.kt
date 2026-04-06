@@ -8,9 +8,10 @@ import androidx.room.PrimaryKey
 data class ProductoInventario(
     val id: String,
     val nombre: String,
-    val precio: Double,
     val unidad: String,
-    val tipo: String
+    val emoji: String = "📦",
+    val precio: Double = 0.0,
+    val tipo: String = ""
 )
 
 data class OperacionInventario(
@@ -25,24 +26,148 @@ data class OperacionInventario(
     val unidad: String,
     val cantidad: Double,
     val precioUnitario: Double,
-    val total: Double
+    val total: Double,
+    val almacenId: String = Almacen.DEFAULT_ID
+)
+
+data class AlmacenRegistro(
+    val id: String,
+    val nombre: String,
+    val principal: Boolean = false
+)
+
+data class StockRegistro(
+    val id: String,
+    val productoId: String,
+    val almacenId: String,
+    val stockDisponible: Double = 0.0,
+    val modoStock: String = ModoStock.ILIMITADO.name,
+    val productosVinculadosIds: String = "[]",
+    val ratiosConversion: String = "[]",
+    val ultimaActualizacion: String = "",
+    val visibleEnVentas: Boolean = false
 )
 
 data class InventarioRegistro(
+    val productos: List<ProductoInventario> = emptyList(),
+    val catalogoVentas: List<CatalogoVentaRegistro> = emptyList(),
+    val catalogoCompras: List<CatalogoCompraRegistro> = emptyList(),
+    val almacenes: List<AlmacenRegistro> = emptyList(),
+    val stock: List<StockRegistro> = emptyList(),
+    val operaciones: List<OperacionInventario> = emptyList(),
     val productosVenta: List<ProductoInventario> = emptyList(),
-    val productosCompra: List<ProductoInventario> = emptyList(),
-    val operaciones: List<OperacionInventario> = emptyList()
+    val productosCompra: List<ProductoInventario> = emptyList()
+)
+
+data class CatalogoVentaRegistro(
+    val id: String,
+    val productoId: String,
+    val precioReferencia: Double,
+    val almacenId: String = Almacen.DEFAULT_ID,
+    val activo: Boolean = true
+)
+
+data class CatalogoCompraRegistro(
+    val id: String,
+    val productoId: String,
+    val precioReferencia: Double,
+    val almacenDestinoId: String = Almacen.DEFAULT_ID,
+    val activo: Boolean = true
 )
 
 @Entity(tableName = "productos")
 data class Producto(
     @PrimaryKey val id: String,
     val nombre: String,
-    val precio: Double,
     val emoji: String = "📦",
     val unidad: String = "und",
     val activo: Boolean = true
 )
+
+data class ProductoVenta(
+    val id: String,
+    val catalogoId: String,
+    val nombre: String,
+    val precio: Double,
+    val emoji: String = "📦",
+    val unidad: String = "und",
+    val almacenId: String = Almacen.DEFAULT_ID
+)
+
+data class ProductoCompra(
+    val id: String,
+    val catalogoId: String,
+    val nombre: String,
+    val precio: Double,
+    val emoji: String = "📦",
+    val unidad: String = "und",
+    val activo: Boolean = true,
+    val almacenDestinoId: String = Almacen.DEFAULT_ID
+)
+
+@Entity(
+    tableName = "catalogo_ventas",
+    foreignKeys = [
+        ForeignKey(
+            entity = Producto::class,
+            parentColumns = ["id"],
+            childColumns = ["productoId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = Almacen::class,
+            parentColumns = ["id"],
+            childColumns = ["almacenId"],
+            onDelete = ForeignKey.RESTRICT
+        )
+    ],
+    indices = [Index("productoId"), Index("almacenId")]
+)
+data class CatalogoVenta(
+    @PrimaryKey val id: String,
+    val productoId: String,
+    val precioReferencia: Double,
+    val almacenId: String = Almacen.DEFAULT_ID,
+    val activo: Boolean = true
+)
+
+@Entity(
+    tableName = "catalogo_compras",
+    foreignKeys = [
+        ForeignKey(
+            entity = Producto::class,
+            parentColumns = ["id"],
+            childColumns = ["productoId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = Almacen::class,
+            parentColumns = ["id"],
+            childColumns = ["almacenDestinoId"],
+            onDelete = ForeignKey.RESTRICT
+        )
+    ],
+    indices = [Index("productoId"), Index("almacenDestinoId")]
+)
+data class CatalogoCompra(
+    @PrimaryKey val id: String,
+    val productoId: String,
+    val precioReferencia: Double,
+    val almacenDestinoId: String = Almacen.DEFAULT_ID,
+    val activo: Boolean = true
+)
+
+@Entity(tableName = "almacenes")
+data class Almacen(
+    @PrimaryKey val id: String,
+    val nombre: String,
+    val principal: Boolean = false,
+    val activo: Boolean = true
+) {
+    companion object {
+        const val DEFAULT_ID = "almacen_principal"
+    }
+}
 
 @Entity(tableName = "ventas")
 data class Venta(
@@ -50,6 +175,7 @@ data class Venta(
     val fecha: String,
     val hora: String,
     val total: Double,
+    val almacenOrigenId: String = Almacen.DEFAULT_ID,
     val anulada: Boolean = false
 )
 
@@ -89,22 +215,13 @@ data class VentaConLineas(
     val totalCalculado: Double get() = lineas.sumOf { it.subtotal }
 }
 
-@Entity(tableName = "productos_compra")
-data class ProductoCompra(
-    @PrimaryKey val id: String,
-    val nombre: String,
-    val precio: Double,
-    val emoji: String = "📦",
-    val unidad: String = "und",
-    val activo: Boolean = true
-)
-
 @Entity(tableName = "compras")
 data class Compra(
     @PrimaryKey val id: String,
     val fecha: String,
     val hora: String,
     val total: Double,
+    val almacenDestinoId: String = Almacen.DEFAULT_ID,
     val anulada: Boolean = false
 )
 
@@ -118,7 +235,7 @@ data class Compra(
             onDelete = ForeignKey.CASCADE
         ),
         ForeignKey(
-            entity = ProductoCompra::class,
+            entity = Producto::class,
             parentColumns = ["id"],
             childColumns = ["productoId"],
             onDelete = ForeignKey.RESTRICT

@@ -43,6 +43,18 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                LaunchedEffect(authState.isAuthenticated, authState.isSessionResolved) {
+                    if (!authState.isSessionResolved) return@LaunchedEffect
+                    val targetRoute = if (authState.isAuthenticated) "main" else "login"
+                    val currentRoute = navController.currentDestination?.route
+                    if (currentRoute != targetRoute) {
+                        navController.navigate(targetRoute) {
+                            popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                }
+
                 if (!authState.isSessionResolved) {
                     Box(
                         modifier = Modifier.fillMaxSize(),

@@ -7,6 +7,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -40,7 +43,10 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
@@ -74,6 +80,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -81,6 +89,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.datastore.preferences.core.stringPreferencesKey
 import cu.lazaroysr96.sysgdcont.R
 import cu.lazaroysr96.sysgdcont.data.model.SyncAction
 import cu.lazaroysr96.sysgdcont.ui.main.screens.GastosScreen
@@ -163,6 +172,12 @@ fun MainScreen(
     val drawerScope = rememberCoroutineScope()
     var showCreditsInfoDialog by remember { mutableStateOf(false) }
     var showVentasHelpDialog by remember { mutableStateOf(false) }
+    var showAccessKeyPasswordDialog by remember { mutableStateOf(false) }
+    var pendingAccessKeyUri by remember { mutableStateOf<Uri?>(null) }
+    var accessKeyPassword by remember { mutableStateOf("") }
+    var accessKeyConfirmPassword by remember { mutableStateOf("") }
+    var accessKeyPasswordVisible by remember { mutableStateOf(false) }
+    var accessKeyPasswordError by remember { mutableStateOf<String?>(null) }
     val exportBackupLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
@@ -177,6 +192,17 @@ fun MainScreen(
             ledgerViewModel.importBackup(uri) {
                 inventarioViewModel.refreshAfterRestore()
             }
+        }
+    }
+    val exportAccessKeyLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            pendingAccessKeyUri = uri
+            accessKeyPassword = ""
+            accessKeyConfirmPassword = ""
+            accessKeyPasswordError = null
+            showAccessKeyPasswordDialog = true
         }
     }
 
@@ -585,12 +611,18 @@ fun MainScreen(
                 }
                 composable(BACKUP_ROUTE) {
                     BackupJsonScreen(
-                            isLoading = ledgerState.isLoading,
+                            isLoading = ledgerState.isLoading || authState.isLoading,
+                            currentUser = authState.currentUser,
                             onExportClick = {
                                 exportBackupLauncher.launch("sysgd-cont-backup.json")
                             },
                             onImportClick = {
                                 importBackupLauncher.launch(arrayOf("application/json", "text/json"))
+                            },
+                            onExportAccessKeyClick = {
+                                val userEmail = authState.currentUser?.email ?: "sysgd-user"
+                                val fileName = "sysgd-access-key-$userEmail.json"
+                                exportAccessKeyLauncher.launch(fileName)
                             },
                     )
                 }
@@ -817,6 +849,97 @@ fun MainScreen(
             }
         )
     }
+
+    if (showAccessKeyPasswordDialog && pendingAccessKeyUri != null) {
+        AlertDialog(
+            onDismissRequest = { 
+                showAccessKeyPasswordDialog = false
+                pendingAccessKeyUri = null
+                accessKeyPassword = ""
+                accessKeyConfirmPassword = ""
+            },
+            title = { Text("Crear llave de acceso") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Esta llave permite iniciar sesión sin internet. Ingresa una contraseña para protegerla:")
+                    OutlinedTextField(
+                        value = accessKeyPassword,
+                        onValueChange = { 
+                            accessKeyPassword = it
+                            accessKeyPasswordError = null
+                        },
+                        label = { Text("Contraseña") },
+                        singleLine = true,
+                        visualTransformation = if (accessKeyPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { accessKeyPasswordVisible = !accessKeyPasswordVisible }) {
+                                Icon(
+                                    if (accessKeyPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (accessKeyPasswordVisible) "Ocultar" else "Mostrar"
+                                )
+                            }
+                        },
+                        isError = accessKeyPasswordError != null
+                    )
+                    OutlinedTextField(
+                        value = accessKeyConfirmPassword,
+                        onValueChange = { 
+                            accessKeyConfirmPassword = it
+                            accessKeyPasswordError = null
+                        },
+                        label = { Text("Confirmar contraseña") },
+                        singleLine = true,
+                        visualTransformation = if (accessKeyPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        isError = accessKeyPasswordError != null
+                    )
+                    if (accessKeyPasswordError != null) {
+                        Text(
+                            text = accessKeyPasswordError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        when {
+                            accessKeyPassword.length < 6 -> {
+                                accessKeyPasswordError = "La contraseña debe tener al menos 6 caracteres"
+                            }
+                            accessKeyPassword != accessKeyConfirmPassword -> {
+                                accessKeyPasswordError = "Las contraseñas no coinciden"
+                            }
+                            else -> {
+                                pendingAccessKeyUri?.let { uri ->
+                                    authViewModel.exportAccessKey(uri, accessKeyPassword)
+                                }
+                                showAccessKeyPasswordDialog = false
+                                pendingAccessKeyUri = null
+                                accessKeyPassword = ""
+                                accessKeyConfirmPassword = ""
+                            }
+                        }
+                    }
+                ) {
+                    Text("Crear")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showAccessKeyPasswordDialog = false
+                        pendingAccessKeyUri = null
+                        accessKeyPassword = ""
+                        accessKeyConfirmPassword = ""
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -877,6 +1000,27 @@ private fun AboutScreen(
 
         TextButton(onClick = onContactWhatsApp) { Text("Contactar por WhatsApp") }
 
+
+        Divider()
+
+        Text(text = "Plataforma SYSGD Ecosystem", style = MaterialTheme.typography.titleMedium)
+        Text(
+                text = "Conoce más servicios y accesos oficiales de SYSGD:",
+                style = MaterialTheme.typography.bodyMedium
+        )
+        TextButton(onClick = { onOpenUrl("https://www.ecosysgd.com") }) {
+            Text("Web institucional: www.ecosysgd.com")
+        }
+        TextButton(onClick = { onOpenUrl("https://cont.ecosysgd.com") }) {
+            Text("Versión web de esta app: cont.ecosysgd.com")
+        }
+        TextButton(onClick = { onOpenUrl("https://work.ecosysgd.com/terms") }) {
+            Text("Términos y condiciones")
+        }
+        TextButton(onClick = { onOpenUrl("https://work.ecosysgd.com/privacy") }) {
+            Text("Política de privacidad")
+        }
+
         Divider()
 
         Text(text = "Opciones avanzadas", style = MaterialTheme.typography.titleMedium)
@@ -901,26 +1045,6 @@ private fun AboutScreen(
                     onCheckedChange = onExperimentalFeaturesChange
                 )
             }
-        }
-
-        Divider()
-
-        Text(text = "Plataforma SYSGD Ecosystem", style = MaterialTheme.typography.titleMedium)
-        Text(
-                text = "Conoce más servicios y accesos oficiales de SYSGD:",
-                style = MaterialTheme.typography.bodyMedium
-        )
-        TextButton(onClick = { onOpenUrl("https://www.ecosysgd.com") }) {
-            Text("Web institucional: www.ecosysgd.com")
-        }
-        TextButton(onClick = { onOpenUrl("https://cont.ecosysgd.com") }) {
-            Text("Versión web de esta app: cont.ecosysgd.com")
-        }
-        TextButton(onClick = { onOpenUrl("https://work.ecosysgd.com/terms") }) {
-            Text("Términos y condiciones")
-        }
-        TextButton(onClick = { onOpenUrl("https://work.ecosysgd.com/privacy") }) {
-            Text("Política de privacidad")
         }
     }
 }
@@ -1050,8 +1174,10 @@ private fun UsefulResourcesScreen(onOpenUrl: (String) -> Unit) {
 @Composable
 private fun BackupJsonScreen(
         isLoading: Boolean,
+        currentUser: cu.lazaroysr96.sysgdcont.data.model.AuthUser?,
         onExportClick: () -> Unit,
-        onImportClick: () -> Unit
+        onImportClick: () -> Unit,
+        onExportAccessKeyClick: () -> Unit
 ) {
     Column(
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -1078,5 +1204,43 @@ private fun BackupJsonScreen(
                         "Nota: al importar, los datos locales se reemplazan por los del archivo seleccionado.",
                 style = MaterialTheme.typography.bodySmall
         )
+
+        Divider()
+
+        Text(
+                text = "Llave de acceso (sin conexión)",
+                style = MaterialTheme.typography.titleMedium
+        )
+        Text(
+                text = "Crea una copia de seguridad de tu sesión para poder iniciar sin internet. Si desinstalas la app y la reinstalas, podrás restaurar tu sesión usando esta llave.",
+                style = MaterialTheme.typography.bodySmall
+        )
+
+        if (currentUser != null) {
+            Text(
+                    text = "Usuario: ${currentUser.name}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                    text = "Email: ${currentUser.email}",
+                    style = MaterialTheme.typography.bodySmall
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        TextButton(onClick = onExportAccessKeyClick, enabled = !isLoading) {
+            Text(if (isLoading) "Procesando..." else "Crear llave de acceso")
+        }
+
+        Divider()
+
+        Text(
+                text = "Esta llave estará protegida con una contraseña que tú defines. Guárdala en un lugar seguro.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
     }
 }

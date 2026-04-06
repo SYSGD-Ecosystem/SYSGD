@@ -2,6 +2,8 @@ package cu.lazaroysr96.sysgdcont.ui.auth
 
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
@@ -50,6 +52,22 @@ fun LoginScreen(
     var termsAccepted by remember { mutableStateOf(false) }
     var twoFactorCode by remember { mutableStateOf("") }
     var showRecoverDialog by remember { mutableStateOf(false) }
+    var showAccessKeyDialog by remember { mutableStateOf(false) }
+    var accessKeyPassword by remember { mutableStateOf("") }
+    var accessKeyPasswordVisible by remember { mutableStateOf(false) }
+    var accessKeyPasswordError by remember { mutableStateOf<String?>(null) }
+    var pendingAccessKeyUri by remember { mutableStateOf<Uri?>(null) }
+
+    val selectAccessKeyLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            pendingAccessKeyUri = uri
+            accessKeyPassword = ""
+            accessKeyPasswordError = null
+            showAccessKeyDialog = true
+        }
+    }
 
     fun openWhatsAppSupport(message: String) {
         try {
@@ -303,6 +321,14 @@ fun LoginScreen(
                 Text("Método avanzado (token)")
             }
 
+            TextButton(onClick = { 
+                selectAccessKeyLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+            }) {
+                Icon(Icons.Default.Key, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Llave de acceso (sin internet)")
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
@@ -409,6 +435,77 @@ fun LoginScreen(
             },
             onDismiss = {
                 showTermsDialog = false
+            }
+        )
+    }
+
+    if (showAccessKeyDialog && pendingAccessKeyUri != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showAccessKeyDialog = false
+                pendingAccessKeyUri = null
+                accessKeyPassword = ""
+            },
+            title = { Text("Iniciar con llave de acceso") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Ingresa la contraseña que usaste al crear esta llave de acceso:")
+                    OutlinedTextField(
+                        value = accessKeyPassword,
+                        onValueChange = {
+                            accessKeyPassword = it
+                            accessKeyPasswordError = null
+                        },
+                        label = { Text("Contraseña") },
+                        singleLine = true,
+                        visualTransformation = if (accessKeyPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { accessKeyPasswordVisible = !accessKeyPasswordVisible }) {
+                                Icon(
+                                    if (accessKeyPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (accessKeyPasswordVisible) "Ocultar" else "Mostrar"
+                                )
+                            }
+                        },
+                        isError = accessKeyPasswordError != null
+                    )
+                    if (accessKeyPasswordError != null) {
+                        Text(
+                            text = accessKeyPasswordError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (accessKeyPassword.isBlank()) {
+                            accessKeyPasswordError = "Ingresa la contraseña"
+                        } else {
+                            pendingAccessKeyUri?.let { uri ->
+                                viewModel.importAccessKey(uri, accessKeyPassword)
+                            }
+                            showAccessKeyDialog = false
+                            pendingAccessKeyUri = null
+                            accessKeyPassword = ""
+                        }
+                    }
+                ) {
+                    Text("Usar llave")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showAccessKeyDialog = false
+                        pendingAccessKeyUri = null
+                        accessKeyPassword = ""
+                    }
+                ) {
+                    Text("Cancelar")
+                }
             }
         )
     }

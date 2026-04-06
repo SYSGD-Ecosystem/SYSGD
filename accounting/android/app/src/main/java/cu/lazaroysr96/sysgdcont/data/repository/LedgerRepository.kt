@@ -158,9 +158,51 @@ class LedgerRepository @Inject constructor(
 
     private fun hasInventarioData(inventario: InventarioRegistro?): Boolean {
         if (inventario == null) return false
-        return inventario.productosVenta.isNotEmpty() ||
+        return inventario.productos.isNotEmpty() ||
+            inventario.catalogoVentas.isNotEmpty() ||
+            inventario.catalogoCompras.isNotEmpty() ||
+            inventario.almacenes.isNotEmpty() ||
+            inventario.stock.isNotEmpty() ||
+            inventario.productosVenta.isNotEmpty() ||
             inventario.productosCompra.isNotEmpty() ||
             inventario.operaciones.isNotEmpty()
+    }
+
+    private fun isRegistroEffectivelyEmpty(registro: RegistroTCP): Boolean {
+        val generalesVacios =
+            registro.generales.nombre.isBlank() &&
+                registro.generales.nit.isBlank() &&
+                registro.generales.actividad.isBlank() &&
+                registro.generales.codigo.isBlank() &&
+                registro.generales.fiscalCalle.isBlank() &&
+                registro.generales.fiscalMunicipio.isBlank() &&
+                registro.generales.fiscalProvincia.isBlank() &&
+                registro.generales.legalCalle.isBlank() &&
+                registro.generales.legalMunicipio.isBlank() &&
+                registro.generales.legalProvincia.isBlank()
+
+        val ingresosVacios = registro.ingresos.values.all { it.isEmpty() }
+        val gastosVacios = registro.gastos.values.all { it.isEmpty() }
+        val tributosVacios = registro.tributos.all { row ->
+            row.ventas.isBlank() &&
+                row.fuerza.isBlank() &&
+                row.sellos.isBlank() &&
+                row.anuncios.isBlank() &&
+                row.css20.isBlank() &&
+                row.css14.isBlank() &&
+                row.otros.isBlank() &&
+                row.restauracion.isBlank() &&
+                row.arrendamiento.isBlank() &&
+                row.exonerado.isBlank() &&
+                row.otrosMFP.isBlank() &&
+                row.cuotaMensual.isBlank()
+        }
+
+        return generalesVacios &&
+            ingresosVacios &&
+            gastosVacios &&
+            tributosVacios &&
+            !hasInventarioData(registro.inventario)
     }
 
     private fun buildRemoteRegistro(response: ContLedgerResponse): RegistroTCP? {
@@ -230,7 +272,9 @@ class LedgerRepository @Inject constructor(
                 ?: throw Exception("No se pudo interpretar el registro del archivo")
 
             val normalized = normalizeImportedRegistro(imported)
-            inventarioRepository.fromInventarioRegistro(normalized.inventario)
+            if (hasInventarioData(normalized.inventario)) {
+                inventarioRepository.fromInventarioRegistro(normalized.inventario)
+            }
 
             val registroSinInventario = stripInventario(normalized)
             saveUserEditedRegistro(registroSinInventario)
@@ -242,7 +286,9 @@ class LedgerRepository @Inject constructor(
 
     suspend fun replaceLocalWithRemote(registro: RegistroTCP, serverVersion: String): Result<SyncResult> {
         return try {
-            inventarioRepository.fromInventarioRegistro(registro.inventario)
+            if (hasInventarioData(registro.inventario)) {
+                inventarioRepository.fromInventarioRegistro(registro.inventario)
+            }
             val registroSinInventario = stripInventario(registro)
             saveRegistro(registroSinInventario, modifiedByUser = false)
             saveBaseline(registroSinInventario, registro.inventario, serverVersion)
@@ -271,6 +317,10 @@ class LedgerRepository @Inject constructor(
                 )
             )
             if (!updateResponse.isSuccessful) {
+                if (updateResponse.code() == 401 || updateResponse.code() == 403) {
+                    authRepository.logout()
+                    return Result.failure(Exception("Tu sesión expiró. Inicia sesión de nuevo."))
+                }
                 return Result.failure(Exception("Error al subir datos: ${updateResponse.code()}"))
             }
 
@@ -310,6 +360,10 @@ class LedgerRepository @Inject constructor(
                 )
             )
             if (!updateResponse.isSuccessful) {
+                if (updateResponse.code() == 401 || updateResponse.code() == 403) {
+                    authRepository.logout()
+                    return Result.failure(Exception("Tu sesión expiró. Inicia sesión de nuevo."))
+                }
                 return Result.failure(Exception("Error al subir merge: ${updateResponse.code()}"))
             }
 
@@ -349,6 +403,10 @@ class LedgerRepository @Inject constructor(
 
     private suspend fun fetchRemote(token: String): ContLedgerResponse {
         val response = apiService.getLedger("Bearer $token")
+        if (response.code() == 401 || response.code() == 403) {
+            authRepository.logout()
+            throw Exception("Tu sesión expiró. Inicia sesión de nuevo.")
+        }
         if (!response.isSuccessful) {
             throw Exception("Error al obtener datos remotos: ${response.code()}")
         }
@@ -494,7 +552,21 @@ class LedgerRepository @Inject constructor(
                 return Result.success(SyncResult(true, "Sincronización automática omitida", SyncAction.NO_CHANGES))
             }
 
-            val result = sync()
+            val token = authRepository.getToken() ?: return Result.failure(Exception("No token"))
+            val localRegistro = buildRegistroWithInventario()
+            val remote = fetchRemote(token)
+            val remoteRegistro = buildRemoteRegistro(remote)
+            val result = when {
+                remoteRegistro != null -> {
+                    replaceLocalWithRemote(remoteRegistro, remote.updatedAt.orEmpty())
+                }
+                !isRegistroEffectivelyEmpty(localRegistro) || isLocalModified() -> {
+                    uploadLocalToRemote()
+                }
+                else -> {
+                    Result.success(SyncResult(true, "No hay datos para sincronizar", SyncAction.NO_CHANGES))
+                }
+            }
 
             if (result.isSuccess) {
                 authRepository.markFirstLoginSyncComplete()
@@ -518,6 +590,7 @@ class LedgerRepository @Inject constructor(
             val remote = fetchRemote(token)
             val remoteRegistro = buildRemoteRegistro(remote)
             val remoteVersion = remote.updatedAt.orEmpty()
+            val localEmpty = isRegistroEffectivelyEmpty(localRegistro)
             val serverChanged = hasBaseline && remoteVersion != baselineVersion
             val remoteInventario = remoteRegistro?.inventario ?: InventarioRegistro()
             val inventarioConflict = hasBaseline &&
@@ -538,6 +611,10 @@ class LedgerRepository @Inject constructor(
                             needsUserDecision = true
                         )
                     )
+                }
+
+                remoteRegistro != null && !localModified && !hasBaseline && localEmpty -> {
+                    replaceLocalWithRemote(remoteRegistro, remoteVersion)
                 }
 
                 !localModified && (!hasBaseline || !hasLocalData || serverChanged) -> {
@@ -1001,10 +1078,17 @@ class LedgerRepository @Inject constructor(
                     onRetryMessage("Servidor dormido. Reintentando en 15 segundos...")
                     delay(15000)
                     val retryResponse = apiService.downloadPdf("Bearer $token", pdfPayload)
+                    if (retryResponse.code() == 401 || retryResponse.code() == 403) {
+                        authRepository.logout()
+                        return@withContext Result.failure(Exception("Tu sesión expiró. Inicia sesión de nuevo."))
+                    }
                     if (!retryResponse.isSuccessful) {
                         return@withContext Result.failure(buildPdfError(retryResponse))
                     }
                     processPdfResponse(retryResponse)
+                } else if (response.code() == 401 || response.code() == 403) {
+                    authRepository.logout()
+                    return@withContext Result.failure(Exception("Tu sesión expiró. Inicia sesión de nuevo."))
                 } else if (!response.isSuccessful) {
                     return@withContext Result.failure(buildPdfError(response))
                 } else {

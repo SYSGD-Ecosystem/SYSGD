@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cu.lazaroysr96.sysgdcont.data.model.LineaVenta
-import cu.lazaroysr96.sysgdcont.data.model.Producto
+import cu.lazaroysr96.sysgdcont.data.model.ProductoVenta
 import cu.lazaroysr96.sysgdcont.data.model.Venta
 import cu.lazaroysr96.sysgdcont.data.model.ProductoCompra
 import cu.lazaroysr96.sysgdcont.data.model.Compra
@@ -150,7 +150,7 @@ fun InventarioScreen(
                         selected = uiState.currentTab == 3,
                         onClick = { viewModel.setCurrentTab(3) },
                         icon = { Icon(Icons.Default.List, "Inventario") },
-                        label = { Text("Inventario") }
+                        label = { Text("Almacén") }
                     )
                 }
                 NavigationBarItem(
@@ -368,7 +368,7 @@ private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingVa
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
     val esHoy = uiState.fechaTrabajo == LocalDate.now()
-    var productoSeleccionado by remember { mutableStateOf<Producto?>(null) }
+    var productoSeleccionado by remember { mutableStateOf<ProductoVenta?>(null) }
 
     Column(
         modifier = Modifier
@@ -1095,7 +1095,7 @@ private fun AlmacenSection(
     color: androidx.compose.ui.graphics.Color,
     items: List<ItemInventario>,
     productos: List<ProductoCompra>,
-    productosVenta: List<Producto>,
+    productosVenta: List<ProductoVenta>,
     onAjustarStock: (ItemInventario) -> Unit,
     onMover: ((ItemInventario) -> Unit)?,
     tipoAlmacen: TipoProductoInv
@@ -2408,7 +2408,7 @@ private fun List<LineaVenta>.resumenProductosVenta(): String {
 
 @Composable
 private fun ProductCard(
-    producto: Producto,
+    producto: ProductoVenta,
     onClick: () -> Unit
 ) {
     Card(
@@ -2481,7 +2481,7 @@ private fun ProductCardCompra(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ProductCatalogSheet(
-    productos: List<Producto>,
+    productos: List<ProductoVenta>,
     onAdd: (String, Double, String, String) -> Unit,
     onEliminar: (String) -> Unit,
     onDismiss: () -> Unit
@@ -2766,10 +2766,10 @@ private fun AddProductDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CartSheet(
-    cart: Map<Producto, Double>,
+    cart: Map<ProductoVenta, Double>,
     total: Double,
-    onAdd: (Producto) -> Unit,
-    onRemove: (Producto) -> Unit,
+    onAdd: (ProductoVenta) -> Unit,
+    onRemove: (ProductoVenta) -> Unit,
     onRegistrar: () -> Unit,
     onDismiss: () -> Unit
 ) {
