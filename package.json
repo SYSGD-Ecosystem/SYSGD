@@ -14,7 +14,10 @@
 		"build-client": "cd client && npm run build",
 		"build-server": "cd server && npm run build",
 		"start-server": "cd server && npm start",
-		"cont": "cd accounting/android && PASS=$(tr -d '\r\n' < firma/password.txt) && JAVA_HOME=/usr/lib/jvm/java-17-openjdk ./gradlew :app:assembleRelease   -Pandroid.injected.signing.store.file=\"$(pwd)/firma/firma-release.p12\"   -Pandroid.injected.signing.store.password=\"$PASS\"   -Pandroid.injected.signing.key.alias=\"lázaro yunier\"   -Pandroid.injected.signing.key.password=\"$PASS\""
+		"tree": "tree -I 'node_modules|.git|.next|dist|build|vendor|coverage' -L 10 --dirsfirst",
+		"cont": "cd accounting/android && PASS=$(tr -d '\r\n' < firma/password.txt) && ANDROID_HOME=/home/yunior/android-sdk ANDROID_SDK_ROOT=/home/yunior/android-sdk JAVA_HOME=/usr/lib/jvm/java-17-openjdk ./gradlew :app:assembleRelease   -Pandroid.injected.signing.store.file=\"$(pwd)/firma/firma-release.p12\"   -Pandroid.injected.signing.store.password=\"$PASS\"   -Pandroid.injected.signing.key.alias=\"lázaro yunier\"   -Pandroid.injected.signing.key.password=\"$PASS\"",
+		"cont:install": "npm run cont && /home/yunior/android-sdk/platform-tools/adb install -r accounting/android/app/build/outputs/apk/release/app-release.apk",
+		"cont:log": "/home/yunior/android-sdk/platform-tools/adb logcat | rg --line-buffered \"AndroidRuntime|FATAL EXCEPTION|cu\\\\.lazaroysr96\\\\.sysgdcont|Room|Migration|SQLite|IllegalStateException|RuntimeException\""
 	},
 	"devDependencies": {
 		"biome": "^0.3.3",
