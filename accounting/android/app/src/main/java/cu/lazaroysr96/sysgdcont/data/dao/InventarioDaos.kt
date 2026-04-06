@@ -74,8 +74,8 @@ interface CatalogoVentaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(catalogos: List<CatalogoVenta>)
 
-    @Query("UPDATE catalogo_ventas SET activo = 0 WHERE productoId = :productoId")
-    suspend fun deactivateByProductoId(productoId: String)
+    @Query("UPDATE catalogo_ventas SET activo = 0 WHERE id = :catalogoId")
+    suspend fun deactivateById(catalogoId: String)
 
     @Query("DELETE FROM catalogo_ventas")
     suspend fun deleteAll()
@@ -112,8 +112,8 @@ interface CatalogoCompraDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(catalogos: List<CatalogoCompra>)
 
-    @Query("UPDATE catalogo_compras SET activo = 0 WHERE productoId = :productoId")
-    suspend fun deactivateByProductoId(productoId: String)
+    @Query("UPDATE catalogo_compras SET activo = 0 WHERE id = :catalogoId")
+    suspend fun deactivateById(catalogoId: String)
 
     @Query("DELETE FROM catalogo_compras")
     suspend fun deleteAll()

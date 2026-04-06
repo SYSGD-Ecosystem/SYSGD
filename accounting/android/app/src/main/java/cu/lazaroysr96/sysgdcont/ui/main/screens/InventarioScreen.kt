@@ -1019,6 +1019,11 @@ private fun DateField(
 @Composable
 private fun InventarioContent(viewModel: InventarioViewModel, padding: PaddingValues) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val itemsInventario = remember(uiState.itemsInventarioCompra, uiState.itemsInventarioVenta) {
+        (uiState.itemsInventarioCompra + uiState.itemsInventarioVenta)
+            .distinctBy { it.id }
+            .sortedByDescending { it.ultimaActualizacion }
+    }
 
     Column(
         modifier = Modifier
@@ -1035,27 +1040,18 @@ private fun InventarioContent(viewModel: InventarioViewModel, padding: PaddingVa
         )
 
         AlmacenSection(
-            titulo = "Almacén de Compras",
-            icono = Icons.Default.ShoppingCart,
-            color = MaterialTheme.colorScheme.secondary,
-            items = uiState.itemsInventarioCompra,
-            productos = uiState.productosCompra,
-            productosVenta = uiState.productos,
-            onAjustarStock = { viewModel.showAjusteStockDialog(it) },
-            onMover = { viewModel.showMoverDialog(it) },
-            tipoAlmacen = TipoProductoInv.COMPRA
-        )
-
-        AlmacenSection(
-            titulo = "Almacén de Ventas",
-            icono = Icons.Default.PointOfSale,
+            titulo = "Almacén principal",
+            icono = Icons.Default.Inventory2,
             color = MaterialTheme.colorScheme.primary,
-            items = uiState.itemsInventarioVenta,
+            items = itemsInventario,
             productos = uiState.productosCompra,
             productosVenta = uiState.productos,
             onAjustarStock = { viewModel.showAjusteStockDialog(it) },
-            onMover = null,
-            tipoAlmacen = TipoProductoInv.VENTA
+            onMover = { item ->
+                if (uiState.productos.none { it.id == item.productoId }) {
+                    viewModel.showMoverDialog(item)
+                }
+            }
         )
     }
 
@@ -1075,12 +1071,9 @@ private fun InventarioContent(viewModel: InventarioViewModel, padding: PaddingVa
             item = uiState.itemMoviendo!!,
             productosCompra = uiState.productosCompra,
             onDismiss = { viewModel.showMoverDialog(null) },
-            onConfirm = { nombreProducto, emojiProducto, cantidad, precioVenta ->
-                viewModel.moverAVentas(
-                    productoCompraId = uiState.itemMoviendo!!.productoId,
-                    cantidadMover = cantidad,
-                    nombreProductoVenta = nombreProducto,
-                    emojiProductoVenta = emojiProducto,
+            onConfirm = { precioVenta ->
+                viewModel.ponerProductoEnVenta(
+                    productoId = uiState.itemMoviendo!!.productoId,
                     precioVenta = precioVenta
                 )
             }
@@ -1097,8 +1090,7 @@ private fun AlmacenSection(
     productos: List<ProductoCompra>,
     productosVenta: List<ProductoVenta>,
     onAjustarStock: (ItemInventario) -> Unit,
-    onMover: ((ItemInventario) -> Unit)?,
-    tipoAlmacen: TipoProductoInv
+    onMover: ((ItemInventario) -> Unit)?
 ) {
     var expanded by remember { mutableStateOf(true) }
 
@@ -1164,21 +1156,17 @@ private fun AlmacenSection(
                     } else {
                         Divider(modifier = Modifier.padding(bottom = 8.dp))
                         items.forEach { item ->
-                            val nombreProducto = when (tipoAlmacen) {
-                                TipoProductoInv.COMPRA -> productos.find { it.id == item.productoId }?.nombre ?: item.productoId
-                                TipoProductoInv.VENTA -> productosVenta.find { it.id == item.productoId }?.nombre ?: item.productoId
-                            }
-                            val emojiProducto = when (tipoAlmacen) {
-                                TipoProductoInv.COMPRA -> productos.find { it.id == item.productoId }?.emoji ?: "📦"
-                                TipoProductoInv.VENTA -> productosVenta.find { it.id == item.productoId }?.emoji ?: "📦"
-                            }
+                            val productoVenta = productosVenta.find { it.id == item.productoId }
+                            val productoCompra = productos.find { it.id == item.productoId }
+                            val nombreProducto = productoVenta?.nombre ?: productoCompra?.nombre ?: item.productoId
+                            val emojiProducto = productoVenta?.emoji ?: productoCompra?.emoji ?: "📦"
                             ItemInventarioRow(
                                 item = item,
                                 nombre = nombreProducto,
                                 emoji = emojiProducto,
                                 color = color,
                                 onAjustarStock = { onAjustarStock(item) },
-                                onMover = onMover?.let { { it(item) } }
+                                onMover = onMover?.takeIf { productoVenta == null }?.let { { it(item) } }
                             )
                             Divider(modifier = Modifier.padding(vertical = 4.dp))
                         }
@@ -1304,7 +1292,7 @@ private fun ItemInventarioRow(
                         ) {
                             Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Mover a ventas", style = MaterialTheme.typography.labelSmall)
+                            Text("Poner a la venta", style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }
@@ -1565,84 +1553,29 @@ private fun MoverProductoDialog(
     item: ItemInventario,
     productosCompra: List<ProductoCompra>,
     onDismiss: () -> Unit,
-    onConfirm: (nombre: String, emoji: String, cantidad: Double, precioVenta: Double) -> Unit
+    onConfirm: (precioVenta: Double) -> Unit
 ) {
     val productoCompra = productosCompra.find { it.id == item.productoId }
-    var nombreProducto by remember { mutableStateOf(productoCompra?.nombre ?: "") }
-    var emojiProducto by remember { mutableStateOf(productoCompra?.emoji ?: "📦") }
-    var cantidadInput by remember { mutableStateOf(if (item.stockDisponible > 0) item.stockDisponible.toString() else "") }
     var precioVentaInput by remember { mutableStateOf(productoCompra?.precio?.toString() ?: "") }
-    var dropdownEmojiExpanded by remember { mutableStateOf(false) }
-    
-    val cantidad = cantidadInput.toDoubleOrNull()
     val precioVenta = precioVentaInput.toDoubleOrNull()
-    val puedeConfirmar = nombreProducto.isNotBlank() && (cantidad ?: 0.0) > 0.0 && (precioVenta ?: 0.0) > 0.0
-    
-    val listaEmojis = listOf("📦", "🥚", "🍞", "🥛", "🧼", "🍚", "🍬", "🥫", "🧃", "🍟", "🍔", "🌭")
+    val puedeConfirmar = (precioVenta ?: 0.0) > 0.0
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Crear producto en ventas") },
+        title = { Text("Poner producto a la venta") },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.verticalScroll(rememberScrollState())
             ) {
                 Text(
-                    "Stock disponible en compras: ${"%.1f".format(item.stockDisponible)}",
+                    "${productoCompra?.emoji ?: "📦"} ${productoCompra?.nombre ?: "Producto"}",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    "Se agregara al catalogo de ventas usando el mismo inventario del almacen actual.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    ExposedDropdownMenuBox(
-                        expanded = dropdownEmojiExpanded,
-                        onExpandedChange = { dropdownEmojiExpanded = it },
-                        modifier = Modifier.width(80.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = emojiProducto,
-                            onValueChange = {},
-                            readOnly = true,
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(dropdownEmojiExpanded) },
-                            modifier = Modifier.menuAnchor()
-                        )
-                        ExposedDropdownMenu(
-                            expanded = dropdownEmojiExpanded,
-                            onDismissRequest = { dropdownEmojiExpanded = false }
-                        ) {
-                            listaEmojis.forEach { emoji ->
-                                DropdownMenuItem(
-                                    text = { Text(emoji, fontSize = 24.sp) },
-                                    onClick = {
-                                        emojiProducto = emoji
-                                        dropdownEmojiExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                    
-                    OutlinedTextField(
-                        value = nombreProducto,
-                        onValueChange = { nombreProducto = it },
-                        label = { Text("Nombre del producto") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                OutlinedTextField(
-                    value = cantidadInput,
-                    onValueChange = { cantidadInput = it.replace(',', '.') },
-                    label = { Text("Cantidad a transferir") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
                 )
 
                 OutlinedTextField(
@@ -1657,16 +1590,9 @@ private fun MoverProductoDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = {
-                    onConfirm(
-                        nombreProducto,
-                        emojiProducto,
-                        cantidad!!,
-                        precioVenta!!
-                    )
-                },
+                onClick = { onConfirm(precioVenta!!) },
                 enabled = puedeConfirmar
-            ) { Text("Crear y Transferir") }
+            ) { Text("Publicar") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancelar") }
@@ -2551,7 +2477,7 @@ private fun ProductCatalogSheet(
                                     )
                                 }
                             }
-                            IconButton(onClick = { onEliminar(producto.id) }) {
+                            IconButton(onClick = { onEliminar(producto.catalogoId) }) {
                                 Icon(
                                     Icons.Default.Delete,
                                     "Eliminar",
@@ -2938,7 +2864,7 @@ private fun ProductCatalogCompraSheet(
                                     )
                                 }
                             }
-                            IconButton(onClick = { onEliminar(producto.id) }) {
+                            IconButton(onClick = { onEliminar(producto.catalogoId) }) {
                                 Icon(
                                     Icons.Default.Delete,
                                     "Eliminar",

@@ -75,27 +75,18 @@ class InventarioRepository @Inject constructor(
         return almacen
     }
 
-    private suspend fun upsertProductoBase(
+    private suspend fun crearProductoBase(
         nombre: String,
         emoji: String,
         unidad: String
     ): Producto {
-        val existente = productoDao.getByNombre(nombre.trim())
-        val producto = if (existente != null) {
-            existente.copy(
-                emoji = emoji,
-                unidad = unidad,
-                activo = true
-            )
-        } else {
-            Producto(
-                id = UUID.randomUUID().toString(),
-                nombre = nombre.trim(),
-                emoji = emoji,
-                unidad = unidad,
-                activo = true
-            )
-        }
+        val producto = Producto(
+            id = UUID.randomUUID().toString(),
+            nombre = nombre.trim(),
+            emoji = emoji,
+            unidad = unidad,
+            activo = true
+        )
         productoDao.insert(producto)
         return producto
     }
@@ -167,14 +158,14 @@ class InventarioRepository @Inject constructor(
         unidad: String
     ) {
         val almacen = ensureDefaultAlmacen()
-        val producto = upsertProductoBase(nombre, emoji, unidad)
+        val producto = crearProductoBase(nombre, emoji, unidad)
         upsertCatalogoVenta(producto.id, precio, almacen.id)
         ensureItemInventario(producto.id, TipoProductoInv.VENTA, almacen.id)
         markLocalModified()
     }
 
-    suspend fun eliminarProducto(id: String) {
-        catalogoVentaDao.deactivateByProductoId(id)
+    suspend fun eliminarProducto(catalogoId: String) {
+        catalogoVentaDao.deactivateById(catalogoId)
         markLocalModified()
     }
 
@@ -276,14 +267,13 @@ class InventarioRepository @Inject constructor(
         unidad: String
     ) {
         val almacen = ensureDefaultAlmacen()
-        val producto = upsertProductoBase(nombre, emoji, unidad)
+        val producto = crearProductoBase(nombre, emoji, unidad)
         upsertCatalogoCompra(producto.id, precio, almacen.id)
-        ensureItemInventario(producto.id, TipoProductoInv.COMPRA, almacen.id)
         markLocalModified()
     }
 
-    suspend fun eliminarProductoCompra(id: String) {
-        catalogoCompraDao.deactivateByProductoId(id)
+    suspend fun eliminarProductoCompra(catalogoId: String) {
+        catalogoCompraDao.deactivateById(catalogoId)
         markLocalModified()
     }
 
@@ -568,23 +558,38 @@ class InventarioRepository @Inject constructor(
         catalogoCompraDao.insertAll(catalogoCompras)
 
         val stockFuente = inventario.stock.ifEmpty {
-            inventario.productosVenta.map {
-                StockRegistro(
-                    id = "stock_${Almacen.DEFAULT_ID}_${it.id}",
-                    productoId = it.id,
-                    almacenId = Almacen.DEFAULT_ID,
-                    modoStock = ModoStock.ILIMITADO.name,
-                    visibleEnVentas = true
-                )
-            } + inventario.productosCompra.map {
-                StockRegistro(
-                    id = "stock_${Almacen.DEFAULT_ID}_${it.id}",
-                    productoId = it.id,
-                    almacenId = Almacen.DEFAULT_ID,
-                    modoStock = ModoStock.MANUAL.name,
-                    visibleEnVentas = false
-                )
+            val productosVentaIds = inventario.productosVenta.map { it.id }.toSet()
+            val stockComprasRestaurado = inventario.operaciones
+                .filter { it.tipo == "compra" && !it.anulada }
+                .groupBy { (it.almacenId.ifBlank { Almacen.DEFAULT_ID }) to it.productoId }
+                .map { (key, operaciones) ->
+                    val (almacenId, productoId) = key
+                    StockRegistro(
+                        id = "stock_${almacenId}_$productoId",
+                        productoId = productoId,
+                        almacenId = almacenId,
+                        stockDisponible = operaciones.sumOf { it.cantidad },
+                        modoStock = ModoStock.MANUAL.name,
+                        visibleEnVentas = productoId in productosVentaIds
+                    )
+                }
+
+            val stockVentasPorDefecto = inventario.productosVenta.mapNotNull {
+                val stockId = "stock_${Almacen.DEFAULT_ID}_${it.id}"
+                if (stockComprasRestaurado.any { stock -> stock.id == stockId }) {
+                    null
+                } else {
+                    StockRegistro(
+                        id = stockId,
+                        productoId = it.id,
+                        almacenId = Almacen.DEFAULT_ID,
+                        modoStock = ModoStock.ILIMITADO.name,
+                        visibleEnVentas = true
+                    )
+                }
             }
+
+            stockComprasRestaurado + stockVentasPorDefecto
         }
         stockFuente.forEach { item ->
             itemInventarioDao.insert(
@@ -737,44 +742,14 @@ class InventarioRepository @Inject constructor(
         itemInventarioDao.actualizarStock(id, cantidad, LocalDate.now().toString())
     }
 
-    suspend fun moverAVentas(
-        productoCompraId: String,
-        cantidad: Double,
-        nombreProductoVenta: String,
-        emojiProductoVenta: String,
+    suspend fun ponerProductoEnVenta(
+        productoId: String,
         precioVenta: Double
     ) {
-        val fecha = LocalDate.now().toString()
         val almacen = ensureDefaultAlmacen()
-        val itemCompra = itemInventarioDao.getByProductoId(productoCompraId, almacen.id)
-            ?: throw IllegalStateException("No existe item en inventario de compras")
-
-        if (itemCompra.modoStock != ModoStock.ILIMITADO.name) {
-            val nuevoStock = itemCompra.stockDisponible - cantidad
-            if (nuevoStock < 0) throw IllegalStateException("Stock insuficiente en compras")
-            itemInventarioDao.actualizarStock(itemCompra.id, nuevoStock, fecha)
-        }
-
-        val productoVenta = upsertProductoBase(
-            nombre = nombreProductoVenta,
-            emoji = emojiProductoVenta,
-            unidad = productoDao.getById(productoCompraId)?.unidad ?: "und"
-        )
-        upsertCatalogoVenta(productoVenta.id, precioVenta, almacen.id)
-        itemInventarioDao.insert(
-            ItemInventario(
-                id = "stock_${almacen.id}_${productoVenta.id}",
-                productoId = productoVenta.id,
-                almacenId = almacen.id,
-                tipoProducto = TipoProductoInv.VENTA.name,
-                stockDisponible = cantidad,
-                modoStock = ModoStock.MANUAL.name,
-                productosVinculadosIds = "[]",
-                ratiosConversion = "[]",
-                ultimaActualizacion = fecha,
-                visibleEnVentas = true
-            )
-        )
+        productoDao.getById(productoId)
+            ?: throw IllegalStateException("No existe el producto a publicar en ventas")
+        upsertCatalogoVenta(productoId, precioVenta, almacen.id)
         markLocalModified()
     }
 

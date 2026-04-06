@@ -5,12 +5,12 @@ import androidx.room.Room
 import cu.lazaroysr96.sysgdcont.data.AppDatabase
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_1_2
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_2_3
+import cu.lazaroysr96.sysgdcont.data.MIGRATION_3_4
 import cu.lazaroysr96.sysgdcont.data.dao.CatalogoCompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.CatalogoVentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
 import cu.lazaroysr96.sysgdcont.data.dao.VentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.CompraDao
-import cu.lazaroysr96.sysgdcont.data.MIGRATION_3_4
 import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
 import cu.lazaroysr96.sysgdcont.data.dao.AlmacenDao
 import cu.lazaroysr96.sysgdcont.data.dao.TarjetaDao
@@ -33,7 +33,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "sysgd_cont_database"
         )
-                        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
     }
 

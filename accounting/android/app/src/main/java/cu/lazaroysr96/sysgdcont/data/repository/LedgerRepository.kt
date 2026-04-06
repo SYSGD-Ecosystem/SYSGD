@@ -1255,7 +1255,109 @@ class LedgerRepository @Inject constructor(
             ingresos = ingresos,
             gastos = gastos,
             tributos = tributos,
-            inventario = source.inventario
+            inventario = normalizeImportedInventario(source.inventario)
+        )
+    }
+
+    private fun normalizeImportedInventario(source: InventarioRegistro): InventarioRegistro {
+        fun fallbackId(value: String): String =
+            value.ifBlank { java.util.UUID.randomUUID().toString() }
+
+        fun safeString(block: () -> String, default: String = ""): String =
+            runCatching(block).getOrDefault(default).ifBlank { default }
+
+        fun safeDouble(block: () -> Double, default: Double = 0.0): Double =
+            runCatching(block).getOrDefault(default)
+
+        fun safeBoolean(block: () -> Boolean, default: Boolean = false): Boolean =
+            runCatching(block).getOrDefault(default)
+
+        return InventarioRegistro(
+            productos = source.productos.map { producto ->
+                ProductoInventario(
+                    id = fallbackId(safeString({ producto.id })),
+                    nombre = safeString({ producto.nombre }, "Producto"),
+                    unidad = safeString({ producto.unidad }, "und"),
+                    emoji = safeString({ producto.emoji }, "📦"),
+                    precio = safeDouble({ producto.precio }),
+                    tipo = safeString({ producto.tipo })
+                )
+            },
+            catalogoVentas = source.catalogoVentas.map { catalogo ->
+                CatalogoVentaRegistro(
+                    id = fallbackId(safeString({ catalogo.id })),
+                    productoId = fallbackId(safeString({ catalogo.productoId })),
+                    precioReferencia = safeDouble({ catalogo.precioReferencia }),
+                    almacenId = safeString({ catalogo.almacenId }, Almacen.DEFAULT_ID),
+                    activo = safeBoolean({ catalogo.activo }, true)
+                )
+            },
+            catalogoCompras = source.catalogoCompras.map { catalogo ->
+                CatalogoCompraRegistro(
+                    id = fallbackId(safeString({ catalogo.id })),
+                    productoId = fallbackId(safeString({ catalogo.productoId })),
+                    precioReferencia = safeDouble({ catalogo.precioReferencia }),
+                    almacenDestinoId = safeString({ catalogo.almacenDestinoId }, Almacen.DEFAULT_ID),
+                    activo = safeBoolean({ catalogo.activo }, true)
+                )
+            },
+            almacenes = source.almacenes.map { almacen ->
+                AlmacenRegistro(
+                    id = fallbackId(safeString({ almacen.id })),
+                    nombre = safeString({ almacen.nombre }, "Almacén principal"),
+                    principal = safeBoolean({ almacen.principal })
+                )
+            },
+            stock = source.stock.map { stock ->
+                StockRegistro(
+                    id = fallbackId(safeString({ stock.id })),
+                    productoId = fallbackId(safeString({ stock.productoId })),
+                    almacenId = safeString({ stock.almacenId }, Almacen.DEFAULT_ID),
+                    stockDisponible = safeDouble({ stock.stockDisponible }),
+                    modoStock = safeString({ stock.modoStock }, ModoStock.ILIMITADO.name),
+                    productosVinculadosIds = safeString({ stock.productosVinculadosIds }, "[]"),
+                    ratiosConversion = safeString({ stock.ratiosConversion }, "[]"),
+                    ultimaActualizacion = safeString({ stock.ultimaActualizacion }),
+                    visibleEnVentas = safeBoolean({ stock.visibleEnVentas })
+                )
+            },
+            operaciones = source.operaciones.map { operacion ->
+                OperacionInventario(
+                    id = fallbackId(safeString({ operacion.id })),
+                    tipo = safeString({ operacion.tipo }),
+                    fecha = safeString({ operacion.fecha }),
+                    operacionId = safeString({ operacion.operacionId }),
+                    hora = safeString({ operacion.hora }),
+                    anulada = safeBoolean({ operacion.anulada }),
+                    productoId = fallbackId(safeString({ operacion.productoId })),
+                    nombreProducto = safeString({ operacion.nombreProducto }, "Producto"),
+                    unidad = safeString({ operacion.unidad }),
+                    cantidad = safeDouble({ operacion.cantidad }),
+                    precioUnitario = safeDouble({ operacion.precioUnitario }),
+                    total = safeDouble({ operacion.total }),
+                    almacenId = safeString({ operacion.almacenId }, Almacen.DEFAULT_ID)
+                )
+            },
+            productosVenta = source.productosVenta.map { producto ->
+                ProductoInventario(
+                    id = fallbackId(safeString({ producto.id })),
+                    nombre = safeString({ producto.nombre }, "Producto"),
+                    unidad = safeString({ producto.unidad }, "und"),
+                    emoji = safeString({ producto.emoji }, "📦"),
+                    precio = safeDouble({ producto.precio }),
+                    tipo = safeString({ producto.tipo }, "venta")
+                )
+            },
+            productosCompra = source.productosCompra.map { producto ->
+                ProductoInventario(
+                    id = fallbackId(safeString({ producto.id })),
+                    nombre = safeString({ producto.nombre }, "Producto"),
+                    unidad = safeString({ producto.unidad }, "und"),
+                    emoji = safeString({ producto.emoji }, "📦"),
+                    precio = safeDouble({ producto.precio }),
+                    tipo = safeString({ producto.tipo }, "compra")
+                )
+            }
         )
     }
 

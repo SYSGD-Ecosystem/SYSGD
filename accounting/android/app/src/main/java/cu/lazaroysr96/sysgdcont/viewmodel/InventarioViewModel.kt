@@ -160,19 +160,16 @@ fun ajustarStockManual(id: String, cantidad: Double, modo: String, vinculados: L
     }
 }
 
-fun moverAVentas(
-    productoCompraId: String,
-    cantidadMover: Double,
-    nombreProductoVenta: String,
-    emojiProductoVenta: String,
+fun ponerProductoEnVenta(
+    productoId: String,
     precioVenta: Double
 ) {
     viewModelScope.launch {
         try {
-            repo.moverAVentas(productoCompraId, cantidadMover, nombreProductoVenta, emojiProductoVenta, precioVenta)
-            _uiState.update { it.copy(snackbarMessage = "Producto creado en ventas", showMoverDialog = false, itemMoviendo = null) }
+            repo.ponerProductoEnVenta(productoId, precioVenta)
+            _uiState.update { it.copy(snackbarMessage = "Producto agregado al catalogo de ventas", showMoverDialog = false, itemMoviendo = null) }
         } catch (e: Exception) {
-            _uiState.update { it.copy(snackbarMessage = "Error al mover producto: ${e.message}") }
+            _uiState.update { it.copy(snackbarMessage = "Error al publicar producto: ${e.message}") }
         }
     }
 }

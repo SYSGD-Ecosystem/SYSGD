@@ -109,6 +109,11 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
 
 val MIGRATION_3_4 = object : Migration(3, 4) {
     override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+        database.execSQL("DROP INDEX IF EXISTS `index_lineas_venta_ventaId`")
+        database.execSQL("DROP INDEX IF EXISTS `index_lineas_venta_productoId`")
+        database.execSQL("DROP INDEX IF EXISTS `index_lineas_compra_compraId`")
+        database.execSQL("DROP INDEX IF EXISTS `index_lineas_compra_productoId`")
+
         database.execSQL("ALTER TABLE productos RENAME TO productos_old")
         database.execSQL("ALTER TABLE ventas RENAME TO ventas_old")
         database.execSQL("ALTER TABLE lineas_venta RENAME TO lineas_venta_old")
