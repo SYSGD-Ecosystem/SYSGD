@@ -66,6 +66,80 @@ class LedgerRepository @Inject constructor(
         val registro: RegistroTCP
     )
 
+    private data class LegacyBackupRoot(
+        val app: String?,
+        val exportedAt: String?,
+        val registro: LegacyRegistro?
+    )
+
+    private data class LegacyRegistro(
+        val generales: LegacyGenerales?,
+        val ingresos: Map<String, List<DayAmountRow>>?,
+        val gastos: Map<String, List<DayAmountRow>>?,
+        val tributos: List<LegacyTributoRow>?,
+        val inventario: LegacyInventario?
+    )
+
+    private data class LegacyGenerales(
+        val nombre: String?,
+        val anio: Int?,
+        val nit: String?,
+        val actividad: String?,
+        val codigo: String?,
+        val fiscalCalle: String?,
+        val fiscalMunicipio: String?,
+        val fiscalProvincia: String?,
+        val legalCalle: String?,
+        val legalMunicipio: String?,
+        val legalProvincia: String?
+    )
+
+    private data class LegacyTributoRow(
+        val mes: String?,
+        val ventas: String?,
+        val fuerza: String?,
+        val sellos: String?,
+        val anuncios: String?,
+        val css20: String?,
+        val css14: String?,
+        val otros: String?,
+        val restauracion: String?,
+        val arrendamiento: String?,
+        val exonerado: String?,
+        val otrosMFP: String?,
+        val cuotaMensual: String?
+    )
+
+    private data class LegacyInventario(
+        val operaciones: List<LegacyOperacion>?,
+        val productosVenta: List<LegacyProducto>?,
+        val productosCompra: List<LegacyProducto>?
+    )
+
+    private data class LegacyOperacion(
+        val id: String?,
+        val tipo: String?,
+        val fecha: String?,
+        val operacionId: String?,
+        val hora: String?,
+        val anulada: Boolean?,
+        val productoId: String?,
+        val nombreProducto: String?,
+        val unidad: String?,
+        val cantidad: Double?,
+        val precioUnitario: Double?,
+        val total: Double?,
+        val almacenId: String?
+    )
+
+    private data class LegacyProducto(
+        val id: String?,
+        val nombre: String?,
+        val precio: Double?,
+        val tipo: String?,
+        val unidad: String?
+    )
+
     companion object {
         private const val TCP_MONTH_DAY_COLUMN_WIDTH = 16f
         private const val TCP_MONTH_VALUE_COLUMN_WIDTH = 34f
@@ -261,15 +335,42 @@ class LedgerRepository @Inject constructor(
             val rawJson = context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
                 ?: throw Exception("No se pudo leer el archivo seleccionado")
 
-            val rootElement = JsonParser().parse(rawJson)
-            if (!rootElement.isJsonObject) {
-                throw Exception("El archivo no contiene un JSON de respaldo válido")
-            }
+            val cleanedJson = sanitizeJsonString(rawJson)
 
-            val rootObject = rootElement.asJsonObject
-            val registroElement = if (rootObject.has("registro")) rootObject.get("registro") else rootElement
-            val imported = gson.fromJson(registroElement.toString(), RegistroTCP::class.java)
-                ?: throw Exception("No se pudo interpretar el registro del archivo")
+            val imported: RegistroTCP = try {
+                val rootElement = JsonParser().parse(cleanedJson)
+                if (!rootElement.isJsonObject) {
+                    throw Exception("El archivo no contiene un JSON de respaldo válido")
+                }
+
+                val rootObject = rootElement.asJsonObject
+
+                if (rootObject.has("registro")) {
+                    val registroElement = rootObject.get("registro")
+                    val legacyRegistro = tryParseLegacyRegistro(registroElement.toString())
+                    if (legacyRegistro != null) {
+                        migrateFromLegacy(legacyRegistro)
+                    } else {
+                        gson.fromJson(registroElement.toString(), RegistroTCP::class.java)
+                            ?: throw Exception("No se pudo interpretar el registro del archivo")
+                    }
+                } else {
+                    val legacyRegistro = tryParseLegacyRegistro(cleanedJson)
+                    if (legacyRegistro != null) {
+                        migrateFromLegacy(legacyRegistro)
+                    } else {
+                        gson.fromJson(rootElement.toString(), RegistroTCP::class.java)
+                            ?: throw Exception("No se pudo interpretar el registro del archivo")
+                    }
+                }
+            } catch (e: Exception) {
+                val legacyRegistro = tryParseLegacyRegistro(cleanedJson)
+                if (legacyRegistro != null) {
+                    migrateFromLegacy(legacyRegistro)
+                } else {
+                    throw e
+                }
+            }
 
             val normalized = normalizeImportedRegistro(imported)
             if (hasInventarioData(normalized.inventario)) {
@@ -282,6 +383,161 @@ class LedgerRepository @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private fun sanitizeJsonString(json: String): String {
+        return json
+            .replace(Regex("[\u0000-\u001F]"), "")
+            .replace(Regex("(\\\\u00[0-9A-Fa-f]{2}){1,}")) { matchResult ->
+                try {
+                    val hexString = matchResult.value.replace("\\u00", "")
+                    val bytes = hexString.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+                    String(bytes, Charsets.UTF_8)
+                } catch (_: Exception) {
+                    ""
+                }
+            }
+    }
+
+    private fun tryParseLegacyRegistro(json: String): LegacyRegistro? {
+        return try {
+            gson.fromJson(json, LegacyRegistro::class.java)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun migrateFromLegacy(legacy: LegacyRegistro): RegistroTCP {
+        val baseYear = legacy.generales?.anio?.takeIf { it >= 2020 }
+            ?: java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+
+        val generalesData = GeneralesData(
+            anio = baseYear,
+            nombre = legacy.generales?.nombre?.sanitizeText() ?: "",
+            nit = legacy.generales?.nit?.sanitizeText() ?: "",
+            actividad = legacy.generales?.actividad?.sanitizeText() ?: "",
+            codigo = legacy.generales?.codigo?.sanitizeText() ?: "",
+            fiscalCalle = legacy.generales?.fiscalCalle?.sanitizeText() ?: "",
+            fiscalMunicipio = legacy.generales?.fiscalMunicipio?.sanitizeText() ?: "",
+            fiscalProvincia = legacy.generales?.fiscalProvincia?.sanitizeText() ?: "",
+            legalCalle = legacy.generales?.legalCalle?.sanitizeText() ?: "",
+            legalMunicipio = legacy.generales?.legalMunicipio?.sanitizeText() ?: "",
+            legalProvincia = legacy.generales?.legalProvincia?.sanitizeText() ?: ""
+        )
+
+        val meses = listOf("ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC")
+        val labelsMeses = mapOf(
+            "ENE" to "Enero", "FEB" to "Febrero", "MAR" to "Marzo",
+            "ABR" to "Abril", "MAY" to "Mayo", "JUN" to "Junio",
+            "JUL" to "Julio", "AGO" to "Agosto", "SEP" to "Septiembre",
+            "OCT" to "Octubre", "NOV" to "Noviembre", "DIC" to "Diciembre"
+        )
+
+        val ingresos = meses.associateWith { month ->
+            normalizeMonthRows(legacy.ingresos?.get(month))
+        }
+
+        val gastos = meses.associateWith { month ->
+            normalizeMonthRows(legacy.gastos?.get(month))
+        }
+
+        val tributos = meses.mapIndexed { index, month ->
+            val row = legacy.tributos?.getOrNull(index)
+            TributoRow(
+                mes = labelsMeses[month] ?: month,
+                ventas = row?.ventas?.sanitizeText() ?: "",
+                fuerza = row?.fuerza?.sanitizeText() ?: "",
+                sellos = row?.sellos?.sanitizeText() ?: "",
+                anuncios = row?.anuncios?.sanitizeText() ?: "",
+                css20 = row?.css20?.sanitizeText() ?: "",
+                css14 = row?.css14?.sanitizeText() ?: "",
+                otros = row?.otros?.sanitizeText() ?: "",
+                restauracion = row?.restauracion?.sanitizeText() ?: "",
+                arrendamiento = row?.arrendamiento?.sanitizeText() ?: "",
+                exonerado = row?.exonerado?.sanitizeText() ?: "",
+                otrosMFP = row?.otrosMFP?.sanitizeText() ?: "",
+                cuotaMensual = row?.cuotaMensual?.sanitizeText() ?: ""
+            )
+        }
+
+        val inventario = legacy.inventario?.let { legacyInv ->
+            val productosVenta = legacyInv.productosVenta?.mapNotNull { p ->
+                p.nombre?.takeIf { it.isNotBlank() }?.let {
+                    ProductoInventario(
+                        id = p.id?.sanitizeId() ?: java.util.UUID.randomUUID().toString(),
+                        nombre = p.nombre?.sanitizeText() ?: "",
+                        unidad = p.unidad?.sanitizeText() ?: "und",
+                        emoji = "📦",
+                        precio = p.precio ?: 0.0,
+                        tipo = "venta"
+                    )
+                }
+            } ?: emptyList()
+
+            val productosCompra = legacyInv.productosCompra?.mapNotNull { p ->
+                p.nombre?.takeIf { it.isNotBlank() }?.let {
+                    ProductoInventario(
+                        id = p.id?.sanitizeId() ?: java.util.UUID.randomUUID().toString(),
+                        nombre = p.nombre?.sanitizeText() ?: "",
+                        unidad = p.unidad?.sanitizeText() ?: "und",
+                        emoji = "📦",
+                        precio = p.precio ?: 0.0,
+                        tipo = "compra"
+                    )
+                }
+            } ?: emptyList()
+
+            val operaciones = legacyInv.operaciones?.mapNotNull { op ->
+                if (op?.tipo.isNullOrBlank()) return@mapNotNull null
+                OperacionInventario(
+                    id = op.id?.sanitizeId() ?: java.util.UUID.randomUUID().toString(),
+                    tipo = op.tipo?.lowercase() ?: return@mapNotNull null,
+                    fecha = op.fecha?.sanitizeText() ?: return@mapNotNull null,
+                    operacionId = op.operacionId?.sanitizeId() ?: "",
+                    hora = op.hora?.sanitizeText() ?: "",
+                    anulada = op.anulada ?: false,
+                    productoId = op.productoId?.sanitizeId() ?: java.util.UUID.randomUUID().toString(),
+                    nombreProducto = op.nombreProducto?.sanitizeText() ?: "",
+                    unidad = op.unidad?.sanitizeText() ?: "",
+                    cantidad = op.cantidad ?: 0.0,
+                    precioUnitario = op.precioUnitario ?: 0.0,
+                    total = op.total ?: 0.0,
+                    almacenId = op.almacenId?.sanitizeId() ?: Almacen.DEFAULT_ID
+                )
+            } ?: emptyList()
+
+            InventarioRegistro(
+                productos = emptyList(),
+                catalogoVentas = emptyList(),
+                catalogoCompras = emptyList(),
+                almacenes = emptyList(),
+                stock = emptyList(),
+                operaciones = operaciones,
+                productosVenta = productosVenta,
+                productosCompra = productosCompra
+            )
+        } ?: InventarioRegistro()
+
+        return RegistroTCP(
+            generales = generalesData,
+            ingresos = ingresos,
+            gastos = gastos,
+            tributos = tributos,
+            inventario = inventario
+        )
+    }
+
+    private fun String.sanitizeText(): String {
+        return this.trim()
+            .replace(Regex("[\\x00-\\x1F\\x7F]"), "")
+            .take(500)
+    }
+
+    private fun String.sanitizeId(): String {
+        return this.trim()
+            .replace(Regex("[^a-zA-Z0-9\\-]"), "")
+            .take(100)
+            .ifBlank { java.util.UUID.randomUUID().toString() }
     }
 
     suspend fun replaceLocalWithRemote(registro: RegistroTCP, serverVersion: String): Result<SyncResult> {
