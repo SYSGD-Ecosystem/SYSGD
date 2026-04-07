@@ -777,6 +777,7 @@ private fun MasContent(viewModel: InventarioViewModel, padding: PaddingValues) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val resumenBalanceMes = uiState.totalVentasMes - uiState.totalComprasMes
     val context = LocalContext.current
+    var facturaExpanded by rememberSaveable { mutableStateOf(false) }
     val logoPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { tomarPermisoLecturaPersistente(context, it) }
         viewModel.updateLogoFacturaUri(uri?.toString())
@@ -816,55 +817,94 @@ private fun MasContent(viewModel: InventarioViewModel, padding: PaddingValues) {
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Datos de facturación", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    OutlinedTextField(
-                        value = uiState.nombreVendedorFactura,
-                        onValueChange = viewModel::updateNombreVendedorFactura,
-                        label = { Text("Nombre del vendedor o empresa") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = uiState.correoVendedorFactura,
-                        onValueChange = viewModel::updateCorreoVendedorFactura,
-                        label = { Text("Correo electrónico") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = uiState.telefonoVendedorFactura,
-                        onValueChange = viewModel::updateTelefonoVendedorFactura,
-                        label = { Text("Teléfono") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = uiState.direccionVendedorFactura,
-                        onValueChange = viewModel::updateDireccionVendedorFactura,
-                        label = { Text("Dirección") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    DocumentoAdjuntoField(
-                        titulo = "Logo de la empresa",
-                        descripcion = "Opcional. Se ajusta automáticamente en la factura.",
-                        valor = uiState.logoFacturaUri,
-                        onSeleccionar = { logoPicker.launch(arrayOf("image/*")) },
-                        onLimpiar = { viewModel.updateLogoFacturaUri(null) }
-                    )
-                    DocumentoAdjuntoField(
-                        titulo = "Firma del vendedor",
-                        descripcion = "Opcional. Usa una imagen clara sobre fondo simple.",
-                        valor = uiState.firmaVendedorFacturaUri,
-                        onSeleccionar = { firmaVendedorPicker.launch(arrayOf("image/*")) },
-                        onLimpiar = { viewModel.updateFirmaVendedorFacturaUri(null) }
-                    )
-                    Button(
-                        onClick = viewModel::guardarConfiguracionFacturacion,
-                        modifier = Modifier.align(Alignment.End)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { facturaExpanded = !facturaExpanded },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Save, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Guardar")
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text("Datos de facturación", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(
+                                "Empresa, vendedor y recursos visuales para las facturas.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(
+                            if (facturaExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = null
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = facturaExpanded,
+                        enter = expandVertically(),
+                        exit = shrinkVertically()
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            OutlinedTextField(
+                                value = uiState.nombreEmpresaFactura,
+                                onValueChange = viewModel::updateNombreEmpresaFactura,
+                                label = { Text("Nombre de la empresa o negocio") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = uiState.nombreVendedorFactura,
+                                onValueChange = viewModel::updateNombreVendedorFactura,
+                                label = { Text("Nombre del vendedor") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = uiState.correoVendedorFactura,
+                                onValueChange = viewModel::updateCorreoVendedorFactura,
+                                label = { Text("Correo electrónico") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = uiState.telefonoVendedorFactura,
+                                onValueChange = viewModel::updateTelefonoVendedorFactura,
+                                label = { Text("Teléfono") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = uiState.direccionVendedorFactura,
+                                onValueChange = viewModel::updateDireccionVendedorFactura,
+                                label = { Text("Dirección") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            DocumentoAdjuntoField(
+                                titulo = "Logo de la empresa",
+                                descripcion = "Opcional. Se ajusta automáticamente en la factura.",
+                                valor = uiState.logoFacturaUri,
+                                onSeleccionar = { logoPicker.launch(arrayOf("image/*")) },
+                                onLimpiar = { viewModel.updateLogoFacturaUri(null) }
+                            )
+                            DocumentoAdjuntoField(
+                                titulo = "Firma del vendedor",
+                                descripcion = "Opcional. Usa una imagen clara sobre fondo simple.",
+                                valor = uiState.firmaVendedorFacturaUri,
+                                onSeleccionar = { firmaVendedorPicker.launch(arrayOf("image/*")) },
+                                onLimpiar = { viewModel.updateFirmaVendedorFacturaUri(null) }
+                            )
+                            Button(
+                                onClick = viewModel::guardarConfiguracionFacturacion,
+                                modifier = Modifier.align(Alignment.End)
+                            ) {
+                                Icon(Icons.Default.Save, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Guardar")
+                            }
+                        }
                     }
                 }
             }

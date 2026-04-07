@@ -20,6 +20,7 @@ data class Factura(
     val telefonoCliente: String,
     val formaPago: String,
     val idTransaccion: String? = null,
+    val nombreEmpresa: String,
     val nombreVendedor: String,
     val total: Double,
     val pdfPath: String? = null,
@@ -42,8 +43,10 @@ data class LineaFactura(
     @PrimaryKey val id: String,
     val facturaId: String,
     val productoId: String,
-    val nombreProducto: String,
+    val codigo: String,
+    val descripcion: String,
+    val unidadMedida: String,
     val cantidad: Double,
     val precioUnitario: Double,
-    val total: Double
+    val importe: Double
 )

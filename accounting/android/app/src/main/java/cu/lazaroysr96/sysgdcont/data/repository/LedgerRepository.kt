@@ -161,7 +161,9 @@ class LedgerRepository @Inject constructor(
         val raw = prefs[REGISTRO_KEY]
         if (raw != null) {
             try {
-                gson.fromJson(raw, RegistroTCP::class.java)
+                normalizeImportedRegistro(
+                    gson.fromJson(raw, RegistroTCP::class.java) ?: emptyRegistro()
+                )
             } catch (e: Exception) {
                 emptyRegistro()
             }
@@ -293,11 +295,12 @@ class LedgerRepository @Inject constructor(
     private fun buildRemoteRegistro(response: ContLedgerResponse): RegistroTCP? {
         val registro = response.registro ?: return null
         val inventario = response.inventarioRegistro
-        return if (inventario != null) {
+        val combinado = if (inventario != null) {
             registro.copy(inventario = inventario)
         } else {
             registro
         }
+        return normalizeImportedRegistro(combinado)
     }
 
     private suspend fun getBaselineInventario(): InventarioRegistro {
@@ -1221,19 +1224,25 @@ class LedgerRepository @Inject constructor(
     private fun normalizeImportedRegistro(source: RegistroTCP): RegistroTCP {
         val baseYear = source.generales.anio.takeIf { it >= 2020 } ?: java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
         val base = emptyRegistro().copy(generales = emptyRegistro(baseYear).generales)
+        fun safeText(block: () -> Any?, default: String = ""): String =
+            runCatching { block()?.toString() }
+                .getOrNull()
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+                ?: default
 
         val generales = source.generales.copy(
             anio = baseYear,
-            nombre = source.generales.nombre.ifBlank { base.generales.nombre },
-            nit = source.generales.nit.ifBlank { base.generales.nit },
-            actividad = source.generales.actividad.ifBlank { base.generales.actividad },
-            codigo = source.generales.codigo.ifBlank { base.generales.codigo },
-            fiscalCalle = source.generales.fiscalCalle.ifBlank { base.generales.fiscalCalle },
-            fiscalMunicipio = source.generales.fiscalMunicipio.ifBlank { base.generales.fiscalMunicipio },
-            fiscalProvincia = source.generales.fiscalProvincia.ifBlank { base.generales.fiscalProvincia },
-            legalCalle = source.generales.legalCalle.ifBlank { base.generales.legalCalle },
-            legalMunicipio = source.generales.legalMunicipio.ifBlank { base.generales.legalMunicipio },
-            legalProvincia = source.generales.legalProvincia.ifBlank { base.generales.legalProvincia }
+            nombre = safeText({ source.generales.nombre }, base.generales.nombre),
+            nit = safeText({ source.generales.nit }, base.generales.nit),
+            actividad = safeText({ source.generales.actividad }, base.generales.actividad),
+            codigo = safeText({ source.generales.codigo }, base.generales.codigo),
+            fiscalCalle = safeText({ source.generales.fiscalCalle }, base.generales.fiscalCalle),
+            fiscalMunicipio = safeText({ source.generales.fiscalMunicipio }, base.generales.fiscalMunicipio),
+            fiscalProvincia = safeText({ source.generales.fiscalProvincia }, base.generales.fiscalProvincia),
+            legalCalle = safeText({ source.generales.legalCalle }, base.generales.legalCalle),
+            legalMunicipio = safeText({ source.generales.legalMunicipio }, base.generales.legalMunicipio),
+            legalProvincia = safeText({ source.generales.legalProvincia }, base.generales.legalProvincia)
         )
 
         val ingresos = LedgerConstants.MONTHS.associateWith { month ->
@@ -1274,14 +1283,30 @@ class LedgerRepository @Inject constructor(
         fun fallbackId(value: String): String =
             value.ifBlank { java.util.UUID.randomUUID().toString() }
 
-        fun safeString(block: () -> String, default: String = ""): String =
-            runCatching(block).getOrDefault(default).ifBlank { default }
+        fun safeString(block: () -> Any?, default: String = ""): String =
+            runCatching { block()?.toString() }
+                .getOrNull()
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+                ?: default
 
-        fun safeDouble(block: () -> Double, default: Double = 0.0): Double =
-            runCatching(block).getOrDefault(default)
+        fun safeDouble(block: () -> Any?, default: Double = 0.0): Double =
+            runCatching {
+                when (val value = block()) {
+                    is Number -> value.toDouble()
+                    is String -> value.replace(',', '.').toDoubleOrNull() ?: default
+                    else -> default
+                }
+            }.getOrDefault(default)
 
-        fun safeBoolean(block: () -> Boolean, default: Boolean = false): Boolean =
-            runCatching(block).getOrDefault(default)
+        fun safeBoolean(block: () -> Any?, default: Boolean = false): Boolean =
+            runCatching {
+                when (val value = block()) {
+                    is Boolean -> value
+                    is String -> value.equals("true", ignoreCase = true)
+                    else -> default
+                }
+            }.getOrDefault(default)
 
         return InventarioRegistro(
             productos = source.productos.map { producto ->

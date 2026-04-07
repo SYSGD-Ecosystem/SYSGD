@@ -41,6 +41,7 @@ import javax.inject.Singleton
 private val Context.facturaDataStore: DataStore<Preferences> by preferencesDataStore(name = "factura_prefs")
 
 data class ConfiguracionFacturacion(
+    val nombreEmpresa: String = "",
     val nombreVendedor: String = "",
     val correoVendedor: String = "",
     val telefonoVendedor: String = "",
@@ -62,6 +63,15 @@ data class FacturaGenerada(
     val intent: Intent
 )
 
+private data class LineaFacturaPdf(
+    val codigo: String,
+    val descripcion: String,
+    val unidadMedida: String,
+    val cantidad: Double,
+    val precioUnitario: Double,
+    val importe: Double
+)
+
 @Singleton
 class FacturaRepository @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -69,6 +79,7 @@ class FacturaRepository @Inject constructor(
     private val inventarioRepository: InventarioRepository
 ) {
     companion object {
+        private val NOMBRE_EMPRESA_KEY = stringPreferencesKey("nombre_empresa")
         private val NOMBRE_VENDEDOR_KEY = stringPreferencesKey("nombre_vendedor")
         private val CORREO_VENDEDOR_KEY = stringPreferencesKey("correo_vendedor")
         private val TELEFONO_VENDEDOR_KEY = stringPreferencesKey("telefono_vendedor")
@@ -81,6 +92,7 @@ class FacturaRepository @Inject constructor(
 
     val configuracionFacturacion: Flow<ConfiguracionFacturacion> = context.facturaDataStore.data.map { prefs ->
         ConfiguracionFacturacion(
+            nombreEmpresa = prefs[NOMBRE_EMPRESA_KEY].orEmpty(),
             nombreVendedor = prefs[NOMBRE_VENDEDOR_KEY].orEmpty(),
             correoVendedor = prefs[CORREO_VENDEDOR_KEY].orEmpty(),
             telefonoVendedor = prefs[TELEFONO_VENDEDOR_KEY].orEmpty(),
@@ -92,6 +104,7 @@ class FacturaRepository @Inject constructor(
 
     suspend fun guardarConfiguracionFacturacion(config: ConfiguracionFacturacion) {
         context.facturaDataStore.edit { prefs ->
+            guardarValor(prefs, NOMBRE_EMPRESA_KEY, config.nombreEmpresa)
             guardarValor(prefs, NOMBRE_VENDEDOR_KEY, config.nombreVendedor)
             guardarValor(prefs, CORREO_VENDEDOR_KEY, config.correoVendedor)
             guardarValor(prefs, TELEFONO_VENDEDOR_KEY, config.telefonoVendedor)
@@ -105,6 +118,7 @@ class FacturaRepository @Inject constructor(
         val guardada = configuracionFacturacion.first()
         val nombrePorDefecto = ledgerRepository.getRegistro().generales.nombre.ifBlank { "Mi establecimiento" }
         return guardada.copy(
+            nombreEmpresa = guardada.nombreEmpresa.ifBlank { nombrePorDefecto },
             nombreVendedor = guardada.nombreVendedor.ifBlank { nombrePorDefecto }
         )
     }
@@ -121,11 +135,13 @@ class FacturaRepository @Inject constructor(
         ultimoNumero++
         val numeroFactura = ultimoNumero
         val configuracion = getConfiguracionFacturacionActual()
+        val productos = inventarioRepository.getProductosPorIds(lineasVenta.map { it.productoId })
 
         return generarPdf(
             numero = numeroFactura,
             venta = venta,
             lineas = lineasVenta,
+            productos = productos,
             datosCliente = datosCliente,
             formaPago = formaPago,
             idTransaccion = idTransaccion,
@@ -139,6 +155,7 @@ class FacturaRepository @Inject constructor(
         numero: Int,
         venta: Venta,
         lineas: List<LineaVenta>,
+        productos: Map<String, cu.lazaroysr96.sysgdcont.data.model.Producto>,
         datosCliente: DatosClienteFactura,
         formaPago: FormaPago,
         idTransaccion: String?,
@@ -179,19 +196,40 @@ class FacturaRepository @Inject constructor(
 
         document.add(Paragraph("\n"))
 
-        val table = Table(UnitValue.createPercentArray(floatArrayOf(50f, 15f, 17.5f, 17.5f)))
+        val lineasFactura = lineas.map { linea ->
+            val producto = productos[linea.productoId]
+            LineaFacturaPdf(
+                codigo = producto?.id
+                    ?.replace("-", "")
+                    ?.take(8)
+                    ?.uppercase()
+                    ?.ifBlank { "S/C" }
+                    ?: "S/C",
+                descripcion = linea.nombreProducto,
+                unidadMedida = producto?.unidad?.ifBlank { "und" } ?: "und",
+                cantidad = linea.cantidad,
+                precioUnitario = linea.precioUnitario,
+                importe = linea.cantidad * linea.precioUnitario
+            )
+        }
+
+        val table = Table(UnitValue.createPercentArray(floatArrayOf(14f, 38f, 10f, 12f, 13f, 13f)))
             .useAllAvailableWidth()
 
-        table.addHeaderCell(Cell().add(Paragraph("Producto").setBold()))
-        table.addHeaderCell(Cell().add(Paragraph("Cantidad").setBold()).setTextAlignment(TextAlignment.CENTER))
+        table.addHeaderCell(Cell().add(Paragraph("Código").setBold()))
+        table.addHeaderCell(Cell().add(Paragraph("Descripción").setBold()))
+        table.addHeaderCell(Cell().add(Paragraph("U/M").setBold()).setTextAlignment(TextAlignment.CENTER))
+        table.addHeaderCell(Cell().add(Paragraph("Cantidad").setBold()).setTextAlignment(TextAlignment.RIGHT))
         table.addHeaderCell(Cell().add(Paragraph("Precio").setBold()).setTextAlignment(TextAlignment.RIGHT))
         table.addHeaderCell(Cell().add(Paragraph("Importe").setBold()).setTextAlignment(TextAlignment.RIGHT))
 
-        lineas.forEach { linea ->
-            table.addCell(Cell().add(Paragraph(linea.nombreProducto).setFontSize(9f)))
-            table.addCell(Cell().add(Paragraph("%.2f".format(linea.cantidad)).setFontSize(9f).setTextAlignment(TextAlignment.CENTER)))
+        lineasFactura.forEach { linea ->
+            table.addCell(Cell().add(Paragraph(linea.codigo).setFontSize(9f)))
+            table.addCell(Cell().add(Paragraph(linea.descripcion).setFontSize(9f)))
+            table.addCell(Cell().add(Paragraph(linea.unidadMedida).setFontSize(9f).setTextAlignment(TextAlignment.CENTER)))
+            table.addCell(Cell().add(Paragraph("%.2f".format(linea.cantidad)).setFontSize(9f).setTextAlignment(TextAlignment.RIGHT)))
             table.addCell(Cell().add(Paragraph("%.2f".format(linea.precioUnitario)).setFontSize(9f).setTextAlignment(TextAlignment.RIGHT)))
-            table.addCell(Cell().add(Paragraph("%.2f".format(linea.cantidad * linea.precioUnitario)).setFontSize(9f).setTextAlignment(TextAlignment.RIGHT)))
+            table.addCell(Cell().add(Paragraph("%.2f".format(linea.importe)).setFontSize(9f).setTextAlignment(TextAlignment.RIGHT)))
         }
 
         document.add(table)
@@ -251,7 +289,7 @@ class FacturaRepository @Inject constructor(
             reportesDir.mkdirs()
         }
 
-        val nombre = getConfiguracionFacturacionActual().nombreVendedor
+        val nombre = getConfiguracionFacturacionActual().nombreEmpresa
         val pdfFile = File(reportesDir, "reporte_ventas_${desde}_${hasta}.pdf")
         val writer = PdfWriter(pdfFile)
         val pdfDoc = PdfDocument(writer)
@@ -306,7 +344,7 @@ class FacturaRepository @Inject constructor(
             reportesDir.mkdirs()
         }
 
-        val nombre = getConfiguracionFacturacionActual().nombreVendedor
+        val nombre = getConfiguracionFacturacionActual().nombreEmpresa
         val pdfFile = File(reportesDir, "reporte_compras_${desde}_${hasta}.pdf")
         val writer = PdfWriter(pdfFile)
         val pdfDoc = PdfDocument(writer)
@@ -431,10 +469,17 @@ class FacturaRepository @Inject constructor(
 
         val infoCell = Cell().setBorder(Border.NO_BORDER).setPaddingRight(12f)
         infoCell.add(
-            Paragraph(configuracion.nombreVendedor)
+            Paragraph(configuracion.nombreEmpresa)
                 .setBold()
                 .setFontSize(18f)
         )
+        if (configuracion.nombreVendedor.isNotBlank() && configuracion.nombreVendedor != configuracion.nombreEmpresa) {
+            infoCell.add(
+                Paragraph("Vendedor: ${configuracion.nombreVendedor}")
+                    .setFontSize(10f)
+                    .setMarginTop(4f)
+            )
+        }
         if (configuracion.direccionVendedor.isNotBlank()) {
             infoCell.add(
                 Paragraph("Dirección: ${configuracion.direccionVendedor}")

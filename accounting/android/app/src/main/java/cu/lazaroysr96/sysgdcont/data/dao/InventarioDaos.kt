@@ -23,6 +23,9 @@ interface ProductoDao {
     @Query("SELECT * FROM productos WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): Producto?
 
+    @Query("SELECT * FROM productos WHERE id IN (:ids)")
+    suspend fun getByIds(ids: List<String>): List<Producto>
+
     @Query("SELECT * FROM productos WHERE LOWER(nombre) = LOWER(:nombre) LIMIT 1")
     suspend fun getByNombre(nombre: String): Producto?
 

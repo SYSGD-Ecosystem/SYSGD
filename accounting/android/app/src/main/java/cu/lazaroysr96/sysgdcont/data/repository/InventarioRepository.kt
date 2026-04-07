@@ -874,6 +874,11 @@ class InventarioRepository @Inject constructor(
             )
         }
 
+    suspend fun getProductosPorIds(ids: Collection<String>): Map<String, Producto> {
+        if (ids.isEmpty()) return emptyMap()
+        return productoDao.getByIds(ids.toList()).associateBy { it.id }
+    }
+
     private suspend fun enriquecerItemInventario(item: ItemInventario): ItemInventario {
         if (item.modoStock != ModoStock.VINCULADO.name) return item
         return item.copy(stockDisponible = calcularStockDisponible(item))

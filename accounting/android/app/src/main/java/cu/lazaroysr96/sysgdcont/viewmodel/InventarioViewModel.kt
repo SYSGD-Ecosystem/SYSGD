@@ -65,6 +65,7 @@ data class InventarioUiState(
     val showAjusteStockDialog: Boolean = false,
     val itemAjustando: ItemInventario? = null,
     val vinculadosItemAjustando: List<InventarioVinculoEdicion> = emptyList(),
+    val nombreEmpresaFactura: String = "",
     val nombreVendedorFactura: String = "",
     val correoVendedorFactura: String = "",
     val telefonoVendedorFactura: String = "",
@@ -121,6 +122,7 @@ class InventarioViewModel @Inject constructor(
             facturaRepository.configuracionFacturacion.collect { config ->
                 _uiState.update {
                     it.copy(
+                        nombreEmpresaFactura = config.nombreEmpresa,
                         nombreVendedorFactura = config.nombreVendedor,
                         correoVendedorFactura = config.correoVendedor,
                         telefonoVendedorFactura = config.telefonoVendedor,
@@ -217,6 +219,10 @@ fun activarItemEnInventario(productoId: String, tipo: TipoProductoInv) {
     }
 }
 
+    fun updateNombreEmpresaFactura(nombre: String) {
+        _uiState.update { it.copy(nombreEmpresaFactura = nombre) }
+    }
+
     fun updateNombreVendedorFactura(nombre: String) {
         _uiState.update { it.copy(nombreVendedorFactura = nombre) }
     }
@@ -247,6 +253,7 @@ fun activarItemEnInventario(productoId: String, tipo: TipoProductoInv) {
                 val state = _uiState.value
                 facturaRepository.guardarConfiguracionFacturacion(
                     ConfiguracionFacturacion(
+                        nombreEmpresa = state.nombreEmpresaFactura,
                         nombreVendedor = state.nombreVendedorFactura,
                         correoVendedor = state.correoVendedorFactura,
                         telefonoVendedor = state.telefonoVendedorFactura,
