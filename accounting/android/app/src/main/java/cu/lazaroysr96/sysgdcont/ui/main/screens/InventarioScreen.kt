@@ -1028,6 +1028,7 @@ private fun InventarioContent(viewModel: InventarioViewModel, padding: PaddingVa
             icono = Icons.Default.Inventory2,
             color = MaterialTheme.colorScheme.primary,
             items = itemsInventario,
+            productosBase = uiState.productosBase,
             productos = uiState.productosCompra,
             productosVenta = uiState.productos,
             onAjustarStock = { viewModel.showAjusteStockDialog(it) },
@@ -1072,6 +1073,7 @@ private fun AlmacenSection(
     icono: androidx.compose.ui.graphics.vector.ImageVector,
     color: androidx.compose.ui.graphics.Color,
     items: List<ItemInventario>,
+    productosBase: List<cu.lazaroysr96.sysgdcont.data.model.Producto>,
     productos: List<ProductoCompra>,
     productosVenta: List<ProductoVenta>,
     onAjustarStock: (ItemInventario) -> Unit,
@@ -1143,8 +1145,9 @@ private fun AlmacenSection(
                         items.forEach { item ->
                             val productoVenta = productosVenta.find { it.id == item.productoId }
                             val productoCompra = productos.find { it.id == item.productoId }
-                            val nombreProducto = productoVenta?.nombre ?: productoCompra?.nombre ?: item.productoId
-                            val emojiProducto = productoVenta?.emoji ?: productoCompra?.emoji ?: "📦"
+                            val productoBase = productosBase.find { it.id == item.productoId }
+                            val nombreProducto = productoBase?.nombre ?: productoVenta?.nombre ?: productoCompra?.nombre ?: item.productoId
+                            val emojiProducto = productoBase?.emoji ?: productoVenta?.emoji ?: productoCompra?.emoji ?: "📦"
                             ItemInventarioRow(
                                 item = item,
                                 nombre = nombreProducto,

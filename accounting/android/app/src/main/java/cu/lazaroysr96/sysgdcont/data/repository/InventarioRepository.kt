@@ -156,6 +156,8 @@ class InventarioRepository @Inject constructor(
 
     fun getProductos(): Flow<List<ProductoVenta>> = catalogoVentaDao.getAllActivos()
 
+    fun getProductosBase(): Flow<List<Producto>> = productoDao.observeAll()
+
     suspend fun agregarProducto(
         nombre: String,
         precio: Double,

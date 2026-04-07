@@ -20,6 +20,9 @@ interface ProductoDao {
     @Query("SELECT * FROM productos ORDER BY nombre ASC")
     suspend fun getAll(): List<Producto>
 
+    @Query("SELECT * FROM productos ORDER BY nombre ASC")
+    fun observeAll(): Flow<List<Producto>>
+
     @Query("SELECT * FROM productos WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): Producto?
 

@@ -12,6 +12,7 @@ import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
 import cu.lazaroysr96.sysgdcont.data.model.InventarioVinculoEdicion
 import cu.lazaroysr96.sysgdcont.data.model.TipoProductoInv
 import cu.lazaroysr96.sysgdcont.data.model.ModoStock
+import cu.lazaroysr96.sysgdcont.data.model.Producto
 import cu.lazaroysr96.sysgdcont.data.repository.ConfiguracionFacturacion
 import cu.lazaroysr96.sysgdcont.data.repository.FacturaRepository
 import cu.lazaroysr96.sysgdcont.data.repository.InventarioRepository
@@ -31,6 +32,7 @@ import javax.inject.Inject
 
 data class InventarioUiState(
     val productos: List<ProductoVenta> = emptyList(),
+    val productosBase: List<Producto> = emptyList(),
     val ventasHoy: List<Pair<Venta, List<LineaVenta>>> = emptyList(),
     val totalHoy: Double = 0.0,
     val productosCompra: List<ProductoCompra> = emptyList(),
@@ -94,6 +96,12 @@ class InventarioViewModel @Inject constructor(
         viewModelScope.launch {
             repo.getProductos().collect { productos ->
                 _uiState.update { it.copy(productos = productos) }
+            }
+        }
+
+        viewModelScope.launch {
+            repo.getProductosBase().collect { productos ->
+                _uiState.update { it.copy(productosBase = productos) }
             }
         }
 
