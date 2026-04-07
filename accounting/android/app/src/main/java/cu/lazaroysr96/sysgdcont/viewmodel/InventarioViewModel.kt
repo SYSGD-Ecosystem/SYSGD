@@ -288,7 +288,7 @@ fun activarItemEnInventario(productoId: String, tipo: TipoProductoInv) {
             try {
                 val state = _uiState.value
                 val path = facturaRepository.generarReporteVentasPdf(state.reporteDesde, state.reporteHasta)
-                _uiState.update { it.copy(snackbarMessage = "Reporte de ventas generado: $path") }
+                _uiState.update { it.copy(snackbarMessage = "Reporte de ventas guardado en Documentos de SYSGD: $path") }
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al generar reporte de ventas") }
             }
@@ -300,7 +300,7 @@ fun activarItemEnInventario(productoId: String, tipo: TipoProductoInv) {
             try {
                 val state = _uiState.value
                 val path = facturaRepository.generarReporteComprasPdf(state.reporteDesde, state.reporteHasta)
-                _uiState.update { it.copy(snackbarMessage = "Reporte de compras generado: $path") }
+                _uiState.update { it.copy(snackbarMessage = "Reporte de compras guardado en Documentos de SYSGD: $path") }
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al generar reporte de compras") }
             }

@@ -44,7 +44,8 @@ sealed class LoginFlowResult {
 @Singleton
 class AuthRepository @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val apiService: ApiService
+    private val apiService: ApiService,
+    private val documentStorageRepository: DocumentStorageRepository
 ) {
     companion object {
         private val TOKEN_KEY = stringPreferencesKey("auth_token")
@@ -397,6 +398,13 @@ class AuthRepository @Inject constructor(
 
             val json = gson.toJson(payload)
             val encrypted = encryptData(json, userPassword)
+            val safeEmail = userEmail.ifBlank { "usuario" }.replace(Regex("[^A-Za-z0-9._-]"), "_")
+
+            documentStorageRepository.saveText(
+                DocumentCategory.CONFIG,
+                "access-key-$safeEmail.json",
+                encrypted
+            )
 
             context.contentResolver.openOutputStream(uri)?.use { output ->
                 output.write(encrypted.toByteArray(Charsets.UTF_8))

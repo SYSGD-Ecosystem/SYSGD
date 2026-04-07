@@ -1,10 +1,7 @@
 package cu.lazaroysr96.sysgdcont.ui.main.screens
 
 import android.content.Intent
-import android.Manifest
 import android.net.Uri
-import android.content.pm.PackageManager
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -37,7 +34,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cu.lazaroysr96.sysgdcont.data.model.LineaVenta
 import cu.lazaroysr96.sysgdcont.data.model.ProductoVenta
@@ -76,33 +72,6 @@ fun InventarioScreen(
     val context = LocalContext.current
     var showExperimentalDialog by rememberSaveable { mutableStateOf(false) }
     var dontShowAgainChecked by rememberSaveable { mutableStateOf(false) }
-    var pendingFacturaData by remember {
-        mutableStateOf<FacturaRequestData?>(null)
-    }
-    var hasStoragePermission by remember { mutableStateOf(false) }
-    val storagePermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        hasStoragePermission = isGranted
-        if (isGranted) {
-            pendingFacturaData?.let { request ->
-                facturaViewModel.generarFactura(
-                    nombreCliente = request.nombreCliente,
-                    ciCliente = request.ciCliente,
-                    correoCliente = request.correoCliente,
-                    direccionCliente = request.direccionCliente,
-                    telefonoCliente = request.telefonoCliente,
-                    formaPago = request.formaPago,
-                    idTransaccion = request.idTransaccion,
-                    nota = request.nota,
-                    firmaClienteUri = request.firmaClienteUri
-                )
-            }
-        } else {
-            facturaViewModel.clearSnackbar()
-        }
-        pendingFacturaData = null
-    }
 
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let {
@@ -322,69 +291,21 @@ fun InventarioScreen(
             lineas = facturaState.lineasVenta,
             onDismiss = { facturaViewModel.hideDialog() },
             onConfirm = { nombre, ci, correo, direccion, telefono, formaPago, transaccion, nota, firmaClienteUri ->
-                val request = FacturaRequestData(
-                    nombreCliente = nombre,
-                    ciCliente = ci,
-                    correoCliente = correo,
-                    direccionCliente = direccion,
-                    telefonoCliente = telefono,
-                    formaPago = formaPago,
-                    idTransaccion = transaccion,
-                    nota = nota,
-                    firmaClienteUri = firmaClienteUri
+                facturaViewModel.generarFactura(
+                    nombre,
+                    ci,
+                    correo,
+                    direccion,
+                    telefono,
+                    formaPago,
+                    transaccion,
+                    nota,
+                    firmaClienteUri
                 )
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    facturaViewModel.generarFactura(
-                        nombre,
-                        ci,
-                        correo,
-                        direccion,
-                        telefono,
-                        formaPago,
-                        transaccion,
-                        nota,
-                        firmaClienteUri
-                    )
-                } else {
-                    pendingFacturaData = request
-                    hasStoragePermission = ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE
-                    ) == PackageManager.PERMISSION_GRANTED
-
-                    if (hasStoragePermission) {
-                        facturaViewModel.generarFactura(
-                            nombre,
-                            ci,
-                            correo,
-                            direccion,
-                            telefono,
-                            formaPago,
-                            transaccion,
-                            nota,
-                            firmaClienteUri
-                        )
-                        pendingFacturaData = null
-                    } else {
-                        storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    }
-                }
             }
         )
     }
 }
-
-private data class FacturaRequestData(
-    val nombreCliente: String,
-    val ciCliente: String,
-    val correoCliente: String,
-    val direccionCliente: String,
-    val telefonoCliente: String,
-    val formaPago: FormaPago,
-    val idTransaccion: String?,
-    val nota: String,
-    val firmaClienteUri: String?
-)
 
 @Composable
 private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingValues) {

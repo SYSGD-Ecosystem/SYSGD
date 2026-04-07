@@ -3,8 +3,6 @@ package cu.lazaroysr96.sysgdcont.data.repository
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Environment
-import androidx.core.content.FileProvider
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -42,7 +40,6 @@ import okhttp3.ResponseBody
 import org.json.JSONObject
 import retrofit2.Response
 import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
 import java.util.Locale
 import javax.inject.Inject
@@ -57,7 +54,8 @@ class LedgerRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val apiService: ApiService,
     private val authRepository: AuthRepository,
-    private val inventarioRepository: InventarioRepository
+    private val inventarioRepository: InventarioRepository,
+    private val documentStorageRepository: DocumentStorageRepository
 ) {
     private data class RegistroBackupPayload(
         val app: String = "SYSGD Cont Android",
@@ -335,6 +333,11 @@ class LedgerRepository @Inject constructor(
                 registro = current
             )
             val json = gson.toJson(payload)
+            documentStorageRepository.saveText(
+                DocumentCategory.BACKUPS,
+                "Backup_${java.time.LocalDate.now()}.json",
+                json
+            )
             context.contentResolver.openOutputStream(uri)?.use { output ->
                 output.write(json.toByteArray(Charsets.UTF_8))
             } ?: throw Exception("No se pudo abrir el destino para guardar el archivo")
@@ -1550,14 +1553,9 @@ class LedgerRepository @Inject constructor(
             }
 
             val registro = getRegistro()
-            val fileName = "Registro_TCP_${registro.generales.anio}.pdf"
-            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            val file = File(downloadsDir, fileName)
-
-            FileOutputStream(file).use { output ->
-                body.byteStream().use { input ->
-                    input.copyTo(output)
-                }
+            val fileName = "DJ_${registro.generales.anio}.pdf"
+            val file = body.byteStream().use { input ->
+                documentStorageRepository.saveStream(DocumentCategory.DJ, fileName, input)
             }
 
             buildPdfIntent(file)
@@ -1565,24 +1563,12 @@ class LedgerRepository @Inject constructor(
     }
 
     private fun buildPdfIntent(file: File): Result<Intent> {
-        val uri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            file
-        )
-
-        val shareIntent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "application/pdf")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-
-        return Result.success(Intent.createChooser(shareIntent, "Abrir PDF"))
+        return Result.success(documentStorageRepository.buildViewIntent(file, "application/pdf"))
     }
 
     private fun generateOfflineTcpPdf(payload: TcpPdfPayload): File {
-        val fileName = "Registro_TCP_${payload.generalData.anio}_offline_experimental.pdf"
-        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        val file = File(downloadsDir, fileName)
+        val fileName = "DJ_${payload.generalData.anio}_offline_experimental.pdf"
+        val file = documentStorageRepository.createDocumentFile(DocumentCategory.DJ, fileName)
         val writer = PdfWriter(file)
         val pdfDocument = PdfDocument(writer)
         val document = Document(pdfDocument, PageSize.A4.rotate())

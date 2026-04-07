@@ -74,7 +74,7 @@ class FacturaViewModel @Inject constructor(
                 )
                 _uiState.update { 
                     it.copy(
-                        snackbarMessage = "Factura descargada en Descargas",
+                        snackbarMessage = "Factura guardada en Documentos de SYSGD",
                         pdfPath = facturaGenerada.pdfPath,
                         pdfIntent = facturaGenerada.intent,
                         showDialog = false

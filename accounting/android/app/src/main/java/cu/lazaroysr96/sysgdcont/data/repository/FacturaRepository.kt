@@ -2,8 +2,6 @@ package cu.lazaroysr96.sysgdcont.data.repository
 
 import android.content.Intent
 import android.content.Context
-import android.os.Environment
-import androidx.core.content.FileProvider
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -76,7 +74,8 @@ private data class LineaFacturaPdf(
 class FacturaRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val ledgerRepository: LedgerRepository,
-    private val inventarioRepository: InventarioRepository
+    private val inventarioRepository: InventarioRepository,
+    private val documentStorageRepository: DocumentStorageRepository
 ) {
     companion object {
         private val NOMBRE_EMPRESA_KEY = stringPreferencesKey("nombre_empresa")
@@ -163,13 +162,8 @@ class FacturaRepository @Inject constructor(
         firmaClienteUri: String?,
         configuracion: ConfiguracionFacturacion
     ): FacturaGenerada {
-        val facturasDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        if (!facturasDir.exists()) {
-            facturasDir.mkdirs()
-        }
-
         val fileName = "factura_${numero}_${venta.fecha.replace("-", "")}.pdf"
-        val pdfFile = File(facturasDir, fileName)
+        val pdfFile = documentStorageRepository.createDocumentFile(DocumentCategory.FACTURAS, fileName)
 
         val writer = PdfWriter(pdfFile)
         val pdfDoc = PdfDocument(writer)
@@ -284,13 +278,11 @@ class FacturaRepository @Inject constructor(
             throw IllegalStateException("No hay ventas registradas en el periodo seleccionado")
         }
 
-        val reportesDir = File(context.getExternalFilesDir(null), "reportes")
-        if (!reportesDir.exists()) {
-            reportesDir.mkdirs()
-        }
-
         val nombre = getConfiguracionFacturacionActual().nombreEmpresa
-        val pdfFile = File(reportesDir, "reporte_ventas_${desde}_${hasta}.pdf")
+        val pdfFile = documentStorageRepository.createDocumentFile(
+            DocumentCategory.INFORMES,
+            "reporte_ventas_${desde}_${hasta}.pdf"
+        )
         val writer = PdfWriter(pdfFile)
         val pdfDoc = PdfDocument(writer)
         val document = Document(pdfDoc)
@@ -339,13 +331,11 @@ class FacturaRepository @Inject constructor(
             throw IllegalStateException("No hay compras registradas en el periodo seleccionado")
         }
 
-        val reportesDir = File(context.getExternalFilesDir(null), "reportes")
-        if (!reportesDir.exists()) {
-            reportesDir.mkdirs()
-        }
-
         val nombre = getConfiguracionFacturacionActual().nombreEmpresa
-        val pdfFile = File(reportesDir, "reporte_compras_${desde}_${hasta}.pdf")
+        val pdfFile = documentStorageRepository.createDocumentFile(
+            DocumentCategory.INFORMES,
+            "reporte_compras_${desde}_${hasta}.pdf"
+        )
         val writer = PdfWriter(pdfFile)
         val pdfDoc = PdfDocument(writer)
         val document = Document(pdfDoc)
@@ -557,16 +547,6 @@ class FacturaRepository @Inject constructor(
     }
 
     private fun buildPdfIntent(file: File): Intent {
-        val uri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            file
-        )
-
-        return Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "application/pdf")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
+        return documentStorageRepository.buildViewIntent(file, "application/pdf")
     }
 }
