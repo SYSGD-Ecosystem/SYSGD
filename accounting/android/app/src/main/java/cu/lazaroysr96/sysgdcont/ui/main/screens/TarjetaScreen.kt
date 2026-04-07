@@ -124,6 +124,7 @@ fun TarjetaScreen(viewModel: TarjetaViewModel) {
                             copyToClipboard(context, "Teléfono", tarjeta.telefono)
                         },
                         onGenerateQR = { viewModel.showQRDialog(tarjeta) },
+                        onGenerateQRTransfermovil = { viewModel.showQRTransfermovilDialog(tarjeta) },
                         onDelete = { viewModel.eliminarTarjeta(tarjeta.id) }
                     )
                 }
@@ -142,6 +143,13 @@ fun TarjetaScreen(viewModel: TarjetaViewModel) {
 
     if (uiState.showQRDialog && uiState.tarjetaSeleccionada != null) {
         QRDialog(
+            tarjeta = uiState.tarjetaSeleccionada!!,
+            onDismiss = { viewModel.showQRDialog(null) }
+        )
+    }
+
+    if (uiState.showQRTransfermovilDialog && uiState.tarjetaSeleccionada != null) {
+        QRDialogTransfermovil(
             tarjeta = uiState.tarjetaSeleccionada!!,
             onDismiss = { viewModel.showQRDialog(null) }
         )
@@ -170,6 +178,7 @@ private fun TarjetaCard(
     onCopyNumero: () -> Unit,
     onCopyTelefono: () -> Unit,
     onGenerateQR: () -> Unit,
+    onGenerateQRTransfermovil: () -> Unit,
     onDelete: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -208,6 +217,9 @@ private fun TarjetaCard(
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onGenerateQRTransfermovil) {
+                        Icon(Icons.Default.QrCode, contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
                     IconButton(onClick = onToggleFavorita) {
                         Icon(
                             if (tarjeta.esFavorita) Icons.Default.Star else Icons.Default.StarBorder,
@@ -241,7 +253,7 @@ private fun TarjetaCard(
                     onCopy = onCopyTelefono
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -266,7 +278,8 @@ private fun TarjetaCard(
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Eliminar")
                     }
-                }
+                    
+                }              
             }
         }
     }
@@ -398,6 +411,50 @@ private fun QRDialog(
         }
     )
 }
+
+@Composable
+private fun QRDialogTransfermovil(
+    tarjeta: Tarjeta,
+    onDismiss: () -> Unit
+) {
+    // val formatexample = "TRANSFERMOVIL_ETECSA,TRANSFERENCIA,9238129971241767,51158544,"
+    val qrContent = "TRANSFERMOVIL_ETECSA,TRANSFERENCIA,${tarjeta.numero.replace("-", "")},${tarjeta.telefono},"
+    val qrBitmap = remember(qrContent) { generateQRBitmap(qrContent) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("QR de Transfermóvil ${tarjeta.nombre}") },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                qrBitmap?.let {
+                    Image(
+                        bitmap = it.asImageBitmap(),
+                        contentDescription = "QR Code",
+                        modifier = Modifier.size(200.dp)
+                    )
+                }
+                Divider()
+                Text(
+                    "Número: ${tarjeta.numero}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    "Teléfono: ${tarjeta.telefono}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cerrar")
+            }
+        }
+    )
+}
+
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable

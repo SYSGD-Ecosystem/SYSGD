@@ -633,5 +633,52 @@ await pool.query(`
   CREATE INDEX IF NOT EXISTS idx_request_codes_code ON license_request_codes(request_code);
 `);
 
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS manual_payment_orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    product_id TEXT NOT NULL,
+    plan_tier TEXT NOT NULL CHECK (plan_tier IN ('pro', 'vip')),
+    duration_months INTEGER NOT NULL CHECK (duration_months IN (1, 3, 12)),
+    expected_amount_cup NUMERIC(10, 2) NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('pending_review', 'provisional', 'approved', 'rejected', 'expired')),
+    payer_phone TEXT NOT NULL,
+    sms_message TEXT NOT NULL,
+    sms_transaction_id TEXT,
+    sms_amount_cup NUMERIC(10, 2),
+    sms_payment_date TIMESTAMPTZ,
+    confirmation_phone_acknowledged BOOLEAN NOT NULL DEFAULT false,
+    receiver_phone_shared BOOLEAN NOT NULL DEFAULT false,
+    receiver_card TEXT NOT NULL,
+    confirmation_phone TEXT NOT NULL,
+    grace_expires_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+`);
+
+await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_manual_payment_orders_user ON manual_payment_orders(user_id);
+`);
+
+await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_manual_payment_orders_status ON manual_payment_orders(status);
+`);
+
+await pool.query(`
+  ALTER TABLE manual_payment_orders
+  ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+`);
+
+await pool.query(`
+  ALTER TABLE manual_payment_orders
+  ADD COLUMN IF NOT EXISTS reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL;
+`);
+
+await pool.query(`
+  ALTER TABLE manual_payment_orders
+  ADD COLUMN IF NOT EXISTS review_notes TEXT;
+`);
+
   console.log("✅ Tablas verificadas o creadas correctamente.");
 }

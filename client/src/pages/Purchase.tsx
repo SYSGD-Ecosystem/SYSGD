@@ -12,6 +12,7 @@ import {
 	Wallet,
 	AlertCircle,
 	Zap,
+	CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,9 +37,16 @@ import PurchasePlans from "@/components/billing/PurchasePlans";
 import type { Product } from "@/components/billing/components/ProductCard";
 import PurchaseCredits from "@/components/billing/PurchaseCredist";
 import LicenseStoreSection from "@/components/billing/LicenseStoreSection";
+import ManualPaymentPurchaseSection from "@/components/billing/ManualPaymentPurchaseSection";
 
 // Definición de las secciones
-export type Section = "credits" | "plans" | "transactions" | "categories" | "licenses";
+export type Section =
+	| "manual-payments"
+	| "credits"
+	| "plans"
+	| "transactions"
+	| "categories"
+	| "licenses";
 
 interface NetworkInfo {
 	chainId: number;
@@ -50,7 +58,7 @@ interface NetworkInfo {
 const Purchase: FC = () => {
 	const [networkInfo, setNetworkInfo] = useState<NetworkInfo | null>(null);
 
-	const [activeSection, setActiveSection] = useState<Section>("credits");
+	const [activeSection, setActiveSection] = useState<Section>("manual-payments");
 	const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 	const [showTestnetAlert, setShowTestnetAlert] = useState(true);
 
@@ -105,6 +113,7 @@ const Purchase: FC = () => {
 	}, [isConnected, address, loadOrders]);
 
 	const navItems = [
+		{ id: "manual-payments", label: "Pago Nacional", icon: CreditCard },
 		{ id: "credits", label: "Comprar Créditos", icon: Zap },
 		{ id: "plans", label: "Planes Suscripción", icon: Package },
 		{ id: "licenses", label: "SYSGD Store", icon: Package },
@@ -181,6 +190,7 @@ const Purchase: FC = () => {
 						</Sheet>
 
 						<h1 className="text-lg font-semibold capitalize hidden sm:block">
+							{activeSection === "manual-payments" && "Pago nacional por Transfermovil"}
 							{activeSection === "credits" && "Comprar Créditos"}
 							{activeSection === "plans" && "Planes de Suscripción"}
 							{activeSection === "transactions" && "Historial de Compras"}
@@ -227,6 +237,9 @@ const Purchase: FC = () => {
 				{/* CONTENIDO SCROLLABLE */}
 				<main className="flex-1 overflow-y-auto p-4 lg:p-8">
 					<div className="max-w-6xl mx-auto">
+						{/* Créditos */}
+						{activeSection === "manual-payments" && <ManualPaymentPurchaseSection />}
+
 						{/* Créditos */}
 						{activeSection === "credits" && (
 							<PurchaseCredits
@@ -293,6 +306,7 @@ const Purchase: FC = () => {
 
 						{/* Alerta si no está conectado */}
 						{!isConnected &&
+							activeSection !== "manual-payments" &&
 							activeSection !== "transactions" &&
 							activeSection !== "categories" && (
 								<Alert className="mt-8">

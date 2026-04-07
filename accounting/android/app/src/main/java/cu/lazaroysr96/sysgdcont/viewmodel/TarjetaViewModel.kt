@@ -15,6 +15,7 @@ data class TarjetaUiState(
     val snackbarMessage: String? = null,
     val showAddDialog: Boolean = false,
     val showQRDialog: Boolean = false,
+    val showQRTransfermovilDialog: Boolean = false,
     val showScanDialog: Boolean = false,
     val tarjetaSeleccionada: Tarjeta? = null
 )
@@ -73,6 +74,10 @@ class TarjetaViewModel @Inject constructor(
 
     fun showQRDialog(tarjeta: Tarjeta?) {
         _uiState.update { it.copy(showQRDialog = tarjeta != null, tarjetaSeleccionada = tarjeta) }
+    }
+
+    fun showQRTransfermovilDialog(tarjeta: Tarjeta?) {
+        _uiState.update { it.copy(showQRTransfermovilDialog = tarjeta != null, tarjetaSeleccionada = tarjeta) }
     }
 
     fun showScanDialog(show: Boolean) {
