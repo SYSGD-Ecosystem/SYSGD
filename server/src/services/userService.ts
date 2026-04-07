@@ -6,9 +6,11 @@ import type {
   CreateUserData, 
   UpdateUserData, 
   BillingData,
-  UserData 
+  UserData,
+  UpdatePlanData,
 } from "../types/user";
 import { DEFAULT_USER_DATA, DEFAULT_BILLING_LIMITS } from "../types/user";
+import { activatePlanBilling, normalizeBillingState } from "./billing-credits.service";
 
 export class UserService {
   
@@ -145,37 +147,39 @@ export class UserService {
   }
 
   // Actualizar tier y créditos
-  async updatePlan(
-    userId: string, 
-    tier: BillingData["tier"], 
-    credits?: number
-  ): Promise<BillingData> {
-    const limits = DEFAULT_BILLING_LIMITS[tier];
-    
+  async updatePlan(userId: string, data: UpdatePlanData): Promise<BillingData> {
+    const { rows: currentRows } = await pool.query<{ user_data: UserData | null }>(
+      "SELECT user_data FROM users WHERE id = $1",
+      [userId]
+    );
+
+    if (currentRows.length === 0) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    const currentBilling = normalizeBillingState(currentRows[0].user_data?.billing);
+    const nextTier = data.tier ?? currentBilling.tier;
+    const activated = activatePlanBilling(currentBilling, nextTier, data.durationMonths);
+
+    if (typeof data.credits === "number" && Number.isFinite(data.credits) && data.credits >= 0) {
+      activated.plan_credits = data.credits;
+      activated.ai_task_credits =
+        data.credits +
+        activated.purchased_credits +
+        activated.bonus_credits.reduce((acc, item) => acc + item.amount, 0);
+    }
+
     const { rows } = await pool.query<{ billing: BillingData }>(
       `UPDATE users 
        SET user_data = jsonb_set(
-         jsonb_set(
-           COALESCE(user_data, '{}'::jsonb),
-           '{billing,tier}',
-           $1::jsonb
-         ),
-         '{billing,limits}',
-         $2::jsonb
-       ) || 
-       CASE 
-         WHEN $3::int IS NOT NULL THEN 
-           jsonb_build_object('billing', jsonb_build_object('ai_task_credits', $3))
-         ELSE '{}'::jsonb
-       END
-       WHERE id = $4
+         COALESCE(user_data, '{}'::jsonb),
+         '{billing}',
+         $1::jsonb
+       )
+       WHERE id = $2
        RETURNING user_data->'billing' as billing`,
-      [JSON.stringify(tier), JSON.stringify(limits), credits, userId]
+      [JSON.stringify(activated), userId]
     );
-
-    if (rows.length === 0) {
-      throw new Error("Usuario no encontrado");
-    }
 
     return rows[0].billing;
   }

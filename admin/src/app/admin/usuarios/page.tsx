@@ -61,6 +61,14 @@ import { useUsers } from "../../../hooks/connection/useUsers"
 interface UserData {
   billing: {
     tier: "free" | "pro" | "vip"
+    ai_task_credits?: number
+    plan_credits?: number
+    purchased_credits?: number
+    plan_validity?: {
+      started_at: string
+      expires_at: string
+      duration_months: 1 | 3 | 12
+    } | null
   }
 }
 
@@ -74,7 +82,7 @@ interface UserType {
 }
 
 export default function UsersPage() {
-  const { users,  createUser, updateUser, deleteUser } = useUsers()
+  const { users, createUser, updateUser, updateUserPlan, deleteUser } = useUsers()
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<UserType | null>(null)
@@ -87,6 +95,7 @@ export default function UsersPage() {
     privileges: "user" as UserType["privileges"],
     status: "active" as UserType["status"],
     tier: "free" as UserData["billing"]["tier"],
+    planDurationMonths: 1 as 1 | 3 | 12,
   })
 
   const filteredUsers = useMemo(() => {
@@ -123,6 +132,7 @@ export default function UsersPage() {
         privileges: user.privileges,
         status: user.status,
         tier: user.user_data.billing.tier,
+        planDurationMonths: user.user_data.billing.plan_validity?.duration_months ?? 1,
       })
     } else {
       setEditingUser(null)
@@ -133,6 +143,7 @@ export default function UsersPage() {
         privileges: "user",
         status: "active",
         tier: "free",
+        planDurationMonths: 1,
       })
     }
     setIsDialogOpen(true)
@@ -148,19 +159,54 @@ export default function UsersPage() {
         ...(trimmedPassword ? { password: trimmedPassword } : {}),
         privileges: formData.privileges,
         status: formData.status,
-        user_data: { billing: { tier: formData.tier } },
       })
+
+      const currentDuration = editingUser.user_data.billing.plan_validity?.duration_months
+      const currentTier = editingUser.user_data.billing.tier
+      const requiresPlanSync =
+        formData.tier !== currentTier ||
+        (formData.tier !== "free" &&
+          (!editingUser.user_data.billing.plan_validity ||
+            currentDuration !== formData.planDurationMonths))
+
+      if (requiresPlanSync) {
+        await updateUserPlan(editingUser.id, {
+          tier: formData.tier,
+          ...(formData.tier !== "free"
+            ? { durationMonths: formData.planDurationMonths }
+            : {}),
+        })
+      }
     } else {
-      await createUser({
+      const createdUser = await createUser({
         name: formData.name,
         email: formData.email,
         password: trimmedPassword,
         privileges: formData.privileges,
         status: formData.status,
-        user_data: { billing: { tier: formData.tier } },
       })
+
+      if (formData.tier !== "free") {
+        await updateUserPlan(createdUser.id, {
+          tier: formData.tier,
+          durationMonths: formData.planDurationMonths,
+        })
+      }
     }
     setIsDialogOpen(false)
+  }
+
+  const formatPlanDuration = (months?: 1 | 3 | 12) => {
+    if (months === 3) return "3 meses"
+    if (months === 12) return "1 ano"
+    return "1 mes"
+  }
+
+  const formatDate = (value?: string) => {
+    if (!value) return "Sin fecha"
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return "Sin fecha"
+    return date.toLocaleDateString("es-CU")
   }
 
   const handleDeleteClick = (user: UserType) => {
@@ -320,12 +366,19 @@ export default function UsersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={getTierBadge(user.user_data.billing.tier).className}
-                      >
-                        {getTierBadge(user.user_data.billing.tier).label}
-                      </Badge>
+                      <div className="flex flex-col gap-1">
+                        <Badge
+                          variant="outline"
+                          className={getTierBadge(user.user_data.billing.tier).className}
+                        >
+                          {getTierBadge(user.user_data.billing.tier).label}
+                        </Badge>
+                        {user.user_data.billing.plan_validity && (
+                          <span className="text-xs text-muted-foreground">
+                            {formatPlanDuration(user.user_data.billing.plan_validity.duration_months)}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant={getStatusBadge(user.status).variant}>
@@ -459,6 +512,39 @@ export default function UsersPage() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="planDurationMonths">Vigencia del plan</Label>
+              <Select
+                value={String(formData.planDurationMonths)}
+                onValueChange={(value: "1" | "3" | "12") =>
+                  setFormData({
+                    ...formData,
+                    planDurationMonths: Number(value) as 1 | 3 | 12,
+                  })
+                }
+                disabled={formData.tier === "free"}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona la vigencia" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 mes</SelectItem>
+                  <SelectItem value="3">3 meses</SelectItem>
+                  <SelectItem value="12">1 ano</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {formData.tier === "free"
+                  ? "El plan Free no requiere vigencia."
+                  : `Al activar este plan se asignan los creditos y la vigencia por ${formatPlanDuration(formData.planDurationMonths)}.`}
+              </p>
+              {editingUser?.user_data.billing.plan_validity && (
+                <p className="text-xs text-muted-foreground">
+                  Vigencia actual: {formatDate(editingUser.user_data.billing.plan_validity.started_at)} al{" "}
+                  {formatDate(editingUser.user_data.billing.plan_validity.expires_at)}
+                </p>
+              )}
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="status">Estado</Label>

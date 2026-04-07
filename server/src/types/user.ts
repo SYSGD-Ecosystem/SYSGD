@@ -152,9 +152,22 @@ export interface BillingCycle {
 export interface BillingData {
   tier: UserTier;
   ai_task_credits: number;
+  plan_credits?: number;
   purchased_credits: number;
+  bonus_credits?: Array<{
+    id: string;
+    amount: number;
+    expires_at: string;
+    source?: string;
+  }>;
+  credit_spending_priority?: Array<"bonus" | "plan" | "purchased">;
   limits: BillingLimits;
   billing_cycle: BillingCycle;
+  plan_validity?: {
+    started_at: string;
+    expires_at: string;
+    duration_months: 1 | 3 | 12;
+  } | null;
 }
 
 export interface CustomTokens {
@@ -207,6 +220,7 @@ export interface UpdateUserData {
 export interface UpdatePlanData {
   tier?: UserTier;
   credits?: number;
+  durationMonths?: 1 | 3 | 12;
 }
 
 export interface AddCreditsData {
@@ -296,7 +310,7 @@ export const DEFAULT_BILLING_LIMITS: Record<UserTier, BillingLimits> = {
 };
 
 export const TIER_CREDITS: Record<UserTier, number> = {
-  free: 5,
+  free: 10,
   pro: 100,
   vip: 500
 };
@@ -369,8 +383,11 @@ export function mergeUserData(
 export const DEFAULT_USER_DATA = {
   billing: {
     tier: "free",
-    ai_task_credits: 5,
+    ai_task_credits: 10,
+    plan_credits: 10,
     purchased_credits: 0,
+    bonus_credits: [],
+    credit_spending_priority: ["bonus", "plan", "purchased"] as const,
     limits: {
       max_projects: 3,
       max_documents: 5,
@@ -385,6 +402,7 @@ export const DEFAULT_USER_DATA = {
     billing_cycle: {
       last_reset: new Date().toISOString(),
       next_reset: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-    }
+    },
+    plan_validity: null
   }
 };

@@ -2,12 +2,19 @@ import { pool } from "../db";
 import { TIER_CREDITS, TIER_LIMITS, type UserTier } from "../utils/billing";
 
 export type CreditBucket = "bonus" | "plan" | "purchased";
+export type PlanDurationMonths = 1 | 3 | 12;
 
 export interface BonusCreditItem {
 	id: string;
 	amount: number;
 	expires_at: string;
 	source?: string;
+}
+
+export interface PlanValidity {
+	started_at: string;
+	expires_at: string;
+	duration_months: PlanDurationMonths;
 }
 
 export interface BillingState {
@@ -22,6 +29,7 @@ export interface BillingState {
 		last_reset: string;
 		next_reset: string;
 	};
+	plan_validity: PlanValidity | null;
 }
 
 const DEFAULT_PRIORITY: CreditBucket[] = ["bonus", "plan", "purchased"];
@@ -59,6 +67,30 @@ const cleanBonusCredits = (items: unknown): BonusCreditItem[] => {
 const computeBonusTotal = (items: BonusCreditItem[]): number =>
 	items.reduce((acc, item) => acc + item.amount, 0);
 
+const isValidPlanDuration = (value: unknown): value is PlanDurationMonths =>
+	value === 1 || value === 3 || value === 12;
+
+const addMonths = (date: Date, months: number): Date => {
+	const next = new Date(date);
+	next.setMonth(next.getMonth() + months);
+	return next;
+};
+
+const resolveNextReset = (from: Date, expiresAt?: string): string => {
+	const nextCycle = addMonths(from, 1);
+	if (!expiresAt) {
+		return nextCycle.toISOString();
+	}
+
+	const expiryDate = new Date(expiresAt);
+	const expiryTime = expiryDate.getTime();
+	if (!Number.isFinite(expiryTime)) {
+		return nextCycle.toISOString();
+	}
+
+	return new Date(Math.min(nextCycle.getTime(), expiryTime)).toISOString();
+};
+
 export const normalizeBillingState = (billingRaw: unknown): BillingState => {
 	const billing = (billingRaw ?? {}) as Partial<BillingState>;
 	const tier = (billing.tier ?? "free") as UserTier;
@@ -85,6 +117,18 @@ export const normalizeBillingState = (billingRaw: unknown): BillingState => {
 	const priority = isValidPriority(billing.credit_spending_priority)
 		? billing.credit_spending_priority
 		: DEFAULT_PRIORITY;
+	const rawValidity = billing.plan_validity as Partial<PlanValidity> | null | undefined;
+	const planValidity =
+		rawValidity &&
+		typeof rawValidity.started_at === "string" &&
+		typeof rawValidity.expires_at === "string" &&
+		isValidPlanDuration(rawValidity.duration_months)
+			? {
+					started_at: rawValidity.started_at,
+					expires_at: rawValidity.expires_at,
+					duration_months: rawValidity.duration_months,
+				}
+			: null;
 
 	const total = planCredits + purchasedCredits + computeBonusTotal(bonusCredits);
 	return {
@@ -99,25 +143,75 @@ export const normalizeBillingState = (billingRaw: unknown): BillingState => {
 			last_reset: lastReset,
 			next_reset: nextReset,
 		},
+		plan_validity: planValidity,
+	};
+};
+
+export const activatePlanBilling = (
+	billingRaw: unknown,
+	tier: UserTier,
+	durationMonths?: PlanDurationMonths,
+	now: Date = new Date(),
+): BillingState => {
+	const current = normalizeBillingState(billingRaw);
+	const effectiveDuration = tier === "free" ? undefined : durationMonths ?? 1;
+	const startedAt = now.toISOString();
+	const expiresAt =
+		effectiveDuration === undefined ? undefined : addMonths(now, effectiveDuration).toISOString();
+	const planCredits = TIER_CREDITS[tier];
+	const total = planCredits + current.purchased_credits + computeBonusTotal(current.bonus_credits);
+
+	return {
+		...current,
+		tier,
+		plan_credits: planCredits,
+		ai_task_credits: total,
+		limits: TIER_LIMITS[tier],
+		billing_cycle: {
+			last_reset: startedAt,
+			next_reset: resolveNextReset(now, expiresAt),
+		},
+		plan_validity:
+			effectiveDuration === undefined
+				? null
+				: {
+						started_at: startedAt,
+						expires_at: expiresAt!,
+						duration_months: effectiveDuration,
+					},
 	};
 };
 
 export const maybeRenewPlanCredits = (billing: BillingState): BillingState => {
-	const nextResetDate = new Date(billing.billing_cycle.next_reset).getTime();
-	if (!Number.isFinite(nextResetDate) || Date.now() < nextResetDate) {
-		return billing;
+	const normalized = normalizeBillingState(billing);
+	const expiresAt = normalized.plan_validity?.expires_at
+		? new Date(normalized.plan_validity.expires_at).getTime()
+		: Number.POSITIVE_INFINITY;
+
+	if (Number.isFinite(expiresAt) && Date.now() >= expiresAt) {
+		return activatePlanBilling(normalized, "free");
 	}
+
+	const nextResetDate = new Date(normalized.billing_cycle.next_reset).getTime();
+	if (!Number.isFinite(nextResetDate) || Date.now() < nextResetDate) {
+		return normalized;
+	}
+
 	const now = new Date();
-	const next = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-	const renewedPlan = TIER_CREDITS[billing.tier];
-	const total = renewedPlan + billing.purchased_credits + computeBonusTotal(billing.bonus_credits);
+	const renewedPlan = TIER_CREDITS[normalized.tier];
+	const total =
+		renewedPlan +
+		normalized.purchased_credits +
+		computeBonusTotal(normalized.bonus_credits);
+
 	return {
-		...billing,
+		...normalized,
 		plan_credits: renewedPlan,
 		ai_task_credits: total,
+		limits: TIER_LIMITS[normalized.tier],
 		billing_cycle: {
 			last_reset: now.toISOString(),
-			next_reset: next.toISOString(),
+			next_reset: resolveNextReset(now, normalized.plan_validity?.expires_at),
 		},
 	};
 };

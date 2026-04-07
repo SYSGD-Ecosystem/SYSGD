@@ -1,6 +1,6 @@
 import { pool } from "../db";
 import { isValidTier, TIER_CREDITS, TIER_LIMITS } from "../utils/billing";
-import { maybeRenewPlanCredits, normalizeBillingState } from "./billing-credits.service";
+import { activatePlanBilling, maybeRenewPlanCredits, normalizeBillingState } from "./billing-credits.service";
 
 interface PaymentOrderRecord {
 	order_id: string;
@@ -79,16 +79,18 @@ export const fulfillOrderIfNeeded = async (
 				throw new Error(`Producto no soportado: ${order.product_id}`);
 			}
 
-			const now = new Date();
-			const nextReset = new Date(now);
-			if (plan.period === "monthly") nextReset.setDate(nextReset.getDate() + 30);
-			else nextReset.setFullYear(nextReset.getFullYear() + 1);
-
-			currentBilling.tier = plan.tier;
-			currentBilling.plan_credits = TIER_CREDITS[plan.tier];
-			currentBilling.limits = TIER_LIMITS[plan.tier];
-			currentBilling.billing_cycle.last_reset = now.toISOString();
-			currentBilling.billing_cycle.next_reset = nextReset.toISOString();
+			const durationMonths = plan.period === "monthly" ? 1 : 12;
+			const activatedBilling = activatePlanBilling(
+				currentBilling,
+				plan.tier,
+				durationMonths,
+			);
+			currentBilling.tier = activatedBilling.tier;
+			currentBilling.plan_credits = activatedBilling.plan_credits;
+			currentBilling.limits = activatedBilling.limits;
+			currentBilling.ai_task_credits = activatedBilling.ai_task_credits;
+			currentBilling.billing_cycle = activatedBilling.billing_cycle;
+			currentBilling.plan_validity = activatedBilling.plan_validity;
 		}
 
 		const normalizedAfter = normalizeBillingState(currentBilling);

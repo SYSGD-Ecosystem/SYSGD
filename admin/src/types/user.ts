@@ -5,6 +5,14 @@ export type UserStatus = "active" | "invited" | "suspended" | "banned"
 export interface UserData {
 	billing: {
 		tier: UserTier
+		ai_task_credits?: number
+		plan_credits?: number
+		purchased_credits?: number
+		plan_validity?: {
+			started_at: string
+			expires_at: string
+			duration_months: 1 | 3 | 12
+		} | null
 	}
 }
 
@@ -33,4 +41,10 @@ export interface UpdateUserData {
 	privileges?: UserPrivileges
 	status?: UserStatus
 	user_data?: Partial<UserData>
+}
+
+export interface UpdateUserPlanData {
+	tier: UserTier
+	durationMonths?: 1 | 3 | 12
+	credits?: number
 }

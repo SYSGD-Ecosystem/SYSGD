@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcrypt";
 import { pool } from "../db";
 import { isAuthenticated } from "../middlewares/auth-jwt";
-import { getCurrentUserData, updateAdminUser } from "../controllers/users";
+import { getCurrentUserData, updateAdminUser, updateAdminUserPlan } from "../controllers/users";
 import { getCurrentUser } from "../controllers/auth";
 import { getUsageSummary } from "../middlewares/usageLimits.middleware";
 import { maybeRenewPlanCredits, normalizeBillingState } from "../services/billing-credits.service";
@@ -407,60 +407,7 @@ router.post("/", async (req, res) => {
 router.put("/:id", updateAdminUser);
 
 // Actualizar plan del usuario (admin)
-router.put("/:id/plan", async (req, res) => {
-  const { tier, credits } = req.body;
-  const userId = req.params.id;
-  
-  if (!['free', 'pro', 'vip'].includes(tier) && typeof credits !== 'number') {
-    res.status(400).json({ error: "Datos inválidos" });
-    return;
-  }
-
-  try {
-    // Obtener user_data actual
-    const { rows: currentRows } = await pool.query(
-      "SELECT user_data FROM users WHERE id = $1",
-      [userId]
-    );
-
-    if (currentRows.length === 0) {
-      res.status(404).json({ error: "Usuario no encontrado" });
-      return;
-    }
-
-    const currentUserData = currentRows[0].user_data || DEFAULT_USER_DATA;
-    
-    // Actualizar tier y/o créditos
-    const updatedBilling = {
-      ...currentUserData.billing,
-      ...(tier && { tier, limits: TIER_LIMITS[tier as keyof typeof TIER_LIMITS] }),
-      ...(credits !== undefined && { plan_credits: credits })
-    };
-
-    updatedBilling.ai_task_credits = (updatedBilling.plan_credits || 0) + (updatedBilling.purchased_credits || 0) + ((updatedBilling.bonus_credits || []).reduce((acc: number, item: { amount?: number }) => acc + (item.amount || 0), 0));
-
-    const updatedUserData = {
-      ...currentUserData,
-      billing: updatedBilling
-    };
-
-    const { rows } = await pool.query(
-      `UPDATE users 
-       SET user_data = $1
-       WHERE id = $2
-       RETURNING id, user_data`,
-      [JSON.stringify(updatedUserData), userId]
-    );
-
-    res.json({
-      message: "Plan actualizado correctamente",
-      billing: rows[0].user_data.billing
-    });
-  } catch (error) {
-    console.error("Error al actualizar el plan:", error);
-    res.status(500).json({ error: "Error al actualizar el plan" });
-  }
-});
+router.put("/:id/plan", updateAdminUserPlan);
 
 // Agregar créditos (admin)
 router.post("/:id/credits", async (req, res) => {

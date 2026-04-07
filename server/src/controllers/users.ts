@@ -3,7 +3,7 @@ import { pool } from "../db";
 import bcrypt from "bcrypt";
 import { normalizeClientSource } from "../utils/client-source";
 import { UserService } from "../services/userService";
-import type { UpdateUserData } from "../types/user";
+import type { UpdatePlanData, UpdateUserData } from "../types/user";
 
 
 export const register = async (req: Request, res: Response) => {
@@ -153,5 +153,59 @@ export const updateAdminUser = async (req: Request, res: Response) => {
 
         console.error("Error al actualizar usuario:", error);
         res.status(500).json({ error: "Error al actualizar usuario" });
+    }
+};
+
+export const updateAdminUserPlan = async (req: Request, res: Response) => {
+    const userIdParam = req.params.id;
+    const userId = Array.isArray(userIdParam) ? userIdParam[0] : userIdParam;
+    const body = req.body as UpdatePlanData;
+
+    if (!userId) {
+        res.status(400).json({ error: "ID inválido" });
+        return;
+    }
+
+    if (
+        body.tier !== undefined &&
+        body.tier !== "free" &&
+        body.tier !== "pro" &&
+        body.tier !== "vip"
+    ) {
+        res.status(400).json({ error: "Tier inválido" });
+        return;
+    }
+
+    if (
+        body.durationMonths !== undefined &&
+        body.durationMonths !== 1 &&
+        body.durationMonths !== 3 &&
+        body.durationMonths !== 12
+    ) {
+        res.status(400).json({ error: "Duración inválida" });
+        return;
+    }
+
+    if (body.tier && body.tier !== "free" && body.durationMonths === undefined) {
+        res.status(400).json({ error: "La duración del plan es requerida" });
+        return;
+    }
+
+    try {
+        const billing = await userService.updatePlan(userId, body);
+        res.json({
+            message: "Plan actualizado correctamente",
+            billing,
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Error al actualizar el plan";
+
+        if (message === "Usuario no encontrado") {
+            res.status(404).json({ error: message });
+            return;
+        }
+
+        console.error("Error al actualizar el plan:", error);
+        res.status(500).json({ error: "Error al actualizar el plan" });
     }
 };

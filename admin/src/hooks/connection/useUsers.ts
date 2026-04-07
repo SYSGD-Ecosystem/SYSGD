@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 
 import { apiFetch } from "../../lib/api"
-import type { CreateUserData, UpdateUserData, User } from "../../types/user"
+import type { CreateUserData, UpdateUserData, UpdateUserPlanData, User } from "../../types/user"
 
 type UseUsersReturn = {
 	users: User[]
@@ -10,6 +10,7 @@ type UseUsersReturn = {
 	refetch: () => void
 	createUser: (data: CreateUserData) => Promise<User>
 	updateUser: (id: string, data: UpdateUserData) => Promise<void>
+	updateUserPlan: (id: string, data: UpdateUserPlanData) => Promise<void>
 	deleteUser: (id: string) => Promise<void>
 	toggleUserPublic: (isPublic: boolean) => Promise<void>
 }
@@ -58,6 +59,14 @@ export function useUsers(): UseUsersReturn {
 		setUsers((prev) => prev.filter((u) => u.id !== id))
 	}
 
+	const updateUserPlan = async (id: string, data: UpdateUserPlanData) => {
+		await apiFetch<void>(`/api/users/${id}/plan`, {
+			method: "PUT",
+			body: JSON.stringify(data),
+		})
+		await fetchUsers()
+	}
+
 	const toggleUserPublic = async (isPublic: boolean) => {
 		await apiFetch<void>("/api/users/public", {
 			method: "PUT",
@@ -73,6 +82,7 @@ export function useUsers(): UseUsersReturn {
 		refetch: fetchUsers,
 		createUser,
 		updateUser,
+		updateUserPlan,
 		deleteUser,
 		toggleUserPublic,
 	}
