@@ -23,6 +23,7 @@ export interface CreateUserData {
 	password?: string
 	privileges?: UserPrivileges
 	status?: UserStatus
+	user_data?: Partial<UserData>
 }
 
 export interface UpdateUserData {

@@ -53,7 +53,7 @@ export class UserService {
   // Actualizar usuario
   async updateUser(id: string, data: UpdateUserData): Promise<User> {
     const fields: string[] = [];
-    const values: any[] = [];
+    const values: unknown[] = [];
     let idx = 1;
 
     if (data.name) {
@@ -83,9 +83,24 @@ export class UserService {
     }
 
     if (data.user_data) {
-      // Merge con datos existentes
+      const currentUser = await this.getUserById(id);
+
+      if (!currentUser) {
+        throw new Error("Usuario no encontrado");
+      }
+
+      const currentUserData = currentUser.user_data || DEFAULT_USER_DATA;
+      const mergedUserData = {
+        ...currentUserData,
+        ...data.user_data,
+        billing: {
+          ...currentUserData.billing,
+          ...(data.user_data.billing || {}),
+        },
+      };
+
       fields.push(`user_data = user_data || $${idx++}::jsonb`);
-      values.push(data.user_data);
+      values.push(JSON.stringify(mergedUserData));
     }
 
     values.push(id);

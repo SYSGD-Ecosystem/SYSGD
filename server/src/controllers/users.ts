@@ -2,6 +2,8 @@ import type {  Request, Response } from "express";
 import { pool } from "../db";
 import bcrypt from "bcrypt";
 import { normalizeClientSource } from "../utils/client-source";
+import { UserService } from "../services/userService";
+import type { UpdateUserData } from "../types/user";
 
 
 export const register = async (req: Request, res: Response) => {
@@ -86,5 +88,70 @@ export const getUsers = async (req: Request, res: Response) => {
         res.json(rows);
     } catch {
         res.status(500).json({ error: "Error al obtener usuarios" });
+    }
+};
+
+const userService = new UserService();
+
+export const updateAdminUser = async (req: Request, res: Response) => {
+    const userIdParam = req.params.id;
+    const { name, email, password, privileges, status, user_data } = req.body as UpdateUserData;
+
+    const userId = Array.isArray(userIdParam) ? userIdParam[0] : userIdParam;
+
+    if (!userId) {
+        res.status(400).json({ error: "ID inválido" });
+        return;
+    }
+
+    const payload: UpdateUserData = {};
+
+    if (name !== undefined) {
+        payload.name = name;
+    }
+
+    if (email !== undefined) {
+        payload.email = email;
+    }
+
+    if (password !== undefined) {
+        payload.password = password;
+    }
+
+    if (privileges !== undefined) {
+        payload.privileges = privileges;
+    }
+
+    if (status !== undefined) {
+        payload.status = status;
+    }
+
+    if (user_data !== undefined) {
+        payload.user_data = user_data;
+    }
+
+    if (Object.keys(payload).length === 0) {
+        res.status(400).json({ error: "No hay datos para actualizar" });
+        return;
+    }
+
+    try {
+        const updatedUser = await userService.updateUser(userId, payload);
+        res.json(updatedUser);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Error al actualizar usuario";
+
+        if (message === "Usuario no encontrado") {
+            res.status(404).json({ error: message });
+            return;
+        }
+
+        if (message === "No hay datos para actualizar") {
+            res.status(400).json({ error: message });
+            return;
+        }
+
+        console.error("Error al actualizar usuario:", error);
+        res.status(500).json({ error: "Error al actualizar usuario" });
     }
 };

@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcrypt";
 import { pool } from "../db";
 import { isAuthenticated } from "../middlewares/auth-jwt";
-import { getCurrentUserData } from "../controllers/users";
+import { getCurrentUserData, updateAdminUser } from "../controllers/users";
 import { getCurrentUser } from "../controllers/auth";
 import { getUsageSummary } from "../middlewares/usageLimits.middleware";
 import { maybeRenewPlanCredits, normalizeBillingState } from "../services/billing-credits.service";
@@ -404,93 +404,7 @@ router.post("/", async (req, res) => {
 });
 
 // Actualizar usuario (admin) - MEJORADO
-router.put("/:id", async (req, res) => {
-  const userId = req.params.id;
-  const { name, email, privileges, status, user_data } = req.body;
-
-  if (!userId) {
-    res.status(400).json({ error: "ID inválido" });
-    return;
-  }
-
-  try {
-    // Construir query dinámicamente
-    const updates: string[] = [];
-    const values: any[] = [];
-    let paramIndex = 1;
-
-    if (name !== undefined) {
-      updates.push(`name = $${paramIndex++}`);
-      values.push(name);
-    }
-
-    if (email !== undefined) {
-      updates.push(`email = $${paramIndex++}`);
-      values.push(email);
-    }
-
-    if (privileges !== undefined) {
-      updates.push(`privileges = $${paramIndex++}`);
-      values.push(privileges);
-    }
-
-    if (status !== undefined) {
-      updates.push(`status = $${paramIndex++}`);
-      values.push(status);
-    }
-
-    if (user_data !== undefined) {
-      // Obtener user_data actual para hacer merge
-      const { rows: currentRows } = await pool.query(
-        "SELECT user_data FROM users WHERE id = $1",
-        [userId]
-      );
-
-      if (currentRows.length === 0) {
-        res.status(404).json({ error: "Usuario no encontrado" });
-        return;
-      }
-
-      const currentUserData = currentRows[0].user_data || DEFAULT_USER_DATA;
-      const mergedUserData = {
-        ...currentUserData,
-        ...user_data,
-        billing: {
-          ...currentUserData.billing,
-          ...(user_data.billing || {})
-        }
-      };
-
-      updates.push(`user_data = $${paramIndex++}`);
-      values.push(JSON.stringify(mergedUserData));
-    }
-
-    if (updates.length === 0) {
-      res.status(400).json({ error: "No hay datos para actualizar" });
-      return;
-    }
-
-    values.push(userId);
-
-    const result = await pool.query(
-      `UPDATE users 
-       SET ${updates.join(", ")} 
-       WHERE id = $${paramIndex} 
-       RETURNING id, name, email, privileges, status, user_data`,
-      values
-    );
-
-    if (result.rowCount === 0) {
-      res.status(404).json({ error: "Usuario no encontrado" });
-      return;
-    }
-
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error("Error al actualizar usuario:", error);
-    res.status(500).json({ error: "Error al actualizar usuario" });
-  }
-});
+router.put("/:id", updateAdminUser);
 
 // Actualizar plan del usuario (admin)
 router.put("/:id/plan", async (req, res) => {

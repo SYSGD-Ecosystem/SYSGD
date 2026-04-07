@@ -83,6 +83,7 @@ export default function UsersPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    password: "",
     privileges: "user" as UserType["privileges"],
     status: "active" as UserType["status"],
     tier: "free" as UserData["billing"]["tier"],
@@ -118,6 +119,7 @@ export default function UsersPage() {
       setFormData({
         name: user.name,
         email: user.email,
+        password: "",
         privileges: user.privileges,
         status: user.status,
         tier: user.user_data.billing.tier,
@@ -127,6 +129,7 @@ export default function UsersPage() {
       setFormData({
         name: "",
         email: "",
+        password: "",
         privileges: "user",
         status: "active",
         tier: "free",
@@ -136,10 +139,13 @@ export default function UsersPage() {
   }
 
   const handleSave = async () => {
+    const trimmedPassword = formData.password.trim()
+
     if (editingUser) {
       await updateUser(editingUser.id, {
         name: formData.name,
         email: formData.email,
+        ...(trimmedPassword ? { password: trimmedPassword } : {}),
         privileges: formData.privileges,
         status: formData.status,
         user_data: { billing: { tier: formData.tier } },
@@ -148,8 +154,10 @@ export default function UsersPage() {
       await createUser({
         name: formData.name,
         email: formData.email,
+        password: trimmedPassword,
         privileges: formData.privileges,
         status: formData.status,
+        user_data: { billing: { tier: formData.tier } },
       })
     }
     setIsDialogOpen(false)
@@ -394,6 +402,27 @@ export default function UsersPage() {
                 placeholder="juan@sysgd.com"
               />
             </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="password">
+                {editingUser ? "Nueva contraseña" : "Contraseña"}
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                placeholder={
+                  editingUser
+                    ? "Déjalo vacío para mantener la actual"
+                    : "Escribe una contraseña"
+                }
+              />
+              {editingUser && (
+                <p className="text-xs text-muted-foreground">
+                  Solo cambia la contraseña si escribes una nueva.
+                </p>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="privileges">Privilegios</Label>
@@ -455,7 +484,14 @@ export default function UsersPage() {
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSave} disabled={!formData.name || !formData.email}>
+            <Button
+              onClick={handleSave}
+              disabled={
+                !formData.name ||
+                !formData.email ||
+                (!editingUser && !formData.password.trim())
+              }
+            >
               {editingUser ? "Guardar Cambios" : "Crear Usuario"}
             </Button>
           </DialogFooter>
