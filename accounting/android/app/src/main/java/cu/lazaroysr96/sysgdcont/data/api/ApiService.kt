@@ -55,6 +55,18 @@ interface ApiService {
     @GET("api/users/plan")
     suspend fun getUserPlan(@Header("Authorization") token: String): Response<UserPlanResponse>
 
+    @GET("api/manual-payments/products")
+    suspend fun getManualPaymentCatalog(@Header("Authorization") token: String): Response<ManualPaymentCatalogResponse>
+
+    @GET("api/manual-payments/orders")
+    suspend fun getManualPaymentOrders(@Header("Authorization") token: String): Response<ManualPaymentOrdersResponse>
+
+    @POST("api/manual-payments/orders")
+    suspend fun createManualPaymentOrder(
+        @Header("Authorization") token: String,
+        @Body request: CreateManualPaymentOrderRequest
+    ): Response<ManualPaymentOrderResponse>
+
     @GET("api/cont-ledger")
     suspend fun getLedger(@Header("Authorization") token: String): Response<ContLedgerResponse>
 

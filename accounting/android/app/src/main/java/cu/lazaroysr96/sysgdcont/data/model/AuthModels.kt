@@ -82,9 +82,15 @@ data class UpdateLedgerResponse(
 )
 
 data class UserPlanCredits(
-    val available: Int = 0
+    val available: Int = 0,
+    val plan: Int = 0,
+    val purchased: Int = 0,
+    val bonus: Int = 0,
+    val next_reset: String? = null
 )
 
 data class UserPlanResponse(
-    val credits: UserPlanCredits = UserPlanCredits()
+    val tier: String = "free",
+    val credits: UserPlanCredits = UserPlanCredits(),
+    val hasCustomToken: Boolean = false
 )

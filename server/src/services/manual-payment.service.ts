@@ -263,6 +263,13 @@ export const createManualPaymentOrder = async (
 		],
 	);
 
+	if (status === "provisional") {
+		await userService.updatePlan(userId, {
+			tier: product.tier,
+			durationMonths: product.duration_months,
+		});
+	}
+
 	return rows[0];
 };
 
@@ -305,7 +312,7 @@ export const reviewManualPaymentOrder = async (
 		throw new Error("Esta compra ya fue revisada");
 	}
 
-	if (input.status === "approved") {
+	if (input.status === "approved" && currentOrder.status !== "provisional") {
 		await userService.updatePlan(currentOrder.user_id, {
 			tier: currentOrder.plan_tier,
 			durationMonths: currentOrder.duration_months,

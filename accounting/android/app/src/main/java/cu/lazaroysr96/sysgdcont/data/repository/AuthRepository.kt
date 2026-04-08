@@ -17,6 +17,7 @@ import cu.lazaroysr96.sysgdcont.data.model.RegisterRequest
 import cu.lazaroysr96.sysgdcont.data.model.ResendTwoFactorRequest
 import cu.lazaroysr96.sysgdcont.data.model.TwoFactorStatusResponse
 import cu.lazaroysr96.sysgdcont.data.model.UpdateTwoFactorRequest
+import cu.lazaroysr96.sysgdcont.data.model.UserPlanResponse
 import cu.lazaroysr96.sysgdcont.data.model.VerifyTwoFactorRequest
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -119,6 +120,24 @@ class AuthRepository @Inject constructor(
                     return Result.failure(Exception("Tu sesión expiró. Inicia sesión de nuevo."))
                 }
                 Result.failure(Exception(extractApiError(response, "No se pudieron obtener los créditos")))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getCurrentPlan(): Result<UserPlanResponse> {
+        return try {
+            val token = getToken() ?: return Result.failure(Exception("No autenticado"))
+            val response = apiService.getUserPlan("Bearer $token")
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                if (response.code() == 401 || response.code() == 403) {
+                    logout()
+                    return Result.failure(Exception("Tu sesión expiró. Inicia sesión de nuevo."))
+                }
+                Result.failure(Exception(extractApiError(response, "No se pudo obtener el plan actual")))
             }
         } catch (e: Exception) {
             Result.failure(e)

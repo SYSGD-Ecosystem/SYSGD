@@ -98,6 +98,7 @@ import cu.lazaroysr96.sysgdcont.ui.main.screens.IngresosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.InventarioScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.NomenclatorsScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.DocumentosScreen
+import cu.lazaroysr96.sysgdcont.ui.main.screens.ExperimentalPlanPurchaseSection
 import cu.lazaroysr96.sysgdcont.ui.main.screens.ResumenScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.SecuritySettingsScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.TarjetaScreen
@@ -108,6 +109,7 @@ import cu.lazaroysr96.sysgdcont.viewmodel.AuthViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.DocumentosViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.InventarioViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
+import cu.lazaroysr96.sysgdcont.viewmodel.PlanPurchaseViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.TarjetaViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.FacturaViewModel
 import kotlinx.coroutines.launch
@@ -161,7 +163,8 @@ fun MainScreen(
         inventarioViewModel: InventarioViewModel = hiltViewModel(),
         tarjetaViewModel: TarjetaViewModel = hiltViewModel(),
         facturaViewModel: FacturaViewModel = hiltViewModel(),
-        documentosViewModel: DocumentosViewModel = hiltViewModel()
+        documentosViewModel: DocumentosViewModel = hiltViewModel(),
+        planPurchaseViewModel: PlanPurchaseViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     // val configuration = LocalConfiguration.current
@@ -170,6 +173,7 @@ fun MainScreen(
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
     val ledgerState by ledgerViewModel.uiState.collectAsStateWithLifecycle()
+    val planPurchaseState by planPurchaseViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val drawerState =
             rememberDrawerState(initialValue = androidx.compose.material3.DrawerValue.Closed)
@@ -601,7 +605,12 @@ fun MainScreen(
                                 }
                             },
                             experimentalFeaturesEnabled = ledgerState.experimentalFeaturesEnabled,
-                            onExperimentalFeaturesChange = ledgerViewModel::setExperimentalFeaturesEnabled
+                            onExperimentalFeaturesChange = ledgerViewModel::setExperimentalFeaturesEnabled,
+                            planPurchaseState = planPurchaseState,
+                            onRefreshPlanPurchase = { planPurchaseViewModel.loadData(force = true) },
+                            onSubmitPlanPurchase = planPurchaseViewModel::submitOrder,
+                            onDismissPlanPurchaseError = planPurchaseViewModel::clearError,
+                            onDismissPlanPurchaseInfo = planPurchaseViewModel::clearInfoMessage
                     )
                 }
                 composable(HELP_ROUTE) {
@@ -972,7 +981,12 @@ private fun AboutScreen(
     onContactWhatsApp: () -> Unit,
     onOpenUrl: (String) -> Unit,
     experimentalFeaturesEnabled: Boolean,
-    onExperimentalFeaturesChange: (Boolean) -> Unit
+    onExperimentalFeaturesChange: (Boolean) -> Unit,
+    planPurchaseState: cu.lazaroysr96.sysgdcont.viewmodel.PlanPurchaseUiState,
+    onRefreshPlanPurchase: () -> Unit,
+    onSubmitPlanPurchase: (String, String, String, Boolean, Boolean) -> Unit,
+    onDismissPlanPurchaseError: () -> Unit,
+    onDismissPlanPurchaseInfo: () -> Unit
 ) {
     val context = LocalContext.current
     val appVersion = remember { getAppVersionName(context) }
@@ -1071,6 +1085,15 @@ private fun AboutScreen(
                 )
             }
         }
+
+        ExperimentalPlanPurchaseSection(
+            experimentalFeaturesEnabled = experimentalFeaturesEnabled,
+            uiState = planPurchaseState,
+            onRefresh = onRefreshPlanPurchase,
+            onSubmit = onSubmitPlanPurchase,
+            onDismissError = onDismissPlanPurchaseError,
+            onDismissInfo = onDismissPlanPurchaseInfo
+        )
     }
 }
 
