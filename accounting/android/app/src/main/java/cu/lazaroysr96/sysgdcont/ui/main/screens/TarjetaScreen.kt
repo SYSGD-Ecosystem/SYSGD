@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -151,7 +152,7 @@ fun TarjetaScreen(viewModel: TarjetaViewModel) {
     if (uiState.showQRTransfermovilDialog && uiState.tarjetaSeleccionada != null) {
         QRDialogTransfermovil(
             tarjeta = uiState.tarjetaSeleccionada!!,
-            onDismiss = { viewModel.showQRDialog(null) }
+            onDismiss = { viewModel.showQRTransfermovilDialog(null) }
         )
     }
 
@@ -218,7 +219,11 @@ private fun TarjetaCard(
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onGenerateQRTransfermovil) {
-                        Icon(Icons.Default.QrCode, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Payments,
+                            contentDescription = "QR para pagar con Transfermovil",
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                     IconButton(onClick = onToggleFavorita) {
                         Icon(
@@ -265,8 +270,32 @@ private fun TarjetaCard(
                     ) {
                         Icon(Icons.Default.QrCode, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Ver QR")
+                        Text("QR tarjeta")
                     }
+                    OutlinedButton(
+                        onClick = onGenerateQRTransfermovil,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Payments, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("QR pago")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "QR tarjeta: sirve para compartir esta tarjeta con otro telefono. QR pago: sirve para iniciar un pago en Transfermovil.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     OutlinedButton(
                         onClick = onDelete,
                         modifier = Modifier.weight(1f),
@@ -380,12 +409,24 @@ private fun QRDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("QR de ${tarjeta.nombre}") },
+        title = { Text("QR para compartir tarjeta") },
         text = {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text(
+                        text = "Este QR es para escanear la tarjeta desde otro telefono y guardarla en la app. No es un QR de pago.",
+                        modifier = Modifier.padding(12.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        textAlign = TextAlign.Center
+                    )
+                }
                 qrBitmap?.let {
                     Image(
                         bitmap = it.asImageBitmap(),
@@ -423,12 +464,24 @@ private fun QRDialogTransfermovil(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("QR de Transfermóvil ${tarjeta.nombre}") },
+        title = { Text("QR para pagar con Transfermovil") },
         text = {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text(
+                        text = "Este QR intenta abrir o completar una transferencia en Transfermovil con esta tarjeta y telefono. Usalo solo para pagos.",
+                        modifier = Modifier.padding(12.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        textAlign = TextAlign.Center
+                    )
+                }
                 qrBitmap?.let {
                     Image(
                         bitmap = it.asImageBitmap(),

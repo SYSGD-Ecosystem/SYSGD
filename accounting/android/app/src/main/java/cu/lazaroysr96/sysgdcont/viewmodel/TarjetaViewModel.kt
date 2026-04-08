@@ -73,11 +73,23 @@ class TarjetaViewModel @Inject constructor(
     }
 
     fun showQRDialog(tarjeta: Tarjeta?) {
-        _uiState.update { it.copy(showQRDialog = tarjeta != null, tarjetaSeleccionada = tarjeta) }
+        _uiState.update {
+            it.copy(
+                showQRDialog = tarjeta != null,
+                showQRTransfermovilDialog = false,
+                tarjetaSeleccionada = tarjeta
+            )
+        }
     }
 
     fun showQRTransfermovilDialog(tarjeta: Tarjeta?) {
-        _uiState.update { it.copy(showQRTransfermovilDialog = tarjeta != null, tarjetaSeleccionada = tarjeta) }
+        _uiState.update {
+            it.copy(
+                showQRTransfermovilDialog = tarjeta != null,
+                showQRDialog = false,
+                tarjetaSeleccionada = tarjeta
+            )
+        }
     }
 
     fun showScanDialog(show: Boolean) {
