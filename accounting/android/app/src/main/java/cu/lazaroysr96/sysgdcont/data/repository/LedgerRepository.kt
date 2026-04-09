@@ -1660,7 +1660,7 @@ class LedgerRepository @Inject constructor(
         table.addCell(textCell(generalData.anio, boldFont, 11f, TextAlignment.CENTER, colspan = 2))
         table.addCell(textCell("Nombre(s) y Apellidos del Contribuyente", regularFont, 9f, TextAlignment.CENTER, colspan = 6))
         table.addCell(textCell("NIT", boldFont, 10f, TextAlignment.CENTER, colspan = 2))
-        table.addCell(textCell(generalData.nombre, regularFont, 10f, TextAlignment.LEFT, colspan = 6))
+        table.addCell(textCell(generalData.nombre, regularFont, 10f, TextAlignment.CENTER, colspan = 6))
         table.addCell(textCell(generalData.nit, regularFont, 10f, TextAlignment.LEFT, colspan = 2))
         table.addCell(textCell("Domicilio fiscal: (lugar donde desarrolla la actividad): calle, No, apto, entre calles:", regularFont, 9f, TextAlignment.LEFT, colspan = 8))
         table.addCell(textCell(generalData.fiscalCalle, regularFont, 10f, TextAlignment.LEFT, colspan = 8))
@@ -1692,9 +1692,9 @@ class LedgerRepository @Inject constructor(
         table.addCell(textCell("D", regularFont, 10f, TextAlignment.CENTER))
         table.addCell(textCell("M", regularFont, 10f, TextAlignment.CENTER))
         table.addCell(textCell("A", regularFont, 10f, TextAlignment.CENTER))
-        table.addCell(textCell(generalData.firmaDia, regularFont, 10f, TextAlignment.CENTER))
-        table.addCell(textCell(generalData.firmaMes, regularFont, 10f, TextAlignment.CENTER))
-        table.addCell(textCell(generalData.firmaAnio, regularFont, 10f, TextAlignment.CENTER))
+        table.addCell(textCell(/*generalData.firmaDia*/"\n", regularFont, 10f, TextAlignment.CENTER))
+        table.addCell(textCell(/*generalData.firmaMes*/"\n", regularFont, 10f, TextAlignment.CENTER))
+        table.addCell(textCell(/*generalData.firmaAnio*/"\n", regularFont, 10f, TextAlignment.CENTER))
         return table
     }
 

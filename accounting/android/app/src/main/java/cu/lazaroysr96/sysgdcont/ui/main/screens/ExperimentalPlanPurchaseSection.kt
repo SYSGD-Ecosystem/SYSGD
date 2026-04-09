@@ -90,204 +90,200 @@ fun ExperimentalPlanPurchaseSection(
                     "Activa las funciones experimentales para probar este flujo de compra antes de llevarlo a producción.",
                     style = MaterialTheme.typography.bodyMedium
                 )
-                return@Column
-            }
-
-            if (uiState.isLoading && uiState.catalog == null) {
+            } else if (uiState.isLoading && uiState.catalog == null) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
                 ) {
                     CircularProgressIndicator()
                 }
-                return@Column
-            }
+            } else {
+                uiState.error?.let { error ->
+                    StatusCard(
+                        title = "No se pudo cargar todo",
+                        body = error,
+                        highlighted = true,
+                        onAction = onDismissError,
+                        actionLabel = "Ocultar"
+                    )
+                }
 
-            uiState.error?.let { error ->
-                StatusCard(
-                    title = "No se pudo cargar todo",
-                    body = error,
-                    highlighted = true,
-                    onAction = onDismissError,
-                    actionLabel = "Ocultar"
-                )
-            }
+                uiState.infoMessage?.let { message ->
+                    StatusCard(
+                        title = "Estado de la prueba",
+                        body = message,
+                        highlighted = false,
+                        onAction = onDismissInfo,
+                        actionLabel = "Cerrar"
+                    )
+                }
 
-            uiState.infoMessage?.let { message ->
-                StatusCard(
-                    title = "Estado de la prueba",
-                    body = message,
-                    highlighted = false,
-                    onAction = onDismissInfo,
-                    actionLabel = "Cerrar"
-                )
-            }
-
-            instructions?.let {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                instructions?.let {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Datos para Transfermóvil", fontWeight = FontWeight.SemiBold)
-                        Text("Tarjeta destino: ${it.receiverCard}", style = MaterialTheme.typography.bodyMedium)
-                        Text("Teléfono a confirmar: ${it.confirmationPhone}", style = MaterialTheme.typography.bodyMedium)
-                        it.importantNotes.forEach { note ->
-                            Text("• $note", style = MaterialTheme.typography.bodySmall)
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text("Datos para Transfermóvil", fontWeight = FontWeight.SemiBold)
+                            Text("Tarjeta destino: ${it.receiverCard}", style = MaterialTheme.typography.bodyMedium)
+                            Text("Teléfono a confirmar: ${it.confirmationPhone}", style = MaterialTheme.typography.bodyMedium)
+                            it.importantNotes.forEach { note ->
+                                Text("• $note", style = MaterialTheme.typography.bodySmall)
+                            }
                         }
                     }
                 }
-            }
 
-            Text("Selecciona el plan a probar", fontWeight = FontWeight.SemiBold)
-            products.forEach { product ->
-                ProductCard(
-                    product = product,
-                    selected = product.id == (selectedProduct?.id ?: ""),
-                    onSelect = { selectedProductId = product.id }
-                )
-            }
-
-            selectedProduct?.let { product ->
-                Text(
-                    "Vas a registrar ${product.name} por ${product.price_cup} CUP. Si el mensaje coincide, el backend activará el plan en modo de prueba para depurar el flujo.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            OutlinedTextField(
-                value = payerPhone,
-                onValueChange = { payerPhone = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Tu número móvil") },
-                supportingText = { Text("Debe ser el número desde el que hiciste la transferencia.") },
-                singleLine = true
-            )
-
-            OutlinedTextField(
-                value = smsMessage,
-                onValueChange = { smsMessage = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Mensaje recibido de Transfermóvil") },
-                supportingText = { Text("Pega el SMS completo para extraer monto, fecha y transacción.") },
-                minLines = 5
-            )
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                        RoundedCornerShape(12.dp)
+                Text("Selecciona el plan a probar", fontWeight = FontWeight.SemiBold)
+                products.forEach { product ->
+                    ProductCard(
+                        product = product,
+                        selected = product.id == (selectedProduct?.id ?: ""),
+                        onSelect = { selectedProductId = product.id }
                     )
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Confirmé el teléfono 51158544", fontWeight = FontWeight.SemiBold)
+                }
+
+                selectedProduct?.let { product ->
                     Text(
-                        "Sin esto la compra puede retrasarse o perderse en la verificación.",
-                        style = MaterialTheme.typography.bodySmall
+                        "Vas a registrar ${product.name} por ${product.price_cup} CUP. Si el mensaje coincide, el backend activará el plan en modo de prueba para depurar el flujo.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Switch(
-                    checked = confirmationPhoneAcknowledged,
-                    onCheckedChange = { confirmationPhoneAcknowledged = it }
+
+                OutlinedTextField(
+                    value = payerPhone,
+                    onValueChange = { payerPhone = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Tu número móvil") },
+                    supportingText = { Text("Debe ser el número desde el que hiciste la transferencia.") },
+                    singleLine = true
                 )
-            }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                        RoundedCornerShape(12.dp)
-                    )
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Marqué que el destinatario recibe mi número", fontWeight = FontWeight.SemiBold)
-                    Text(
-                        "Esto ayuda a encontrar la operación más rápido en el historial.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Switch(
-                    checked = receiverPhoneShared,
-                    onCheckedChange = { receiverPhoneShared = it }
+                OutlinedTextField(
+                    value = smsMessage,
+                    onValueChange = { smsMessage = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Mensaje recibido de Transfermóvil") },
+                    supportingText = { Text("Pega el SMS completo para extraer monto, fecha y transacción.") },
+                    minLines = 5
                 )
-            }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(
-                    onClick = onRefresh,
-                    enabled = !uiState.isLoading && !uiState.isSubmitting
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                            RoundedCornerShape(12.dp)
+                        )
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Actualizar")
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Confirmé el teléfono 51158544", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "Sin esto la compra puede retrasarse o perderse en la verificación.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Switch(
+                        checked = confirmationPhoneAcknowledged,
+                        onCheckedChange = { confirmationPhoneAcknowledged = it }
+                    )
                 }
 
-                Button(
-                    onClick = {
-                        val productId = selectedProduct?.id ?: return@Button
-                        onSubmit(
-                            productId,
-                            payerPhone,
-                            smsMessage,
-                            confirmationPhoneAcknowledged,
-                            receiverPhoneShared
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                            RoundedCornerShape(12.dp)
                         )
-                    },
-                    enabled = selectedProduct != null && !uiState.isSubmitting
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (uiState.isSubmitting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.height(18.dp),
-                            strokeWidth = 2.dp
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Marqué que el destinatario recibe mi número", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "Esto ayuda a encontrar la operación más rápido en el historial.",
+                            style = MaterialTheme.typography.bodySmall
                         )
-                    } else {
-                        Text("Registrar compra")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Switch(
+                        checked = receiverPhoneShared,
+                        onCheckedChange = { receiverPhoneShared = it }
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = onRefresh,
+                        enabled = !uiState.isLoading && !uiState.isSubmitting
+                    ) {
+                        Text("Actualizar")
+                    }
+
+                    Button(
+                        onClick = {
+                            val productId = selectedProduct?.id ?: return@Button
+                            onSubmit(
+                                productId,
+                                payerPhone,
+                                smsMessage,
+                                confirmationPhoneAcknowledged,
+                                receiverPhoneShared
+                            )
+                        },
+                        enabled = selectedProduct != null && !uiState.isSubmitting
+                    ) {
+                        if (uiState.isSubmitting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.height(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Registrar compra")
+                        }
                     }
                 }
-            }
 
-            if (uiState.orders.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("Tus solicitudes recientes", fontWeight = FontWeight.SemiBold)
-                uiState.orders.take(5).forEach { order ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                "${order.plan_tier.uppercase()} • ${order.duration_months} mes(es) • ${order.expected_amount_cup} CUP",
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                "Estado: ${formatStatus(order.status)}",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            order.sms_transaction_id?.let {
-                                Text("Transacción: $it", style = MaterialTheme.typography.bodySmall)
-                            }
-                            order.grace_expires_at?.let {
+                if (uiState.orders.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Tus solicitudes recientes", fontWeight = FontWeight.SemiBold)
+                    uiState.orders.take(5).forEach { order ->
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
                                 Text(
-                                    "Gracia provisional hasta: ${it.take(10)}",
-                                    style = MaterialTheme.typography.bodySmall
+                                    "${order.plan_tier.uppercase()} • ${order.duration_months} mes(es) • ${order.expected_amount_cup} CUP",
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    "Estado: ${formatStatus(order.status)}",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                order.sms_transaction_id?.let {
+                                    Text("Transacción: $it", style = MaterialTheme.typography.bodySmall)
+                                }
+                                order.grace_expires_at?.let {
+                                    Text(
+                                        "Gracia provisional hasta: ${it.take(10)}",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                                Text(
+                                    "Registrada: ${order.created_at.take(10)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            Text(
-                                "Registrada: ${order.created_at.take(10)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
                         }
                     }
                 }
