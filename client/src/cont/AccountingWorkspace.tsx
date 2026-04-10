@@ -2,6 +2,7 @@ import { FC, useState } from "react";
 import AccountingToolBar from "./AccountingToolBar";
 import AccountingSidebar from "./AccountingSidebar";
 import ExpenseRegisterPage from "./core/ExpenseRegisterPage";
+import FichaPrecio from "./FichaPrecio";
 
 const AccountingWorkspace: FC = () => {
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -29,6 +30,7 @@ const AccountingWorkspace: FC = () => {
 				/>
 				<main className="flex-1 overflow-hidden">
 					{activeSection === "dj" && (<ExpenseRegisterPage />)}
+					{activeSection === "fichaprecio" && (<FichaPrecio />)}
 				</main>
 			</div>
 		</div>

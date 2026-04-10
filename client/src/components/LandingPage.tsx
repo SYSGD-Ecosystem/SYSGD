@@ -66,7 +66,7 @@ export default function LandingPage() {
 		},
 		{
 			icon: MessageCircle,
-			title: "SYSGD-ChAT",
+			title: "SYSGD-CHAT",
 			subtitle: "Plataforma de Comunicación Empresarial",
 			description:
 				"Sistema de mensajería y colaboración en tiempo real para equipos empresariales, integrado con IA para productividad.",

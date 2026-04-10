@@ -13,8 +13,8 @@ android {
         applicationId "cu.lazaroysr96.sysgdcont"
         minSdk 24
         targetSdk 34
-        versionCode 17
-        versionName "2.2.3 (tcp ventas)"
+        versionCode 18
+        versionName "2.2.4 (tcp ventas)"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

@@ -92,7 +92,7 @@ El proyecto usaba:
 3. **Navegación**: Navigation Compose con bottom tabs
 4. **Persistencia**: DataStore (SharedPreferences) para offline
 5. **Networking**: Retrofit + OkHttp para API REST
-6. **Authentication**: 
+6. **Authentication**:
    - Login normal (email/password)
    - Token manual (para usuarios Google)
 
@@ -120,4 +120,4 @@ El proyecto usaba:
 - **Java 21 NO funciona** con AGP 8.2.0
 - **Java 17 funciona correctamente**
 - Compilación: `export JAVA_HOME=/usr/lib/jvm/java-17-openjdk && ./gradlew assembleDebug`
-- APK actual: ~15MB (incluye Compose libraries)
+- APK actual: ~39MB (incluye Compose libraries)
