@@ -12,7 +12,13 @@ export const normalizeClientSource = (
 	fallback: ClientSource = "unknown",
 ): ClientSource => {
 	const value = Array.isArray(rawSource) ? rawSource[0] : rawSource;
-	const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+	const normalized =
+		typeof value === "string"
+			? value
+					.split(",")[0]
+					.trim()
+					.toLowerCase()
+			: "";
 
 	switch (normalized) {
 		case "main":

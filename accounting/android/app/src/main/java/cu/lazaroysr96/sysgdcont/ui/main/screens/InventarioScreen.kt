@@ -64,7 +64,8 @@ fun InventarioScreen(
     facturaViewModel: FacturaViewModel, // = hiltViewModel()
     experimentalFeaturesEnabled: Boolean,
     hideExperimentalDialogPermanently: Boolean,
-    onHideExperimentalDialogChange: (Boolean) -> Unit
+    onHideExperimentalDialogChange: (Boolean) -> Unit,
+    canGenerateInvoices: Boolean,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val facturaState by facturaViewModel.uiState.collectAsStateWithLifecycle()
@@ -200,7 +201,12 @@ fun InventarioScreen(
             0 -> PuntoVentaContent(viewModel, padding)
             1 -> PuntoCompraContent(viewModel, padding)
             3 -> if (experimentalFeaturesEnabled) InventarioContent(viewModel, padding)
-            2 -> HistorialContent(viewModel, facturaViewModel, padding)
+            2 -> HistorialContent(
+                viewModel = viewModel,
+                facturaViewModel = facturaViewModel,
+                padding = padding,
+                canGenerateInvoices = canGenerateInvoices,
+            )
             4 -> MasContent(viewModel, padding)
         }
     }
@@ -1567,7 +1573,12 @@ private fun MoverProductoDialog(
 
 
 @Composable
-private fun HistorialContent(viewModel: InventarioViewModel, facturaViewModel: FacturaViewModel, padding: PaddingValues) {
+private fun HistorialContent(
+    viewModel: InventarioViewModel,
+    facturaViewModel: FacturaViewModel,
+    padding: PaddingValues,
+    canGenerateInvoices: Boolean,
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Column(
@@ -1621,6 +1632,21 @@ private fun HistorialContent(viewModel: InventarioViewModel, facturaViewModel: F
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    if (!canGenerateInvoices) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Text(
+                                text = "La generación de facturas requiere plan Pro o VIP en la edición freemium.",
+                                modifier = Modifier.padding(12.dp),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1700,7 +1726,8 @@ private fun HistorialContent(viewModel: InventarioViewModel, facturaViewModel: F
                                 fecha = fecha,
                                 ventas = ventas,
                                 onAnular = { ventaId -> viewModel.anularVenta(ventaId) },
-                                onGenerarFactura = { venta, lineas -> facturaViewModel.showFacturaDialog(venta, lineas) }
+                                onGenerarFactura = { venta, lineas -> facturaViewModel.showFacturaDialog(venta, lineas) },
+                                canGenerateInvoices = canGenerateInvoices,
                             )
                         }
                     }
@@ -1944,7 +1971,8 @@ private fun DiaVentasCard(
     fecha: String,
     ventas: List<Pair<Venta, List<LineaVenta>>>,
     onAnular: (String) -> Unit,
-    onGenerarFactura: (Venta, List<LineaVenta>) -> Unit
+    onGenerarFactura: (Venta, List<LineaVenta>) -> Unit,
+    canGenerateInvoices: Boolean,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val totalDia = ventas.sumOf { it.first.total }
@@ -2003,7 +2031,8 @@ private fun DiaVentasCard(
                             venta = venta,
                             lineas = lineas,
                             onAnular = { onAnular(venta.id) },
-                            onGenerarFactura = { onGenerarFactura(venta, lineas) }
+                            onGenerarFactura = { onGenerarFactura(venta, lineas) },
+                            canGenerateInvoices = canGenerateInvoices,
                         )
                     }
                 }
@@ -2018,7 +2047,8 @@ private fun VentaItem(
     venta: Venta,
     lineas: List<LineaVenta>,
     onAnular: () -> Unit,
-    onGenerarFactura: () -> Unit
+    onGenerarFactura: () -> Unit,
+    canGenerateInvoices: Boolean,
 ) {
 
     var expanded by remember { mutableStateOf(false) }
@@ -2099,7 +2129,7 @@ private fun VentaItem(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    TextButton(onClick = onGenerarFactura) {
+                    TextButton(onClick = onGenerarFactura, enabled = canGenerateInvoices) {
                         Icon(Icons.Default.Receipt, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Factura")

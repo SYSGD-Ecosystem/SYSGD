@@ -1,6 +1,7 @@
 package cu.lazaroysr96.sysgdcont.di
 
 import android.content.Context
+import cu.lazaroysr96.sysgdcont.core.AppEdition
 import cu.lazaroysr96.sysgdcont.data.api.ApiService
 import dagger.Module
 import dagger.Provides
@@ -28,7 +29,9 @@ object NetworkModule {
         return OkHttpClient.Builder()
             .addInterceptor { chain ->
                 val request = chain.request().newBuilder()
-                    .addHeader("X-App-Source", "android")
+                    .header("X-App-Source", "sysgd_cont_android")
+                    .header("X-App-Distribution", AppEdition.distribution)
+                    .header("X-App-Package", AppEdition.applicationId)
                     .build()
                 chain.proceed(request)
             }

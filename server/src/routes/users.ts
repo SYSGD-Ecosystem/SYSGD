@@ -5,11 +5,12 @@ import { isAuthenticated } from "../middlewares/auth-jwt";
 import { getCurrentUserData, updateAdminUser, updateAdminUserPlan } from "../controllers/users";
 import { getCurrentUser } from "../controllers/auth";
 import { getUsageSummary } from "../middlewares/usageLimits.middleware";
-import { maybeRenewPlanCredits, normalizeBillingState } from "../services/billing-credits.service";
+import { activatePlanBilling, maybeRenewPlanCredits, normalizeBillingState } from "../services/billing-credits.service";
 import { getClientIp, isIpFromCuba } from "../utils/ip";
 import { registerIpRateLimit } from "../middlewares/rate-limit";
 import { isContabilidadSource, normalizeClientSource } from "../utils/client-source";
 import { EmailVerificationService } from "../services/emailVerification.service";
+import { createDefaultUserData } from "../utils/billing";
 
 const router = Router();
 
@@ -76,6 +77,45 @@ const TIER_LIMITS = {
   }
 };
 
+type AndroidDistribution = "freemium" | "apklis" | "unknown";
+
+const normalizeAndroidDistribution = (
+  rawDistribution: unknown,
+  rawPackage: unknown,
+): AndroidDistribution => {
+  const distribution = Array.isArray(rawDistribution) ? rawDistribution[0] : rawDistribution;
+  const normalizedDistribution =
+    typeof distribution === "string" ? distribution.split(",")[0].trim().toLowerCase() : "";
+
+  if (normalizedDistribution === "freemium") return "freemium";
+  if (normalizedDistribution === "apklis" || normalizedDistribution === "paid") return "apklis";
+
+  const packageName = Array.isArray(rawPackage) ? rawPackage[0] : rawPackage;
+  const normalizedPackage =
+    typeof packageName === "string" ? packageName.split(",")[0].trim().toLowerCase() : "";
+
+  if (normalizedPackage.endsWith(".freemium")) return "freemium";
+  if (normalizedPackage.startsWith("cu.lazaroysr96.sysgdcont")) return "apklis";
+
+  return "unknown";
+};
+
+const buildRegistrationUserData = (
+  registrationSource: string,
+  distribution: AndroidDistribution,
+) => {
+  const defaultUserData = createDefaultUserData();
+
+  if (registrationSource === "sysgd_cont_android" && distribution === "apklis") {
+    return {
+      ...defaultUserData,
+      billing: activatePlanBilling(defaultUserData.billing, "pro", 12),
+    };
+  }
+
+  return defaultUserData;
+};
+
 // ============================================
 // RUTAS PÚBLICAS
 // ============================================
@@ -95,6 +135,15 @@ router.post("/register", registerIpRateLimit, async (req, res) => {
   // Verificar origen del registro (sysgd-cont vs plataforma principal)
   const registrationSource = normalizeClientSource(req.headers["x-app-source"], "unknown");
   const isFromSysgdCont = isContabilidadSource(registrationSource);
+  const androidDistribution = normalizeAndroidDistribution(
+    req.headers["x-app-distribution"],
+    req.headers["x-app-package"],
+  );
+  const registrationUserData = buildRegistrationUserData(registrationSource, androidDistribution);
+  const grantedPlan =
+    registrationSource === "sysgd_cont_android" && androidDistribution === "apklis"
+      ? { tier: "pro", durationMonths: 12, reason: "android_apklis_bundle" }
+      : null;
 
   // Validar IP solo para sysgd-cont
   if (isFromSysgdCont) {
@@ -122,9 +171,15 @@ router.post("/register", registerIpRateLimit, async (req, res) => {
         email,
         password,
         isFirstUser ? "admin" : "user",
-        JSON.stringify(DEFAULT_USER_DATA),
+        JSON.stringify(registrationUserData),
         registrationSource,
-        JSON.stringify({ rawHeader: req.headers["x-app-source"] ?? null }),
+        JSON.stringify({
+          rawSourceHeader: req.headers["x-app-source"] ?? null,
+          rawDistributionHeader: req.headers["x-app-distribution"] ?? null,
+          rawPackageHeader: req.headers["x-app-package"] ?? null,
+          androidDistribution,
+          grantedPlan,
+        }),
       ]
     );
 
@@ -217,6 +272,7 @@ router.get("/plan", async (req, res) => {
 
     res.json({
       tier: billing.tier || 'free',
+      hasActivePlan: billing.tier !== "free" && !!billing.plan_validity?.expires_at,
       credits: {
         available: billing.ai_task_credits || 0,
         plan: billing.plan_credits || 0,
@@ -224,6 +280,13 @@ router.get("/plan", async (req, res) => {
         bonus: (billing.bonus_credits || []).reduce((acc: number, item: { amount?: number }) => acc + (item.amount || 0), 0),
         next_reset: billing.billing_cycle?.next_reset
       },
+      planValidity: billing.plan_validity
+        ? {
+            startedAt: billing.plan_validity.started_at,
+            expiresAt: billing.plan_validity.expires_at,
+            durationMonths: billing.plan_validity.duration_months,
+          }
+        : null,
       limits: billing.limits || TIER_LIMITS.free,
       spending_priority: billing.credit_spending_priority || ["bonus", "plan", "purchased"],
       hasCustomToken: !!userData.custom_tokens?.gemini

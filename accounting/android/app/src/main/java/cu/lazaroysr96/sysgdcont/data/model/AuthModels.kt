@@ -89,8 +89,16 @@ data class UserPlanCredits(
     val next_reset: String? = null
 )
 
+data class UserPlanValidity(
+    val startedAt: String? = null,
+    val expiresAt: String? = null,
+    val durationMonths: Int? = null
+)
+
 data class UserPlanResponse(
     val tier: String = "free",
     val credits: UserPlanCredits = UserPlanCredits(),
+    val hasActivePlan: Boolean = false,
+    val planValidity: UserPlanValidity? = null,
     val hasCustomToken: Boolean = false
 )

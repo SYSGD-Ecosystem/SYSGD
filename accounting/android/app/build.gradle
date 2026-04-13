@@ -10,7 +10,7 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId "cu.lazaroysr96.sysgdcont"
+        applicationId "cu.lazaroysr96.sysgdcont.freemium"
         minSdk 24
         targetSdk 34
         versionCode 18
@@ -40,6 +40,7 @@ android {
 
     buildFeatures {
         compose true
+        buildConfig true
     }
 
     composeOptions {

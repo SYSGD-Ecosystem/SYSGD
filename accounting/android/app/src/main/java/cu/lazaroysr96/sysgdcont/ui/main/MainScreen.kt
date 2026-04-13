@@ -91,6 +91,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.datastore.preferences.core.stringPreferencesKey
 import cu.lazaroysr96.sysgdcont.R
+import cu.lazaroysr96.sysgdcont.core.AppEdition
 import cu.lazaroysr96.sysgdcont.data.model.SyncAction
 import cu.lazaroysr96.sysgdcont.ui.main.screens.GastosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.GeneralesScreen
@@ -98,7 +99,7 @@ import cu.lazaroysr96.sysgdcont.ui.main.screens.IngresosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.InventarioScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.NomenclatorsScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.DocumentosScreen
-import cu.lazaroysr96.sysgdcont.ui.main.screens.ExperimentalPlanPurchaseSection
+import cu.lazaroysr96.sysgdcont.ui.main.screens.LicenseCenterScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.ResumenScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.SecuritySettingsScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.TarjetaScreen
@@ -116,6 +117,7 @@ import kotlinx.coroutines.launch
 
 private const val ADMIN_PHONE = "5351158544"
 private const val ABOUT_ROUTE = "about"
+private const val LICENSES_ROUTE = "licenses"
 private const val HELP_ROUTE = "help"
 private const val RESOURCES_ROUTE = "resources"
 private const val BACKUP_ROUTE = "backup_json"
@@ -178,6 +180,12 @@ fun MainScreen(
     val drawerState =
             rememberDrawerState(initialValue = androidx.compose.material3.DrawerValue.Closed)
     val drawerScope = rememberCoroutineScope()
+    val currentTier = (planPurchaseState.currentPlan?.tier ?: "free").lowercase()
+    val hasActiveLicense = planPurchaseState.currentPlan?.hasActivePlan == true && currentTier != "free"
+    val isFreemiumBuild = AppEdition.isFreemium
+    val canUseProFeatures = !isFreemiumBuild || currentTier == "pro" || currentTier == "vip"
+    val canUseVipFeatures = !isFreemiumBuild || currentTier == "vip"
+    val licensesDrawerLabel = if (hasActiveLicense) "Ver licencia" else "Comprar licencia"
     var showCreditsInfoDialog by remember { mutableStateOf(false) }
     var showVentasHelpDialog by remember { mutableStateOf(false) }
     var showAccessKeyPasswordDialog by remember { mutableStateOf(false) }
@@ -214,6 +222,12 @@ fun MainScreen(
         }
     }
 
+    LaunchedEffect(isFreemiumBuild, canUseVipFeatures) {
+        if (isFreemiumBuild && !canUseVipFeatures && ledgerState.experimentalFeaturesEnabled) {
+            ledgerViewModel.setExperimentalFeaturesEnabled(false)
+        }
+    }
+
     // val drawerWidthFraction = if (isLandscape) 0.5f else 0.8f
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -225,11 +239,13 @@ fun MainScreen(
                                     .statusBarsPadding()
                                     .navigationBarsPadding()
                     ) {
-                    Column(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
+                                .padding(bottom = 84.dp)
+                        ) {
                             Spacer(modifier = Modifier.height(12.dp))
                             Box(
                                     modifier =
@@ -270,10 +286,14 @@ fun MainScreen(
                                     }
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column(modifier = Modifier.fillMaxWidth().padding(end = 4.dp)) {
-                                        Text(
-                                                text = authState.currentUser?.name ?: "Usuario",
-                                                style = MaterialTheme.typography.titleSmall
-                                        )
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                    text = authState.currentUser?.name ?: "Usuario",
+                                                    style = MaterialTheme.typography.titleSmall
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            UserTierBadge(currentTier)
+                                        }
                                         Text(
                                                 text = authState.currentUser?.email ?: "Sin correo",
                                                 style = MaterialTheme.typography.bodySmall,
@@ -317,7 +337,7 @@ fun MainScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                             Divider()
                             Text(
-                                "Registro Contable DJ",
+                                "Guías y apoyo",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -327,7 +347,7 @@ fun MainScreen(
                                     label = { Text("Ayuda (llenado)") },
                                     selected = currentRoute == HELP_ROUTE,
                                     icon = {
-                                        Icon(Icons.Default.Description, contentDescription = null)
+                                        Icon(Icons.Default.Help, contentDescription = null)
                                     },
                                     onClick = {
                                         navController.navigate(HELP_ROUTE) {
@@ -340,7 +360,7 @@ fun MainScreen(
                                     label = { Text("Recursos útiles") },
                                     selected = currentRoute == RESOURCES_ROUTE,
                                     icon = {
-                                        Icon(Icons.Default.Description, contentDescription = null)
+                                        Icon(Icons.Default.Search, contentDescription = null)
                                     },
                                     onClick = {
                                         navController.navigate(RESOURCES_ROUTE) {
@@ -349,20 +369,6 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
-                            NavigationDrawerItem(
-                                    label = { Text("Respaldo JSON") },
-                                    selected = currentRoute == BACKUP_ROUTE,
-                                    icon = {
-                                        Icon(Icons.Default.Description, contentDescription = null)
-                                    },
-                                    onClick = {
-                                        navController.navigate(BACKUP_ROUTE) {
-                                            launchSingleTop = true
-                                        }
-                                        drawerScope.launch { drawerState.close() }
-                                    }
-                            )
-                            
                             Spacer(modifier = Modifier.height(8.dp))
                             Divider()
                             Text(
@@ -383,9 +389,9 @@ fun MainScreen(
                                     }
                             )
                             NavigationDrawerItem(
-                                    label = { Text("Nomescladores") },
+                                    label = { Text("Nomencladores") },
                                     selected = currentRoute == NOMENCLATORS_ROUTE,
-                                    icon = { Icon(Icons.Default.Search, contentDescription = null) },
+                                    icon = { Icon(Icons.Default.List, contentDescription = null) },
                                     onClick = {
                                         navController.navigate(NOMENCLATORS_ROUTE) {
                                             launchSingleTop = true
@@ -418,6 +424,12 @@ fun MainScreen(
 
                             Spacer(modifier = Modifier.height(12.dp))
                             Divider()
+                            Text(
+                                "Cuenta y plataforma",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
 
                             NavigationDrawerItem(
                                     label = { Text("Seguridad y cuenta") },
@@ -427,6 +439,35 @@ fun MainScreen(
                                     },
                                     onClick = {
                                         navController.navigate(SECURITY_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+
+                            NavigationDrawerItem(
+                                    label = { Text(licensesDrawerLabel) },
+                                    selected = currentRoute == LICENSES_ROUTE,
+                                    icon = {
+                                        Icon(Icons.Default.CreditCard, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        planPurchaseViewModel.loadData(force = true)
+                                        navController.navigate(LICENSES_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+
+                            NavigationDrawerItem(
+                                    label = { Text("Respaldo y acceso") },
+                                    selected = currentRoute == BACKUP_ROUTE,
+                                    icon = {
+                                        Icon(Icons.Default.Sync, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        navController.navigate(BACKUP_ROUTE) {
                                             launchSingleTop = true
                                         }
                                         drawerScope.launch { drawerState.close() }
@@ -445,9 +486,9 @@ fun MainScreen(
                                     }
                             )
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
                         }
-                        Column {
+                        Column(modifier = Modifier.align(Alignment.BottomStart)) {
                             Divider()
                             NavigationDrawerItem(
                                     label = { Text("Cerrar sesión") },
@@ -475,12 +516,13 @@ fun MainScreen(
                                 Text(
                                         when (currentRoute) {
                                             ABOUT_ROUTE -> "Acerca de"
+                                            LICENSES_ROUTE -> if (hasActiveLicense) "Tu licencia" else "Comprar licencia"
                                             HELP_ROUTE -> "Ayuda de llenado"
                                             RESOURCES_ROUTE -> "Recursos útiles"
-                                            BACKUP_ROUTE -> "Respaldo JSON"
+                                            BACKUP_ROUTE -> "Respaldo y acceso"
                                             SECURITY_ROUTE -> "Seguridad y cuenta"
                                             VENTAS_ROUTE -> "Punto de Venta"
-                                            NOMENCLATORS_ROUTE -> "Nomescladores"
+                                            NOMENCLATORS_ROUTE -> "Nomencladores"
                                             TARJETAS_ROUTE -> "Tarjetas"
                                             DOCUMENTOS_ROUTE -> "Documentos"
                                             else -> "Gestor Contable TCP"
@@ -488,7 +530,7 @@ fun MainScreen(
                                 )
                             },
                             navigationIcon = {
-                                if (currentRoute == ABOUT_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE || currentRoute == NOMENCLATORS_ROUTE || currentRoute == TARJETAS_ROUTE || currentRoute == DOCUMENTOS_ROUTE) {
+                                if (currentRoute == ABOUT_ROUTE || currentRoute == LICENSES_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE || currentRoute == NOMENCLATORS_ROUTE || currentRoute == TARJETAS_ROUTE || currentRoute == DOCUMENTOS_ROUTE) {
                                     IconButton(onClick = { navController.popBackStack() }) {
                                         Icon(
                                                 Icons.Default.ArrowBack,
@@ -567,19 +609,35 @@ fun MainScreen(
                 composable(MainTab.Ingresos.route) { IngresosScreen(ledgerViewModel) }
                 composable(MainTab.Gastos.route) { GastosScreen(ledgerViewModel) }
                 composable(MainTab.Tributos.route) { TributosScreen(ledgerViewModel) }
-                composable(MainTab.Resumen.route) { ResumenScreen(ledgerViewModel, ledgerState.experimentalFeaturesEnabled) }
+                composable(MainTab.Resumen.route) {
+                    ResumenScreen(
+                        ledgerViewModel,
+                        experimentalFeaturesEnabled = ledgerState.experimentalFeaturesEnabled,
+                    )
+                }
                 composable(VENTAS_ROUTE) {
                     InventarioScreen(
                         inventarioViewModel,
                         facturaViewModel,
                         ledgerState.experimentalFeaturesEnabled,
                         ledgerState.hideInventarioDisclaimer,
-                        ledgerViewModel::setHideInventarioDisclaimer
+                        ledgerViewModel::setHideInventarioDisclaimer,
+                        canGenerateInvoices = canUseProFeatures,
                     )
                 }
                 composable(NOMENCLATORS_ROUTE) { NomenclatorsScreen() }
                 composable(TARJETAS_ROUTE) { TarjetaScreen(tarjetaViewModel) }
                 composable(DOCUMENTOS_ROUTE) { DocumentosScreen(documentosViewModel) }
+                composable(LICENSES_ROUTE) {
+                    LicenseCenterScreen(
+                        experimentalFeaturesEnabled = ledgerState.experimentalFeaturesEnabled,
+                        uiState = planPurchaseState,
+                        onRefresh = { planPurchaseViewModel.loadData(force = true) },
+                        onSubmit = planPurchaseViewModel::submitOrder,
+                        onDismissError = planPurchaseViewModel::clearError,
+                        onDismissInfo = planPurchaseViewModel::clearInfoMessage
+                    )
+                }
                 composable(ABOUT_ROUTE) {
                     AboutScreen(
                             onContactWhatsApp = {
@@ -606,11 +664,8 @@ fun MainScreen(
                             },
                             experimentalFeaturesEnabled = ledgerState.experimentalFeaturesEnabled,
                             onExperimentalFeaturesChange = ledgerViewModel::setExperimentalFeaturesEnabled,
-                            planPurchaseState = planPurchaseState,
-                            onRefreshPlanPurchase = { planPurchaseViewModel.loadData(force = true) },
-                            onSubmitPlanPurchase = planPurchaseViewModel::submitOrder,
-                            onDismissPlanPurchaseError = planPurchaseViewModel::clearError,
-                            onDismissPlanPurchaseInfo = planPurchaseViewModel::clearInfoMessage
+                            canUseExperimentalFeatures = canUseVipFeatures,
+                            currentTier = currentTier,
                     )
                 }
                 composable(HELP_ROUTE) {
@@ -658,6 +713,8 @@ fun MainScreen(
                                 val fileName = "sysgd-access-key-$userEmail.json"
                                 exportAccessKeyLauncher.launch(fileName)
                             },
+                            canCreateAccessKey = canUseProFeatures,
+                            currentTier = currentTier,
                     )
                 }
                 composable(SECURITY_ROUTE) {
@@ -982,11 +1039,8 @@ private fun AboutScreen(
     onOpenUrl: (String) -> Unit,
     experimentalFeaturesEnabled: Boolean,
     onExperimentalFeaturesChange: (Boolean) -> Unit,
-    planPurchaseState: cu.lazaroysr96.sysgdcont.viewmodel.PlanPurchaseUiState,
-    onRefreshPlanPurchase: () -> Unit,
-    onSubmitPlanPurchase: (String, String, String, Boolean, Boolean) -> Unit,
-    onDismissPlanPurchaseError: () -> Unit,
-    onDismissPlanPurchaseInfo: () -> Unit
+    canUseExperimentalFeatures: Boolean,
+    currentTier: String,
 ) {
     val context = LocalContext.current
     val appVersion = remember { getAppVersionName(context) }
@@ -1063,6 +1117,18 @@ private fun AboutScreen(
         Divider()
 
         Text(text = "Opciones avanzadas", style = MaterialTheme.typography.titleMedium)
+        if (!canUseExperimentalFeatures) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Funciones experimentales bloqueadas", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        "En la edición freemium esta sección requiere un plan VIP. Tu nivel actual es ${currentTier.uppercase()}.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
         Card(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
@@ -1081,18 +1147,37 @@ private fun AboutScreen(
                 }
                 Switch(
                     checked = experimentalFeaturesEnabled,
-                    onCheckedChange = onExperimentalFeaturesChange
+                    onCheckedChange = onExperimentalFeaturesChange,
+                    enabled = canUseExperimentalFeatures
                 )
             }
         }
+    }
+}
 
-        ExperimentalPlanPurchaseSection(
-            experimentalFeaturesEnabled = experimentalFeaturesEnabled,
-            uiState = planPurchaseState,
-            onRefresh = onRefreshPlanPurchase,
-            onSubmit = onSubmitPlanPurchase,
-            onDismissError = onDismissPlanPurchaseError,
-            onDismissInfo = onDismissPlanPurchaseInfo
+@Composable
+private fun UserTierBadge(tier: String) {
+    val normalizedTier = tier.lowercase()
+    val background = when (normalizedTier) {
+        "vip" -> MaterialTheme.colorScheme.tertiaryContainer
+        "pro" -> MaterialTheme.colorScheme.primaryContainer
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+    val contentColor = when (normalizedTier) {
+        "vip" -> MaterialTheme.colorScheme.onTertiaryContainer
+        "pro" -> MaterialTheme.colorScheme.onPrimaryContainer
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Box(
+        modifier = Modifier
+            .background(background, CircleShape)
+            .padding(horizontal = 10.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = normalizedTier.uppercase(),
+            style = MaterialTheme.typography.labelMedium,
+            color = contentColor
         )
     }
 }
@@ -1225,7 +1310,9 @@ private fun BackupJsonScreen(
         currentUser: cu.lazaroysr96.sysgdcont.data.model.AuthUser?,
         onExportClick: () -> Unit,
         onImportClick: () -> Unit,
-        onExportAccessKeyClick: () -> Unit
+        onExportAccessKeyClick: () -> Unit,
+        canCreateAccessKey: Boolean,
+        currentTier: String,
 ) {
     Column(
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -1278,8 +1365,16 @@ private fun BackupJsonScreen(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        TextButton(onClick = onExportAccessKeyClick, enabled = !isLoading) {
+        TextButton(onClick = onExportAccessKeyClick, enabled = !isLoading && canCreateAccessKey) {
             Text(if (isLoading) "Procesando..." else "Crear llave de acceso")
+        }
+
+        if (!canCreateAccessKey) {
+            Text(
+                text = "En la edición freemium esta función requiere plan Pro o VIP. Tu nivel actual es ${currentTier.uppercase()}.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
         Divider()
