@@ -56,6 +56,7 @@ class AuthRepository @Inject constructor(
         private val USER_EMAIL_KEY = stringPreferencesKey("user_email")
         private val USER_PRIVILEGES_KEY = stringPreferencesKey("user_privileges")
         private val FIRST_LOGIN_KEY = stringPreferencesKey("first_login_sync")
+        private val PLAN_CACHE_KEY = stringPreferencesKey("user_plan_cache")
     }
 
     private val gson = Gson()
@@ -131,7 +132,9 @@ class AuthRepository @Inject constructor(
             val token = getToken() ?: return Result.failure(Exception("No autenticado"))
             val response = apiService.getUserPlan("Bearer $token")
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!)
+                val plan = response.body()!!
+                cachePlan(plan)
+                Result.success(plan)
             } else {
                 if (response.code() == 401 || response.code() == 403) {
                     logout()
@@ -142,6 +145,11 @@ class AuthRepository @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    suspend fun getCachedPlan(): UserPlanResponse? {
+        val raw = context.authDataStore.data.first()[PLAN_CACHE_KEY] ?: return null
+        return runCatching { gson.fromJson(raw, UserPlanResponse::class.java) }.getOrNull()
     }
 
     fun getApiBaseUrl(): String {
@@ -343,6 +351,7 @@ class AuthRepository @Inject constructor(
             prefs.remove(USER_NAME_KEY)
             prefs.remove(USER_EMAIL_KEY)
             prefs.remove(USER_PRIVILEGES_KEY)
+            prefs.remove(PLAN_CACHE_KEY)
         }
     }
 
@@ -538,6 +547,12 @@ class AuthRepository @Inject constructor(
             prefs[USER_NAME_KEY] = user.name
             prefs[USER_EMAIL_KEY] = user.email
             prefs[USER_PRIVILEGES_KEY] = user.privileges
+        }
+    }
+
+    private suspend fun cachePlan(plan: UserPlanResponse) {
+        context.authDataStore.edit { prefs ->
+            prefs[PLAN_CACHE_KEY] = gson.toJson(plan)
         }
     }
 }

@@ -28,13 +28,20 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Sell
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ElevatedAssistChip
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,7 +53,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -63,6 +69,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cu.lazaroysr96.sysgdcont.data.model.RolTercero
 import cu.lazaroysr96.sysgdcont.data.model.TerceroCuentaListItem
 import cu.lazaroysr96.sysgdcont.data.model.TerceroListItem
+import cu.lazaroysr96.sysgdcont.data.model.EstadoCuentaTercero
 import cu.lazaroysr96.sysgdcont.data.model.TipoCuentaTercero
 import cu.lazaroysr96.sysgdcont.data.model.TipoEntidadTercero
 import cu.lazaroysr96.sysgdcont.viewmodel.TercerosViewModel
@@ -116,35 +123,34 @@ fun TercerosScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text("Terceros") },
-                actions = {
-                    if (selectedTab == TercerosTab.TARJETAS) {
-                        IconButton(onClick = { tarjetaViewModel.showScanDialog(true) }) {
-                            Icon(Icons.Default.QrCodeScanner, "Escanear QR")
-                        }
-                    }
-                }
-            )
-        },
         floatingActionButton = {
-            when (selectedTab) {
-                TercerosTab.PERSONAS -> {
-                    FloatingActionButton(onClick = { viewModel.showAddTerceroDialog(true) }) {
-                        Icon(Icons.Default.Add, contentDescription = "Agregar tercero")
-                    }
-                }
-                TercerosTab.CUENTAS -> {
-                    if (uiState.terceros.isNotEmpty()) {
-                        FloatingActionButton(onClick = { viewModel.showAddCuentaDialog(true) }) {
-                            Icon(Icons.Default.AccountBalance, contentDescription = "Agregar cuenta")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                when (selectedTab) {
+                    TercerosTab.PERSONAS -> {
+                        FloatingActionButton(onClick = { viewModel.showAddTerceroDialog(true) }) {
+                            Icon(Icons.Default.Add, contentDescription = "Agregar tercero")
                         }
                     }
-                }
-                TercerosTab.TARJETAS -> {
-                    FloatingActionButton(onClick = { tarjetaViewModel.showAddDialog(true) }) {
-                        Icon(Icons.Default.Add, contentDescription = "Agregar tarjeta")
+                    TercerosTab.CUENTAS -> {
+                        if (uiState.terceros.isNotEmpty()) {
+                            FloatingActionButton(onClick = { viewModel.showAddCuentaDialog(true) }) {
+                                Icon(Icons.Default.AccountBalance, contentDescription = "Agregar cuenta")
+                            }
+                        }
+                    }
+                    TercerosTab.TARJETAS -> {
+                        SmallFloatingActionButton(
+                            onClick = { tarjetaViewModel.showScanDialog(true) },
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        ) {
+                            Icon(Icons.Default.QrCodeScanner, contentDescription = "Escanear QR")
+                        }
+                        FloatingActionButton(onClick = { tarjetaViewModel.showAddDialog(true) }) {
+                            Icon(Icons.Default.Add, contentDescription = "Agregar tarjeta")
+                        }
                     }
                 }
             }
@@ -201,6 +207,7 @@ fun TercerosScreen(
                             TerceroCard(
                                 tercero = tercero,
                                 formatCurrency = viewModel::formatCurrency,
+                                onEdit = { viewModel.showEditTerceroDialog(tercero) },
                                 onArchive = { viewModel.archiveTercero(tercero.id) }
                             )
                         }
@@ -232,7 +239,11 @@ fun TercerosScreen(
                         item { EmptyState("Sin cuentas pendientes", "Registra una deuda o un préstamo.") }
                     } else {
                         items(cuentas, key = { it.id }) { cuenta ->
-                            CuentaCard(cuenta = cuenta, formatCurrency = viewModel::formatCurrency)
+                            CuentaCard(
+                                cuenta = cuenta,
+                                formatCurrency = viewModel::formatCurrency,
+                                onEdit = { viewModel.showEditCuentaDialog(cuenta) }
+                            )
                         }
                     }
                 }
@@ -260,6 +271,24 @@ fun TercerosScreen(
             onConfirm = viewModel::crearCuenta
         )
     }
+
+    val terceroEnEdicion = uiState.terceroEnEdicion
+    if (uiState.showEditTerceroDialog && terceroEnEdicion != null) {
+        EditTerceroDialog(
+            tercero = terceroEnEdicion,
+            onDismiss = { viewModel.showEditTerceroDialog(null) },
+            onConfirm = viewModel::actualizarTercero
+        )
+    }
+
+    val cuentaEnEdicion = uiState.cuentaEnEdicion
+    if (uiState.showEditCuentaDialog && cuentaEnEdicion != null) {
+        EditCuentaDialog(
+            cuenta = cuentaEnEdicion,
+            onDismiss = { viewModel.showEditCuentaDialog(null) },
+            onConfirm = viewModel::actualizarCuenta
+        )
+    }
 }
 
 @Composable
@@ -267,24 +296,17 @@ private fun PersonasFilterRow(
     selected: PersonasFilter,
     onSelected: (PersonasFilter) -> Unit
 ) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        PersonasFilter.values().forEach { option ->
-            val label = when (option) {
-                PersonasFilter.TODOS -> "Todos"
-                PersonasFilter.PERSONA -> "Persona"
-                PersonasFilter.EMPRESA -> "Empresa"
-                PersonasFilter.ESTADO -> "Estado"
-            }
-            if (selected == option) {
-                ElevatedAssistChip(onClick = { onSelected(option) }, label = { Text(label) })
-            } else {
-                AssistChip(onClick = { onSelected(option) }, label = { Text(label) })
-            }
-        }
-    }
+    FilterDropdown(
+        label = "Tipo de persona",
+        options = listOf(
+            PersonasFilter.TODOS to "Todos",
+            PersonasFilter.PERSONA to "Persona",
+            PersonasFilter.EMPRESA to "Empresa",
+            PersonasFilter.ESTADO to "Estado"
+        ),
+        selected = selected,
+        onSelected = onSelected
+    )
 }
 
 @Composable
@@ -292,20 +314,53 @@ private fun CuentasFilterRow(
     selected: CuentasFilter,
     onSelected: (CuentasFilter) -> Unit
 ) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+    FilterDropdown(
+        label = "Tipo de cuenta",
+        options = listOf(
+            CuentasFilter.TODAS to "Todas",
+            CuentasFilter.DEUDAS to "Deudas",
+            CuentasFilter.PRESTAMOS to "Préstamos"
+        ),
+        selected = selected,
+        onSelected = onSelected
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun <T> FilterDropdown(
+    label: String,
+    options: List<Pair<T, String>>,
+    selected: T,
+    onSelected: (T) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedLabel = options.firstOrNull { it.first == selected }?.second.orEmpty()
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
     ) {
-        CuentasFilter.values().forEach { option ->
-            val label = when (option) {
-                CuentasFilter.TODAS -> "Todas"
-                CuentasFilter.DEUDAS -> "Deudas"
-                CuentasFilter.PRESTAMOS -> "Préstamos"
-            }
-            if (selected == option) {
-                ElevatedAssistChip(onClick = { onSelected(option) }, label = { Text(label) })
-            } else {
-                AssistChip(onClick = { onSelected(option) }, label = { Text(label) })
+        OutlinedTextField(
+            value = selectedLabel,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor()
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            options.forEach { (value, title) ->
+                DropdownMenuItem(
+                    text = { Text(title) },
+                    onClick = {
+                        onSelected(value)
+                        expanded = false
+                    }
+                )
             }
         }
     }
@@ -376,6 +431,7 @@ private fun filterCuentas(
 private fun TerceroCard(
     tercero: TerceroListItem,
     formatCurrency: (Double, String) -> String,
+    onEdit: () -> Unit,
     onArchive: () -> Unit
 ) {
     Card {
@@ -396,6 +452,9 @@ private fun TerceroCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = "Editar tercero")
                 }
                 IconButton(onClick = onArchive) {
                     Icon(Icons.Default.DeleteOutline, contentDescription = "Archivar tercero")
@@ -469,7 +528,8 @@ private fun ContactLine(icon: ImageVector, value: String) {
 @Composable
 private fun CuentaCard(
     cuenta: TerceroCuentaListItem,
-    formatCurrency: (Double, String) -> String
+    formatCurrency: (Double, String) -> String,
+    onEdit: () -> Unit
 ) {
     Card {
         Column(
@@ -491,10 +551,15 @@ private fun CuentaCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                AssistChip(
-                    onClick = {},
-                    label = { Text(cuenta.estado.lowercase().replaceFirstChar { it.uppercase() }) }
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AssistChip(
+                        onClick = {},
+                        label = { Text(cuenta.estado.lowercase().replaceFirstChar { it.uppercase() }) }
+                    )
+                    IconButton(onClick = onEdit) {
+                        Icon(Icons.Default.Edit, contentDescription = "Editar cuenta")
+                    }
+                }
             }
 
             if (cuenta.descripcion.isNotBlank()) {
@@ -552,9 +617,7 @@ private fun AddTerceroDialog(
     var direccionCrypto by rememberSaveable { mutableStateOf("") }
     var nota by rememberSaveable { mutableStateOf("") }
     var tipoEntidad by rememberSaveable { mutableStateOf(TipoEntidadTercero.PERSONA) }
-    var isCliente by rememberSaveable { mutableStateOf(true) }
-    var isProveedor by rememberSaveable { mutableStateOf(false) }
-    var isEmpleado by rememberSaveable { mutableStateOf(false) }
+    var roles by rememberSaveable { mutableStateOf(setOf(RolTercero.CLIENTE)) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -571,16 +634,27 @@ private fun AddTerceroDialog(
                     )
                 }
                 item {
-                    TipoEntidadSelector(selected = tipoEntidad, onSelected = { tipoEntidad = it })
+                    SingleSelectDropdown(
+                        label = "Tipo de tercero",
+                        options = listOf(
+                            TipoEntidadTercero.PERSONA to "Persona",
+                            TipoEntidadTercero.EMPRESA to "Empresa",
+                            TipoEntidadTercero.ESTADO to "Estado"
+                        ),
+                        selected = tipoEntidad,
+                        onSelected = { tipoEntidad = it }
+                    )
                 }
                 item {
-                    RolesSelector(
-                        isCliente = isCliente,
-                        isProveedor = isProveedor,
-                        isEmpleado = isEmpleado,
-                        onClienteChange = { isCliente = it },
-                        onProveedorChange = { isProveedor = it },
-                        onEmpleadoChange = { isEmpleado = it }
+                    MultiSelectDropdown(
+                        label = "Roles",
+                        options = listOf(
+                            RolTercero.CLIENTE to "Cliente",
+                            RolTercero.PROVEEDOR to "Proveedor",
+                            RolTercero.EMPLEADO to "Empleado"
+                        ),
+                        selected = roles,
+                        onSelected = { roles = it }
                     )
                 }
                 item {
@@ -649,16 +723,16 @@ private fun AddTerceroDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    val roles = buildSet {
-                        if (isCliente) add(RolTercero.CLIENTE)
-                        if (isProveedor) add(RolTercero.PROVEEDOR)
-                        if (isEmpleado) add(RolTercero.EMPLEADO)
-                        if (tipoEntidad == TipoEntidadTercero.ESTADO) add(RolTercero.ESTADO)
+                    val rolesFinal = roles.toMutableSet()
+                    if (tipoEntidad == TipoEntidadTercero.ESTADO) {
+                        rolesFinal.add(RolTercero.ESTADO)
+                    } else {
+                        rolesFinal.remove(RolTercero.ESTADO)
                     }
                     onConfirm(
                         nombre,
                         tipoEntidad,
-                        roles,
+                        rolesFinal,
                         telefono,
                         correo,
                         direccion,
@@ -712,17 +786,23 @@ private fun AddCuentaDialog(
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 item {
-                    SelectorChips(
-                        title = "Tercero",
-                        options = terceros.associate { it.id to it.nombre },
+                    val terceroOptions = if (terceros.isEmpty()) {
+                        listOf("" to "Sin terceros")
+                    } else {
+                        terceros.map { it.id to it.nombre }
+                    }
+                    SingleSelectDropdown(
+                        label = "Tercero",
+                        options = terceroOptions,
                         selected = terceroId,
+                        enabled = terceros.isNotEmpty(),
                         onSelected = { terceroId = it }
                     )
                 }
                 item {
-                    SelectorChips(
-                        title = "Tipo",
-                        options = linkedMapOf(
+                    SingleSelectDropdown(
+                        label = "Tipo",
+                        options = listOf(
                             TipoCuentaTercero.DEUDA to "Deuda",
                             TipoCuentaTercero.PRESTAMO to "Préstamo"
                         ),
@@ -734,9 +814,9 @@ private fun AddCuentaDialog(
                     )
                 }
                 item {
-                    SelectorChips(
-                        title = "Categoría",
-                        options = linkedMapOf(
+                    SingleSelectDropdown(
+                        label = "Categoría",
+                        options = listOf(
                             RolTercero.CLIENTE to "Cliente",
                             RolTercero.PROVEEDOR to "Proveedor",
                             RolTercero.EMPLEADO to "Empleado",
@@ -828,70 +908,378 @@ private fun AddCuentaDialog(
 }
 
 @Composable
-private fun TipoEntidadSelector(
-    selected: String,
-    onSelected: (String) -> Unit
+private fun EditTerceroDialog(
+    tercero: TerceroListItem,
+    onDismiss: () -> Unit,
+    onConfirm: (
+        terceroId: String,
+        nombre: String,
+        tipoEntidad: String,
+        roles: Set<String>,
+        telefono: String,
+        correo: String,
+        direccion: String,
+        identificadorFiscal: String,
+        numeroTarjeta: String,
+        direccionCrypto: String,
+        nota: String
+    ) -> Unit
 ) {
-    SelectorChips(
-        title = "Tipo de tercero",
-        options = linkedMapOf(
-            TipoEntidadTercero.PERSONA to "Persona",
-            TipoEntidadTercero.EMPRESA to "Empresa",
-            TipoEntidadTercero.ESTADO to "Estado"
-        ),
-        selected = selected,
-        onSelected = onSelected
+    var nombre by rememberSaveable { mutableStateOf(tercero.nombre) }
+    var telefono by rememberSaveable { mutableStateOf(tercero.telefono) }
+    var correo by rememberSaveable { mutableStateOf(tercero.correo) }
+    var direccion by rememberSaveable { mutableStateOf(tercero.direccion) }
+    var identificadorFiscal by rememberSaveable { mutableStateOf(tercero.identificadorFiscal) }
+    var numeroTarjeta by rememberSaveable { mutableStateOf(tercero.numeroTarjeta) }
+    var direccionCrypto by rememberSaveable { mutableStateOf(tercero.direccionCrypto) }
+    var nota by rememberSaveable { mutableStateOf(tercero.nota) }
+    var tipoEntidad by rememberSaveable { mutableStateOf(tercero.tipoEntidad) }
+    var roles by rememberSaveable { mutableStateOf(tercero.rolesList.toSet()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Editar tercero") },
+        text = {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                item {
+                    OutlinedTextField(
+                        value = nombre,
+                        onValueChange = { nombre = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Nombre") },
+                        singleLine = true
+                    )
+                }
+                item {
+                    SingleSelectDropdown(
+                        label = "Tipo de tercero",
+                        options = listOf(
+                            TipoEntidadTercero.PERSONA to "Persona",
+                            TipoEntidadTercero.EMPRESA to "Empresa",
+                            TipoEntidadTercero.ESTADO to "Estado"
+                        ),
+                        selected = tipoEntidad,
+                        onSelected = { tipoEntidad = it }
+                    )
+                }
+                item {
+                    MultiSelectDropdown(
+                        label = "Roles",
+                        options = listOf(
+                            RolTercero.CLIENTE to "Cliente",
+                            RolTercero.PROVEEDOR to "Proveedor",
+                            RolTercero.EMPLEADO to "Empleado"
+                        ),
+                        selected = roles,
+                        onSelected = { roles = it }
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = telefono,
+                        onValueChange = { telefono = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Teléfono") },
+                        singleLine = true
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = correo,
+                        onValueChange = { correo = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Correo") },
+                        singleLine = true
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = numeroTarjeta,
+                        onValueChange = { numeroTarjeta = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Número de tarjeta") },
+                        singleLine = true
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = direccionCrypto,
+                        onValueChange = { direccionCrypto = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Dirección cripto") },
+                        singleLine = true
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = direccion,
+                        onValueChange = { direccion = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Dirección") }
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = identificadorFiscal,
+                        onValueChange = { identificadorFiscal = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Identificador fiscal") },
+                        singleLine = true
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = nota,
+                        onValueChange = { nota = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Nota") }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val rolesFinal = roles.toMutableSet()
+                    if (tipoEntidad == TipoEntidadTercero.ESTADO) {
+                        rolesFinal.add(RolTercero.ESTADO)
+                    } else {
+                        rolesFinal.remove(RolTercero.ESTADO)
+                    }
+                    onConfirm(
+                        tercero.id,
+                        nombre,
+                        tipoEntidad,
+                        rolesFinal,
+                        telefono,
+                        correo,
+                        direccion,
+                        identificadorFiscal,
+                        numeroTarjeta,
+                        direccionCrypto,
+                        nota
+                    )
+                }
+            ) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
     )
 }
 
 @Composable
-private fun RolesSelector(
-    isCliente: Boolean,
-    isProveedor: Boolean,
-    isEmpleado: Boolean,
-    onClienteChange: (Boolean) -> Unit,
-    onProveedorChange: (Boolean) -> Unit,
-    onEmpleadoChange: (Boolean) -> Unit
+private fun EditCuentaDialog(
+    cuenta: TerceroCuentaListItem,
+    onDismiss: () -> Unit,
+    onConfirm: (
+        cuentaId: String,
+        categoria: String,
+        concepto: String,
+        descripcion: String,
+        fechaVencimiento: String,
+        estado: String,
+        moneda: String,
+        nota: String
+    ) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Roles", style = MaterialTheme.typography.labelLarge)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            ToggleChip("Cliente", isCliente, onClienteChange)
-            ToggleChip("Proveedor", isProveedor, onProveedorChange)
-            ToggleChip("Empleado", isEmpleado, onEmpleadoChange)
+    var categoria by rememberSaveable { mutableStateOf(cuenta.categoria) }
+    var concepto by rememberSaveable { mutableStateOf(cuenta.concepto) }
+    var descripcion by rememberSaveable { mutableStateOf(cuenta.descripcion) }
+    var fechaVencimiento by rememberSaveable { mutableStateOf(cuenta.fechaVencimiento) }
+    var estado by rememberSaveable { mutableStateOf(cuenta.estado) }
+    var moneda by rememberSaveable { mutableStateOf(cuenta.moneda) }
+    var nota by rememberSaveable { mutableStateOf(cuenta.nota) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Editar deuda/préstamo") },
+        text = {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                item {
+                    SingleSelectDropdown(
+                        label = "Categoría",
+                        options = listOf(
+                            RolTercero.CLIENTE to "Cliente",
+                            RolTercero.PROVEEDOR to "Proveedor",
+                            RolTercero.EMPLEADO to "Empleado",
+                            RolTercero.ESTADO to "Estado"
+                        ),
+                        selected = categoria,
+                        onSelected = { categoria = it }
+                    )
+                }
+                item {
+                    SingleSelectDropdown(
+                        label = "Estado",
+                        options = listOf(
+                            EstadoCuentaTercero.PENDIENTE to "Pendiente",
+                            EstadoCuentaTercero.VENCIDO to "Vencido",
+                            EstadoCuentaTercero.PAGADO to "Pagado",
+                            EstadoCuentaTercero.COBRADO to "Cobrado",
+                            EstadoCuentaTercero.CANCELADO to "Cancelado"
+                        ),
+                        selected = estado,
+                        onSelected = { estado = it }
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = concepto,
+                        onValueChange = { concepto = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Concepto") }
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = fechaVencimiento,
+                        onValueChange = { fechaVencimiento = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Vencimiento (YYYY-MM-DD)") },
+                        singleLine = true
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = moneda,
+                        onValueChange = { moneda = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Moneda") },
+                        singleLine = true
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = descripcion,
+                        onValueChange = { descripcion = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Descripción") }
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = nota,
+                        onValueChange = { nota = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Nota") }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onConfirm(
+                        cuenta.id,
+                        categoria,
+                        concepto,
+                        descripcion,
+                        fechaVencimiento,
+                        estado,
+                        moneda,
+                        nota
+                    )
+                }
+            ) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun <T> SingleSelectDropdown(
+    label: String,
+    options: List<Pair<T, String>>,
+    selected: T,
+    enabled: Boolean = true,
+    onSelected: (T) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedLabel = options.firstOrNull { it.first == selected }?.second.orEmpty()
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { if (enabled) expanded = it }
+    ) {
+        OutlinedTextField(
+            value = selectedLabel,
+            onValueChange = {},
+            readOnly = true,
+            enabled = enabled,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor()
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            options.forEach { (value, title) ->
+                DropdownMenuItem(
+                    text = { Text(title) },
+                    onClick = {
+                        onSelected(value)
+                        expanded = false
+                    }
+                )
+            }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ToggleChip(
+private fun MultiSelectDropdown(
     label: String,
-    selected: Boolean,
-    onChange: (Boolean) -> Unit
+    options: List<Pair<String, String>>,
+    selected: Set<String>,
+    onSelected: (Set<String>) -> Unit
 ) {
-    if (selected) {
-        ElevatedAssistChip(onClick = { onChange(false) }, label = { Text(label) })
-    } else {
-        AssistChip(onClick = { onChange(true) }, label = { Text(label) })
-    }
-}
+    var expanded by remember { mutableStateOf(false) }
+    val selectedLabel = options.filter { selected.contains(it.first) }
+        .joinToString(", ") { it.second }
+        .ifBlank { "Seleccionar" }
 
-@Composable
-private fun SelectorChips(
-    title: String,
-    options: Map<String, String>,
-    selected: String,
-    onSelected: (String) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, style = MaterialTheme.typography.labelLarge)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            options.forEach { (key, label) ->
-                if (selected == key) {
-                    ElevatedAssistChip(onClick = { onSelected(key) }, label = { Text(label) })
-                } else {
-                    AssistChip(onClick = { onSelected(key) }, label = { Text(label) })
-                }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
+    ) {
+        OutlinedTextField(
+            value = selectedLabel,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor()
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            options.forEach { (value, title) ->
+                val isSelected = selected.contains(value)
+                DropdownMenuItem(
+                    text = { Text(title) },
+                    trailingIcon = {
+                        if (isSelected) {
+                            Icon(Icons.Default.Check, contentDescription = null)
+                        }
+                    },
+                    onClick = {
+                        val updated = selected.toMutableSet().apply {
+                            if (isSelected) remove(value) else add(value)
+                        }
+                        onSelected(updated)
+                    }
+                )
             }
         }
     }

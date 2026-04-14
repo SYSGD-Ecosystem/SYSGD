@@ -60,22 +60,23 @@ fun TarjetaScreen(viewModel: TarjetaViewModel) {
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text("Tarjetas") },
-                actions = {
-                    IconButton(onClick = { viewModel.showScanDialog(true) }) {
-                        Icon(Icons.Default.QrCodeScanner, "Escanear QR")
-                    }
-                }
-            )
-        },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.showAddDialog(true) },
-                containerColor = MaterialTheme.colorScheme.primary
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Add, "Agregar tarjeta")
+                SmallFloatingActionButton(
+                    onClick = { viewModel.showScanDialog(true) },
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Icon(Icons.Default.QrCodeScanner, contentDescription = "Escanear QR")
+                }
+                FloatingActionButton(
+                    onClick = { viewModel.showAddDialog(true) },
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(Icons.Default.Add, "Agregar tarjeta")
+                }
             }
         }
     ) { padding ->

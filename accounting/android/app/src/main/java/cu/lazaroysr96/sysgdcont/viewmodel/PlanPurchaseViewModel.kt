@@ -50,16 +50,18 @@ class PlanPurchaseViewModel @Inject constructor(
             val catalogResult = manualPaymentRepository.getCatalog()
             val ordersResult = manualPaymentRepository.getOrders()
             val planResult = authRepository.getCurrentPlan()
+            val cachedPlan = authRepository.getCachedPlan()
+            val planError = planResult.exceptionOrNull()?.message
 
             _uiState.update {
                 it.copy(
                     isLoading = false,
                     catalog = catalogResult.getOrNull() ?: it.catalog,
                     orders = ordersResult.getOrNull() ?: it.orders,
-                    currentPlan = planResult.getOrNull() ?: it.currentPlan,
+                    currentPlan = planResult.getOrNull() ?: cachedPlan ?: it.currentPlan,
                     error = catalogResult.exceptionOrNull()?.message
                         ?: ordersResult.exceptionOrNull()?.message
-                        ?: planResult.exceptionOrNull()?.message
+                        ?: if (cachedPlan == null) planError else null
                 )
             }
         }
@@ -88,6 +90,7 @@ class PlanPurchaseViewModel @Inject constructor(
             ).onSuccess { order ->
                 val ordersResult = manualPaymentRepository.getOrders()
                 val planResult = authRepository.getCurrentPlan()
+                val cachedPlan = authRepository.getCachedPlan()
                 val statusMessage = when (order.status) {
                     "provisional" -> "Compra registrada. El plan de prueba ya quedó activado para depuración."
                     else -> "Compra enviada. Quedó pendiente de validación manual."
@@ -97,10 +100,11 @@ class PlanPurchaseViewModel @Inject constructor(
                     it.copy(
                         isSubmitting = false,
                         orders = ordersResult.getOrNull() ?: listOf(order) + it.orders,
-                        currentPlan = planResult.getOrNull() ?: it.currentPlan,
+                        currentPlan = planResult.getOrNull() ?: cachedPlan ?: it.currentPlan,
                         infoMessage = statusMessage,
                         lastSubmittedAt = System.currentTimeMillis(),
-                        error = ordersResult.exceptionOrNull()?.message ?: planResult.exceptionOrNull()?.message
+                        error = ordersResult.exceptionOrNull()?.message
+                            ?: if (cachedPlan == null) planResult.exceptionOrNull()?.message else null
                     )
                 }
             }.onFailure { error ->

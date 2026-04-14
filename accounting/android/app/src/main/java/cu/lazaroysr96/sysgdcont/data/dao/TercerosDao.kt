@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import cu.lazaroysr96.sysgdcont.data.model.Tercero
 import cu.lazaroysr96.sysgdcont.data.model.TerceroCuenta
 import cu.lazaroysr96.sysgdcont.data.model.TerceroCuentaListItem
@@ -87,17 +88,29 @@ interface TercerosDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTercero(tercero: Tercero)
 
+    @Update
+    suspend fun updateTercero(tercero: Tercero)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRoles(roles: List<TerceroRol>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCuenta(cuenta: TerceroCuenta)
 
+    @Update
+    suspend fun updateCuenta(cuenta: TerceroCuenta)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMovimiento(movimiento: TerceroMovimiento)
 
     @Query("SELECT * FROM terceros WHERE activo = 1 ORDER BY nombre COLLATE NOCASE ASC")
     suspend fun getAllTercerosRaw(): List<Tercero>
+
+    @Query("SELECT * FROM terceros WHERE id = :terceroId")
+    suspend fun getTerceroById(terceroId: String): Tercero?
+
+    @Query("SELECT * FROM tercero_cuentas WHERE id = :cuentaId")
+    suspend fun getCuentaById(cuentaId: String): TerceroCuenta?
 
     @Query("SELECT COUNT(*) FROM tercero_cuentas WHERE terceroId = :terceroId")
     suspend fun countCuentasByTercero(terceroId: String): Int

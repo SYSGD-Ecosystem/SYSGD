@@ -33,7 +33,11 @@ data class TercerosUiState(
     val snackbarMessage: String? = null,
     val selectedSection: TercerosSection = TercerosSection.TODOS,
     val showAddTerceroDialog: Boolean = false,
-    val showAddCuentaDialog: Boolean = false
+    val showAddCuentaDialog: Boolean = false,
+    val showEditTerceroDialog: Boolean = false,
+    val showEditCuentaDialog: Boolean = false,
+    val terceroEnEdicion: TerceroListItem? = null,
+    val cuentaEnEdicion: TerceroCuentaListItem? = null
 ) {
     val totalClientes: Int
         get() = terceros.count { RolTercero.CLIENTE in it.rolesList }
@@ -101,6 +105,24 @@ class TercerosViewModel @Inject constructor(
 
     fun showAddCuentaDialog(show: Boolean) {
         _uiState.update { it.copy(showAddCuentaDialog = show) }
+    }
+
+    fun showEditTerceroDialog(tercero: TerceroListItem?) {
+        _uiState.update {
+            it.copy(
+                showEditTerceroDialog = tercero != null,
+                terceroEnEdicion = tercero
+            )
+        }
+    }
+
+    fun showEditCuentaDialog(cuenta: TerceroCuentaListItem?) {
+        _uiState.update {
+            it.copy(
+                showEditCuentaDialog = cuenta != null,
+                cuentaEnEdicion = cuenta
+            )
+        }
     }
 
     fun crearTercero(
@@ -184,6 +206,88 @@ class TercerosViewModel @Inject constructor(
             }.onFailure { error ->
                 _uiState.update {
                     it.copy(snackbarMessage = error.message ?: "No se pudo registrar la cuenta")
+                }
+            }
+        }
+    }
+
+    fun actualizarTercero(
+        terceroId: String,
+        nombre: String,
+        tipoEntidad: String,
+        roles: Set<String>,
+        telefono: String,
+        correo: String,
+        direccion: String,
+        identificadorFiscal: String,
+        numeroTarjeta: String,
+        direccionCrypto: String,
+        nota: String
+    ) {
+        viewModelScope.launch {
+            runCatching {
+                repository.actualizarTercero(
+                    terceroId = terceroId,
+                    nombre = nombre,
+                    tipoEntidad = tipoEntidad,
+                    roles = roles,
+                    telefono = telefono,
+                    correo = correo,
+                    direccion = direccion,
+                    identificadorFiscal = identificadorFiscal,
+                    numeroTarjeta = numeroTarjeta,
+                    direccionCrypto = direccionCrypto,
+                    nota = nota
+                )
+            }.onSuccess {
+                _uiState.update {
+                    it.copy(
+                        showEditTerceroDialog = false,
+                        terceroEnEdicion = null,
+                        snackbarMessage = "Tercero actualizado"
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(snackbarMessage = error.message ?: "No se pudo actualizar el tercero")
+                }
+            }
+        }
+    }
+
+    fun actualizarCuenta(
+        cuentaId: String,
+        categoria: String,
+        concepto: String,
+        descripcion: String,
+        fechaVencimiento: String,
+        estado: String,
+        moneda: String,
+        nota: String
+    ) {
+        viewModelScope.launch {
+            runCatching {
+                repository.actualizarCuenta(
+                    cuentaId = cuentaId,
+                    categoria = categoria,
+                    concepto = concepto,
+                    descripcion = descripcion,
+                    fechaVencimiento = fechaVencimiento,
+                    estado = estado,
+                    moneda = moneda,
+                    nota = nota
+                )
+            }.onSuccess {
+                _uiState.update {
+                    it.copy(
+                        showEditCuentaDialog = false,
+                        cuentaEnEdicion = null,
+                        snackbarMessage = "Cuenta actualizada"
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(snackbarMessage = error.message ?: "No se pudo actualizar la cuenta")
                 }
             }
         }

@@ -113,6 +113,79 @@ class TercerosRepository @Inject constructor(
         return cuenta
     }
 
+    suspend fun actualizarTercero(
+        terceroId: String,
+        nombre: String,
+        tipoEntidad: String,
+        roles: Set<String>,
+        telefono: String,
+        correo: String,
+        direccion: String,
+        identificadorFiscal: String,
+        numeroTarjeta: String,
+        direccionCrypto: String,
+        nota: String
+    ) {
+        require(nombre.isNotBlank()) { "El nombre es obligatorio" }
+        require(roles.isNotEmpty()) { "Debes seleccionar al menos un rol" }
+
+        val existing = tercerosDao.getTerceroById(terceroId)
+            ?: throw IllegalStateException("El tercero no existe")
+        val now = nowIso()
+        val updated = existing.copy(
+            nombre = nombre.trim(),
+            tipoEntidad = tipoEntidad,
+            telefono = telefono.trim(),
+            correo = correo.trim(),
+            direccion = direccion.trim(),
+            identificadorFiscal = identificadorFiscal.trim(),
+            numeroTarjeta = numeroTarjeta.trim(),
+            direccionCrypto = direccionCrypto.trim(),
+            nota = nota.trim(),
+            updatedAt = now
+        )
+        tercerosDao.updateTercero(updated)
+        tercerosDao.deleteRolesByTercero(terceroId)
+        tercerosDao.insertRoles(
+            roles.map { rol ->
+                TerceroRol(
+                    id = UUID.randomUUID().toString(),
+                    terceroId = terceroId,
+                    rol = rol,
+                    createdAt = now
+                )
+            }
+        )
+    }
+
+    suspend fun actualizarCuenta(
+        cuentaId: String,
+        categoria: String,
+        concepto: String,
+        descripcion: String,
+        fechaVencimiento: String,
+        estado: String,
+        moneda: String,
+        nota: String
+    ) {
+        require(concepto.isNotBlank()) { "El concepto es obligatorio" }
+
+        val existing = tercerosDao.getCuentaById(cuentaId)
+            ?: throw IllegalStateException("La cuenta no existe")
+        val now = nowIso()
+        val updated = existing.copy(
+            categoria = categoria,
+            concepto = concepto.trim(),
+            descripcion = descripcion.trim(),
+            fechaVencimiento = fechaVencimiento.trim(),
+            estado = estado,
+            moneda = moneda.ifBlank { existing.moneda }.trim().uppercase(),
+            nota = nota.trim(),
+            updatedAt = now
+        )
+        tercerosDao.updateCuenta(updated)
+    }
+
     suspend fun archivarTercero(terceroId: String) {
         val cuentas = tercerosDao.countCuentasByTercero(terceroId)
         require(cuentas == 0) { "No se puede archivar un tercero con cuentas asociadas" }
