@@ -49,7 +49,6 @@ import java.util.concurrent.Executors
 @Composable
 fun TarjetaScreen(viewModel: TarjetaViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiState.snackbarMessage) {
@@ -80,55 +79,70 @@ fun TarjetaScreen(viewModel: TarjetaViewModel) {
             }
         }
     ) { padding ->
-        if (uiState.tarjetas.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Default.CreditCard,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        "No hay tarjetas guardadas",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        "Toca + para agregar",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+        TarjetaContent(
+            viewModel = viewModel,
+            contentPadding = padding
+        )
+    }
+}
+
+@OptIn(ExperimentalPermissionsApi::class)
+@Composable
+fun TarjetaContent(
+    viewModel: TarjetaViewModel,
+    contentPadding: PaddingValues = PaddingValues(0.dp)
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    if (uiState.tarjetas.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(contentPadding),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    Icons.Default.CreditCard,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    "No hay tarjetas guardadas",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    "Toca + para agregar",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(uiState.tarjetas) { tarjeta ->
-                    TarjetaCard(
-                        tarjeta = tarjeta,
-                        onToggleFavorita = { viewModel.toggleFavorita(tarjeta) },
-                        onCopyNumero = {
-                            copyToClipboard(context, "Número", tarjeta.numero)
-                        },
-                        onCopyTelefono = {
-                            copyToClipboard(context, "Teléfono", tarjeta.telefono)
-                        },
-                        onGenerateQR = { viewModel.showQRDialog(tarjeta) },
-                        onGenerateQRTransfermovil = { viewModel.showQRTransfermovilDialog(tarjeta) },
-                        onDelete = { viewModel.eliminarTarjeta(tarjeta.id) }
-                    )
-                }
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(contentPadding),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(uiState.tarjetas) { tarjeta ->
+                TarjetaCard(
+                    tarjeta = tarjeta,
+                    onToggleFavorita = { viewModel.toggleFavorita(tarjeta) },
+                    onCopyNumero = {
+                        copyToClipboard(context, "Número", tarjeta.numero)
+                    },
+                    onCopyTelefono = {
+                        copyToClipboard(context, "Teléfono", tarjeta.telefono)
+                    },
+                    onGenerateQR = { viewModel.showQRDialog(tarjeta) },
+                    onGenerateQRTransfermovil = { viewModel.showQRTransfermovilDialog(tarjeta) },
+                    onDelete = { viewModel.eliminarTarjeta(tarjeta.id) }
+                )
             }
         }
     }

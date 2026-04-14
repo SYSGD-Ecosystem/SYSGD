@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
@@ -102,7 +103,7 @@ import cu.lazaroysr96.sysgdcont.ui.main.screens.DocumentosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.LicenseCenterScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.ResumenScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.SecuritySettingsScreen
-import cu.lazaroysr96.sysgdcont.ui.main.screens.TarjetaScreen
+import cu.lazaroysr96.sysgdcont.ui.main.screens.TercerosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.TributosScreen
 import cu.lazaroysr96.sysgdcont.ui.navigation.MainTab
 import cu.lazaroysr96.sysgdcont.ui.navigation.mainTabs
@@ -112,6 +113,7 @@ import cu.lazaroysr96.sysgdcont.viewmodel.InventarioViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.PlanPurchaseViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.TarjetaViewModel
+import cu.lazaroysr96.sysgdcont.viewmodel.TercerosViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.FacturaViewModel
 import kotlinx.coroutines.launch
 
@@ -124,7 +126,7 @@ private const val BACKUP_ROUTE = "backup_json"
 private const val SECURITY_ROUTE = "security_settings"
 private const val VENTAS_ROUTE = "ventas"
 private const val NOMENCLATORS_ROUTE = "nomencladores"
-private const val TARJETAS_ROUTE = "tarjetas"
+private const val TERCEROS_ROUTE = "terceros"
 private const val DOCUMENTOS_ROUTE = "documentos"
 
 private fun openWhatsAppContact(context: android.content.Context, message: String): Boolean {
@@ -163,6 +165,7 @@ fun MainScreen(
         authViewModel: AuthViewModel = hiltViewModel(),
         ledgerViewModel: LedgerViewModel = hiltViewModel(),
         inventarioViewModel: InventarioViewModel = hiltViewModel(),
+        tercerosViewModel: TercerosViewModel = hiltViewModel(),
         tarjetaViewModel: TarjetaViewModel = hiltViewModel(),
         facturaViewModel: FacturaViewModel = hiltViewModel(),
         documentosViewModel: DocumentosViewModel = hiltViewModel(),
@@ -400,11 +403,11 @@ fun MainScreen(
                                     }
                             )
                             NavigationDrawerItem(
-                                    label = { Text("Tarjetas") },
-                                    selected = currentRoute == TARJETAS_ROUTE,
-                                    icon = { Icon(Icons.Default.CreditCard, contentDescription = null) },
+                                    label = { Text("Terceros") },
+                                    selected = currentRoute == TERCEROS_ROUTE,
+                                    icon = { Icon(Icons.Default.People, contentDescription = null) },
                                     onClick = {
-                                        navController.navigate(TARJETAS_ROUTE) {
+                                        navController.navigate(TERCEROS_ROUTE) {
                                             launchSingleTop = true
                                         }
                                         drawerScope.launch { drawerState.close() }
@@ -523,14 +526,14 @@ fun MainScreen(
                                             SECURITY_ROUTE -> "Seguridad y cuenta"
                                             VENTAS_ROUTE -> "Punto de Venta"
                                             NOMENCLATORS_ROUTE -> "Nomencladores"
-                                            TARJETAS_ROUTE -> "Tarjetas"
+                                            TERCEROS_ROUTE -> "Terceros"
                                             DOCUMENTOS_ROUTE -> "Documentos"
                                             else -> "Gestor Contable TCP"
                                         }
                                 )
                             },
                             navigationIcon = {
-                                if (currentRoute == ABOUT_ROUTE || currentRoute == LICENSES_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE || currentRoute == NOMENCLATORS_ROUTE || currentRoute == TARJETAS_ROUTE || currentRoute == DOCUMENTOS_ROUTE) {
+                                if (currentRoute == ABOUT_ROUTE || currentRoute == LICENSES_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE || currentRoute == NOMENCLATORS_ROUTE || currentRoute == TERCEROS_ROUTE || currentRoute == DOCUMENTOS_ROUTE) {
                                     IconButton(onClick = { navController.popBackStack() }) {
                                         Icon(
                                                 Icons.Default.ArrowBack,
@@ -626,7 +629,7 @@ fun MainScreen(
                     )
                 }
                 composable(NOMENCLATORS_ROUTE) { NomenclatorsScreen() }
-                composable(TARJETAS_ROUTE) { TarjetaScreen(tarjetaViewModel) }
+                composable(TERCEROS_ROUTE) { TercerosScreen(tercerosViewModel, tarjetaViewModel) }
                 composable(DOCUMENTOS_ROUTE) { DocumentosScreen(documentosViewModel) }
                 composable(LICENSES_ROUTE) {
                     LicenseCenterScreen(

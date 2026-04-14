@@ -7,6 +7,7 @@ import cu.lazaroysr96.sysgdcont.data.MIGRATION_1_2
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_2_3
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_3_4
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_4_5
+import cu.lazaroysr96.sysgdcont.data.MIGRATION_5_6
 import cu.lazaroysr96.sysgdcont.data.dao.CatalogoCompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.CatalogoVentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
@@ -16,6 +17,7 @@ import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
 import cu.lazaroysr96.sysgdcont.data.dao.InventarioVinculoDao
 import cu.lazaroysr96.sysgdcont.data.dao.AlmacenDao
 import cu.lazaroysr96.sysgdcont.data.dao.TarjetaDao
+import cu.lazaroysr96.sysgdcont.data.dao.TercerosDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -35,7 +37,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "sysgd_cont_database"
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .build()
     }
 
@@ -92,5 +94,11 @@ object DatabaseModule {
     @Singleton
     fun provideTarjetaDao(database: AppDatabase): TarjetaDao {
         return database.tarjetaDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideTercerosDao(database: AppDatabase): TercerosDao {
+        return database.tercerosDao()
     }
 }

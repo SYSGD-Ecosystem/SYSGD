@@ -12,6 +12,7 @@ import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
 import cu.lazaroysr96.sysgdcont.data.dao.InventarioVinculoDao
 import cu.lazaroysr96.sysgdcont.data.dao.AlmacenDao
 import cu.lazaroysr96.sysgdcont.data.dao.TarjetaDao
+import cu.lazaroysr96.sysgdcont.data.dao.TercerosDao
 import cu.lazaroysr96.sysgdcont.data.model.LineaVenta
 import cu.lazaroysr96.sysgdcont.data.model.Almacen
 import cu.lazaroysr96.sysgdcont.data.model.CatalogoCompra
@@ -23,6 +24,10 @@ import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
 import cu.lazaroysr96.sysgdcont.data.model.InventarioVinculo
 import cu.lazaroysr96.sysgdcont.data.model.Tarjeta
+import cu.lazaroysr96.sysgdcont.data.model.Tercero
+import cu.lazaroysr96.sysgdcont.data.model.TerceroCuenta
+import cu.lazaroysr96.sysgdcont.data.model.TerceroMovimiento
+import cu.lazaroysr96.sysgdcont.data.model.TerceroRol
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
@@ -381,6 +386,116 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
     }
 }
 
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+        database.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `terceros` (
+                `id` TEXT NOT NULL,
+                `nombre` TEXT NOT NULL,
+                `tipoEntidad` TEXT NOT NULL,
+                `telefono` TEXT NOT NULL DEFAULT '',
+                `correo` TEXT NOT NULL DEFAULT '',
+                `direccion` TEXT NOT NULL DEFAULT '',
+                `identificadorFiscal` TEXT NOT NULL DEFAULT '',
+                `numeroTarjeta` TEXT NOT NULL DEFAULT '',
+                `direccionCrypto` TEXT NOT NULL DEFAULT '',
+                `nota` TEXT NOT NULL DEFAULT '',
+                `activo` INTEGER NOT NULL DEFAULT 1,
+                `createdAt` TEXT NOT NULL,
+                `updatedAt` TEXT NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent()
+        )
+
+        database.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `tercero_roles` (
+                `id` TEXT NOT NULL,
+                `terceroId` TEXT NOT NULL,
+                `rol` TEXT NOT NULL,
+                `activo` INTEGER NOT NULL DEFAULT 1,
+                `createdAt` TEXT NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent()
+        )
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_tercero_roles_terceroId` ON `tercero_roles` (`terceroId`)")
+        database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_tercero_roles_terceroId_rol` ON `tercero_roles` (`terceroId`, `rol`)")
+
+        database.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `tercero_cuentas` (
+                `id` TEXT NOT NULL,
+                `terceroId` TEXT NOT NULL,
+                `tipoCuenta` TEXT NOT NULL,
+                `categoria` TEXT NOT NULL,
+                `concepto` TEXT NOT NULL,
+                `descripcion` TEXT NOT NULL DEFAULT '',
+                `montoOriginal` REAL NOT NULL,
+                `montoPendiente` REAL NOT NULL,
+                `fechaCreacion` TEXT NOT NULL,
+                `fechaVencimiento` TEXT NOT NULL DEFAULT '',
+                `estado` TEXT NOT NULL,
+                `moneda` TEXT NOT NULL DEFAULT 'CUP',
+                `origenTipo` TEXT NOT NULL DEFAULT '',
+                `origenId` TEXT NOT NULL DEFAULT '',
+                `nota` TEXT NOT NULL DEFAULT '',
+                `createdAt` TEXT NOT NULL,
+                `updatedAt` TEXT NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent()
+        )
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_tercero_cuentas_terceroId` ON `tercero_cuentas` (`terceroId`)")
+
+        database.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `tercero_movimientos` (
+                `id` TEXT NOT NULL,
+                `cuentaId` TEXT NOT NULL,
+                `tipoMovimiento` TEXT NOT NULL,
+                `monto` REAL NOT NULL,
+                `fecha` TEXT NOT NULL,
+                `metodo` TEXT NOT NULL DEFAULT '',
+                `referencia` TEXT NOT NULL DEFAULT '',
+                `nota` TEXT NOT NULL DEFAULT '',
+                `createdAt` TEXT NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent()
+        )
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_tercero_movimientos_cuentaId` ON `tercero_movimientos` (`cuentaId`)")
+
+        database.execSQL(
+            """
+            INSERT INTO terceros (
+                id, nombre, tipoEntidad, telefono, correo, direccion, identificadorFiscal,
+                numeroTarjeta, direccionCrypto, nota, activo, createdAt, updatedAt
+            )
+            SELECT
+                id, nombre, 'PERSONA', telefono, '', '', '',
+                numero, '', 'Migrado desde el módulo de tarjetas', 1, createdAt, createdAt
+            FROM tarjetas
+            """
+        )
+
+        database.execSQL(
+            """
+            INSERT INTO tercero_roles (id, terceroId, rol, activo, createdAt)
+            SELECT
+                'rol_' || id,
+                id,
+                'CLIENTE',
+                1,
+                createdAt
+            FROM tarjetas
+            """
+        )
+    }
+}
+
 @Database(
     entities = [
         Producto::class,
@@ -393,9 +508,13 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
         LineaCompra::class,
         ItemInventario::class,
         InventarioVinculo::class,
-        Tarjeta::class
+        Tarjeta::class,
+        Tercero::class,
+        TerceroRol::class,
+        TerceroCuenta::class,
+        TerceroMovimiento::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -408,4 +527,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun inventarioVinculoDao(): InventarioVinculoDao
     abstract fun almacenDao(): AlmacenDao
     abstract fun tarjetaDao(): TarjetaDao
+    abstract fun tercerosDao(): TercerosDao
 }
