@@ -8,6 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,6 +39,8 @@ import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
@@ -467,6 +471,8 @@ private fun TerceroCard(
     onArchive: () -> Unit
 ) {
     val context = LocalContext.current
+    var expanded by remember { mutableStateOf(false) }
+
     Card(colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )) {
@@ -488,70 +494,90 @@ private fun TerceroCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "Editar tercero")
-                }
-                IconButton(onClick = onArchive) {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = "Archivar tercero")
-                }
-            }
-
-            if (tercero.rolesList.isNotEmpty()) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    tercero.rolesList.forEach { rol ->
-                        AssistChip(onClick = {}, label = { Text(rol.lowercase().replaceFirstChar { it.uppercase() }) })
+                if (expanded) {
+                    IconButton(onClick = onEdit) {
+                        Icon(Icons.Default.Edit, contentDescription = "Editar tercero")
+                    }
+                    IconButton(onClick = onArchive) {
+                        Icon(Icons.Default.DeleteOutline, contentDescription = "Archivar tercero")
                     }
                 }
+                IconButton(onClick = { expanded = !expanded }) {
+                    Icon(
+                        if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (expanded) "Colapsar" else "Expandir"
+                    )
+                }
             }
 
-            ContactLine(
-                icon = Icons.Default.Call,
-                value = tercero.telefono,
-                actionIcon = Icons.Default.Call,
-                actionDescription = "Llamar",
-                onAction = { callPhone(context, tercero.telefono) },
-                onCopy = { copyToClipboard(context, "Telefono", tercero.telefono) }
-            )
-            ContactLine(
-                icon = Icons.Default.Email,
-                value = tercero.correo,
-                actionIcon = Icons.Default.Email,
-                actionDescription = "Enviar correo",
-                onAction = { sendEmail(context, tercero.correo) },
-                onCopy = { copyToClipboard(context, "Correo", tercero.correo) }
-            )
-            ContactLine(
-                icon = Icons.Default.CreditCard,
-                value = tercero.numeroTarjeta,
-                actionIcon = Icons.Default.ContentCopy,
-                actionDescription = "Copiar tarjeta",
-                onAction = { copyToClipboard(context, "Tarjeta", tercero.numeroTarjeta) },
-                onCopy = { copyToClipboard(context, "Tarjeta", tercero.numeroTarjeta) }
-            )
-            ContactLine(
-                icon = Icons.Default.Sell,
-                value = tercero.direccionCrypto,
-                actionIcon = Icons.Default.ContentCopy,
-                actionDescription = "Copiar wallet",
-                onAction = { copyToClipboard(context, "Wallet", tercero.direccionCrypto) },
-                onCopy = { copyToClipboard(context, "Wallet", tercero.direccionCrypto) }
-            )
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    if (tercero.rolesList.isNotEmpty()) {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            tercero.rolesList.forEach { rol ->
+                                AssistChip(onClick = {}, label = { Text(rol.lowercase().replaceFirstChar { it.uppercase() }) })
+                            }
+                        }
+                    }
 
-            if (tercero.direccion.isNotBlank()) {
-                Text(
-                    text = "Dirección: ${tercero.direccion}",
-                    style = MaterialTheme.typography.bodySmall
-                )
+                    ContactLine(
+                        icon = Icons.Default.Call,
+                        value = tercero.telefono,
+                        actionIcon = Icons.Default.Call,
+                        actionDescription = "Llamar",
+                        onAction = { callPhone(context, tercero.telefono) },
+                        onCopy = { copyToClipboard(context, "Telefono", tercero.telefono) }
+                    )
+                    ContactLine(
+                        icon = Icons.Default.Email,
+                        value = tercero.correo,
+                        actionIcon = Icons.Default.Email,
+                        actionDescription = "Enviar correo",
+                        onAction = { sendEmail(context, tercero.correo) },
+                        onCopy = { copyToClipboard(context, "Correo", tercero.correo) }
+                    )
+                    ContactLine(
+                        icon = Icons.Default.CreditCard,
+                        value = tercero.numeroTarjeta,
+                        actionIcon = Icons.Default.ContentCopy,
+                        actionDescription = "Copiar tarjeta",
+                        onAction = { copyToClipboard(context, "Tarjeta", tercero.numeroTarjeta) },
+                        onCopy = { copyToClipboard(context, "Tarjeta", tercero.numeroTarjeta) }
+                    )
+                    ContactLine(
+                        icon = Icons.Default.Sell,
+                        value = tercero.direccionCrypto,
+                        actionIcon = Icons.Default.ContentCopy,
+                        actionDescription = "Copiar wallet",
+                        onAction = { copyToClipboard(context, "Wallet", tercero.direccionCrypto) },
+                        onCopy = { copyToClipboard(context, "Wallet", tercero.direccionCrypto) }
+                    )
+
+                    if (tercero.direccion.isNotBlank()) {
+                        Text(
+                            text = "Dirección: ${tercero.direccion}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    if (tercero.identificadorFiscal.isNotBlank()) {
+                        Text(
+                            text = "Identificador: ${tercero.identificadorFiscal}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    if (tercero.nota.isNotBlank()) {
+                        Text(
+                            text = "Nota: ${tercero.nota}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Divider()
+                }
             }
-
-            if (tercero.identificadorFiscal.isNotBlank()) {
-                Text(
-                    text = "Identificador: ${tercero.identificadorFiscal}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-
-            Divider()
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -616,6 +642,8 @@ private fun CuentaCard(
     formatCurrency: (Double, String) -> String,
     onEdit: () -> Unit
 ) {
+    var expanded by remember { mutableStateOf(false) }
+
     Card {
         Column(
             modifier = Modifier
@@ -641,23 +669,46 @@ private fun CuentaCard(
                         onClick = {},
                         label = { Text(cuenta.estado.lowercase().replaceFirstChar { it.uppercase() }) }
                     )
-                    IconButton(onClick = onEdit) {
-                        Icon(Icons.Default.Edit, contentDescription = "Editar cuenta")
+                    if (expanded) {
+                        IconButton(onClick = onEdit) {
+                            Icon(Icons.Default.Edit, contentDescription = "Editar cuenta")
+                        }
+                    }
+                    IconButton(onClick = { expanded = !expanded }) {
+                        Icon(
+                            if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (expanded) "Colapsar" else "Expandir"
+                        )
                     }
                 }
             }
 
-            if (cuenta.descripcion.isNotBlank()) {
-                Text(cuenta.descripcion, style = MaterialTheme.typography.bodySmall)
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    if (cuenta.descripcion.isNotBlank()) {
+                        Text(cuenta.descripcion, style = MaterialTheme.typography.bodySmall)
+                    }
+
+                    if (cuenta.nota.isNotBlank()) {
+                        Text(
+                            text = "Nota: ${cuenta.nota}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Divider()
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Monto original")
+                        Text(formatCurrency(cuenta.montoOriginal, cuenta.moneda), fontWeight = FontWeight.Medium)
+                    }
+                }
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("Monto original")
-                Text(formatCurrency(cuenta.montoOriginal, cuenta.moneda), fontWeight = FontWeight.Medium)
-            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
