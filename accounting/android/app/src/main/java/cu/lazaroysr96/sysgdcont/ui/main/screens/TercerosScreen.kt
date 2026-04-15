@@ -9,6 +9,8 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -476,14 +478,11 @@ private fun TerceroCard(
     Card(colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
+        Column {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -510,8 +509,12 @@ private fun TerceroCard(
                 }
             }
 
-            AnimatedVisibility(visible = expanded) {
-                Column {
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     if (tercero.rolesList.isNotEmpty()) {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             tercero.rolesList.forEach { rol ->
@@ -519,6 +522,8 @@ private fun TerceroCard(
                             }
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(4.dp))
 
                     ContactLine(
                         icon = Icons.Default.Call,
@@ -580,7 +585,9 @@ private fun TerceroCard(
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text("Por pagar", style = MaterialTheme.typography.bodySmall)
@@ -591,7 +598,9 @@ private fun TerceroCard(
                 )
             }
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text("Por cobrar", style = MaterialTheme.typography.bodySmall)
@@ -645,14 +654,11 @@ private fun CuentaCard(
     var expanded by remember { mutableStateOf(false) }
 
     Card {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        Column {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -683,8 +689,12 @@ private fun CuentaCard(
                 }
             }
 
-            AnimatedVisibility(visible = expanded) {
-                Column {
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     if (cuenta.descripcion.isNotBlank()) {
                         Text(cuenta.descripcion, style = MaterialTheme.typography.bodySmall)
                     }
@@ -710,7 +720,9 @@ private fun CuentaCard(
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text("Pendiente")
@@ -721,7 +733,8 @@ private fun CuentaCard(
                 Text(
                     text = "Vence: ${cuenta.fechaVencimiento}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 )
             }
         }
