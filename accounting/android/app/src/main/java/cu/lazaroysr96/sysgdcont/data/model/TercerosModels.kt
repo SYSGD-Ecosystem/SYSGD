@@ -5,9 +5,14 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 object TipoEntidadTercero {
-    const val PERSONA = "PERSONA"
-    const val EMPRESA = "EMPRESA"
-    const val ESTADO = "ESTADO"
+    const val TCP = "TCP"
+    const val PARTICULAR = "PARTICULAR"
+    const val ESTATAL = "ESTATAL"
+    const val MIPYME = "MIPYME"
+    // Compatibilidad con datos antiguos
+    const val PERSONA = PARTICULAR
+    const val EMPRESA = MIPYME
+    const val ESTADO = ESTATAL
 }
 
 object RolTercero {

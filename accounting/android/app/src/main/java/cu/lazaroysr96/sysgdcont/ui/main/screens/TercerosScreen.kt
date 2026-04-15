@@ -2,6 +2,12 @@
 
 package cu.lazaroysr96.sysgdcont.ui.main.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +36,7 @@ import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
@@ -64,6 +71,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -84,9 +92,10 @@ private enum class TercerosTab {
 
 private enum class PersonasFilter {
     TODOS,
-    PERSONA,
-    EMPRESA,
-    ESTADO
+    TCP,
+    PARTICULAR,
+    ESTATAL,
+    MIPYME
 }
 
 private enum class CuentasFilter {
@@ -301,9 +310,10 @@ private fun PersonasFilterRow(
         label = "Tipo de persona",
         options = listOf(
             PersonasFilter.TODOS to "Todos",
-            PersonasFilter.PERSONA to "Persona",
-            PersonasFilter.EMPRESA to "Empresa",
-            PersonasFilter.ESTADO to "Estado"
+            PersonasFilter.TCP to "TCP",
+            PersonasFilter.PARTICULAR to "Particular",
+            PersonasFilter.ESTATAL to "Estatal",
+            PersonasFilter.MIPYME to "MIPYME"
         ),
         selected = selected,
         onSelected = onSelected
@@ -411,9 +421,30 @@ private fun filterPersonas(
 ): List<TerceroListItem> {
     return when (filter) {
         PersonasFilter.TODOS -> terceros
-        PersonasFilter.PERSONA -> terceros.filter { it.tipoEntidad == TipoEntidadTercero.PERSONA }
-        PersonasFilter.EMPRESA -> terceros.filter { it.tipoEntidad == TipoEntidadTercero.EMPRESA }
-        PersonasFilter.ESTADO -> terceros.filter { it.tipoEntidad == TipoEntidadTercero.ESTADO }
+        PersonasFilter.TCP -> terceros.filter { it.tipoEntidad == TipoEntidadTercero.TCP }
+        PersonasFilter.PARTICULAR -> terceros.filter { it.tipoEntidad == TipoEntidadTercero.PARTICULAR || it.tipoEntidad == TipoEntidadTercero.PERSONA }
+        PersonasFilter.ESTATAL -> terceros.filter { it.tipoEntidad == TipoEntidadTercero.ESTATAL || it.tipoEntidad == TipoEntidadTercero.ESTADO }
+        PersonasFilter.MIPYME -> terceros.filter { it.tipoEntidad == TipoEntidadTercero.MIPYME || it.tipoEntidad == TipoEntidadTercero.EMPRESA }
+    }
+}
+
+private const val TIPO_ENTIDAD_OTRO = "__OTRO__"
+
+private fun tipoEntidadOpcionesBase(): List<Pair<String, String>> = listOf(
+    TipoEntidadTercero.TCP to "TCP",
+    TipoEntidadTercero.PARTICULAR to "Particular",
+    TipoEntidadTercero.ESTATAL to "Estatal",
+    TipoEntidadTercero.MIPYME to "MIPYME",
+    TIPO_ENTIDAD_OTRO to "Otro (crear nuevo)"
+)
+
+private fun tipoEntidadLabel(value: String): String {
+    return when (value) {
+        TipoEntidadTercero.TCP -> "TCP"
+        TipoEntidadTercero.PARTICULAR, TipoEntidadTercero.PERSONA -> "Particular"
+        TipoEntidadTercero.ESTATAL, TipoEntidadTercero.ESTADO -> "Estatal"
+        TipoEntidadTercero.MIPYME, TipoEntidadTercero.EMPRESA -> "MIPYME"
+        else -> value
     }
 }
 
@@ -435,6 +466,7 @@ private fun TerceroCard(
     onEdit: () -> Unit,
     onArchive: () -> Unit
 ) {
+    val context = LocalContext.current
     Card(colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )) {
@@ -451,7 +483,7 @@ private fun TerceroCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(tercero.nombre, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text(
-                        text = tercero.tipoEntidad.lowercase().replaceFirstChar { it.uppercase() },
+                        text = tipoEntidadLabel(tercero.tipoEntidad),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -472,10 +504,38 @@ private fun TerceroCard(
                 }
             }
 
-            ContactLine(Icons.Default.Call, tercero.telefono)
-            ContactLine(Icons.Default.Email, tercero.correo)
-            ContactLine(Icons.Default.CreditCard, tercero.numeroTarjeta)
-            ContactLine(Icons.Default.Sell, tercero.direccionCrypto)
+            ContactLine(
+                icon = Icons.Default.Call,
+                value = tercero.telefono,
+                actionIcon = Icons.Default.Call,
+                actionDescription = "Llamar",
+                onAction = { callPhone(context, tercero.telefono) },
+                onCopy = { copyToClipboard(context, "Telefono", tercero.telefono) }
+            )
+            ContactLine(
+                icon = Icons.Default.Email,
+                value = tercero.correo,
+                actionIcon = Icons.Default.Email,
+                actionDescription = "Enviar correo",
+                onAction = { sendEmail(context, tercero.correo) },
+                onCopy = { copyToClipboard(context, "Correo", tercero.correo) }
+            )
+            ContactLine(
+                icon = Icons.Default.CreditCard,
+                value = tercero.numeroTarjeta,
+                actionIcon = Icons.Default.ContentCopy,
+                actionDescription = "Copiar tarjeta",
+                onAction = { copyToClipboard(context, "Tarjeta", tercero.numeroTarjeta) },
+                onCopy = { copyToClipboard(context, "Tarjeta", tercero.numeroTarjeta) }
+            )
+            ContactLine(
+                icon = Icons.Default.Sell,
+                value = tercero.direccionCrypto,
+                actionIcon = Icons.Default.ContentCopy,
+                actionDescription = "Copiar wallet",
+                onAction = { copyToClipboard(context, "Wallet", tercero.direccionCrypto) },
+                onCopy = { copyToClipboard(context, "Wallet", tercero.direccionCrypto) }
+            )
 
             if (tercero.direccion.isNotBlank()) {
                 Text(
@@ -524,7 +584,29 @@ private fun ContactLine(icon: ImageVector, value: String) {
     if (value.isBlank()) return
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, contentDescription = null, modifier = Modifier.padding(top = 2.dp))
-        Text(value, style = MaterialTheme.typography.bodySmall)
+        Text(value, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun ContactLine(
+    icon: ImageVector,
+    value: String,
+    actionIcon: ImageVector,
+    actionDescription: String,
+    onAction: () -> Unit,
+    onCopy: () -> Unit
+) {
+    if (value.isBlank()) return
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, modifier = Modifier.padding(top = 2.dp))
+        Text(value, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+        IconButton(onClick = onAction) {
+            Icon(actionIcon, contentDescription = actionDescription)
+        }
+        IconButton(onClick = onCopy) {
+            Icon(Icons.Default.ContentCopy, contentDescription = "Copiar")
+        }
     }
 }
 
@@ -619,7 +701,10 @@ private fun AddTerceroDialog(
     var numeroTarjeta by rememberSaveable { mutableStateOf("") }
     var direccionCrypto by rememberSaveable { mutableStateOf("") }
     var nota by rememberSaveable { mutableStateOf("") }
-    var tipoEntidad by rememberSaveable { mutableStateOf(TipoEntidadTercero.PERSONA) }
+    val tipoOptions = remember { tipoEntidadOpcionesBase() }
+    var tipoEntidad by rememberSaveable { mutableStateOf(TipoEntidadTercero.TCP) }
+    var tipoEntidadSeleccionado by rememberSaveable { mutableStateOf(TipoEntidadTercero.TCP) }
+    var customTipoEntidad by rememberSaveable { mutableStateOf("") }
     var roles by rememberSaveable { mutableStateOf(setOf(RolTercero.CLIENTE)) }
 
     AlertDialog(
@@ -639,14 +724,30 @@ private fun AddTerceroDialog(
                 item {
                     SingleSelectDropdown(
                         label = "Tipo de tercero",
-                        options = listOf(
-                            TipoEntidadTercero.PERSONA to "Persona",
-                            TipoEntidadTercero.EMPRESA to "Empresa",
-                            TipoEntidadTercero.ESTADO to "Estado"
-                        ),
-                        selected = tipoEntidad,
-                        onSelected = { tipoEntidad = it }
+                        options = tipoOptions,
+                        selected = tipoEntidadSeleccionado,
+                        onSelected = { selected ->
+                            tipoEntidadSeleccionado = selected
+                            if (selected != TIPO_ENTIDAD_OTRO) {
+                                tipoEntidad = selected
+                                customTipoEntidad = ""
+                            }
+                        }
                     )
+                }
+                if (tipoEntidadSeleccionado == TIPO_ENTIDAD_OTRO) {
+                    item {
+                        OutlinedTextField(
+                            value = customTipoEntidad,
+                            onValueChange = {
+                                customTipoEntidad = it
+                                tipoEntidad = it.trim().uppercase()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Nuevo tipo de tercero") },
+                            singleLine = true
+                        )
+                    }
                 }
                 item {
                     MultiSelectDropdown(
@@ -726,15 +827,22 @@ private fun AddTerceroDialog(
         confirmButton = {
             TextButton(
                 onClick = {
+                    val tipoFinal = if (tipoEntidadSeleccionado == TIPO_ENTIDAD_OTRO) {
+                        customTipoEntidad.trim().uppercase()
+                    } else {
+                        tipoEntidad
+                    }
+                    if (tipoFinal.isBlank()) return@TextButton
+
                     val rolesFinal = roles.toMutableSet()
-                    if (tipoEntidad == TipoEntidadTercero.ESTADO) {
+                    if (tipoFinal == TipoEntidadTercero.ESTATAL || tipoFinal == TipoEntidadTercero.ESTADO) {
                         rolesFinal.add(RolTercero.ESTADO)
                     } else {
                         rolesFinal.remove(RolTercero.ESTADO)
                     }
                     onConfirm(
                         nombre,
-                        tipoEntidad,
+                        tipoFinal,
                         rolesFinal,
                         telefono,
                         correo,
@@ -936,7 +1044,37 @@ private fun EditTerceroDialog(
     var numeroTarjeta by rememberSaveable { mutableStateOf(tercero.numeroTarjeta) }
     var direccionCrypto by rememberSaveable { mutableStateOf(tercero.direccionCrypto) }
     var nota by rememberSaveable { mutableStateOf(tercero.nota) }
+    val tipoOptions = remember { tipoEntidadOpcionesBase() }
+    val tipoConocidoInicial = remember(tercero.tipoEntidad) {
+        when (tercero.tipoEntidad) {
+            TipoEntidadTercero.TCP,
+            TipoEntidadTercero.PARTICULAR,
+            TipoEntidadTercero.PERSONA,
+            TipoEntidadTercero.ESTATAL,
+            TipoEntidadTercero.ESTADO,
+            TipoEntidadTercero.MIPYME,
+            TipoEntidadTercero.EMPRESA -> true
+            else -> false
+        }
+    }
     var tipoEntidad by rememberSaveable { mutableStateOf(tercero.tipoEntidad) }
+    var tipoEntidadSeleccionado by rememberSaveable {
+        mutableStateOf(
+            if (tipoConocidoInicial) {
+                when (tercero.tipoEntidad) {
+                    TipoEntidadTercero.PERSONA -> TipoEntidadTercero.PARTICULAR
+                    TipoEntidadTercero.EMPRESA -> TipoEntidadTercero.MIPYME
+                    TipoEntidadTercero.ESTADO -> TipoEntidadTercero.ESTATAL
+                    else -> tercero.tipoEntidad
+                }
+            } else {
+                TIPO_ENTIDAD_OTRO
+            }
+        )
+    }
+    var customTipoEntidad by rememberSaveable {
+        mutableStateOf(if (tipoConocidoInicial) "" else tercero.tipoEntidad)
+    }
     var roles by rememberSaveable { mutableStateOf(tercero.rolesList.toSet()) }
 
     AlertDialog(
@@ -956,14 +1094,30 @@ private fun EditTerceroDialog(
                 item {
                     SingleSelectDropdown(
                         label = "Tipo de tercero",
-                        options = listOf(
-                            TipoEntidadTercero.PERSONA to "Persona",
-                            TipoEntidadTercero.EMPRESA to "Empresa",
-                            TipoEntidadTercero.ESTADO to "Estado"
-                        ),
-                        selected = tipoEntidad,
-                        onSelected = { tipoEntidad = it }
+                        options = tipoOptions,
+                        selected = tipoEntidadSeleccionado,
+                        onSelected = { selected ->
+                            tipoEntidadSeleccionado = selected
+                            if (selected != TIPO_ENTIDAD_OTRO) {
+                                tipoEntidad = selected
+                                customTipoEntidad = ""
+                            }
+                        }
                     )
+                }
+                if (tipoEntidadSeleccionado == TIPO_ENTIDAD_OTRO) {
+                    item {
+                        OutlinedTextField(
+                            value = customTipoEntidad,
+                            onValueChange = {
+                                customTipoEntidad = it
+                                tipoEntidad = it.trim().uppercase()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Nuevo tipo de tercero") },
+                            singleLine = true
+                        )
+                    }
                 }
                 item {
                     MultiSelectDropdown(
@@ -1043,8 +1197,15 @@ private fun EditTerceroDialog(
         confirmButton = {
             TextButton(
                 onClick = {
+                    val tipoFinal = if (tipoEntidadSeleccionado == TIPO_ENTIDAD_OTRO) {
+                        customTipoEntidad.trim().uppercase()
+                    } else {
+                        tipoEntidad
+                    }
+                    if (tipoFinal.isBlank()) return@TextButton
+
                     val rolesFinal = roles.toMutableSet()
-                    if (tipoEntidad == TipoEntidadTercero.ESTADO) {
+                    if (tipoFinal == TipoEntidadTercero.ESTATAL || tipoFinal == TipoEntidadTercero.ESTADO) {
                         rolesFinal.add(RolTercero.ESTADO)
                     } else {
                         rolesFinal.remove(RolTercero.ESTADO)
@@ -1052,7 +1213,7 @@ private fun EditTerceroDialog(
                     onConfirm(
                         tercero.id,
                         nombre,
-                        tipoEntidad,
+                        tipoFinal,
                         rolesFinal,
                         telefono,
                         correo,
@@ -1286,4 +1447,26 @@ private fun MultiSelectDropdown(
             }
         }
     }
+}
+
+private fun callPhone(context: Context, value: String) {
+    val phone = value.filter { it.isDigit() || it == '+' }
+    if (phone.isBlank()) return
+    runCatching {
+        context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
+    }
+}
+
+private fun sendEmail(context: Context, value: String) {
+    val email = value.trim()
+    if (email.isBlank()) return
+    runCatching {
+        context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$email")))
+    }
+}
+
+private fun copyToClipboard(context: Context, label: String, value: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText(label, value))
+    Toast.makeText(context, "$label copiado", Toast.LENGTH_SHORT).show()
 }

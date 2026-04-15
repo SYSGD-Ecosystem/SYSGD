@@ -1,5 +1,11 @@
 package cu.lazaroysr96.sysgdcont.data.repository
 
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
 import cu.lazaroysr96.sysgdcont.data.dao.TercerosDao
 import cu.lazaroysr96.sysgdcont.data.model.EstadoCuentaTercero
 import cu.lazaroysr96.sysgdcont.data.model.RolTercero
@@ -7,21 +13,46 @@ import cu.lazaroysr96.sysgdcont.data.model.Tercero
 import cu.lazaroysr96.sysgdcont.data.model.TerceroCuenta
 import cu.lazaroysr96.sysgdcont.data.model.TerceroCuentaListItem
 import cu.lazaroysr96.sysgdcont.data.model.TerceroListItem
+import cu.lazaroysr96.sysgdcont.data.model.TercerosRegistro
 import cu.lazaroysr96.sysgdcont.data.model.TerceroRol
 import cu.lazaroysr96.sysgdcont.data.model.TipoCuentaTercero
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.math.max
+
+private val Context.tercerosDataStore: DataStore<Preferences> by preferencesDataStore(name = "terceros_prefs")
 
 @Singleton
 class TercerosRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val tercerosDao: TercerosDao
 ) {
+    companion object {
+        private val TERCEROS_LOCAL_MODIFIED_KEY = stringPreferencesKey("terceros_local_modified")
+    }
+
+    val localModified: Flow<Boolean> = context.tercerosDataStore.data.map { prefs ->
+        prefs[TERCEROS_LOCAL_MODIFIED_KEY] == "true"
+    }
+
+    private suspend fun markLocalModified() {
+        context.tercerosDataStore.edit { prefs ->
+            prefs[TERCEROS_LOCAL_MODIFIED_KEY] = "true"
+        }
+    }
+
+    suspend fun clearLocalModified() {
+        context.tercerosDataStore.edit { prefs ->
+            prefs[TERCEROS_LOCAL_MODIFIED_KEY] = "false"
+        }
+    }
+
     fun observeTerceros(): Flow<List<TerceroListItem>> = tercerosDao.observeTerceros()
 
     fun observeCuentas(): Flow<List<TerceroCuentaListItem>> = tercerosDao.observeCuentas()
@@ -73,6 +104,7 @@ class TercerosRepository @Inject constructor(
                 )
             }
         )
+        markLocalModified()
         return tercero
     }
 
@@ -110,6 +142,7 @@ class TercerosRepository @Inject constructor(
             updatedAt = now
         )
         tercerosDao.insertCuenta(cuenta)
+        markLocalModified()
         return cuenta
     }
 
@@ -156,6 +189,7 @@ class TercerosRepository @Inject constructor(
                 )
             }
         )
+        markLocalModified()
     }
 
     suspend fun actualizarCuenta(
@@ -184,6 +218,7 @@ class TercerosRepository @Inject constructor(
             updatedAt = now
         )
         tercerosDao.updateCuenta(updated)
+        markLocalModified()
     }
 
     suspend fun archivarTercero(terceroId: String) {
@@ -191,6 +226,32 @@ class TercerosRepository @Inject constructor(
         require(cuentas == 0) { "No se puede archivar un tercero con cuentas asociadas" }
         tercerosDao.deleteRolesByTercero(terceroId)
         tercerosDao.deactivateTercero(terceroId, nowIso())
+        markLocalModified()
+    }
+
+    suspend fun toTercerosRegistro(): TercerosRegistro {
+        return TercerosRegistro(
+            terceros = tercerosDao.getAllTercerosIncluyendoArchivadosRaw(),
+            roles = tercerosDao.getAllRolesRaw(),
+            cuentas = tercerosDao.getAllCuentasRaw(),
+            movimientos = tercerosDao.getAllMovimientosRaw()
+        )
+    }
+
+    suspend fun fromTercerosRegistro(registro: TercerosRegistro) {
+        tercerosDao.deleteAllMovimientos()
+        tercerosDao.deleteAllCuentas()
+        tercerosDao.deleteAllRoles()
+        tercerosDao.deleteAllTerceros()
+
+        registro.terceros.forEach { tercerosDao.insertTercero(it) }
+        if (registro.roles.isNotEmpty()) {
+            tercerosDao.insertRoles(registro.roles)
+        }
+        registro.cuentas.forEach { tercerosDao.insertCuenta(it) }
+        registro.movimientos.forEach { tercerosDao.insertMovimiento(it) }
+
+        clearLocalModified()
     }
 
     fun formatCurrency(value: Double, currency: String = "CUP"): String {

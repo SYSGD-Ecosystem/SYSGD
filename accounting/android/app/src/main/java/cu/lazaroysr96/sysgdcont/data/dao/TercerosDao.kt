@@ -106,6 +106,18 @@ interface TercerosDao {
     @Query("SELECT * FROM terceros WHERE activo = 1 ORDER BY nombre COLLATE NOCASE ASC")
     suspend fun getAllTercerosRaw(): List<Tercero>
 
+    @Query("SELECT * FROM terceros")
+    suspend fun getAllTercerosIncluyendoArchivadosRaw(): List<Tercero>
+
+    @Query("SELECT * FROM tercero_roles")
+    suspend fun getAllRolesRaw(): List<TerceroRol>
+
+    @Query("SELECT * FROM tercero_cuentas")
+    suspend fun getAllCuentasRaw(): List<TerceroCuenta>
+
+    @Query("SELECT * FROM tercero_movimientos")
+    suspend fun getAllMovimientosRaw(): List<TerceroMovimiento>
+
     @Query("SELECT * FROM terceros WHERE id = :terceroId")
     suspend fun getTerceroById(terceroId: String): Tercero?
 
@@ -120,6 +132,18 @@ interface TercerosDao {
 
     @Query("UPDATE terceros SET activo = 0, updatedAt = :updatedAt WHERE id = :terceroId")
     suspend fun deactivateTercero(terceroId: String, updatedAt: String)
+
+    @Query("DELETE FROM tercero_movimientos")
+    suspend fun deleteAllMovimientos()
+
+    @Query("DELETE FROM tercero_cuentas")
+    suspend fun deleteAllCuentas()
+
+    @Query("DELETE FROM tercero_roles")
+    suspend fun deleteAllRoles()
+
+    @Query("DELETE FROM terceros")
+    suspend fun deleteAllTerceros()
 
     @Query(
         """

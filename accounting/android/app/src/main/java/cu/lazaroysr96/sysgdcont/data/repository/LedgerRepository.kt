@@ -55,6 +55,7 @@ class LedgerRepository @Inject constructor(
     private val apiService: ApiService,
     private val authRepository: AuthRepository,
     private val inventarioRepository: InventarioRepository,
+    private val tercerosRepository: TercerosRepository,
     private val documentStorageRepository: DocumentStorageRepository
 ) {
     private data class RegistroBackupPayload(
@@ -184,9 +185,10 @@ class LedgerRepository @Inject constructor(
 
     val localModified: Flow<Boolean> = combine(
         context.ledgerDataStore.data.map { prefs -> prefs[LOCAL_MODIFIED_KEY] == "true" },
-        inventarioRepository.localModified
-    ) { ledgerModified, inventarioModified ->
-        ledgerModified || inventarioModified
+        inventarioRepository.localModified,
+        tercerosRepository.localModified
+    ) { ledgerModified, inventarioModified, tercerosModified ->
+        ledgerModified || inventarioModified || tercerosModified
     }
 
     suspend fun getRegistro(): RegistroTCP = registro.first()
@@ -213,6 +215,7 @@ class LedgerRepository @Inject constructor(
             prefs[LAST_SYNC_KEY] = java.time.Instant.now().toString()
         }
         inventarioRepository.clearLocalModified()
+        tercerosRepository.clearLocalModified()
     }
 
     suspend fun saveUserEditedRegistro(registro: RegistroTCP) {
@@ -234,10 +237,13 @@ class LedgerRepository @Inject constructor(
     private suspend fun buildRegistroWithInventario(): RegistroTCP {
         val current = getRegistro()
         val inventarioRegistro = inventarioRepository.toInventarioRegistro()
-        return current.copy(inventario = inventarioRegistro)
+        val tercerosRegistro = tercerosRepository.toTercerosRegistro()
+        return current.copy(inventario = inventarioRegistro, terceros = tercerosRegistro)
     }
 
     private fun stripInventario(registro: RegistroTCP): RegistroTCP {
+        // El inventario se sincroniza en el campo dedicado `inventarioRegistro`.
+        // Terceros permanece dentro de `registro` para que viaje al servidor.
         return registro.copy(inventario = InventarioRegistro())
     }
 
@@ -251,6 +257,14 @@ class LedgerRepository @Inject constructor(
             inventario.productosVenta.isNotEmpty() ||
             inventario.productosCompra.isNotEmpty() ||
             inventario.operaciones.isNotEmpty()
+    }
+
+    private fun hasTercerosData(terceros: TercerosRegistro?): Boolean {
+        if (terceros == null) return false
+        return terceros.terceros.isNotEmpty() ||
+            terceros.roles.isNotEmpty() ||
+            terceros.cuentas.isNotEmpty() ||
+            terceros.movimientos.isNotEmpty()
     }
 
     private fun isRegistroEffectivelyEmpty(registro: RegistroTCP): Boolean {
@@ -287,7 +301,8 @@ class LedgerRepository @Inject constructor(
             ingresosVacios &&
             gastosVacios &&
             tributosVacios &&
-            !hasInventarioData(registro.inventario)
+            !hasInventarioData(registro.inventario) &&
+            !hasTercerosData(registro.terceros)
     }
 
     private fun buildRemoteRegistro(response: ContLedgerResponse): RegistroTCP? {
@@ -392,6 +407,9 @@ class LedgerRepository @Inject constructor(
             val normalized = normalizeImportedRegistro(imported)
             if (hasInventarioData(normalized.inventario)) {
                 inventarioRepository.fromInventarioRegistro(normalized.inventario)
+            }
+            if (hasTercerosData(normalized.terceros)) {
+                tercerosRepository.fromTercerosRegistro(normalized.terceros)
             }
 
             val registroSinInventario = stripInventario(normalized)
@@ -561,6 +579,9 @@ class LedgerRepository @Inject constructor(
         return try {
             if (hasInventarioData(registro.inventario)) {
                 inventarioRepository.fromInventarioRegistro(registro.inventario)
+            }
+            if (hasTercerosData(registro.terceros)) {
+                tercerosRepository.fromTercerosRegistro(registro.terceros)
             }
             val registroSinInventario = stripInventario(registro)
             saveRegistro(registroSinInventario, modifiedByUser = false)
@@ -1278,7 +1299,8 @@ class LedgerRepository @Inject constructor(
             ingresos = ingresos,
             gastos = gastos,
             tributos = tributos,
-            inventario = normalizeImportedInventario(source.inventario)
+            inventario = normalizeImportedInventario(source.inventario),
+            terceros = source.terceros
         )
     }
 
