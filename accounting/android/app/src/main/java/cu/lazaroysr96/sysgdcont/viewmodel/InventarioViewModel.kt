@@ -61,12 +61,16 @@ data class InventarioUiState(
     // Inventario
     val itemsInventarioCompra: List<ItemInventario> = emptyList(),
     val itemsInventarioVenta: List<ItemInventario> = emptyList(),
+    val itemsInventarioArchivados: List<ItemInventario> = emptyList(),
     // UI inventario
     val showMoverDialog: Boolean = false,
     val itemMoviendo: ItemInventario? = null,
     val showAjusteStockDialog: Boolean = false,
     val itemAjustando: ItemInventario? = null,
     val vinculadosItemAjustando: List<InventarioVinculoEdicion> = emptyList(),
+    val showArchiveDialog: Boolean = false,
+    val itemArchivando: ItemInventario? = null,
+    val nombreItemArchivando: String = "",
     val nombreEmpresaFactura: String = "",
     val nombreVendedorFactura: String = "",
     val correoVendedorFactura: String = "",
@@ -117,14 +121,19 @@ class InventarioViewModel @Inject constructor(
         cargarComprasDelMes(YearMonth.now())
 
         viewModelScope.launch {
-        repo.getItemsInventarioCompra().collect { items ->
-        _uiState.update { it.copy(itemsInventarioCompra = items) }
-    }
-}
+            repo.getItemsInventarioCompra().collect { items ->
+                _uiState.update { it.copy(itemsInventarioCompra = items) }
+            }
+        }
         viewModelScope.launch {
-        repo.getItemsInventarioVenta().collect { items ->
-        _uiState.update { it.copy(itemsInventarioVenta = items) }
-    }
+            repo.getItemsInventarioVenta().collect { items ->
+                _uiState.update { it.copy(itemsInventarioVenta = items) }
+            }
+        }
+        viewModelScope.launch {
+            repo.getItemsInventarioArchivados().collect { items ->
+                _uiState.update { it.copy(itemsInventarioArchivados = items) }
+            }
         }
         viewModelScope.launch {
             facturaRepository.configuracionFacturacion.collect { config ->
@@ -144,88 +153,100 @@ class InventarioViewModel @Inject constructor(
     }
 
     fun showMoverDialog(item: ItemInventario?) {
-    _uiState.update { it.copy(showMoverDialog = item != null, itemMoviendo = item) }
-}
-
-fun showAjusteStockDialog(item: ItemInventario?) {
-    if (item == null) {
-        _uiState.update {
-            it.copy(
-                showAjusteStockDialog = false,
-                itemAjustando = null,
-                vinculadosItemAjustando = emptyList()
-            )
-        }
-        return
+        _uiState.update { it.copy(showMoverDialog = item != null, itemMoviendo = item) }
     }
 
-    _uiState.update {
-        it.copy(
-            showAjusteStockDialog = true,
-            itemAjustando = item,
-            vinculadosItemAjustando = emptyList()
-        )
-    }
-    viewModelScope.launch {
-        val vinculados = repo.getVinculosEdicion(item.id)
-        _uiState.update { state ->
-            if (state.itemAjustando?.id == item.id) {
-                state.copy(vinculadosItemAjustando = vinculados)
-            } else {
-                state
-            }
-        }
-    }
-}
-
-fun ajustarStockManual(id: String, cantidad: Double, modo: String, vinculados: List<String> = emptyList(), ratios: List<Double> = emptyList()) {
-    viewModelScope.launch {
-        try {
-            when (modo) {
-                ModoStock.ILIMITADO.name -> {
-                    repo.actualizarModoStock(id, ModoStock.ILIMITADO)
-                }
-                ModoStock.VINCULADO.name -> {
-                    repo.actualizarModoYVinculados(id, ModoStock.VINCULADO, vinculados, ratios)
-                }
-                else -> {
-                    repo.ajustarStock(id, cantidad)
-                }
-            }
+    fun showAjusteStockDialog(item: ItemInventario?) {
+        if (item == null) {
             _uiState.update {
                 it.copy(
-                    snackbarMessage = "Stock actualizado",
                     showAjusteStockDialog = false,
                     itemAjustando = null,
                     vinculadosItemAjustando = emptyList()
                 )
             }
-        } catch (e: Exception) {
-            _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al actualizar stock") }
+            return
+        }
+
+        _uiState.update {
+            it.copy(
+                showAjusteStockDialog = true,
+                itemAjustando = item,
+                vinculadosItemAjustando = emptyList()
+            )
+        }
+        viewModelScope.launch {
+            val vinculados = repo.getVinculosEdicion(item.id)
+            _uiState.update { state ->
+                if (state.itemAjustando?.id == item.id) {
+                    state.copy(vinculadosItemAjustando = vinculados)
+                } else {
+                    state
+                }
+            }
         }
     }
-}
 
-fun ponerProductoEnVenta(
-    productoId: String,
-    precioVenta: Double
-) {
-    viewModelScope.launch {
-        try {
-            repo.ponerProductoEnVenta(productoId, precioVenta)
-            _uiState.update { it.copy(snackbarMessage = "Producto agregado al catalogo de ventas", showMoverDialog = false, itemMoviendo = null) }
-        } catch (e: Exception) {
-            _uiState.update { it.copy(snackbarMessage = "Error al publicar producto: ${e.message}") }
+    fun ajustarStockManual(
+        id: String,
+        cantidad: Double,
+        modo: String,
+        vinculados: List<String> = emptyList(),
+        ratios: List<Double> = emptyList()
+    ) {
+        viewModelScope.launch {
+            try {
+                when (modo) {
+                    ModoStock.ILIMITADO.name -> {
+                        repo.actualizarModoStock(id, ModoStock.ILIMITADO)
+                    }
+                    ModoStock.VINCULADO.name -> {
+                        repo.actualizarModoYVinculados(id, ModoStock.VINCULADO, vinculados, ratios)
+                    }
+                    else -> {
+                        repo.ajustarStock(id, cantidad)
+                    }
+                }
+                _uiState.update {
+                    it.copy(
+                        snackbarMessage = "Stock actualizado",
+                        showAjusteStockDialog = false,
+                        itemAjustando = null,
+                        vinculadosItemAjustando = emptyList()
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al actualizar stock") }
+            }
         }
     }
-}
 
-fun activarItemEnInventario(productoId: String, tipo: TipoProductoInv) {
-    viewModelScope.launch {
-        repo.ensureItemInventario(productoId, tipo)
-        _uiState.update { it.copy(snackbarMessage = "Producto agregado al inventario") }
+    fun ponerProductoEnVenta(
+        productoId: String,
+        precioVenta: Double
+    ) {
+        viewModelScope.launch {
+            try {
+                repo.ponerProductoEnVenta(productoId, precioVenta)
+                _uiState.update {
+                    it.copy(
+                        snackbarMessage = "Producto agregado al catalogo de ventas",
+                        showMoverDialog = false,
+                        itemMoviendo = null
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = "Error al publicar producto: ${e.message}") }
+            }
+        }
     }
-}
+
+    fun activarItemEnInventario(productoId: String, tipo: TipoProductoInv) {
+        viewModelScope.launch {
+            repo.ensureItemInventario(productoId, tipo)
+            _uiState.update { it.copy(snackbarMessage = "Producto agregado al inventario") }
+        }
+    }
 
     fun updateNombreEmpresaFactura(nombre: String) {
         _uiState.update { it.copy(nombreEmpresaFactura = nombre) }
@@ -459,6 +480,46 @@ fun activarItemEnInventario(productoId: String, tipo: TipoProductoInv) {
                 _uiState.update { it.copy(snackbarMessage = "Insumo eliminado") }
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = "Error al eliminar") }
+            }
+        }
+    }
+
+    fun showArchiveDialog(item: ItemInventario?, nombre: String) {
+        _uiState.update {
+            it.copy(
+                showArchiveDialog = item != null,
+                itemArchivando = item,
+                nombreItemArchivando = nombre
+            )
+        }
+    }
+
+    fun archivarItemInventario(motivo: String) {
+        val item = _uiState.value.itemArchivando ?: return
+        viewModelScope.launch {
+            try {
+                repo.archivarItemInventario(item.id, motivo)
+                _uiState.update {
+                    it.copy(
+                        snackbarMessage = "Producto archivado",
+                        showArchiveDialog = false,
+                        itemArchivando = null,
+                        nombreItemArchivando = ""
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "No se pudo archivar") }
+            }
+        }
+    }
+
+    fun restaurarItemInventario(itemId: String) {
+        viewModelScope.launch {
+            try {
+                repo.restaurarItemInventario(itemId)
+                _uiState.update { it.copy(snackbarMessage = "Producto restaurado en inventario") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "No se pudo restaurar") }
             }
         }
     }

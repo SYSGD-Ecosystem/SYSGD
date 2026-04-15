@@ -622,9 +622,7 @@ fun MainScreen(
                     InventarioScreen(
                         inventarioViewModel,
                         facturaViewModel,
-                        ledgerState.experimentalFeaturesEnabled,
-                        ledgerState.hideInventarioDisclaimer,
-                        ledgerViewModel::setHideInventarioDisclaimer,
+                        canUseProFeatures,
                         canGenerateInvoices = canUseProFeatures,
                     )
                 }
@@ -1096,6 +1094,8 @@ private fun AboutScreen(
 
         TextButton(onClick = onContactWhatsApp) { Text("Contactar por WhatsApp") }
 
+        TextButton(onClick = { onOpenUrl("https://whatsapp.com/channel/0029Va7WYUfHVvTenVDVnj3W") }) { Text("Sigue nuestro canal en WhatsApp") }
+
 
         Divider()
 
@@ -1143,7 +1143,7 @@ private fun AboutScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Activar funciones experimentales", style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        "Permite probar herramientas en desarrollo como inventario de almacenes y PDF offline.",
+                        "Permite probar herramientas en desarrollo como el PDF offline.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

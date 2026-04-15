@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ElevatedAssistChip
@@ -434,12 +435,14 @@ private fun TerceroCard(
     onEdit: () -> Unit,
     onArchive: () -> Unit
 ) {
-    Card {
+    Card(colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),

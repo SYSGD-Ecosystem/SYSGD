@@ -351,7 +351,10 @@ class InventarioRepository @Inject constructor(
         compraDao.insertCompraCompleta(compra, lineas)
 
         for ((producto, cantidad) in lineasCarrito) {
-            ensureItemInventario(producto.id, TipoProductoInv.COMPRA, producto.almacenDestinoId)
+            val itemInventario = ensureItemInventario(producto.id, TipoProductoInv.COMPRA, producto.almacenDestinoId)
+            if (itemInventario.archivado) {
+                itemInventarioDao.restoreById(itemInventario.id, fechaTrabajo)
+            }
             itemInventarioDao.sumarStock(producto.id, producto.almacenDestinoId, cantidad, fechaTrabajo)
         }
 
@@ -776,6 +779,11 @@ class InventarioRepository @Inject constructor(
             items.map { item -> enriquecerItemInventario(item) }
         }
 
+    fun getItemsInventarioArchivados(): Flow<List<ItemInventario>> =
+        itemInventarioDao.getItemsArchivados().map { items ->
+            items.map { item -> enriquecerItemInventario(item) }
+        }
+
     suspend fun ensureItemInventario(productoId: String, tipo: TipoProductoInv): ItemInventario {
         return ensureItemInventario(productoId, tipo, ensureDefaultAlmacen().id)
     }
@@ -845,6 +853,26 @@ class InventarioRepository @Inject constructor(
                 )
             }
         )
+        markLocalModified()
+    }
+
+    suspend fun archivarItemInventario(itemId: String, motivo: String) {
+        val item = itemInventarioDao.getById(itemId)
+            ?: throw IllegalStateException("No existe el item de inventario")
+        val catalogoVenta = catalogoVentaDao.getByProductoId(item.productoId, item.almacenId)
+        if (catalogoVenta?.activo == true) {
+            throw IllegalStateException("No se puede archivar un producto que está en venta")
+        }
+        val fecha = LocalDate.now().toString()
+        itemInventarioDao.archiveById(itemId, motivo.trim(), fecha)
+        markLocalModified()
+    }
+
+    suspend fun restaurarItemInventario(itemId: String) {
+        val item = itemInventarioDao.getById(itemId)
+            ?: throw IllegalStateException("No existe el item de inventario")
+        val fecha = LocalDate.now().toString()
+        itemInventarioDao.restoreById(item.id, fecha)
         markLocalModified()
     }
 

@@ -28,5 +28,11 @@ data class ItemInventario(
     @ColumnInfo(defaultValue = "''")
     val ultimaActualizacion: String = "",
     @ColumnInfo(defaultValue = "0")
-    val visibleEnVentas: Boolean = false
+    val visibleEnVentas: Boolean = false,
+    @ColumnInfo(defaultValue = "0")
+    val archivado: Boolean = false,
+    @ColumnInfo(defaultValue = "''")
+    val motivoArchivado: String = "",
+    @ColumnInfo(defaultValue = "''")
+    val fechaArchivado: String = ""
 )

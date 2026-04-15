@@ -246,11 +246,14 @@ interface CompraDao {
 @Dao
 interface ItemInventarioDao {
 
-    @Query("SELECT * FROM items_inventario WHERE visibleEnVentas = 0 ORDER BY ultimaActualizacion DESC")
+    @Query("SELECT * FROM items_inventario WHERE visibleEnVentas = 0 AND archivado = 0 ORDER BY ultimaActualizacion DESC")
     fun getItemsCompra(): Flow<List<ItemInventario>>
 
-    @Query("SELECT * FROM items_inventario WHERE visibleEnVentas = 1 ORDER BY ultimaActualizacion DESC")
+    @Query("SELECT * FROM items_inventario WHERE visibleEnVentas = 1 AND archivado = 0 ORDER BY ultimaActualizacion DESC")
     fun getItemsVenta(): Flow<List<ItemInventario>>
+
+    @Query("SELECT * FROM items_inventario WHERE archivado = 1 ORDER BY fechaArchivado DESC")
+    fun getItemsArchivados(): Flow<List<ItemInventario>>
 
     @Query("SELECT * FROM items_inventario WHERE productoId = :productoId AND almacenId = :almacenId LIMIT 1")
     suspend fun getByProductoId(productoId: String, almacenId: String): ItemInventario?
@@ -288,8 +291,11 @@ interface ItemInventarioDao {
     @Query("UPDATE items_inventario SET stockDisponible = stockDisponible - :cantidad, ultimaActualizacion = :fecha WHERE id = :id")
     suspend fun descontarStockPorId(id: String, cantidad: Double, fecha: String)
 
-    @Query("DELETE FROM items_inventario WHERE id = :id")
-    suspend fun delete(id: String)
+    @Query("UPDATE items_inventario SET archivado = 1, motivoArchivado = :motivo, fechaArchivado = :fecha WHERE id = :id")
+    suspend fun archiveById(id: String, motivo: String, fecha: String)
+
+    @Query("UPDATE items_inventario SET archivado = 0, motivoArchivado = '', fechaArchivado = '', ultimaActualizacion = :fecha WHERE id = :id")
+    suspend fun restoreById(id: String, fecha: String)
 }
 
 @Dao

@@ -42,6 +42,7 @@ import cu.lazaroysr96.sysgdcont.data.model.ProductoCompra
 import cu.lazaroysr96.sysgdcont.data.model.Compra
 import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
+import cu.lazaroysr96.sysgdcont.data.model.Producto
 import cu.lazaroysr96.sysgdcont.data.model.InventarioVinculoEdicion
 import cu.lazaroysr96.sysgdcont.data.model.TipoProductoInv
 import cu.lazaroysr96.sysgdcont.data.model.ModoStock
@@ -62,17 +63,13 @@ import java.time.ZoneOffset
 fun InventarioScreen(
     viewModel: InventarioViewModel,
     facturaViewModel: FacturaViewModel, // = hiltViewModel()
-    experimentalFeaturesEnabled: Boolean,
-    hideExperimentalDialogPermanently: Boolean,
-    onHideExperimentalDialogChange: (Boolean) -> Unit,
+    canUseProFeatures: Boolean,
     canGenerateInvoices: Boolean,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val facturaState by facturaViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
-    var showExperimentalDialog by rememberSaveable { mutableStateOf(false) }
-    var dontShowAgainChecked by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let {
@@ -95,11 +92,9 @@ fun InventarioScreen(
         }
     }
 
-    LaunchedEffect(experimentalFeaturesEnabled, uiState.currentTab) {
-        if (!experimentalFeaturesEnabled && uiState.currentTab == 3) {
+    LaunchedEffect(canUseProFeatures, uiState.currentTab) {
+        if (!canUseProFeatures && uiState.currentTab == 3) {
             viewModel.setCurrentTab(0)
-        } else if (experimentalFeaturesEnabled && uiState.currentTab == 3 && !hideExperimentalDialogPermanently) {
-            showExperimentalDialog = true
         }
     }
 
@@ -119,7 +114,7 @@ fun InventarioScreen(
                     icon = { Icon(Icons.Default.ShoppingCart, "Comprar") },
                     label = { Text("Compra") }
                 )
-                if (experimentalFeaturesEnabled) {
+                if (canUseProFeatures) {
                     NavigationBarItem(
                         selected = uiState.currentTab == 3,
                         onClick = { viewModel.setCurrentTab(3) },
@@ -186,21 +181,13 @@ fun InventarioScreen(
                     }
                 }
 
-                if (experimentalFeaturesEnabled && uiState.currentTab == 3) {
-                    FloatingActionButton(
-                        onClick = {  },
-                        containerColor = MaterialTheme.colorScheme.tertiary
-                    ) {
-                        Icon(Icons.Default.Add, "Agregar almacén")
-                    }
-                }
             }
         }
     ) { padding ->
         when (uiState.currentTab) {
             0 -> PuntoVentaContent(viewModel, padding)
             1 -> PuntoCompraContent(viewModel, padding)
-            3 -> if (experimentalFeaturesEnabled) InventarioContent(viewModel, padding)
+            3 -> if (canUseProFeatures) InventarioContent(viewModel, padding)
             2 -> HistorialContent(
                 viewModel = viewModel,
                 facturaViewModel = facturaViewModel,
@@ -211,41 +198,6 @@ fun InventarioScreen(
         }
     }
 
-    if (showExperimentalDialog && experimentalFeaturesEnabled && uiState.currentTab == 3 && !hideExperimentalDialogPermanently) {
-        AlertDialog(
-            onDismissRequest = { showExperimentalDialog = false },
-            title = { Text("Inventario en desarrollo") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        "La gestión de inventarios y almacenes aún está en desarrollo. Puede contener cambios de estructura, comportamientos incompletos y resultados no definitivos."
-                    )
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { dontShowAgainChecked = !dontShowAgainChecked },
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = dontShowAgainChecked,
-                            onCheckedChange = { dontShowAgainChecked = it }
-                        )
-                        Text("No volver a mostrar")
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onHideExperimentalDialogChange(dontShowAgainChecked)
-                        showExperimentalDialog = false
-                    }
-                ) {
-                    Text("Entendido")
-                }
-            }
-        )
-    }
 
     if (uiState.showCatalog) {
         ProductCatalogSheet(
@@ -705,6 +657,7 @@ private fun MasContent(viewModel: InventarioViewModel, padding: PaddingValues) {
     val resumenBalanceMes = uiState.totalVentasMes - uiState.totalComprasMes
     val context = LocalContext.current
     var facturaExpanded by rememberSaveable { mutableStateOf(false) }
+    var showArchivedDialog by rememberSaveable { mutableStateOf(false) }
     val logoPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { tomarPermisoLecturaPersistente(context, it) }
         viewModel.updateLogoFacturaUri(uri?.toString())
@@ -733,6 +686,32 @@ private fun MasContent(viewModel: InventarioViewModel, padding: PaddingValues) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+
+        item {
+            Card {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("Productos archivados", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Consulta los productos retirados del almacén y su motivo.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedButton(
+                        onClick = { showArchivedDialog = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Inventory2, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Ver productos archivados")
+                    }
+                }
             }
         }
 
@@ -915,6 +894,15 @@ private fun MasContent(viewModel: InventarioViewModel, padding: PaddingValues) {
             }
         }
     }
+
+    if (showArchivedDialog) {
+        ArchivedInventoryDialog(
+            items = uiState.itemsInventarioArchivados,
+            productosBase = uiState.productosBase,
+            onRestore = { itemId -> viewModel.restaurarItemInventario(itemId) },
+            onDismiss = { showArchivedDialog = false }
+        )
+    }
 }
 
 @Composable
@@ -1042,6 +1030,9 @@ private fun InventarioContent(viewModel: InventarioViewModel, padding: PaddingVa
                 if (uiState.productos.none { it.id == item.productoId }) {
                     viewModel.showMoverDialog(item)
                 }
+            },
+            onArchive = { item, nombre ->
+                viewModel.showArchiveDialog(item, nombre)
             }
         )
     }
@@ -1071,6 +1062,17 @@ private fun InventarioContent(viewModel: InventarioViewModel, padding: PaddingVa
             }
         )
     }
+
+    if (uiState.showArchiveDialog && uiState.itemArchivando != null) {
+        ArchiveInventoryItemDialog(
+            nombreProducto = uiState.nombreItemArchivando,
+            stockDisponible = uiState.itemArchivando!!.stockDisponible,
+            modoStock = uiState.itemArchivando!!.modoStock,
+            bloqueadoPorVenta = uiState.productos.any { it.id == uiState.itemArchivando!!.productoId },
+            onDismiss = { viewModel.showArchiveDialog(null, "") },
+            onConfirm = { motivo -> viewModel.archivarItemInventario(motivo) }
+        )
+    }
 }
 
 @Composable
@@ -1083,7 +1085,8 @@ private fun AlmacenSection(
     productos: List<ProductoCompra>,
     productosVenta: List<ProductoVenta>,
     onAjustarStock: (ItemInventario) -> Unit,
-    onMover: ((ItemInventario) -> Unit)?
+    onMover: ((ItemInventario) -> Unit)?,
+    onArchive: (ItemInventario, String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(true) }
 
@@ -1160,7 +1163,9 @@ private fun AlmacenSection(
                                 emoji = emojiProducto,
                                 color = color,
                                 onAjustarStock = { onAjustarStock(item) },
-                                onMover = onMover?.takeIf { productoVenta == null }?.let { { it(item) } }
+                                onMover = onMover?.takeIf { productoVenta == null }?.let { { it(item) } },
+                                onArchive = { onArchive(item, nombreProducto) },
+                                bloqueadoPorVenta = productoVenta != null
                             )
                             Divider(modifier = Modifier.padding(vertical = 4.dp))
                         }
@@ -1178,7 +1183,9 @@ private fun ItemInventarioRow(
     emoji: String,
     color: androidx.compose.ui.graphics.Color,
     onAjustarStock: () -> Unit,
-    onMover: (() -> Unit)?
+    onMover: (() -> Unit)?,
+    onArchive: () -> Unit,
+    bloqueadoPorVenta: Boolean
 ) {
     var expanded by remember { mutableStateOf(false) }
     val modo = runCatching { ModoStock.valueOf(item.modoStock) }.getOrElse { ModoStock.ILIMITADO }
@@ -1290,9 +1297,162 @@ private fun ItemInventarioRow(
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                if (bloqueadoPorVenta) {
+                    Text(
+                        "Para archivar, quita primero el producto del catálogo de ventas.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }else{
+                    Row(modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+
+                    OutlinedButton(
+                        onClick = onArchive,
+                        enabled = !bloqueadoPorVenta,
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Archivar", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun ArchiveInventoryItemDialog(
+    nombreProducto: String,
+    stockDisponible: Double,
+    modoStock: String,
+    bloqueadoPorVenta: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    val modo = runCatching { ModoStock.valueOf(modoStock) }.getOrElse { ModoStock.ILIMITADO }
+    val stockIlimitado = modo == ModoStock.ILIMITADO
+    val stockAgotado = !stockIlimitado && stockDisponible.isFinite() && stockDisponible <= 0.0
+    var motivo by rememberSaveable {
+        mutableStateOf(if (stockAgotado) "Archivado por inventario agotado" else "")
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Archivar producto del almacén") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(nombreProducto, fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (stockIlimitado) "Stock: ilimitado" else "Stock: ${"%.2f".format(stockDisponible)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (bloqueadoPorVenta) {
+                    Text(
+                        "Este producto está en el catálogo de ventas. No se puede archivar desde el almacén.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                } else {
+                    OutlinedTextField(
+                        value = motivo,
+                        onValueChange = { motivo = it },
+                        label = { Text("Motivo de archivo") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2,
+                        maxLines = 4
+                    )
+                    if (!stockAgotado) {
+                        Text(
+                            "Si aún queda inventario, es obligatorio explicar el motivo.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(motivo) },
+                enabled = !bloqueadoPorVenta && (stockAgotado || motivo.isNotBlank())
+            ) {
+                Text("Archivar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
+}
+
+@Composable
+private fun ArchivedInventoryDialog(
+    items: List<ItemInventario>,
+    productosBase: List<Producto>,
+    onRestore: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val productosMap = remember(productosBase) { productosBase.associateBy { it.id } }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Productos archivados") },
+        text = {
+            if (items.isEmpty()) {
+                Text("No hay productos archivados.")
+            } else {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items.forEach { item ->
+                        val producto = productosMap[item.productoId]
+                        val nombre = producto?.nombre ?: item.productoId
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                    RoundedCornerShape(10.dp)
+                                )
+                                .padding(12.dp)
+                        ) {
+                            Text(nombre, fontWeight = FontWeight.SemiBold)
+                            if (item.fechaArchivado.isNotBlank()) {
+                                Text(
+                                    "Fecha: ${item.fechaArchivado}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Text(
+                                "Motivo: ${item.motivoArchivado.ifBlank { "Sin motivo registrado" }}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                TextButton(onClick = { onRestore(item.id) }) {
+                                    Text("Restaurar")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Cerrar") }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

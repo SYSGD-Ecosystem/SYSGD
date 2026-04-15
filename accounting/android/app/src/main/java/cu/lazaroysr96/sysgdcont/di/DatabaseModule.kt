@@ -8,6 +8,7 @@ import cu.lazaroysr96.sysgdcont.data.MIGRATION_2_3
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_3_4
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_4_5
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_5_6
+import cu.lazaroysr96.sysgdcont.data.MIGRATION_6_7
 import cu.lazaroysr96.sysgdcont.data.dao.CatalogoCompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.CatalogoVentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
@@ -37,7 +38,14 @@ object DatabaseModule {
             AppDatabase::class.java,
             "sysgd_cont_database"
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(
+                MIGRATION_1_2,
+                MIGRATION_2_3,
+                MIGRATION_3_4,
+                MIGRATION_4_5,
+                MIGRATION_5_6,
+                MIGRATION_6_7
+            )
             .build()
     }
 
