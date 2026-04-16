@@ -1687,9 +1687,18 @@ private fun MoverProductoDialog(
     onConfirm: (precioVenta: Double) -> Unit
 ) {
     val productoCompra = productosCompra.find { it.id == item.productoId }
-    var precioVentaInput by remember { mutableStateOf(productoCompra?.precio?.toString() ?: "") }
+    val precioCosto = productoCompra?.precio ?: 0.0
+    var precioVentaInput by remember { mutableStateOf("") }
     val precioVenta = precioVentaInput.toDoubleOrNull()
     val puedeConfirmar = (precioVenta ?: 0.0) > 0.0
+
+    val ganancia = if (precioVenta != null && precioCosto > 0) {
+        precioVenta - precioCosto
+    } else null
+
+    val margenComercial = if (precioVenta != null && precioVenta > 0 && precioCosto > 0) {
+        ((precioVenta - precioCosto) / precioVenta) * 100
+    } else null
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1709,6 +1718,18 @@ private fun MoverProductoDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Precio de costo:", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "${String.format("%.2f", precioCosto)} CUP",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
                 OutlinedTextField(
                     value = precioVentaInput,
                     onValueChange = { precioVentaInput = it.replace(',', '.') },
@@ -1717,6 +1738,36 @@ private fun MoverProductoDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                if (ganancia != null && margenComercial != null) {
+                    Divider()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Ganancia:", style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            "${String.format("%.2f", ganancia)} CUP",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (ganancia >= 0) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Margen comercial:", style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            "${String.format("%.1f", margenComercial)}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (margenComercial >= 0) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
             }
         },
         confirmButton = {

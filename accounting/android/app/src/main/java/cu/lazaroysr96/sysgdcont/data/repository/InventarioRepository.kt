@@ -1,6 +1,7 @@
 package cu.lazaroysr96.sysgdcont.data.repository
 
 import android.content.Context
+import androidx.room.withTransaction
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -14,6 +15,7 @@ import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
 import cu.lazaroysr96.sysgdcont.data.dao.InventarioVinculoDao
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
 import cu.lazaroysr96.sysgdcont.data.dao.VentaDao
+import cu.lazaroysr96.sysgdcont.data.AppDatabase
 import cu.lazaroysr96.sysgdcont.data.model.Almacen
 import cu.lazaroysr96.sysgdcont.data.model.AlmacenRegistro
 import cu.lazaroysr96.sysgdcont.data.model.CatalogoCompra
@@ -53,6 +55,7 @@ private val Context.inventarioDataStore: DataStore<Preferences> by preferencesDa
 @Singleton
 class InventarioRepository @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val appDatabase: AppDatabase,
     private val productoDao: ProductoDao,
     private val catalogoVentaDao: CatalogoVentaDao,
     private val catalogoCompraDao: CatalogoCompraDao,
@@ -500,154 +503,187 @@ class InventarioRepository @Inject constructor(
     }
 
     suspend fun fromInventarioRegistro(inventario: InventarioRegistro) {
-        ventaDao.deleteAllLineas()
-        ventaDao.deleteAllVentas()
-        compraDao.deleteAllLineas()
-        compraDao.deleteAllCompras()
-        catalogoVentaDao.deleteAll()
-        catalogoCompraDao.deleteAll()
-        productoDao.deleteAll()
-        inventarioVinculoDao.deleteAll()
-        itemInventarioDao.deleteAll()
-        almacenDao.deleteAll()
+        appDatabase.withTransaction {
+            ventaDao.deleteAllLineas()
+            ventaDao.deleteAllVentas()
+            compraDao.deleteAllLineas()
+            compraDao.deleteAllCompras()
+            inventarioVinculoDao.deleteAll()
+            itemInventarioDao.deleteAll()
+            catalogoVentaDao.deleteAll()
+            catalogoCompraDao.deleteAll()
+            productoDao.deleteAll()
+            almacenDao.deleteAll()
 
-        val almacenes = inventario.almacenes.ifEmpty {
-            listOf(AlmacenRegistro(Almacen.DEFAULT_ID, "Almacén principal", true))
-        }
-        almacenDao.insertAll(almacenes.map { Almacen(id = it.id, nombre = it.nombre, principal = it.principal) })
-
-        val productosFuente = inventario.productos.ifEmpty {
-            (inventario.productosVenta + inventario.productosCompra).distinctBy { it.id }
-        }
-        val productos = productosFuente.map { p ->
-            Producto(
-                id = p.id,
-                nombre = p.nombre,
-                emoji = p.emoji,
-                unidad = p.unidad,
-                activo = true
-            )
-        }
-        productoDao.insertAll(productos)
-
-        val catalogoVentas = if (inventario.catalogoVentas.isNotEmpty()) {
-            inventario.catalogoVentas.map {
-                CatalogoVenta(
-                    id = it.id,
-                    productoId = it.productoId,
-                    precioReferencia = it.precioReferencia,
-                    almacenId = it.almacenId,
-                    activo = it.activo
-                )
+            val almacenes = inventario.almacenes.ifEmpty {
+                listOf(AlmacenRegistro(Almacen.DEFAULT_ID, "Almacén principal", true))
             }
-        } else {
-            inventario.productosVenta.map {
-                CatalogoVenta(
-                    id = "venta_${Almacen.DEFAULT_ID}_${it.id}",
-                    productoId = it.id,
-                    precioReferencia = it.precio,
-                    almacenId = Almacen.DEFAULT_ID,
-                    activo = true
-                )
-            }
-        }
-        catalogoVentaDao.insertAll(catalogoVentas)
+                .map { it.copy(id = it.id.ifBlank { Almacen.DEFAULT_ID }) }
+                .distinctBy { it.id }
+            val almacenesIds = almacenes.map { it.id }.toSet()
+            almacenDao.insertAll(almacenes.map { Almacen(id = it.id, nombre = it.nombre, principal = it.principal) })
 
-        val catalogoCompras = if (inventario.catalogoCompras.isNotEmpty()) {
-            inventario.catalogoCompras.map {
-                CatalogoCompra(
-                    id = it.id,
-                    productoId = it.productoId,
-                    precioReferencia = it.precioReferencia,
-                    almacenDestinoId = it.almacenDestinoId,
-                    activo = it.activo
-                )
-            }
-        } else {
-            inventario.productosCompra.map {
-                CatalogoCompra(
-                    id = "compra_${Almacen.DEFAULT_ID}_${it.id}",
-                    productoId = it.id,
-                    precioReferencia = it.precio,
-                    almacenDestinoId = Almacen.DEFAULT_ID,
-                    activo = true
-                )
-            }
-        }
-        catalogoCompraDao.insertAll(catalogoCompras)
-
-        val stockFuente = inventario.stock.ifEmpty {
-            val productosVentaIds = inventario.productosVenta.map { it.id }.toSet()
-            val stockComprasRestaurado = inventario.operaciones
-                .filter { it.tipo == "compra" && !it.anulada }
-                .groupBy { (it.almacenId.ifBlank { Almacen.DEFAULT_ID }) to it.productoId }
-                .map { (key, operaciones) ->
-                    val (almacenId, productoId) = key
-                    StockRegistro(
-                        id = "stock_${almacenId}_$productoId",
-                        productoId = productoId,
-                        almacenId = almacenId,
-                        stockDisponible = operaciones.sumOf { it.cantidad },
-                        modoStock = ModoStock.MANUAL.name,
-                        visibleEnVentas = productoId in productosVentaIds
+            val productosMap = linkedMapOf<String, ProductoInventario>()
+            fun upsertProductoBase(id: String, nombre: String, unidad: String, emoji: String) {
+                if (id.isBlank()) return
+                val existente = productosMap[id]
+                if (existente == null) {
+                    productosMap[id] = ProductoInventario(
+                        id = id,
+                        nombre = nombre.ifBlank { "Producto" },
+                        unidad = unidad.ifBlank { "und" },
+                        emoji = emoji.ifBlank { "📦" }
                     )
-                }
-
-            val stockVentasPorDefecto = inventario.productosVenta.mapNotNull {
-                val stockId = "stock_${Almacen.DEFAULT_ID}_${it.id}"
-                if (stockComprasRestaurado.any { stock -> stock.id == stockId }) {
-                    null
                 } else {
-                    StockRegistro(
-                        id = stockId,
-                        productoId = it.id,
-                        almacenId = Almacen.DEFAULT_ID,
-                        modoStock = ModoStock.ILIMITADO.name,
-                        visibleEnVentas = true
+                    productosMap[id] = existente.copy(
+                        nombre = if (existente.nombre == "Producto" && nombre.isNotBlank()) nombre else existente.nombre,
+                        unidad = if (existente.unidad == "und" && unidad.isNotBlank()) unidad else existente.unidad,
+                        emoji = if (existente.emoji == "📦" && emoji.isNotBlank()) emoji else existente.emoji
                     )
                 }
             }
 
-            stockComprasRestaurado + stockVentasPorDefecto
-        }
-        stockFuente.forEach { item ->
-            itemInventarioDao.insert(
-                ItemInventario(
-                    id = item.id,
-                    productoId = item.productoId,
-                    almacenId = item.almacenId,
-                    tipoProducto = if (item.visibleEnVentas) TipoProductoInv.VENTA.name else TipoProductoInv.COMPRA.name,
-                    stockDisponible = item.stockDisponible,
-                    modoStock = item.modoStock,
-                    productosVinculadosIds = item.productosVinculadosIds,
-                    ratiosConversion = item.ratiosConversion,
-                    ultimaActualizacion = item.ultimaActualizacion,
-                    visibleEnVentas = item.visibleEnVentas
-                )
-            )
-        }
+            inventario.productos.forEach { p -> upsertProductoBase(p.id, p.nombre, p.unidad, p.emoji) }
+            inventario.productosVenta.forEach { p -> upsertProductoBase(p.id, p.nombre, p.unidad, p.emoji) }
+            inventario.productosCompra.forEach { p -> upsertProductoBase(p.id, p.nombre, p.unidad, p.emoji) }
+            inventario.catalogoVentas.forEach { c -> upsertProductoBase(c.productoId, "", "", "") }
+            inventario.catalogoCompras.forEach { c -> upsertProductoBase(c.productoId, "", "", "") }
+            inventario.stock.forEach { s -> upsertProductoBase(s.productoId, "", "", "") }
+            inventario.operaciones.forEach { op -> upsertProductoBase(op.productoId, op.nombreProducto, op.unidad, "") }
+            inventario.vinculos.forEach { v -> upsertProductoBase(v.productoComponenteId, "", "", "") }
 
-        val vinculosFuente = if (inventario.vinculos.isNotEmpty()) {
-            inventario.vinculos
-        } else {
-            stockFuente.flatMap { item ->
-                val vinculados = item.productosVinculadosIds.toProductoIds()
-                val ratios = item.ratiosConversion.toRatios()
-                vinculados.mapIndexedNotNull { index, productoId ->
-                    val cantidad = ratios.getOrElse(index) { 1.0 }
-                    if (productoId.isBlank() || cantidad <= 0.0) {
+            val productos = productosMap.values.map { p ->
+                Producto(
+                    id = p.id,
+                    nombre = p.nombre,
+                    emoji = p.emoji,
+                    unidad = p.unidad,
+                    activo = true
+                )
+            }
+            val productosIds = productos.map { it.id }.toSet()
+            productoDao.insertAll(productos)
+
+            val catalogoVentas = if (inventario.catalogoVentas.isNotEmpty()) {
+                inventario.catalogoVentas.map {
+                    CatalogoVenta(
+                        id = it.id,
+                        productoId = it.productoId,
+                        precioReferencia = it.precioReferencia,
+                        almacenId = it.almacenId.ifBlank { Almacen.DEFAULT_ID },
+                        activo = it.activo
+                    )
+                }
+            } else {
+                inventario.productosVenta.map {
+                    CatalogoVenta(
+                        id = "venta_${Almacen.DEFAULT_ID}_${it.id}",
+                        productoId = it.id,
+                        precioReferencia = it.precio,
+                        almacenId = Almacen.DEFAULT_ID,
+                        activo = true
+                    )
+                }
+            }.filter { it.productoId in productosIds && it.almacenId in almacenesIds }
+            catalogoVentaDao.insertAll(catalogoVentas)
+
+            val catalogoCompras = if (inventario.catalogoCompras.isNotEmpty()) {
+                inventario.catalogoCompras.map {
+                    CatalogoCompra(
+                        id = it.id,
+                        productoId = it.productoId,
+                        precioReferencia = it.precioReferencia,
+                        almacenDestinoId = it.almacenDestinoId.ifBlank { Almacen.DEFAULT_ID },
+                        activo = it.activo
+                    )
+                }
+            } else {
+                inventario.productosCompra.map {
+                    CatalogoCompra(
+                        id = "compra_${Almacen.DEFAULT_ID}_${it.id}",
+                        productoId = it.id,
+                        precioReferencia = it.precio,
+                        almacenDestinoId = Almacen.DEFAULT_ID,
+                        activo = true
+                    )
+                }
+            }.filter { it.productoId in productosIds && it.almacenDestinoId in almacenesIds }
+            catalogoCompraDao.insertAll(catalogoCompras)
+
+            val stockFuente = inventario.stock.ifEmpty {
+                val productosVentaIds = inventario.productosVenta.map { it.id }.toSet()
+                val stockComprasRestaurado = inventario.operaciones
+                    .filter { it.tipo == "compra" && !it.anulada }
+                    .groupBy { (it.almacenId.ifBlank { Almacen.DEFAULT_ID }) to it.productoId }
+                    .map { (key, operaciones) ->
+                        val (almacenId, productoId) = key
+                        StockRegistro(
+                            id = "stock_${almacenId}_$productoId",
+                            productoId = productoId,
+                            almacenId = almacenId,
+                            stockDisponible = operaciones.sumOf { it.cantidad },
+                            modoStock = ModoStock.MANUAL.name,
+                            visibleEnVentas = productoId in productosVentaIds
+                        )
+                    }
+
+                val stockVentasPorDefecto = inventario.productosVenta.mapNotNull {
+                    val stockId = "stock_${Almacen.DEFAULT_ID}_${it.id}"
+                    if (stockComprasRestaurado.any { stock -> stock.id == stockId }) {
                         null
                     } else {
-                        InventarioVinculoRegistro(
-                            id = UUID.randomUUID().toString(),
-                            itemInventarioId = item.id,
-                            productoComponenteId = productoId,
-                            cantidad = cantidad
+                        StockRegistro(
+                            id = stockId,
+                            productoId = it.id,
+                            almacenId = Almacen.DEFAULT_ID,
+                            modoStock = ModoStock.ILIMITADO.name,
+                            visibleEnVentas = true
                         )
                     }
                 }
+
+                stockComprasRestaurado + stockVentasPorDefecto
             }
-        }
+            stockFuente
+                .filter { it.productoId in productosIds && it.almacenId in almacenesIds }
+                .forEach { item ->
+                    itemInventarioDao.insert(
+                        ItemInventario(
+                            id = item.id,
+                            productoId = item.productoId,
+                            almacenId = item.almacenId,
+                            tipoProducto = if (item.visibleEnVentas) TipoProductoInv.VENTA.name else TipoProductoInv.COMPRA.name,
+                            stockDisponible = item.stockDisponible,
+                            modoStock = item.modoStock,
+                            productosVinculadosIds = item.productosVinculadosIds,
+                            ratiosConversion = item.ratiosConversion,
+                            ultimaActualizacion = item.ultimaActualizacion,
+                            visibleEnVentas = item.visibleEnVentas
+                        )
+                    )
+                }
+
+            val vinculosFuente = if (inventario.vinculos.isNotEmpty()) {
+                inventario.vinculos
+            } else {
+                stockFuente.flatMap { item ->
+                    val vinculados = item.productosVinculadosIds.toProductoIds()
+                    val ratios = item.ratiosConversion.toRatios()
+                    vinculados.mapIndexedNotNull { index, productoId ->
+                        val cantidad = ratios.getOrElse(index) { 1.0 }
+                        if (productoId.isBlank() || cantidad <= 0.0) {
+                            null
+                        } else {
+                            InventarioVinculoRegistro(
+                                id = UUID.randomUUID().toString(),
+                                itemInventarioId = item.id,
+                                productoComponenteId = productoId,
+                                cantidad = cantidad
+                            )
+                        }
+                    }
+                }
+            }
 
         data class VentaRestaurada(val venta: Venta, val lineas: MutableList<LineaVenta>)
         data class CompraRestaurada(val compra: Compra, val lineas: MutableList<LineaCompra>)
@@ -655,59 +691,61 @@ class InventarioRepository @Inject constructor(
         val ventasMap = mutableMapOf<String, VentaRestaurada>()
         val comprasMap = mutableMapOf<String, CompraRestaurada>()
 
-        inventario.operaciones.forEach { op ->
-            if (op.tipo == "venta") {
-                val ventaId = op.operacionId.ifBlank { UUID.randomUUID().toString() }
-                val ventaRestaurada = ventasMap.getOrPut(ventaId) {
-                    VentaRestaurada(
-                        venta = Venta(
-                            id = ventaId,
-                            fecha = op.fecha,
-                            hora = op.hora.ifBlank { "00:00" },
-                            total = 0.0,
-                            almacenOrigenId = op.almacenId.ifBlank { Almacen.DEFAULT_ID },
-                            anulada = op.anulada
-                        ),
-                        lineas = mutableListOf()
-                    )
+            inventario.operaciones
+                .filter { it.productoId in productosIds }
+                .forEach { op ->
+                    if (op.tipo == "venta") {
+                        val ventaId = op.operacionId.ifBlank { UUID.randomUUID().toString() }
+                        val ventaRestaurada = ventasMap.getOrPut(ventaId) {
+                            VentaRestaurada(
+                                venta = Venta(
+                                    id = ventaId,
+                                    fecha = op.fecha,
+                                    hora = op.hora.ifBlank { "00:00" },
+                                    total = 0.0,
+                                    almacenOrigenId = op.almacenId.ifBlank { Almacen.DEFAULT_ID },
+                                    anulada = op.anulada
+                                ),
+                                lineas = mutableListOf()
+                            )
+                        }
+                        ventaRestaurada.lineas.add(
+                            LineaVenta(
+                                id = op.id,
+                                ventaId = ventaId,
+                                productoId = op.productoId,
+                                nombreProducto = op.nombreProducto,
+                                precioUnitario = op.precioUnitario,
+                                cantidad = op.cantidad
+                            )
+                        )
+                    } else {
+                        val compraId = op.operacionId.ifBlank { UUID.randomUUID().toString() }
+                        val compraRestaurada = comprasMap.getOrPut(compraId) {
+                            CompraRestaurada(
+                                compra = Compra(
+                                    id = compraId,
+                                    fecha = op.fecha,
+                                    hora = op.hora.ifBlank { "00:00" },
+                                    total = 0.0,
+                                    almacenDestinoId = op.almacenId.ifBlank { Almacen.DEFAULT_ID },
+                                    anulada = op.anulada
+                                ),
+                                lineas = mutableListOf()
+                            )
+                        }
+                        compraRestaurada.lineas.add(
+                            LineaCompra(
+                                id = op.id,
+                                compraId = compraId,
+                                productoId = op.productoId,
+                                nombreProducto = op.nombreProducto,
+                                precioUnitario = op.precioUnitario,
+                                cantidad = op.cantidad
+                            )
+                        )
+                    }
                 }
-                ventaRestaurada.lineas.add(
-                    LineaVenta(
-                        id = op.id,
-                        ventaId = ventaId,
-                        productoId = op.productoId,
-                        nombreProducto = op.nombreProducto,
-                        precioUnitario = op.precioUnitario,
-                        cantidad = op.cantidad
-                    )
-                )
-            } else {
-                val compraId = op.operacionId.ifBlank { UUID.randomUUID().toString() }
-                val compraRestaurada = comprasMap.getOrPut(compraId) {
-                    CompraRestaurada(
-                        compra = Compra(
-                            id = compraId,
-                            fecha = op.fecha,
-                            hora = op.hora.ifBlank { "00:00" },
-                            total = 0.0,
-                            almacenDestinoId = op.almacenId.ifBlank { Almacen.DEFAULT_ID },
-                            anulada = op.anulada
-                        ),
-                        lineas = mutableListOf()
-                    )
-                }
-                compraRestaurada.lineas.add(
-                    LineaCompra(
-                        id = op.id,
-                        compraId = compraId,
-                        productoId = op.productoId,
-                        nombreProducto = op.nombreProducto,
-                        precioUnitario = op.precioUnitario,
-                        cantidad = op.cantidad
-                    )
-                )
-            }
-        }
 
         ventasMap.values.forEach { restaurada ->
             val venta = restaurada.venta.copy(total = restaurada.lineas.sumOf { it.subtotal })
@@ -721,49 +759,50 @@ class InventarioRepository @Inject constructor(
             compraDao.insertLineas(restaurada.lineas)
         }
 
-        val defaultAlmacen = ensureDefaultAlmacen()
-        catalogoVentas.forEach { catalogo ->
-            if (itemInventarioDao.getByProductoId(catalogo.productoId, catalogo.almacenId) == null) {
-                itemInventarioDao.insert(
-                    ItemInventario(
-                        id = "stock_${catalogo.almacenId}_${catalogo.productoId}",
-                        productoId = catalogo.productoId,
-                        almacenId = catalogo.almacenId,
-                        tipoProducto = TipoProductoInv.VENTA.name,
-                        modoStock = ModoStock.ILIMITADO.name,
-                        ultimaActualizacion = LocalDate.now().toString(),
-                        visibleEnVentas = true
-                    )
-                )
-            }
-        }
-        if (almacenDao.getPrincipal() == null) {
-            almacenDao.insert(defaultAlmacen)
-        }
-
-        val itemIdsExistentes = (itemInventarioDao.getItemsVenta().first() + itemInventarioDao.getItemsCompra().first())
-            .map { it.id }
-            .toSet()
-        val productosExistentes = productoDao.getAll().map { it.id }.toSet()
-        val vinculos = vinculosFuente.filter {
-            it.itemInventarioId in itemIdsExistentes &&
-                it.productoComponenteId in productosExistentes &&
-                it.cantidad > 0.0
-        }.distinctBy { it.itemInventarioId to it.productoComponenteId }
-        if (vinculos.isNotEmpty()) {
-            val fecha = LocalDate.now().toString()
-            inventarioVinculoDao.insertAll(
-                vinculos.map {
-                    InventarioVinculo(
-                        id = it.id.ifBlank { UUID.randomUUID().toString() },
-                        itemInventarioId = it.itemInventarioId,
-                        productoComponenteId = it.productoComponenteId,
-                        cantidad = it.cantidad,
-                        createdAt = fecha,
-                        updatedAt = fecha
+            val defaultAlmacen = ensureDefaultAlmacen()
+            catalogoVentas.forEach { catalogo ->
+                if (itemInventarioDao.getByProductoId(catalogo.productoId, catalogo.almacenId) == null) {
+                    itemInventarioDao.insert(
+                        ItemInventario(
+                            id = "stock_${catalogo.almacenId}_${catalogo.productoId}",
+                            productoId = catalogo.productoId,
+                            almacenId = catalogo.almacenId,
+                            tipoProducto = TipoProductoInv.VENTA.name,
+                            modoStock = ModoStock.ILIMITADO.name,
+                            ultimaActualizacion = LocalDate.now().toString(),
+                            visibleEnVentas = true
+                        )
                     )
                 }
-            )
+            }
+            if (almacenDao.getPrincipal() == null) {
+                almacenDao.insert(defaultAlmacen)
+            }
+
+            val itemIdsExistentes = (itemInventarioDao.getItemsVenta().first() + itemInventarioDao.getItemsCompra().first())
+                .map { it.id }
+                .toSet()
+            val productosExistentes = productoDao.getAll().map { it.id }.toSet()
+            val vinculos = vinculosFuente.filter {
+                it.itemInventarioId in itemIdsExistentes &&
+                    it.productoComponenteId in productosExistentes &&
+                    it.cantidad > 0.0
+            }.distinctBy { it.itemInventarioId to it.productoComponenteId }
+            if (vinculos.isNotEmpty()) {
+                val fecha = LocalDate.now().toString()
+                inventarioVinculoDao.insertAll(
+                    vinculos.map {
+                        InventarioVinculo(
+                            id = it.id.ifBlank { UUID.randomUUID().toString() },
+                            itemInventarioId = it.itemInventarioId,
+                            productoComponenteId = it.productoComponenteId,
+                            cantidad = it.cantidad,
+                            createdAt = fecha,
+                            updatedAt = fecha
+                        )
+                    }
+                )
+            }
         }
 
         clearLocalModified()

@@ -196,70 +196,80 @@ fun TercerosScreen(
     ) { padding ->
         when (selectedTab) {
             TercerosTab.PERSONAS -> {
-                LazyColumn(
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(padding),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(padding)
                 ) {
-                    item {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
                         SectionTitle(
                             title = "Personas",
                             subtitle = "Clientes, proveedores o empleados con sus datos principales."
                         )
-                    }
-                    item {
+                        Spacer(modifier = Modifier.height(12.dp))
                         PersonasFilterRow(
                             selected = personasFilter,
                             onSelected = { personasFilter = it }
                         )
                     }
-                    val personas = filterPersonas(uiState.terceros, personasFilter)
-                    if (personas.isEmpty()) {
-                        item { EmptyState("Todavía no hay terceros", "Crea tu primera persona o empresa.") }
-                    } else {
-                        items(personas, key = { it.id }) { tercero ->
-                            TerceroCard(
-                                tercero = tercero,
-                                formatCurrency = viewModel::formatCurrency,
-                                onEdit = { viewModel.showEditTerceroDialog(tercero) },
-                                onArchive = { viewModel.archiveTercero(tercero.id) }
-                            )
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        val personas = filterPersonas(uiState.terceros, personasFilter)
+                        if (personas.isEmpty()) {
+                            item { EmptyState("Todavía no hay terceros", "Crea tu primera persona o empresa.") }
+                        } else {
+                            items(personas, key = { it.id }) { tercero ->
+                                TerceroCard(
+                                    tercero = tercero,
+                                    formatCurrency = viewModel::formatCurrency,
+                                    onEdit = { viewModel.showEditTerceroDialog(tercero) },
+                                    onArchive = { viewModel.archiveTercero(tercero.id) }
+                                )
+                            }
                         }
                     }
                 }
             }
             TercerosTab.CUENTAS -> {
-                LazyColumn(
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(padding),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(padding)
                 ) {
-                    item {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
                         SectionTitle(
                             title = "Deudas y préstamos",
                             subtitle = "Filtra por tipo y revisa lo pendiente."
                         )
-                    }
-                    item {
+                        Spacer(modifier = Modifier.height(12.dp))
                         CuentasFilterRow(
                             selected = cuentasFilter,
                             onSelected = { cuentasFilter = it }
                         )
                     }
-                    val cuentas = filterCuentas(uiState.cuentas, cuentasFilter)
-                    if (cuentas.isEmpty()) {
-                        item { EmptyState("Sin cuentas pendientes", "Registra una deuda o un préstamo.") }
-                    } else {
-                        items(cuentas, key = { it.id }) { cuenta ->
-                            CuentaCard(
-                                cuenta = cuenta,
-                                formatCurrency = viewModel::formatCurrency,
-                                onEdit = { viewModel.showEditCuentaDialog(cuenta) }
-                            )
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        val cuentas = filterCuentas(uiState.cuentas, cuentasFilter)
+                        if (cuentas.isEmpty()) {
+                            item { EmptyState("Sin cuentas pendientes", "Registra una deuda o un préstamo.") }
+                        } else {
+                            items(cuentas, key = { it.id }) { cuenta ->
+                                CuentaCard(
+                                    cuenta = cuenta,
+                                    formatCurrency = viewModel::formatCurrency,
+                                    onEdit = { viewModel.showEditCuentaDialog(cuenta) }
+                                )
+                            }
                         }
                     }
                 }

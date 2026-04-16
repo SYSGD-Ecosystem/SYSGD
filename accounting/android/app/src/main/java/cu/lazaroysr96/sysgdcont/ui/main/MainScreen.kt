@@ -831,7 +831,7 @@ fun MainScreen(
                                 Text("Usar nube")
                             }
                         }
-                        if (decision.action == SyncAction.PUSH_ONLY || isConflict) {
+                        if (decision.action == SyncAction.PUSH_ONLY || decision.action == SyncAction.MERGED || isConflict) {
                             TextButton(onClick = { ledgerViewModel.confirmUseLocal() }) {
                                 Text("Usar local")
                             }
