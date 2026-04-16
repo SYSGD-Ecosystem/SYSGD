@@ -9,6 +9,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
@@ -485,9 +486,14 @@ private fun TerceroCard(
     val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
 
-    Card(colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
         Column {
             Row(
                 modifier = Modifier
@@ -663,7 +669,11 @@ private fun CuentaCard(
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    Card {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize()
+    ) {
         Column {
             Row(
                 modifier = Modifier
