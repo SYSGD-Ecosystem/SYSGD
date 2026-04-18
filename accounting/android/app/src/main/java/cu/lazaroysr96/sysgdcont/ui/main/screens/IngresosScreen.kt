@@ -310,44 +310,48 @@ fun IngresoDialog(
             title = { Text(if (isEditMode) "Editar Ingreso" else "Agregar Ingreso") },
             text = {
                 Column {
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = !expanded }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        OutlinedTextField(
-                            value = LedgerConstants.monthLabels[selectedMonth] ?: selectedMonth,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Mes") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                            modifier = Modifier.fillMaxWidth().menuAnchor()
-                        )
-                        ExposedDropdownMenu(
+                        ExposedDropdownMenuBox(
                             expanded = expanded,
-                            onDismissRequest = { expanded = false }
+                            onExpandedChange = { expanded = !expanded },
+                            modifier = Modifier.weight(1f)
                         ) {
-                            LedgerConstants.MONTHS.forEach { month ->
-                                DropdownMenuItem(
-                                    text = { Text(LedgerConstants.monthLabels[month] ?: month) },
-                                    onClick = {
-                                        selectedMonth = month
-                                        expanded = false
-                                    }
-                                )
+                            OutlinedTextField(
+                                value = LedgerConstants.monthLabels[selectedMonth] ?: selectedMonth,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Mes") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                modifier = Modifier.menuAnchor()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                LedgerConstants.MONTHS.forEach { month ->
+                                    DropdownMenuItem(
+                                        text = { Text(LedgerConstants.monthLabels[month] ?: month) },
+                                        onClick = {
+                                            selectedMonth = month
+                                            expanded = false
+                                        }
+                                    )
+                                }
                             }
                         }
+
+                        OutlinedTextField(
+                            value = dia,
+                            onValueChange = { dia = it.filter { c -> c.isDigit() }.take(2) },
+                            label = { Text("Día") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
                     }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    OutlinedTextField(
-                        value = dia,
-                        onValueChange = { dia = it.filter { c -> c.isDigit() }.take(2) },
-                        label = { Text("Día (1-31)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -358,6 +362,16 @@ fun IngresoDialog(
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = "",
+                        onValueChange = { },
+                        label = { Text("Nota (Opcional)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
                 }
             },
