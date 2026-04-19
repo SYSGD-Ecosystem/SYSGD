@@ -79,27 +79,27 @@ class LedgerViewModel @Inject constructor(
         }
     }
 
-    fun addIngreso(month: String, dia: Int, importe: Double) {
+    fun addIngreso(month: String, dia: Int, importe: Double, cuenta: String = "", nota: String = "") {
         viewModelScope.launch {
-            ledgerRepository.addIngreso(month, dia, importe)
+            ledgerRepository.addIngreso(month, dia, importe, cuenta, nota)
         }
     }
 
-    fun addGasto(month: String, dia: Int, importe: Double) {
+    fun addGasto(month: String, dia: Int, importe: Double, cuenta: String = "", nota: String = "") {
         viewModelScope.launch {
-            ledgerRepository.addGasto(month, dia, importe)
+            ledgerRepository.addGasto(month, dia, importe, cuenta, nota)
         }
     }
 
-    fun editIngreso(month: String, oldDia: Int, newDia: Int, importe: Double) {
+    fun editIngreso(month: String, oldDia: Int, newDia: Int, importe: Double, cuenta: String = "", nota: String = "") {
         viewModelScope.launch {
-            ledgerRepository.updateIngreso(month, oldDia, newDia, importe)
+            ledgerRepository.updateIngreso(month, oldDia, newDia, importe, cuenta, nota)
         }
     }
 
-    fun editGasto(month: String, oldDia: Int, newDia: Int, importe: Double) {
+    fun editGasto(month: String, oldDia: Int, newDia: Int, importe: Double, cuenta: String = "", nota: String = "") {
         viewModelScope.launch {
-            ledgerRepository.updateGasto(month, oldDia, newDia, importe)
+            ledgerRepository.updateGasto(month, oldDia, newDia, importe, cuenta, nota)
         }
     }
 

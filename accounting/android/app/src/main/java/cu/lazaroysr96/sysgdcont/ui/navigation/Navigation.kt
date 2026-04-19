@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
     object Login : Screen("login", "Login", Icons.Default.Login)
     object Main : Screen("main", "Main", Icons.Default.Home)
+    object Catalogos : Screen("catalogos", "Catálogos", Icons.Default.Inventory2)
 }
 
 sealed class MainTab(val route: String, val title: String, val icon: ImageVector) {

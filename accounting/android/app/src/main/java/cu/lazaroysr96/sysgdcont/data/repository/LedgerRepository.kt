@@ -712,12 +712,12 @@ class LedgerRepository @Inject constructor(
         saveUserEditedRegistro(current.copy(generales = data))
     }
 
-    suspend fun addIngreso(month: String, dia: Int, importe: Double) {
-        addEntry("ingresos", month, dia, importe)
+    suspend fun addIngreso(month: String, dia: Int, importe: Double, cuenta: String = "", nota: String = "") {
+        addEntry("ingresos", month, dia, importe, cuenta, nota)
     }
 
-    suspend fun addGasto(month: String, dia: Int, importe: Double) {
-        addEntry("gastos", month, dia, importe)
+    suspend fun addGasto(month: String, dia: Int, importe: Double, cuenta: String = "", nota: String = "") {
+        addEntry("gastos", month, dia, importe, cuenta, nota)
     }
 
     suspend fun deleteIngreso(month: String, dia: Int) {
@@ -728,15 +728,15 @@ class LedgerRepository @Inject constructor(
         deleteEntry("gastos", month, dia)
     }
 
-    suspend fun updateIngreso(month: String, oldDia: Int, newDia: Int, importe: Double) {
-        updateEntry("ingresos", month, oldDia, newDia, importe)
+    suspend fun updateIngreso(month: String, oldDia: Int, newDia: Int, importe: Double, cuenta: String = "", nota: String = "") {
+        updateEntry("ingresos", month, oldDia, newDia, importe, cuenta, nota)
     }
 
-    suspend fun updateGasto(month: String, oldDia: Int, newDia: Int, importe: Double) {
-        updateEntry("gastos", month, oldDia, newDia, importe)
+    suspend fun updateGasto(month: String, oldDia: Int, newDia: Int, importe: Double, cuenta: String = "", nota: String = "") {
+        updateEntry("gastos", month, oldDia, newDia, importe, cuenta, nota)
     }
 
-    private suspend fun updateEntry(type: String, month: String, oldDia: Int, newDia: Int, importe: Double) {
+    private suspend fun updateEntry(type: String, month: String, oldDia: Int, newDia: Int, importe: Double, cuenta: String = "", nota: String = "") {
         val current = getRegistro()
         val entries = when (type) {
             "ingresos" -> current.ingresos.toMutableMap()
@@ -751,7 +751,8 @@ class LedgerRepository @Inject constructor(
         
         // Add new entry with new day
         if (newDia in 1..31 && importe > 0) {
-            monthEntries.add(DayAmountRow(newDia.toString(), String.format("%.2f", importe)))
+            val entryId = java.util.UUID.randomUUID().toString()
+            monthEntries.add(DayAmountRow(entryId, newDia.toString(), String.format("%.2f", importe)))
         }
 
         entries[month] = monthEntries
@@ -785,7 +786,7 @@ class LedgerRepository @Inject constructor(
         saveUserEditedRegistro(updated)
     }
 
-    private suspend fun addEntry(type: String, month: String, dia: Int, importe: Double) {
+    private suspend fun addEntry(type: String, month: String, dia: Int, importe: Double, cuenta: String = "", nota: String = "") {
         val current = getRegistro()
         val entries = when (type) {
             "ingresos" -> current.ingresos.toMutableMap()
@@ -794,7 +795,8 @@ class LedgerRepository @Inject constructor(
         }
 
         val monthEntries = entries[month]?.toMutableList() ?: mutableListOf()
-        monthEntries.add(DayAmountRow(dia.toString(), String.format("%.2f", importe)))
+        val entryId = java.util.UUID.randomUUID().toString()
+        monthEntries.add(DayAmountRow(entryId, dia.toString(), String.format("%.2f", importe)))
 
         entries[month] = monthEntries
 

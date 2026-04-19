@@ -105,6 +105,7 @@ import cu.lazaroysr96.sysgdcont.ui.main.screens.ResumenScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.SecuritySettingsScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.TercerosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.TributosScreen
+import cu.lazaroysr96.sysgdcont.ui.main.screens.CatalogosScreen
 import cu.lazaroysr96.sysgdcont.ui.navigation.MainTab
 import cu.lazaroysr96.sysgdcont.ui.navigation.mainTabs
 import cu.lazaroysr96.sysgdcont.viewmodel.AuthViewModel
@@ -128,6 +129,7 @@ private const val VENTAS_ROUTE = "ventas"
 private const val NOMENCLATORS_ROUTE = "nomencladores"
 private const val TERCEROS_ROUTE = "terceros"
 private const val DOCUMENTOS_ROUTE = "documentos"
+private const val CATALOGOS_ROUTE = "catalogos"
 
 private fun openWhatsAppContact(context: android.content.Context, message: String): Boolean {
     return try {
@@ -425,6 +427,27 @@ fun MainScreen(
                                     }
                             )
 
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Divider()
+                            Text(
+                                "Catálogo",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+
+                            NavigationDrawerItem(
+                                    label = { Text("Cuentas y Productos") },
+                                    selected = currentRoute == CATALOGOS_ROUTE,
+                                    icon = { Icon(Icons.Default.Inventory2, contentDescription = null) },
+                                    onClick = {
+                                        navController.navigate(CATALOGOS_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+
                             Spacer(modifier = Modifier.height(12.dp))
                             Divider()
                             Text(
@@ -528,12 +551,13 @@ fun MainScreen(
                                             NOMENCLATORS_ROUTE -> "Nomencladores"
                                             TERCEROS_ROUTE -> "Terceros"
                                             DOCUMENTOS_ROUTE -> "Documentos"
+                                            CATALOGOS_ROUTE -> "Catálogos"
                                             else -> "Gestor Contable TCP"
                                         }
                                 )
                             },
                             navigationIcon = {
-                                if (currentRoute == ABOUT_ROUTE || currentRoute == LICENSES_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE || currentRoute == NOMENCLATORS_ROUTE || currentRoute == TERCEROS_ROUTE || currentRoute == DOCUMENTOS_ROUTE) {
+                                if (currentRoute == ABOUT_ROUTE || currentRoute == LICENSES_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE || currentRoute == NOMENCLATORS_ROUTE || currentRoute == TERCEROS_ROUTE || currentRoute == DOCUMENTOS_ROUTE || currentRoute == CATALOGOS_ROUTE) {
                                     IconButton(onClick = { navController.popBackStack() }) {
                                         Icon(
                                                 Icons.Default.ArrowBack,
@@ -629,6 +653,12 @@ fun MainScreen(
                 composable(NOMENCLATORS_ROUTE) { NomenclatorsScreen() }
                 composable(TERCEROS_ROUTE) { TercerosScreen(tercerosViewModel, tarjetaViewModel) }
                 composable(DOCUMENTOS_ROUTE) { DocumentosScreen(documentosViewModel) }
+                composable(CATALOGOS_ROUTE) { 
+                    CatalogosScreen(
+                        onNavigateBack = { navController.popBackStack() },
+                        inventarioViewModel = inventarioViewModel
+                    ) 
+                }
                 composable(LICENSES_ROUTE) {
                     LicenseCenterScreen(
                         experimentalFeaturesEnabled = ledgerState.experimentalFeaturesEnabled,

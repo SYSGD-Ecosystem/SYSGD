@@ -201,7 +201,7 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
             editEntry = null
             preselectedMonth = null
         },
-        onConfirm = { month, dia, importe ->
+        onConfirm = { month, dia, importe, cuenta, nota ->
             val existing = (if (isEditMode && editEntry != null) {
                 uiState.registro.ingresos[month]?.filter { it.dia != editEntry?.second?.dia }
             } else uiState.registro.ingresos[month]) ?: emptyList()
@@ -215,9 +215,9 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
             } else {
                 if (isEditMode && editEntry != null) {
                     val oldDia = editEntry?.second?.dia?.toIntOrNull() ?: 0
-                    viewModel.editIngreso(month, oldDia, dia, importe)
+                    viewModel.editIngreso(month, oldDia, dia, importe, cuenta, nota)
                 } else {
-                    viewModel.addIngreso(month, dia, importe)
+                    viewModel.addIngreso(month, dia, importe, cuenta, nota)
                 }
                 showDialog = false
                 isEditMode = false
@@ -242,7 +242,7 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
                     TextButton(
                         onClick = {
                             val entry = pendingDuplicateEntry!!
-                            viewModel.addIngreso(entry.first, entry.second, entry.third + existingImporte)
+                            viewModel.addIngreso(entry.first, entry.second, entry.third + existingImporte, "", "")
                             showDuplicateDialog = false
                             pendingDuplicateEntry = null
                             showDialog = false
@@ -256,7 +256,7 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
                     TextButton(
                         onClick = {
                             val entry = pendingDuplicateEntry!!
-                            viewModel.addIngreso(entry.first, entry.second, entry.third)
+                            viewModel.addIngreso(entry.first, entry.second, entry.third, "", "")
                             showDuplicateDialog = false
                             pendingDuplicateEntry = null
                             showDialog = false
@@ -291,9 +291,11 @@ fun IngresoDialog(
     initialMonth: String? = null,
     initialDia: String? = null,
     initialImporte: String? = null,
+    initialCuenta: String? = null,
+    initialNota: String? = null,
     existingEntries: List<DayAmountRow> = emptyList(),
     onDismiss: () -> Unit,
-    onConfirm: (month: String, dia: Int, importe: Double) -> Unit
+    onConfirm: (month: String, dia: Int, importe: Double, cuenta: String, nota: String) -> Unit
 ) {
     if (visible) {
         val currentDay = Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
@@ -303,6 +305,8 @@ fun IngresoDialog(
         var selectedMonth by remember { mutableStateOf(initialMonth ?: currentMonth) }
         var dia by remember { mutableStateOf(initialDia ?: if (initialDia != null) initialDia else "") }
         var importe by remember { mutableStateOf(initialImporte ?: "") }
+        var cuenta by remember { mutableStateOf(initialCuenta ?: "") }
+        var nota by remember { mutableStateOf(initialNota ?: "") }
         var expanded by remember { mutableStateOf(false) }
 
         AlertDialog(
@@ -367,8 +371,19 @@ fun IngresoDialog(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     OutlinedTextField(
-                        value = "",
-                        onValueChange = { },
+                        value = cuenta,
+                        onValueChange = { cuenta = it },
+                        label = { Text("Cuenta (Opcional)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = { Text("Ej: Ventas, Servicios") }
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = nota,
+                        onValueChange = { nota = it },
                         label = { Text("Nota (Opcional)") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
@@ -381,7 +396,7 @@ fun IngresoDialog(
                         val diaInt = dia.toIntOrNull()
                         val importeDouble = importe.toDoubleOrNull()
                         if (diaInt != null && importeDouble != null && diaInt in 1..31 && importeDouble > 0) {
-                            onConfirm(selectedMonth, diaInt, importeDouble)
+                            onConfirm(selectedMonth, diaInt, importeDouble, cuenta, nota)
                         }
                     },
                     enabled = dia.toIntOrNull() != null && importe.toDoubleOrNull() != null

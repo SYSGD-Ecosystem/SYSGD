@@ -161,6 +161,15 @@ class InventarioRepository @Inject constructor(
 
     fun getProductosBase(): Flow<List<Producto>> = productoDao.observeAll()
 
+    suspend fun agregarProductoBase(
+        nombre: String,
+        emoji: String,
+        unidad: String
+    ) {
+        crearProductoBase(nombre, emoji, unidad)
+        markLocalModified()
+    }
+
     suspend fun agregarProducto(
         nombre: String,
         precio: Double,

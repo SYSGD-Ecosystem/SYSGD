@@ -15,6 +15,7 @@ data class GeneralesData(
 )
 
 data class DayAmountRow(
+    val id: String = "",
     val dia: String = "",
     val importe: String = ""
 )

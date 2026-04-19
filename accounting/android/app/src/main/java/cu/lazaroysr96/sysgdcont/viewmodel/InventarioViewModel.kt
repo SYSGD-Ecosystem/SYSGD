@@ -462,6 +462,17 @@ class InventarioViewModel @Inject constructor(
         }
     }
 
+    fun agregarProductoBase(nombre: String, emoji: String, unidad: String) {
+        viewModelScope.launch {
+            try {
+                repo.agregarProductoBase(nombre, emoji, unidad)
+                _uiState.update { it.copy(snackbarMessage = "Producto agregado") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = "Error al agregar producto") }
+            }
+        }
+    }
+
     fun eliminarProducto(id: String) {
         viewModelScope.launch {
             try {
