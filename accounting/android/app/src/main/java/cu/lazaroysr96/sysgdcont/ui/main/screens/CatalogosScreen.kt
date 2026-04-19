@@ -1,16 +1,23 @@
 package cu.lazaroysr96.sysgdcont.ui.main.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cu.lazaroysr96.sysgdcont.data.model.Producto
 import cu.lazaroysr96.sysgdcont.viewmodel.InventarioViewModel
@@ -50,6 +57,9 @@ fun CatalogosScreen(
                 productos = productosState.productosBase,
                 onAddProduct = { nombre, emoji, unidad ->
                     inventarioViewModel.agregarProductoBase(nombre, emoji, unidad)
+                },
+                onEditProduct = { id, nombre, emoji, unidad ->
+                    inventarioViewModel.actualizarProductoBase(id, nombre, emoji, unidad)
                 }
             )
         }
@@ -223,11 +233,162 @@ private fun AddCuentaDialog(
 }
 
 @Composable
+private fun EditProductoDialog(
+    producto: Producto,
+    onDismiss: () -> Unit,
+    onConfirm: (nombre: String, emoji: String, unidad: String) -> Unit
+) {
+    var nombre by remember { mutableStateOf(producto.nombre) }
+    var emoji by remember { mutableStateOf(producto.emoji) }
+    var unidad by remember { mutableStateOf(producto.unidad) }
+
+    val defaultEmojis = listOf(
+        "📦", "🍔", "☕", "🥤", "🍟", "🍕", "🎁", "🥪", "🌮", "🍜",
+        "🍰", "🧁", "🍩", "🍪", "🍫", "🍬", "🍭", "🍮", "🍯", "🥛",
+        "🧃", "🧉", "🍺", "🍻", "🥂", "🥃", "🫗", "🥤", "🧋", "🍵",
+        "👕", "👖", "👗", "👘", "👙", "👚", "👛", "👜", "👝", "🎒",
+        "👞", "👟", "👠", "👡", "👢", "👑", "👒", "🎩", "🎓", "⛑️",
+        "📱", "💻", "⌨️", "🖱️", "🖨️", "📷", "📹", "🎥", "📞", "☎️",
+        "📺", "📻", "🎙️", "🎚️", "🎛️", "⏰", "⌚", "📡", "🔋", "💡",
+        "🧹", "🧺", "🧻", "🧼", "🪥", "🪒", "🧽", "🪣", "🧴", "🛎️",
+        "🔑", "🗝️", "🔒", "🔓", "📁", "📂", "🗂️", "📅", "📆", "📇",
+        "✏️", "🖊️", "🖋️", "📌", "📍", "✂️", "🗃️", "🗄️", "📎", "📏"
+    )
+    val emojis = remember { mutableStateListOf<String>().apply { addAll(defaultEmojis) } }
+    var showCustomEmojiDialog by remember { mutableStateOf(false) }
+    var customEmojiInput by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Editar producto") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedTextField(
+                    value = nombre,
+                    onValueChange = { nombre = it },
+                    label = { Text("Nombre") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Emoji:", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "Añadir emoji",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { showCustomEmojiDialog = true }
+                    )
+                }
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(emojis) { e ->
+                        Text(
+                            e,
+                            fontSize = 24.sp,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { emoji = e }
+                                .background(
+                                    if (emoji == e) MaterialTheme.colorScheme.primaryContainer
+                                    else MaterialTheme.colorScheme.surface
+                                )
+                                .padding(8.dp)
+                        )
+                    }
+                }
+
+                OutlinedTextField(
+                    value = unidad,
+                    onValueChange = { unidad = it },
+                    label = { Text("Unidad") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(nombre.trim(), emoji, unidad) },
+                enabled = nombre.isNotBlank()
+            ) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
+
+    if (showCustomEmojiDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showCustomEmojiDialog = false
+                customEmojiInput = ""
+            },
+            title = { Text("Agregar emoji") },
+            text = {
+                OutlinedTextField(
+                    value = customEmojiInput,
+                    onValueChange = { customEmojiInput = it },
+                    label = { Text("Pega o escribe el emoji") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val nuevo = customEmojiInput.trim()
+                        if (nuevo.isNotEmpty() && !emojis.contains(nuevo)) {
+                            emojis.add(0, nuevo)
+                        }
+                        if (nuevo.isNotEmpty()) {
+                            emoji = nuevo
+                        }
+                        customEmojiInput = ""
+                        showCustomEmojiDialog = false
+                    },
+                    enabled = customEmojiInput.trim().isNotEmpty()
+                ) {
+                    Text("Añadir")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showCustomEmojiDialog = false
+                        customEmojiInput = ""
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+}
+
+@Composable
 private fun ProductosTab(
     productos: List<Producto>,
-    onAddProduct: (nombre: String, emoji: String, unidad: String) -> Unit
+    onAddProduct: (nombre: String, emoji: String, unidad: String) -> Unit,
+    onEditProduct: (id: String, nombre: String, emoji: String, unidad: String) -> Unit
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var productoEditando by remember { mutableStateOf<Producto?>(null) }
     var searchQuery by remember { mutableStateOf("") }
 
     val filteredProducts = productos.filter { 
@@ -278,7 +439,12 @@ private fun ProductosTab(
             ) {
                 items(filteredProducts, key = { it.id }) { producto ->
                     Card(
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                productoEditando = producto
+                                showEditDialog = true
+                            }
                     ) {
                         Row(
                             modifier = Modifier
@@ -302,6 +468,11 @@ private fun ProductosTab(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Editar",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -318,6 +489,26 @@ private fun ProductosTab(
             }
         )
     }
+
+    if (showEditDialog) {
+        val p = productoEditando
+        if (p != null) {
+            EditProductoDialog(
+                producto = p,
+                onDismiss = {
+                    showEditDialog = false
+                    productoEditando = null
+                },
+                onConfirm = { nombre, emoji, unidad ->
+                    onEditProduct(p.id, nombre, emoji, unidad)
+                    showEditDialog = false
+                    productoEditando = null
+                }
+            )
+        } else {
+            showEditDialog = false
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -329,15 +520,31 @@ private fun AddProductoDialog(
     var nombre by remember { mutableStateOf("") }
     var emoji by remember { mutableStateOf("📦") }
     var unidad by remember { mutableStateOf("und") }
-    var expandedEmoji by remember { mutableStateOf(false) }
 
-    val emojis = listOf("📦", "🥖", "🥐", "🍰", "🎂", "🧁", "🍞", "🥨", "🥯", "🥞", "🧇", "🍔", "🍕", "🌮", "🥗", "🍝", "🍜", "🍲", "🥘", "🍱", "☕", "🥤", "🍵", "🧃", "🍹", "🍺", "🍷")
+    val defaultEmojis = listOf(
+        "📦", "🍔", "☕", "🥤", "🍟", "🍕", "🎁", "🥪", "🌮", "🍜",
+        "🍰", "🧁", "🍩", "🍪", "🍫", "🍬", "🍭", "🍮", "🍯", "🥛",
+        "🧃", "🧉", "🍺", "🍻", "🥂", "🥃", "🫗", "🥤", "🧋", "🍵",
+        "👕", "👖", "👗", "👘", "👙", "👚", "👛", "👜", "👝", "🎒",
+        "👞", "👟", "👠", "👡", "👢", "👑", "👒", "🎩", "🎓", "⛑️",
+        "📱", "💻", "⌨️", "🖱️", "🖨️", "📷", "📹", "🎥", "📞", "☎️",
+        "📺", "📻", "🎙️", "🎚️", "🎛️", "⏰", "⌚", "📡", "🔋", "💡",
+        "🧹", "🧺", "🧻", "🧼", "🪥", "🪒", "🧽", "🪣", "🧴", "🛎️",
+        "🔑", "🗝️", "🔒", "🔓", "📁", "📂", "🗂️", "📅", "📆", "📇",
+        "✏️", "🖊️", "🖋️", "📌", "📍", "✂️", "🗃️", "🗄️", "📎", "📏"
+    )
+    val emojis = remember { mutableStateListOf<String>().apply { addAll(defaultEmojis) } }
+    var showCustomEmojiDialog by remember { mutableStateOf(false) }
+    var customEmojiInput by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Nuevo Producto") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 OutlinedTextField(
                     value = nombre,
                     onValueChange = { nombre = it },
@@ -346,32 +553,38 @@ private fun AddProductoDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                
-                ExposedDropdownMenuBox(
-                    expanded = expandedEmoji,
-                    onExpandedChange = { expandedEmoji = !expandedEmoji }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    OutlinedTextField(
-                        value = emoji,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Icono") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedEmoji) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                    Text("Emoji:", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "Añadir emoji",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { showCustomEmojiDialog = true }
                     )
-                    ExposedDropdownMenu(
-                        expanded = expandedEmoji,
-                        onDismissRequest = { expandedEmoji = false }
-                    ) {
-                        emojis.forEach { e ->
-                            DropdownMenuItem(
-                                text = { Text("$e  $e") },
-                                onClick = {
-                                    emoji = e
-                                    expandedEmoji = false
-                                }
-                            )
-                        }
+                }
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(emojis) { e ->
+                        Text(
+                            e,
+                            fontSize = 24.sp,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { emoji = e }
+                                .background(
+                                    if (emoji == e) MaterialTheme.colorScheme.primaryContainer
+                                    else MaterialTheme.colorScheme.surface
+                                )
+                                .padding(8.dp)
+                        )
                     }
                 }
 

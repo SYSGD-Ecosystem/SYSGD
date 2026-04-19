@@ -473,6 +473,17 @@ class InventarioViewModel @Inject constructor(
         }
     }
 
+    fun actualizarProductoBase(id: String, nombre: String, emoji: String, unidad: String) {
+        viewModelScope.launch {
+            try {
+                repo.actualizarProductoBase(id, nombre, emoji, unidad)
+                _uiState.update { it.copy(snackbarMessage = "Producto actualizado") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al actualizar producto") }
+            }
+        }
+    }
+
     fun eliminarProducto(id: String) {
         viewModelScope.launch {
             try {

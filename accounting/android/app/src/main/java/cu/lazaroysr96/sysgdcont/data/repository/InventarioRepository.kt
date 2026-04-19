@@ -170,6 +170,24 @@ class InventarioRepository @Inject constructor(
         markLocalModified()
     }
 
+    suspend fun actualizarProductoBase(
+        id: String,
+        nombre: String,
+        emoji: String,
+        unidad: String
+    ) {
+        val existente = productoDao.getById(id)
+            ?: throw IllegalStateException("No existe el producto")
+
+        val actualizado = existente.copy(
+            nombre = nombre.trim(),
+            emoji = emoji,
+            unidad = unidad
+        )
+        productoDao.update(actualizado)
+        markLocalModified()
+    }
+
     suspend fun agregarProducto(
         nombre: String,
         precio: Double,
