@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Description
@@ -100,6 +101,7 @@ import cu.lazaroysr96.sysgdcont.ui.main.screens.GeneralesScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.IngresosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.InventarioScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.NomenclatorsScreen
+import cu.lazaroysr96.sysgdcont.ui.main.screens.DashboardScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.DocumentosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.LicenseCenterScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.ResumenScreen
@@ -126,6 +128,7 @@ private const val HELP_ROUTE = "help"
 private const val RESOURCES_ROUTE = "resources"
 private const val BACKUP_ROUTE = "backup_json"
 private const val SECURITY_ROUTE = "security_settings"
+private const val DASHBOARD_ROUTE = "dashboard"
 private const val VENTAS_ROUTE = "ventas"
 private const val NOMENCLATORS_ROUTE = "nomencladores"
 private const val TERCEROS_ROUTE = "terceros"
@@ -192,6 +195,16 @@ fun MainScreen(
     val canUseProFeatures = !isFreemiumBuild || currentTier == "pro" || currentTier == "vip"
     val canUseVipFeatures = !isFreemiumBuild || currentTier == "vip"
     val licensesDrawerLabel = if (hasActiveLicense) "Ver licencia" else "Comprar licencia"
+    val accountingRoutes = remember {
+        listOf(
+            MainTab.Generales.route,
+            MainTab.Ingresos.route,
+            MainTab.Gastos.route,
+            MainTab.Tributos.route,
+            MainTab.Resumen.route
+        )
+    }
+    val syncRoutes = remember { accountingRoutes + DASHBOARD_ROUTE }
     var showCreditsInfoDialog by remember { mutableStateOf(false) }
     var showVentasHelpDialog by remember { mutableStateOf(false) }
     var showAccessKeyPasswordDialog by remember { mutableStateOf(false) }
@@ -341,6 +354,94 @@ fun MainScreen(
                                 }
                             }
                             Spacer(modifier = Modifier.height(12.dp))
+                            Divider()
+                            Text(
+                                "Inicio",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                            NavigationDrawerItem(
+                                    label = { Text("Dashboard") },
+                                    selected = currentRoute == DASHBOARD_ROUTE,
+                                    icon = { Icon(Icons.Default.BarChart, contentDescription = null) },
+                                    onClick = {
+                                        navController.navigate(DASHBOARD_ROUTE) {
+                                            popUpTo(navController.graph.startDestinationId)
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Divider()
+                            Text(
+                                "Contabilidad",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                            NavigationDrawerItem(
+                                    label = { Text("General") },
+                                    selected = currentRoute == MainTab.Generales.route,
+                                    icon = { Icon(MainTab.Generales.icon, contentDescription = null) },
+                                    onClick = {
+                                        navController.navigate(MainTab.Generales.route) {
+                                            popUpTo(navController.graph.startDestinationId)
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+                            NavigationDrawerItem(
+                                    label = { Text("Ingresos") },
+                                    selected = currentRoute == MainTab.Ingresos.route,
+                                    icon = { Icon(MainTab.Ingresos.icon, contentDescription = null) },
+                                    onClick = {
+                                        navController.navigate(MainTab.Ingresos.route) {
+                                            popUpTo(navController.graph.startDestinationId)
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+                            NavigationDrawerItem(
+                                    label = { Text("Gastos") },
+                                    selected = currentRoute == MainTab.Gastos.route,
+                                    icon = { Icon(MainTab.Gastos.icon, contentDescription = null) },
+                                    onClick = {
+                                        navController.navigate(MainTab.Gastos.route) {
+                                            popUpTo(navController.graph.startDestinationId)
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+                            NavigationDrawerItem(
+                                    label = { Text("Tributos") },
+                                    selected = currentRoute == MainTab.Tributos.route,
+                                    icon = { Icon(MainTab.Tributos.icon, contentDescription = null) },
+                                    onClick = {
+                                        navController.navigate(MainTab.Tributos.route) {
+                                            popUpTo(navController.graph.startDestinationId)
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+                            NavigationDrawerItem(
+                                    label = { Text("Resumen") },
+                                    selected = currentRoute == MainTab.Resumen.route,
+                                    icon = { Icon(MainTab.Resumen.icon, contentDescription = null) },
+                                    onClick = {
+                                        navController.navigate(MainTab.Resumen.route) {
+                                            popUpTo(navController.graph.startDestinationId)
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
                             Divider()
                             Text(
                                 "Guías y apoyo",
@@ -542,6 +643,7 @@ fun MainScreen(
                             title = {
                                 Text(
                                         when (currentRoute) {
+                                            DASHBOARD_ROUTE -> "Gestor Contable TCP"
                                             ABOUT_ROUTE -> "Acerca de"
                                             LICENSES_ROUTE -> if (hasActiveLicense) "Tu licencia" else "Comprar licencia"
                                             HELP_ROUTE -> "Ayuda de llenado"
@@ -582,7 +684,7 @@ fun MainScreen(
                                         )
                                     }
                                 }
-                                if (currentRoute in mainTabs.map { it.route }) {
+                                if (currentRoute in syncRoutes) {
                                     if (ledgerState.hasLocalChanges && !ledgerState.isSyncing) {
                                         Icon(
                                                 Icons.Default.CloudOff,
@@ -609,7 +711,7 @@ fun MainScreen(
                     )
                 },
                 bottomBar = {
-                    if (currentRoute in mainTabs.map { it.route }) {
+                    if (currentRoute in accountingRoutes) {
                         NavigationBar {
                             mainTabs.forEach { tab ->
                                 NavigationBarItem(
@@ -630,9 +732,62 @@ fun MainScreen(
         ) { padding ->
             NavHost(
                     navController = navController,
-                    startDestination = MainTab.Generales.route,
+                    startDestination = DASHBOARD_ROUTE,
                     modifier = Modifier.fillMaxSize().padding(padding)
             ) {
+                composable(DASHBOARD_ROUTE) {
+                    DashboardScreen(
+                        generales = ledgerState.registro.generales,
+                        report = ledgerState.annualReport,
+                        lastSync = ledgerState.lastSync,
+                        hasLocalChanges = ledgerState.hasLocalChanges,
+                        onOpenGenerales = {
+                            navController.navigate(MainTab.Generales.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                        onOpenIngresos = {
+                            navController.navigate(MainTab.Ingresos.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                        onOpenGastos = {
+                            navController.navigate(MainTab.Gastos.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                        onOpenTributos = {
+                            navController.navigate(MainTab.Tributos.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                        onOpenResumen = {
+                            navController.navigate(MainTab.Resumen.route) {
+                                launchSingleTop = true
+                            }
+                        },
+                        onOpenVentas = {
+                            navController.navigate(VENTAS_ROUTE) {
+                                launchSingleTop = true
+                            }
+                        },
+                        onOpenCatalogos = {
+                            navController.navigate(CATALOGOS_ROUTE) {
+                                launchSingleTop = true
+                            }
+                        },
+                        onOpenTerceros = {
+                            navController.navigate(TERCEROS_ROUTE) {
+                                launchSingleTop = true
+                            }
+                        },
+                        onOpenDocumentos = {
+                            navController.navigate(DOCUMENTOS_ROUTE) {
+                                launchSingleTop = true
+                            }
+                        }
+                    )
+                }
                 composable(MainTab.Generales.route) { GeneralesScreen(ledgerViewModel) }
                 composable(MainTab.Ingresos.route) { IngresosScreen(ledgerViewModel) }
                 composable(MainTab.Gastos.route) { GastosScreen(ledgerViewModel) }

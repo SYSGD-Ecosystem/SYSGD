@@ -62,7 +62,7 @@ import java.time.ZoneOffset
 @Composable
 fun InventarioScreen(
     viewModel: InventarioViewModel,
-    facturaViewModel: FacturaViewModel, // = hiltViewModel()
+    facturaViewModel: FacturaViewModel,
     canUseProFeatures: Boolean,
     canGenerateInvoices: Boolean,
 ) {
