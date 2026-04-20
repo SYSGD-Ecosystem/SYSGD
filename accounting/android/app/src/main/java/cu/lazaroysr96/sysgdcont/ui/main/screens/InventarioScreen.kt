@@ -201,10 +201,10 @@ fun InventarioScreen(
 
     if (uiState.showCatalog) {
         ProductCatalogSheet(
+            productosBase = uiState.productosBase,
             productos = uiState.productos,
-            onAdd = { nombre, precio, emoji, unidad ->
-                viewModel.agregarProducto(nombre, precio, emoji, unidad)
-            },
+            onAdd = viewModel::agregarProductoExistenteAVentas,
+            onCreateNewProduct = viewModel::agregarProductoBase,
             onEliminar = viewModel::eliminarProducto,
             onDismiss = { viewModel.showCatalog(false) }
         )
@@ -223,10 +223,10 @@ fun InventarioScreen(
 
     if (uiState.showCatalogCompra) {
         ProductCatalogCompraSheet(
+            productosBase = uiState.productosBase,
             productos = uiState.productosCompra,
-            onAdd = { nombre, precio, emoji, unidad ->
-                viewModel.agregarProductoCompra(nombre, precio, emoji, unidad)
-            },
+            onAdd = viewModel::agregarProductoExistenteACompras,
+            onCreateNewProduct = viewModel::agregarProductoBase,
             onEliminar = viewModel::eliminarProductoCompra,
             onDismiss = { viewModel.showCatalogCompra(false) }
         )
@@ -2613,8 +2613,10 @@ private fun ProductCardCompra(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ProductCatalogSheet(
+    productosBase: List<Producto>,
     productos: List<ProductoVenta>,
-    onAdd: (String, Double, String, String) -> Unit,
+    onAdd: (String, Double) -> Unit,
+    onCreateNewProduct: (String, String, String) -> Unit,
     onEliminar: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -2638,7 +2640,7 @@ private fun ProductCatalogSheet(
                     fontWeight = FontWeight.Bold
                 )
                 IconButton(onClick = { showAddDialog = true }) {
-                    Icon(Icons.Default.Add, "Agregar")
+                    Icon(Icons.Default.Add, "Agregar al catalogo")
                 }
             }
 
@@ -2698,60 +2700,60 @@ private fun ProductCatalogSheet(
     }
 
     if (showAddDialog) {
-        AddProductDialog(
+        ProductSheet(
+            title = "Agregar producto al catalogo de ventas",
+            emptyLabel = "No hay productos base disponibles",
+            productos = productosBase,
+            productosEnCatalogoIds = productos.map { it.id }.toSet(),
+            onAdd = onAdd,
+            onCreateNewProduct = onCreateNewProduct,
             onDismiss = { showAddDialog = false },
-            onAdd = onAdd
         )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AddProductDialog(
+private fun ProductPriceDialog(
+    title: String,
+    producto: Producto,
     onDismiss: () -> Unit,
-    onAdd: (String, Double, String, String) -> Unit
+    onAdd: (String, Double) -> Unit
 ) {
-    var nombre by remember { mutableStateOf("") }
     var precio by remember { mutableStateOf("") }
-    var emoji by remember { mutableStateOf("📦") }
-    var unidad by remember { mutableStateOf("und") }
-
-    val unidades = listOf("und", "kg", "g", "litro", "ml", "docena", "paquete", "caja", "bolsa", "par", "libra")
-    var unitExpanded by remember { mutableStateOf(false) }
-
-    val puedeAgregar = nombre.isNotBlank() && precio.toDoubleOrNull() != null && (precio.toDoubleOrNull() ?: 0.0) > 0
-
-    val defaultEmojis = listOf(
-        "📦", "🍔", "☕", "🥤", "🍟", "🍕", "🎁", "🥪", "🌮", "🍜",
-        "🍰", "🧁", "🍩", "🍪", "🍫", "🍬", "🍭", "🍮", "🍯", "🥛",
-        "🧃", "🧉", "🍺", "🍻", "🥂", "🥃", "🫗", "🥤", "🧋", "🍵",
-        "👕", "👖", "👗", "👘", "👙", "👚", "👛", "👜", "👝", "🎒",
-        "👞", "👟", "👠", "👡", "👢", "👑", "👒", "🎩", "🎓", "⛑️",
-        "📱", "💻", "⌨️", "🖱️", "🖨️", "📷", "📹", "🎥", "📞", "☎️",
-        "📺", "📻", "🎙️", "🎚️", "🎛️", "⏰", "⌚", "📡", "🔋", "💡",
-        "🧹", "🧺", "🧻", "🧼", "🪥", "🪒", "🧽", "🪣", "🧴", "🛎️",
-        "🔑", "🗝️", "🔒", "🔓", "📁", "📂", "🗂️", "📅", "📆", "📇",
-        "✏️", "🖊️", "🖋️", "📌", "📍", "✂️", "🗃️", "🗄️", "📎", "📏"
-    )
-    val emojis = remember { mutableStateListOf<String>().apply { addAll(defaultEmojis) } }
-    var showCustomEmojiDialog by remember { mutableStateOf(false) }
-    var customEmojiInput by remember { mutableStateOf("") }
+    val puedeAgregar = precio.toDoubleOrNull() != null && (precio.toDoubleOrNull() ?: 0.0) > 0
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nuevo producto") },
+        title = { Text(title) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                OutlinedTextField(
-                    value = nombre,
-                    onValueChange = { nombre = it },
-                    label = { Text("Nombre") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
+                ElevatedCard(
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(producto.emoji, fontSize = 26.sp)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(producto.nombre, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                "Unidad: ${producto.unidad}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
 
                 OutlinedTextField(
                     value = precio,
@@ -2761,78 +2763,12 @@ private fun AddProductDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true
                 )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Emoji:", style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        "Añadir emoji",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { showCustomEmojiDialog = true }
-                    )
-                }
-
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    items(emojis) { e ->
-                        Text(
-                            e,
-                            fontSize = 24.sp,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { emoji = e }
-                                .background(
-                                    if (emoji == e) MaterialTheme.colorScheme.primaryContainer
-                                    else MaterialTheme.colorScheme.surface
-                                )
-                                .padding(8.dp)
-                        )
-                    }
-                }
-
-                Text("Unidad:", style = MaterialTheme.typography.bodyMedium)
-
-                ExposedDropdownMenuBox(
-                    expanded = unitExpanded,
-                    onExpandedChange = { unitExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = unidad,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Seleccionar") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(unitExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = unitExpanded,
-                        onDismissRequest = { unitExpanded = false }
-                    ) {
-                        unidades.forEach { u ->
-                            DropdownMenuItem(
-                                text = { Text(u) },
-                                onClick = {
-                                    unidad = u
-                                    unitExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
-                    onAdd(nombre.trim(), precio.toDouble(), emoji, unidad)
+                    onAdd(producto.id, precio.toDouble())
                     onDismiss()
                 },
                 enabled = puedeAgregar
@@ -2846,53 +2782,6 @@ private fun AddProductDialog(
             }
         }
     )
-
-    if (showCustomEmojiDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                showCustomEmojiDialog = false
-                customEmojiInput = ""
-            },
-            title = { Text("Agregar emoji") },
-            text = {
-                OutlinedTextField(
-                    value = customEmojiInput,
-                    onValueChange = { customEmojiInput = it },
-                    label = { Text("Pega o escribe el emoji") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val nuevo = customEmojiInput.trim()
-                        if (nuevo.isNotEmpty() && !emojis.contains(nuevo)) {
-                            emojis.add(0, nuevo)
-                        }
-                        if (nuevo.isNotEmpty()) {
-                            emoji = nuevo
-                        }
-                        customEmojiInput = ""
-                        showCustomEmojiDialog = false
-                    },
-                    enabled = customEmojiInput.trim().isNotEmpty()
-                ) {
-                    Text("Añadir")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showCustomEmojiDialog = false
-                        customEmojiInput = ""
-                    }
-                ) {
-                    Text("Cancelar")
-                }
-            }
-        )
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -3001,8 +2890,10 @@ private fun CartSheet(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ProductCatalogCompraSheet(
+    productosBase: List<Producto>,
     productos: List<ProductoCompra>,
-    onAdd: (String, Double, String, String) -> Unit,
+    onAdd: (String, Double) -> Unit,
+    onCreateNewProduct: (String, String, String) -> Unit,
     onEliminar: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -3025,7 +2916,7 @@ private fun ProductCatalogCompraSheet(
                     fontWeight = FontWeight.Bold
                 )
                 IconButton(onClick = { showAddDialog = true }) {
-                    Icon(Icons.Default.Add, "Agregar")
+                    Icon(Icons.Default.Add, "Agregar al catalogo")
                 }
             }
 
@@ -3085,34 +2976,218 @@ private fun ProductCatalogCompraSheet(
     }
 
     if (showAddDialog) {
-        AddProductCompraDialog(
+        ProductSheet(
+            title = "Agregar producto al catalogo de compras",
+            emptyLabel = "No hay productos base disponibles",
+            productos = productosBase,
+            productosEnCatalogoIds = productos.map { it.id }.toSet(),
+            onAdd = onAdd,
+            onCreateNewProduct = onCreateNewProduct,
             onDismiss = { showAddDialog = false },
-            onAdd = onAdd
         )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AddProductCompraDialog(
+private fun ProductSheet(
+    title: String,
+    emptyLabel: String,
+    productos: List<Producto>,
+    productosEnCatalogoIds: Set<String>,
+    onAdd: (String, Double) -> Unit,
+    onCreateNewProduct: (String, String, String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var showCreateDialog by remember { mutableStateOf(false) }
+    var selectedProducto by remember { mutableStateOf<Producto?>(null) }
+    var search by remember { mutableStateOf("") }
+    var pendingCreatedProduct by remember { mutableStateOf<Pair<String, String>?>(null) }
+    val productosDisponibles = remember(productos, productosEnCatalogoIds, search) {
+        productos
+            .filter { it.activo && it.id !in productosEnCatalogoIds }
+            .filter {
+                search.isBlank() ||
+                    it.nombre.contains(search, ignoreCase = true) ||
+                    it.unidad.contains(search, ignoreCase = true)
+            }
+            .sortedBy { it.nombre.lowercase(Locale.getDefault()) }
+    }
+
+    LaunchedEffect(productosDisponibles, pendingCreatedProduct) {
+        val pending = pendingCreatedProduct ?: return@LaunchedEffect
+        val match = productosDisponibles.firstOrNull {
+            it.nombre.equals(pending.first, ignoreCase = true) && it.unidad == pending.second
+        } ?: return@LaunchedEffect
+        selectedProducto = match
+        pendingCreatedProduct = null
+    }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .navigationBarsPadding()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    title,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                FilledTonalButton(
+                    onClick = { showCreateDialog = true },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Nuevo")
+                }
+            }
+
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+            OutlinedTextField(
+                value = search,
+                onValueChange = { search = it },
+                label = { Text("Buscar producto") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (productosDisponibles.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        if (search.isBlank()) emptyLabel else "No se encontraron productos",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 148.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(productosDisponibles, key = { it.id }) { producto ->
+                        ElevatedCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedProducto = producto },
+                            colors = CardDefaults.elevatedCardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Text(producto.emoji, fontSize = 28.sp)
+                                    FilledTonalButton(
+                                        onClick = { selectedProducto = producto },
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+                                    ) {
+                                        Text("Elegir")
+                                    }
+                                }
+                                Text(
+                                    producto.nombre,
+                                    fontWeight = FontWeight.SemiBold,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 2
+                                )
+                                Text(
+                                    producto.unidad,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    selectedProducto?.let { producto ->
+        ProductPriceDialog(
+            title = "Agregar al catalogo",
+            producto = producto,
+            onDismiss = { selectedProducto = null },
+            onAdd = { productoId, precio ->
+                onAdd(productoId, precio)
+                selectedProducto = null
+                onDismiss()
+            }
+        )
+    }
+
+    if (showCreateDialog) {
+        CreateBaseProductDialog(
+            title = "Nuevo producto",
+            onDismiss = { showCreateDialog = false },
+            onConfirm = { nombre, emoji, unidad ->
+                onCreateNewProduct(nombre, emoji, unidad)
+                showCreateDialog = false
+                search = nombre
+                pendingCreatedProduct = nombre to unidad
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CreateBaseProductDialog(
+    title: String,
     onDismiss: () -> Unit,
-    onAdd: (String, Double, String, String) -> Unit
+    onConfirm: (String, String, String) -> Unit
 ) {
     var nombre by remember { mutableStateOf("") }
-    var precio by remember { mutableStateOf("") }
     var emoji by remember { mutableStateOf("📦") }
     var unidad by remember { mutableStateOf("und") }
-
-    val unidades = listOf("und", "kg", "g", "litro", "ml", "docena", "paquete", "caja", "bolsa", "par", "libra")
     var unitExpanded by remember { mutableStateOf(false) }
-
-    val puedeAgregar = nombre.isNotBlank() && precio.toDoubleOrNull() != null && (precio.toDoubleOrNull() ?: 0.0) > 0
+    val unidades = listOf("und", "kg", "g", "litro", "ml", "docena", "paquete", "caja", "bolsa", "par", "libra")
 
     val defaultEmojis = listOf(
-        "📦", "🍞", "🥚", "🧈", "🧀", "🥛", "🍚", "🍝", "🍅", "🧅",
-        "🧄", "🥩", "🍗", "🐟", "🧃", "☕", "🍵", "🍪", "🍫", "🍬",
-        "🧼", "🧻", "🧴", "🧹", "🪥", "🧽", "🪣", "🔧", "🔨", "🪚",
-        "🪵", "📦", "✏️", "📎", "📏", "✂️", "🗃️", "🗄️", "📁", "📂"
+        "📦", "🍔", "☕", "🥤", "🍟", "🍕", "🎁", "🥪", "🌮", "🍜",
+        "🍰", "🧁", "🍩", "🍪", "🍫", "🍬", "🍭", "🍮", "🍯", "🥛",
+        "🧃", "🧉", "🍺", "🍻", "🥂", "🥃", "🫗", "🥤", "🧋", "🍵",
+        "👕", "👖", "👗", "👘", "👙", "👚", "👛", "👜", "👝", "🎒",
+        "👞", "👟", "👠", "👡", "👢", "👑", "👒", "🎩", "🎓", "⛑️",
+        "📱", "💻", "⌨️", "🖱️", "🖨️", "📷", "📹", "🎥", "📞", "☎️",
+        "📺", "📻", "🎙️", "🎚️", "🎛️", "⏰", "⌚", "📡", "🔋", "💡",
+        "🧹", "🧺", "🧻", "🧼", "🪥", "🪒", "🧽", "🪣", "🧴", "🛎️",
+        "🔑", "🗝️", "🔒", "🔓", "📁", "📂", "🗂️", "📅", "📆", "📇",
+        "✏️", "🖊️", "🖋️", "📌", "📍", "✂️", "🗃️", "🗄️", "📎", "📏"
     )
     val emojis = remember { mutableStateListOf<String>().apply { addAll(defaultEmojis) } }
     var showCustomEmojiDialog by remember { mutableStateOf(false) }
@@ -3120,7 +3195,7 @@ private fun AddProductCompraDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nuevo insumo") },
+        title = { Text(title) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -3131,15 +3206,6 @@ private fun AddProductCompraDialog(
                     onValueChange = { nombre = it },
                     label = { Text("Nombre") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-
-                OutlinedTextField(
-                    value = precio,
-                    onValueChange = { precio = it },
-                    label = { Text("Precio (CUP)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true
                 )
 
@@ -3213,12 +3279,12 @@ private fun AddProductCompraDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    onAdd(nombre.trim(), precio.toDouble(), emoji, unidad)
+                    onConfirm(nombre.trim(), emoji, unidad)
                     onDismiss()
                 },
-                enabled = puedeAgregar
+                enabled = nombre.isNotBlank()
             ) {
-                Text("Agregar")
+                Text("Guardar")
             }
         },
         dismissButton = {

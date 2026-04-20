@@ -201,6 +201,18 @@ class InventarioRepository @Inject constructor(
         markLocalModified()
     }
 
+    suspend fun agregarProductoExistenteAVentas(
+        productoId: String,
+        precio: Double
+    ) {
+        val almacen = ensureDefaultAlmacen()
+        val producto = productoDao.getById(productoId)
+            ?: throw IllegalStateException("No existe el producto seleccionado")
+        upsertCatalogoVenta(producto.id, precio, almacen.id)
+        ensureItemInventario(producto.id, TipoProductoInv.VENTA, almacen.id)
+        markLocalModified()
+    }
+
     suspend fun eliminarProducto(catalogoId: String) {
         catalogoVentaDao.deactivateById(catalogoId)
         markLocalModified()
@@ -304,6 +316,17 @@ class InventarioRepository @Inject constructor(
     ) {
         val almacen = ensureDefaultAlmacen()
         val producto = crearProductoBase(nombre, emoji, unidad)
+        upsertCatalogoCompra(producto.id, precio, almacen.id)
+        markLocalModified()
+    }
+
+    suspend fun agregarProductoExistenteACompras(
+        productoId: String,
+        precio: Double
+    ) {
+        val almacen = ensureDefaultAlmacen()
+        val producto = productoDao.getById(productoId)
+            ?: throw IllegalStateException("No existe el producto seleccionado")
         upsertCatalogoCompra(producto.id, precio, almacen.id)
         markLocalModified()
     }

@@ -451,6 +451,17 @@ class InventarioViewModel @Inject constructor(
         }
     }
 
+    fun agregarProductoExistenteAVentas(productoId: String, precio: Double) {
+        viewModelScope.launch {
+            try {
+                repo.agregarProductoExistenteAVentas(productoId, precio)
+                _uiState.update { it.copy(snackbarMessage = "Producto agregado al catalogo de ventas") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al agregar producto") }
+            }
+        }
+    }
+
     fun agregarProductoCompra(nombre: String, precio: Double, emoji: String, unidad: String) {
         viewModelScope.launch {
             try {
@@ -458,6 +469,17 @@ class InventarioViewModel @Inject constructor(
                 _uiState.update { it.copy(snackbarMessage = "Insumo agregado", showAddProductCompraDialog = false) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = "Error al agregar insumo") }
+            }
+        }
+    }
+
+    fun agregarProductoExistenteACompras(productoId: String, precio: Double) {
+        viewModelScope.launch {
+            try {
+                repo.agregarProductoExistenteACompras(productoId, precio)
+                _uiState.update { it.copy(snackbarMessage = "Producto agregado al catalogo de compras") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al agregar insumo") }
             }
         }
     }

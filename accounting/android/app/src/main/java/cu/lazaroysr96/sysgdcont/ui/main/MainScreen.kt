@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Logout
@@ -439,7 +440,7 @@ fun MainScreen(
                             NavigationDrawerItem(
                                     label = { Text("Cuentas y Productos") },
                                     selected = currentRoute == CATALOGOS_ROUTE,
-                                    icon = { Icon(Icons.Default.Inventory2, contentDescription = null) },
+                                    icon = { Icon(Icons.Default.Widgets, contentDescription = null) },
                                     onClick = {
                                         navController.navigate(CATALOGOS_ROUTE) {
                                             launchSingleTop = true
