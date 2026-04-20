@@ -40,6 +40,9 @@ interface CuentaContableDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(cuentas: List<CuentaContable>)
+
+    @Query("DELETE FROM catalogo_cuentas")
+    suspend fun deleteAll()
 }
 
 @Dao
@@ -56,8 +59,14 @@ interface IngresoGastoCuentaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(link: IngresoGastoCuenta)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(links: List<IngresoGastoCuenta>)
+
     @Query("DELETE FROM ingreso_gasto_cuenta WHERE ingresoGastoId = :entryId")
     suspend fun deleteByEntryId(entryId: String)
+
+    @Query("DELETE FROM ingreso_gasto_cuenta")
+    suspend fun deleteAll()
 }
 
 @Dao
@@ -74,8 +83,14 @@ interface IngresoGastoNotaDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(nota: IngresoGastoNota)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(notas: List<IngresoGastoNota>)
+
     @Query("DELETE FROM ingreso_gasto_nota WHERE ingresoGastoId = :entryId")
     suspend fun deleteByEntryId(entryId: String)
+
+    @Query("DELETE FROM ingreso_gasto_nota")
+    suspend fun deleteAll()
 }
 
 @Dao
@@ -88,6 +103,9 @@ interface PosIntegrationConfigDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(config: PosIntegrationConfig)
+
+    @Query("DELETE FROM pos_integration_config")
+    suspend fun deleteAll()
 }
 
 @Dao
@@ -103,6 +121,9 @@ interface TributoConfigDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(configs: List<TributoConfig>)
+
+    @Query("DELETE FROM tributo_config")
+    suspend fun deleteAll()
 }
 
 @Dao
@@ -118,4 +139,7 @@ interface TributoCuentaBaseDao {
 
     @Query("DELETE FROM tributo_cuenta_base WHERE tributoKey = :tributoKey")
     suspend fun deleteByTributoKey(tributoKey: String)
+
+    @Query("DELETE FROM tributo_cuenta_base")
+    suspend fun deleteAll()
 }

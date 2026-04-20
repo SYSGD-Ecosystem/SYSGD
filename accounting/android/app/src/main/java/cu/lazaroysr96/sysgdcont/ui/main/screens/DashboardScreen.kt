@@ -2,6 +2,7 @@ package cu.lazaroysr96.sysgdcont.ui.main.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,12 +27,20 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Summarize
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cu.lazaroysr96.sysgdcont.data.model.AnnualReport
 import cu.lazaroysr96.sysgdcont.data.model.GeneralesData
+import cu.lazaroysr96.sysgdcont.data.model.WorkspaceProfile
 
 private data class DashboardShortcut(
     val title: String,
@@ -60,6 +70,10 @@ fun DashboardScreen(
     report: AnnualReport?,
     lastSync: String?,
     hasLocalChanges: Boolean,
+    workspaces: List<WorkspaceProfile>,
+    currentWorkspaceId: String,
+    onSwitchWorkspace: (String) -> Unit,
+    onCreateWorkspace: (String) -> Unit,
     onOpenRegistro: () -> Unit,
     onOpenTributos: () -> Unit,
     onOpenResumen: () -> Unit,
@@ -68,6 +82,7 @@ fun DashboardScreen(
     onOpenTerceros: () -> Unit,
     onOpenDocumentos: () -> Unit,
 ) {
+    var showWorkspaceDialog by remember { mutableStateOf(false) }
     val colorScheme = MaterialTheme.colorScheme
     val isDarkTheme = colorScheme.background.luminance() < 0.5f
     val shortcutTones = listOf(
@@ -137,6 +152,7 @@ fun DashboardScreen(
     )
 
     val nombreContribuyente = generales.nombre.takeIf { it.isNotBlank() } ?: "Tu negocio"
+    val currentWorkspace = workspaces.firstOrNull { it.id == currentWorkspaceId }
     val anio = generales.anio
     val ingresos = report?.totalIngresos ?: 0.0
     val gastos = report?.totalGastos ?: 0.0
@@ -200,6 +216,12 @@ fun DashboardScreen(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            WorkspaceOverviewCard(
+                currentWorkspaceName = currentWorkspace?.nombre ?: nombreContribuyente,
+                totalWorkspaces = workspaces.size,
+                onManage = { showWorkspaceDialog = true }
+            )
+
             Text(
                 text = "Accesos rápidos",
                 style = MaterialTheme.typography.titleLarge,
@@ -227,6 +249,157 @@ fun DashboardScreen(
             Spacer(modifier = Modifier.height(10.dp))
         }
     }
+
+    if (showWorkspaceDialog) {
+        WorkspaceSwitcherDialog(
+            workspaces = workspaces,
+            currentWorkspaceId = currentWorkspaceId,
+            onDismiss = { showWorkspaceDialog = false },
+            onSelectWorkspace = { workspaceId ->
+                onSwitchWorkspace(workspaceId)
+                showWorkspaceDialog = false
+            },
+            onCreateWorkspace = { nombre ->
+                onCreateWorkspace(nombre)
+                showWorkspaceDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun WorkspaceOverviewCard(
+    currentWorkspaceName: String,
+    totalWorkspaces: Int,
+    onManage: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Negocio activo",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = currentWorkspaceName,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "$totalWorkspaces espacio(s) de trabajo configurado(s)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            TextButton(onClick = onManage) {
+                Text("Cambiar")
+            }
+        }
+    }
+}
+
+@Composable
+private fun WorkspaceSwitcherDialog(
+    workspaces: List<WorkspaceProfile>,
+    currentWorkspaceId: String,
+    onDismiss: () -> Unit,
+    onSelectWorkspace: (String) -> Unit,
+    onCreateWorkspace: (String) -> Unit
+) {
+    var newWorkspaceName by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Espacios de trabajo") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (workspaces.isEmpty()) {
+                    Text(
+                        "Todavía no hay negocios configurados.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    workspaces.forEach { workspace ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelectWorkspace(workspace.id) },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (workspace.id == currentWorkspaceId) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                }
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        workspace.nombre,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    if (workspace.id == currentWorkspaceId) {
+                                        Text(
+                                            "Activo ahora",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                if (workspace.id == currentWorkspaceId) {
+                                    Text(
+                                        "Actual",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = newWorkspaceName,
+                    onValueChange = { newWorkspaceName = it },
+                    label = { Text("Nuevo negocio") },
+                    placeholder = { Text("Ej: Cafetería Centro") },
+                    singleLine = true
+                )
+                Button(
+                    onClick = { onCreateWorkspace(newWorkspaceName.trim()) },
+                    enabled = newWorkspaceName.trim().isNotBlank(),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Crear y abrir negocio")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cerrar")
+            }
+        }
+    )
 }
 
 @Composable

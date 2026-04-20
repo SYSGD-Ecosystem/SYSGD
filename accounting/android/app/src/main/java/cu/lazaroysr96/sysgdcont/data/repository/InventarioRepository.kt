@@ -146,14 +146,16 @@ class InventarioRepository @Inject constructor(
     }
 
     private suspend fun markLocalModified() {
-        context.inventarioDataStore.edit { prefs ->
-            prefs[INVENTARIO_LOCAL_MODIFIED_KEY] = "true"
-        }
+        setLocalModified(true)
     }
 
     suspend fun clearLocalModified() {
+        setLocalModified(false)
+    }
+
+    suspend fun setLocalModified(modified: Boolean) {
         context.inventarioDataStore.edit { prefs ->
-            prefs[INVENTARIO_LOCAL_MODIFIED_KEY] = "false"
+            prefs[INVENTARIO_LOCAL_MODIFIED_KEY] = if (modified) "true" else "false"
         }
     }
 

@@ -694,6 +694,10 @@ fun MainScreen(
                         report = ledgerState.annualReport,
                         lastSync = ledgerState.lastSync,
                         hasLocalChanges = ledgerState.hasLocalChanges,
+                        workspaces = ledgerState.workspaceProfiles,
+                        currentWorkspaceId = ledgerState.currentWorkspaceId,
+                        onSwitchWorkspace = ledgerViewModel::switchWorkspace,
+                        onCreateWorkspace = ledgerViewModel::createWorkspace,
                         onOpenRegistro = {
                             navController.navigate(MainTab.Generales.route) {
                                 launchSingleTop = true

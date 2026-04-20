@@ -1,5 +1,7 @@
 package cu.lazaroysr96.sysgdcont.data.model
 
+import com.google.gson.JsonElement
+
 data class AuthUser(
     val id: String = "",
     val name: String = "",
@@ -66,14 +68,14 @@ data class ApiMessageResponse(
 )
 
 data class ContLedgerResponse(
-    val registro: RegistroTCP?,
-    val inventarioRegistro: InventarioRegistro? = null,
+    val registro: JsonElement?,
+    val inventarioRegistro: JsonElement? = null,
     val updatedAt: String?
 )
 
 data class UpdateLedgerRequest(
-    val registro: RegistroTCP,
-    val inventarioRegistro: InventarioRegistro? = null
+    val registro: JsonElement,
+    val inventarioRegistro: JsonElement? = null
 )
 
 data class UpdateLedgerResponse(

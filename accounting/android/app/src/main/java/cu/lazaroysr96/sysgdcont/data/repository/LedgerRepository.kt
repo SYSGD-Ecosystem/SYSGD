@@ -3,6 +3,7 @@ package cu.lazaroysr96.sysgdcont.data.repository
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.room.withTransaction
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -25,6 +26,7 @@ import com.itextpdf.layout.properties.TextAlignment
 import com.itextpdf.layout.properties.UnitValue
 import com.itextpdf.layout.properties.VerticalAlignment
 import com.google.gson.Gson
+import com.google.gson.JsonElement
 import com.google.gson.JsonParser
 import cu.lazaroysr96.sysgdcont.data.AppDatabase
 import cu.lazaroysr96.sysgdcont.data.api.ApiService
@@ -73,13 +75,35 @@ class LedgerRepository @Inject constructor(
         val app: String = "SYSGD Cont Android",
         val schemaVersion: Int = 1,
         val exportedAt: String,
-        val registro: RegistroTCP
+        val container: CloudLedgerContainer? = null,
+        val registro: RegistroTCP? = null
     )
 
     private data class LegacyBackupRoot(
         val app: String?,
         val exportedAt: String?,
         val registro: LegacyRegistro?
+    )
+
+    private data class RawAccountingWorkspaceState(
+        val cuentasContables: List<CuentaContable>?,
+        val ingresoGastoCuentas: List<IngresoGastoCuenta>?,
+        val ingresoGastoNotas: List<IngresoGastoNota>?,
+        val posIntegrationConfig: PosIntegrationConfig?,
+        val tributoConfigs: List<TributoConfig>?,
+        val tributoCuentaBases: List<TributoCuentaBase>?
+    )
+
+    private data class RawCloudWorkspaceEntry(
+        val id: String?,
+        val name: String?,
+        val registro: RegistroTCP?,
+        val accounting: RawAccountingWorkspaceState?
+    )
+
+    private data class RawCloudLedgerContainer(
+        val activeWorkspaceId: String?,
+        val workspaces: List<RawCloudWorkspaceEntry>?
     )
 
     private data class LegacyRegistro(
@@ -151,6 +175,7 @@ class LedgerRepository @Inject constructor(
     )
 
     companion object {
+        private const val DEFAULT_WORKSPACE_ID = "workspace_default"
         private const val TCP_MONTH_DAY_COLUMN_WIDTH = 16f
         private const val TCP_MONTH_VALUE_COLUMN_WIDTH = 34f
         private const val TCP_MONTH_TABLE_WIDTH = 600f
@@ -163,9 +188,22 @@ class LedgerRepository @Inject constructor(
         private val LAST_DOWNLOADED_VERSION_KEY = stringPreferencesKey("last_downloaded_version")
         private val BASELINE_REGISTRO_KEY = stringPreferencesKey("baseline_registro")
         private val BASELINE_INVENTARIO_KEY = stringPreferencesKey("baseline_inventario")
+        private val WORKSPACES_KEY = stringPreferencesKey("workspace_profiles")
+        private val CURRENT_WORKSPACE_ID_KEY = stringPreferencesKey("current_workspace_id")
     }
 
     private val gson = Gson()
+
+    private fun workspaceSnapshotKey(workspaceId: String) = stringPreferencesKey("workspace_snapshot_$workspaceId")
+
+    val workspaceProfiles: Flow<List<WorkspaceProfile>> = context.ledgerDataStore.data.map { prefs ->
+        val raw = prefs[WORKSPACES_KEY]
+        parseWorkspaceProfiles(raw)
+    }
+
+    val currentWorkspaceId: Flow<String> = context.ledgerDataStore.data.map { prefs ->
+        prefs[CURRENT_WORKSPACE_ID_KEY] ?: DEFAULT_WORKSPACE_ID
+    }
 
     val registro: Flow<RegistroTCP> = context.ledgerDataStore.data.map { prefs ->
         val raw = prefs[REGISTRO_KEY]
@@ -233,6 +271,48 @@ class LedgerRepository @Inject constructor(
 
     suspend fun getRegistro(): RegistroTCP = registro.first()
 
+    suspend fun getCurrentWorkspaceId(): String = currentWorkspaceId.first()
+
+    private fun parseWorkspaceProfiles(raw: String?): List<WorkspaceProfile> {
+        return if (raw.isNullOrBlank()) {
+            emptyList()
+        } else {
+            runCatching {
+                gson.fromJson(raw, Array<WorkspaceProfile>::class.java)?.toList().orEmpty()
+            }.getOrDefault(emptyList())
+        }
+    }
+
+    private fun emptyWorkspaceSnapshot(name: String = "Negocio principal"): WorkspaceSnapshot {
+        val baseRegistro = emptyRegistro().copy(
+            generales = emptyRegistro().generales.copy(nombre = name)
+        )
+        return WorkspaceSnapshot(
+            registro = baseRegistro,
+            accounting = AccountingWorkspaceState(
+                cuentasContables = CuentasContablesPorDefecto.todas(),
+                posIntegrationConfig = PosIntegrationConfig(
+                    ingresoCuentaId = CuentasContablesPorDefecto.ingresosVentas().id,
+                    gastoCuentaId = CuentasContablesPorDefecto.gastosActividad().id
+                ),
+                tributoConfigs = TributoConfigsPorDefecto.entidades(),
+                tributoCuentaBases = listOf(
+                    TributoCuentaBase(
+                        tributoKey = TributoKeys.VENTAS,
+                        cuentaId = CuentasContablesPorDefecto.ingresosVentas().id
+                    )
+                )
+            )
+        )
+    }
+
+    private suspend fun readWorkspaceSnapshot(workspaceId: String): WorkspaceSnapshot? {
+        val raw = context.ledgerDataStore.data.first()[workspaceSnapshotKey(workspaceId)] ?: return null
+        return runCatching {
+            gson.fromJson(raw, WorkspaceSnapshot::class.java)
+        }.getOrNull()
+    }
+
     private suspend fun saveRegistro(registro: RegistroTCP, modifiedByUser: Boolean) {
         context.ledgerDataStore.edit { prefs ->
             prefs[REGISTRO_KEY] = gson.toJson(registro)
@@ -258,6 +338,282 @@ class LedgerRepository @Inject constructor(
         tercerosRepository.clearLocalModified()
     }
 
+    private suspend fun buildAccountingWorkspaceState(): AccountingWorkspaceState {
+        return AccountingWorkspaceState(
+            cuentasContables = cuentaContableDao.getActivas(),
+            ingresoGastoCuentas = ingresoGastoCuentaDao.getAll(),
+            ingresoGastoNotas = ingresoGastoNotaDao.getAll(),
+            posIntegrationConfig = posIntegrationConfigDao.getById(),
+            tributoConfigs = tributoConfigDao.getAll(),
+            tributoCuentaBases = tributoCuentaBaseDao.getAll()
+        )
+    }
+
+    private suspend fun buildActiveWorkspaceSnapshot(): WorkspaceSnapshot {
+        val registroActual = buildRegistroWithInventario()
+        val prefs = context.ledgerDataStore.data.first()
+        val baselineRegistro = prefs[BASELINE_REGISTRO_KEY]?.let { raw ->
+            runCatching { gson.fromJson(raw, RegistroTCP::class.java) }.getOrNull()
+        }
+        val baselineInventario = prefs[BASELINE_INVENTARIO_KEY]?.let { raw ->
+            runCatching { gson.fromJson(raw, InventarioRegistro::class.java) }.getOrNull()
+        }
+        return WorkspaceSnapshot(
+            registro = registroActual,
+            accounting = buildAccountingWorkspaceState(),
+            lastSync = prefs[LAST_SYNC_KEY],
+            ledgerModified = prefs[LOCAL_MODIFIED_KEY] == "true",
+            inventarioModified = inventarioRepository.localModified.first(),
+            tercerosModified = tercerosRepository.localModified.first(),
+            serverVersion = prefs[SERVER_VERSION_KEY].orEmpty(),
+            lastDownloadedVersion = prefs[LAST_DOWNLOADED_VERSION_KEY].orEmpty(),
+            baselineRegistro = baselineRegistro,
+            baselineInventario = baselineInventario
+        )
+    }
+
+    private suspend fun persistActiveWorkspaceSnapshot(workspaceId: String) {
+        val snapshot = buildActiveWorkspaceSnapshot()
+        context.ledgerDataStore.edit { prefs ->
+            prefs[workspaceSnapshotKey(workspaceId)] = gson.toJson(snapshot)
+        }
+    }
+
+    private fun snapshotToCloudEntry(profile: WorkspaceProfile, snapshot: WorkspaceSnapshot): CloudWorkspaceEntry {
+        return CloudWorkspaceEntry(
+            id = profile.id,
+            name = profile.nombre,
+            registro = normalizeImportedRegistro(snapshot.registro),
+            accounting = snapshot.accounting
+        )
+    }
+
+    private fun normalizeAccountingState(raw: RawAccountingWorkspaceState?): AccountingWorkspaceState {
+        return AccountingWorkspaceState(
+            cuentasContables = raw?.cuentasContables.orEmpty(),
+            ingresoGastoCuentas = raw?.ingresoGastoCuentas.orEmpty(),
+            ingresoGastoNotas = raw?.ingresoGastoNotas.orEmpty(),
+            posIntegrationConfig = raw?.posIntegrationConfig,
+            tributoConfigs = raw?.tributoConfigs.orEmpty(),
+            tributoCuentaBases = raw?.tributoCuentaBases.orEmpty()
+        )
+    }
+
+    private fun parseCloudLedgerContainer(json: String): CloudLedgerContainer? {
+        val rawContainer = runCatching {
+            gson.fromJson(json, RawCloudLedgerContainer::class.java)
+        }.getOrNull() ?: return null
+
+        val normalizedWorkspaces = rawContainer.workspaces.orEmpty().mapNotNull { entry ->
+            val registro = entry.registro ?: return@mapNotNull null
+            val id = entry.id?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
+            CloudWorkspaceEntry(
+                id = id,
+                name = entry.name?.takeIf { it.isNotBlank() }
+                    ?: registro.generales.nombre.takeIf { it.isNotBlank() }
+                    ?: "Negocio principal",
+                registro = normalizeImportedRegistro(registro),
+                accounting = normalizeAccountingState(entry.accounting)
+            )
+        }
+
+        if (normalizedWorkspaces.isEmpty()) return null
+
+        val activeWorkspaceId = rawContainer.activeWorkspaceId
+            ?.takeIf { activeId -> normalizedWorkspaces.any { it.id == activeId } }
+            ?: normalizedWorkspaces.first().id
+
+        return CloudLedgerContainer(
+            activeWorkspaceId = activeWorkspaceId,
+            workspaces = normalizedWorkspaces
+        )
+    }
+
+    private fun cloudEntryToSnapshot(
+        entry: CloudWorkspaceEntry,
+        serverVersion: String = ""
+    ): WorkspaceSnapshot {
+        val normalizedRegistro = normalizeImportedRegistro(entry.registro)
+        return WorkspaceSnapshot(
+            registro = normalizedRegistro,
+            accounting = entry.accounting,
+            lastSync = if (serverVersion.isBlank()) null else java.time.Instant.now().toString(),
+            ledgerModified = false,
+            inventarioModified = false,
+            tercerosModified = false,
+            serverVersion = serverVersion,
+            lastDownloadedVersion = serverVersion,
+            baselineRegistro = stripInventario(normalizedRegistro),
+            baselineInventario = normalizedRegistro.inventario
+        )
+    }
+
+    private suspend fun buildCloudLedgerContainer(): CloudLedgerContainer {
+        ensureWorkspaceRegistry()
+        val profiles = workspaceProfiles.first().ifEmpty {
+            listOf(
+                WorkspaceProfile(
+                    id = getCurrentWorkspaceId(),
+                    nombre = getRegistro().generales.nombre.takeIf { it.isNotBlank() } ?: "Negocio principal"
+                )
+            )
+        }
+        val activeId = getCurrentWorkspaceId()
+        val entries = profiles.map { profile ->
+            val snapshot = if (profile.id == activeId) {
+                buildActiveWorkspaceSnapshot()
+            } else {
+                readWorkspaceSnapshot(profile.id) ?: emptyWorkspaceSnapshot(profile.nombre)
+            }
+            snapshotToCloudEntry(profile, snapshot)
+        }
+        return CloudLedgerContainer(
+            activeWorkspaceId = activeId,
+            workspaces = entries
+        )
+    }
+
+    private suspend fun applyCloudLedgerContainer(
+        container: CloudLedgerContainer,
+        serverVersion: String
+    ): Result<SyncResult> {
+        return try {
+            val normalizedEntries = container.workspaces.ifEmpty {
+                listOf(
+                    CloudWorkspaceEntry(
+                        id = DEFAULT_WORKSPACE_ID,
+                        name = "Negocio principal",
+                        registro = emptyRegistro(),
+                        accounting = AccountingWorkspaceState(
+                            cuentasContables = CuentasContablesPorDefecto.todas(),
+                            posIntegrationConfig = PosIntegrationConfig(
+                                ingresoCuentaId = CuentasContablesPorDefecto.ingresosVentas().id,
+                                gastoCuentaId = CuentasContablesPorDefecto.gastosActividad().id
+                            ),
+                            tributoConfigs = TributoConfigsPorDefecto.entidades(),
+                            tributoCuentaBases = listOf(
+                                TributoCuentaBase(
+                                    tributoKey = TributoKeys.VENTAS,
+                                    cuentaId = CuentasContablesPorDefecto.ingresosVentas().id
+                                )
+                            )
+                        )
+                    )
+                )
+            }
+
+            val profiles = normalizedEntries.map { entry ->
+                WorkspaceProfile(
+                    id = entry.id,
+                    nombre = entry.name
+                )
+            }
+            val activeId = container.activeWorkspaceId.takeIf { id -> profiles.any { it.id == id } }
+                ?: profiles.first().id
+
+            val snapshots = normalizedEntries.associate { entry ->
+                entry.id to cloudEntryToSnapshot(entry, serverVersion)
+            }
+
+            context.ledgerDataStore.edit { prefs ->
+                prefs[WORKSPACES_KEY] = gson.toJson(profiles)
+                prefs[CURRENT_WORKSPACE_ID_KEY] = activeId
+                snapshots.forEach { (workspaceId, snapshot) ->
+                    prefs[workspaceSnapshotKey(workspaceId)] = gson.toJson(snapshot)
+                }
+            }
+
+            val activeSnapshot = snapshots[activeId] ?: cloudEntryToSnapshot(normalizedEntries.first(), serverVersion)
+            applyWorkspaceSnapshot(activeSnapshot)
+
+            Result.success(
+                SyncResult(
+                    success = true,
+                    message = "Negocios locales actualizados desde la nube",
+                    action = SyncAction.PULL_ONLY
+                )
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private suspend fun restoreAccountingWorkspaceState(state: AccountingWorkspaceState) {
+        appDatabase.withTransaction {
+            tributoCuentaBaseDao.deleteAll()
+            tributoConfigDao.deleteAll()
+            posIntegrationConfigDao.deleteAll()
+            ingresoGastoNotaDao.deleteAll()
+            ingresoGastoCuentaDao.deleteAll()
+            cuentaContableDao.deleteAll()
+
+            if (state.cuentasContables.isNotEmpty()) {
+                cuentaContableDao.insertAll(state.cuentasContables)
+            }
+            if (state.ingresoGastoCuentas.isNotEmpty()) {
+                ingresoGastoCuentaDao.insertAll(state.ingresoGastoCuentas)
+            }
+            if (state.ingresoGastoNotas.isNotEmpty()) {
+                ingresoGastoNotaDao.insertAll(state.ingresoGastoNotas)
+            }
+            state.posIntegrationConfig?.let { posIntegrationConfigDao.insert(it) }
+            if (state.tributoConfigs.isNotEmpty()) {
+                tributoConfigDao.insertAll(state.tributoConfigs)
+            }
+            if (state.tributoCuentaBases.isNotEmpty()) {
+                tributoCuentaBaseDao.insertAll(state.tributoCuentaBases)
+            }
+        }
+        ensureDefaultAccounts()
+    }
+
+    private suspend fun applyWorkspaceSnapshot(snapshot: WorkspaceSnapshot) {
+        val normalized = normalizeImportedRegistro(snapshot.registro)
+        inventarioRepository.fromInventarioRegistro(normalized.inventario)
+        tercerosRepository.fromTercerosRegistro(normalized.terceros)
+        restoreAccountingWorkspaceState(snapshot.accounting)
+
+        val registroSinDependencias = stripInventario(normalized).copy(terceros = normalized.terceros)
+        context.ledgerDataStore.edit { prefs ->
+            prefs[REGISTRO_KEY] = gson.toJson(registroSinDependencias)
+            prefs[LAST_SYNC_KEY] = snapshot.lastSync ?: ""
+            prefs[LOCAL_MODIFIED_KEY] = if (snapshot.ledgerModified) "true" else "false"
+            prefs[SERVER_VERSION_KEY] = snapshot.serverVersion
+            prefs[LAST_DOWNLOADED_VERSION_KEY] = snapshot.lastDownloadedVersion
+            if (snapshot.baselineRegistro != null) {
+                prefs[BASELINE_REGISTRO_KEY] = gson.toJson(snapshot.baselineRegistro)
+            } else {
+                prefs.remove(BASELINE_REGISTRO_KEY)
+            }
+            if (snapshot.baselineInventario != null) {
+                prefs[BASELINE_INVENTARIO_KEY] = gson.toJson(snapshot.baselineInventario)
+            } else {
+                prefs.remove(BASELINE_INVENTARIO_KEY)
+            }
+        }
+        inventarioRepository.setLocalModified(snapshot.inventarioModified)
+        tercerosRepository.setLocalModified(snapshot.tercerosModified)
+    }
+
+    private suspend fun ensureWorkspaceRegistry() {
+        val prefs = context.ledgerDataStore.data.first()
+        val existing = parseWorkspaceProfiles(prefs[WORKSPACES_KEY]).toMutableList()
+        val currentId = prefs[CURRENT_WORKSPACE_ID_KEY] ?: DEFAULT_WORKSPACE_ID
+        if (existing.none { it.id == currentId }) {
+            val currentName = getRegistro().generales.nombre.takeIf { it.isNotBlank() } ?: "Negocio principal"
+            existing.add(
+                WorkspaceProfile(
+                    id = currentId,
+                    nombre = currentName
+                )
+            )
+        }
+        context.ledgerDataStore.edit { editable ->
+            editable[WORKSPACES_KEY] = gson.toJson(existing.distinctBy { it.id })
+            editable[CURRENT_WORKSPACE_ID_KEY] = currentId
+        }
+    }
+
     suspend fun saveUserEditedRegistro(registro: RegistroTCP) {
         saveRegistro(registro, modifiedByUser = true)
     }
@@ -271,6 +627,8 @@ class LedgerRepository @Inject constructor(
     }
 
     suspend fun ensureDefaultAccounts() {
+        ensureWorkspaceRegistry()
+
         val existentes = cuentaContableDao.getActivas().associateBy { it.codigo }
         val faltantes = CuentasContablesPorDefecto.todas().filter { existentes[it.codigo] == null }
         if (faltantes.isNotEmpty()) {
@@ -306,6 +664,68 @@ class LedgerRepository @Inject constructor(
         }
 
         refreshAutoCalculatedTributos(modifiedByUser = false)
+    }
+
+    suspend fun createWorkspace(nombre: String): WorkspaceProfile {
+        ensureWorkspaceRegistry()
+        val nombreNormalizado = nombre.trim()
+        require(nombreNormalizado.isNotBlank()) { "El nombre del negocio es obligatorio" }
+
+        val profile = WorkspaceProfile(
+            id = UUID.randomUUID().toString(),
+            nombre = nombreNormalizado
+        )
+        val current = workspaceProfiles.first().toMutableList()
+        current.add(profile)
+        val snapshot = emptyWorkspaceSnapshot(nombreNormalizado)
+
+        context.ledgerDataStore.edit { prefs ->
+            prefs[WORKSPACES_KEY] = gson.toJson(current.distinctBy { it.id })
+            prefs[workspaceSnapshotKey(profile.id)] = gson.toJson(snapshot)
+        }
+
+        switchWorkspace(profile.id)
+        return profile
+    }
+
+    suspend fun switchWorkspace(workspaceId: String) {
+        ensureWorkspaceRegistry()
+        val profiles = workspaceProfiles.first()
+        require(profiles.any { it.id == workspaceId }) { "El negocio seleccionado no existe" }
+
+        val activeWorkspaceId = getCurrentWorkspaceId()
+        if (activeWorkspaceId == workspaceId) return
+
+        persistActiveWorkspaceSnapshot(activeWorkspaceId)
+        val snapshot = readWorkspaceSnapshot(workspaceId) ?: emptyWorkspaceSnapshot(
+            profiles.firstOrNull { it.id == workspaceId }?.nombre ?: "Nuevo negocio"
+        )
+        applyWorkspaceSnapshot(snapshot)
+
+        val updatedProfiles = profiles.map { profile ->
+            if (profile.id == workspaceId) profile.copy(updatedAt = System.currentTimeMillis()) else profile
+        }
+        context.ledgerDataStore.edit { prefs ->
+            prefs[CURRENT_WORKSPACE_ID_KEY] = workspaceId
+            prefs[WORKSPACES_KEY] = gson.toJson(updatedProfiles)
+        }
+    }
+
+    private suspend fun updateWorkspaceDisplayNameIfNeeded(nombre: String) {
+        val nombreNormalizado = nombre.trim()
+        if (nombreNormalizado.isBlank()) return
+        val currentId = getCurrentWorkspaceId()
+        val profiles = workspaceProfiles.first()
+        val updated = profiles.map { profile ->
+            if (profile.id == currentId && profile.nombre != nombreNormalizado) {
+                profile.copy(nombre = nombreNormalizado, updatedAt = System.currentTimeMillis())
+            } else {
+                profile
+            }
+        }
+        context.ledgerDataStore.edit { prefs ->
+            prefs[WORKSPACES_KEY] = gson.toJson(updated)
+        }
     }
 
     suspend fun crearCuentaContable(
@@ -474,14 +894,51 @@ class LedgerRepository @Inject constructor(
     }
 
     private fun buildRemoteRegistro(response: ContLedgerResponse): RegistroTCP? {
-        val registro = response.registro ?: return null
-        val inventario = response.inventarioRegistro
-        val combinado = if (inventario != null) {
-            registro.copy(inventario = inventario)
-        } else {
-            registro
+        val registroElement = response.registro ?: return null
+        val registro = runCatching {
+            gson.fromJson(registroElement, RegistroTCP::class.java)
+        }.getOrNull() ?: return null
+
+        val inventario = response.inventarioRegistro?.let { inventarioElement ->
+            runCatching { gson.fromJson(inventarioElement, InventarioRegistro::class.java) }.getOrNull()
         }
+        val combinado = if (inventario != null) registro.copy(inventario = inventario) else registro
         return normalizeImportedRegistro(combinado)
+    }
+
+    private fun buildRemoteContainer(response: ContLedgerResponse): CloudLedgerContainer? {
+        val registroElement = response.registro ?: return null
+        val asContainer = parseCloudLedgerContainer(registroElement.toString())
+
+        if (asContainer != null) {
+            return asContainer
+        }
+
+        val legacyRegistro = buildRemoteRegistro(response) ?: return null
+        return CloudLedgerContainer(
+            activeWorkspaceId = DEFAULT_WORKSPACE_ID,
+            workspaces = listOf(
+                CloudWorkspaceEntry(
+                    id = DEFAULT_WORKSPACE_ID,
+                    name = legacyRegistro.generales.nombre.takeIf { it.isNotBlank() } ?: "Negocio principal",
+                    registro = legacyRegistro,
+                    accounting = AccountingWorkspaceState(
+                        cuentasContables = CuentasContablesPorDefecto.todas(),
+                        posIntegrationConfig = PosIntegrationConfig(
+                            ingresoCuentaId = CuentasContablesPorDefecto.ingresosVentas().id,
+                            gastoCuentaId = CuentasContablesPorDefecto.gastosActividad().id
+                        ),
+                        tributoConfigs = TributoConfigsPorDefecto.entidades(),
+                        tributoCuentaBases = listOf(
+                            TributoCuentaBase(
+                                tributoKey = TributoKeys.VENTAS,
+                                cuentaId = CuentasContablesPorDefecto.ingresosVentas().id
+                            )
+                        )
+                    )
+                )
+            )
+        )
     }
 
     private suspend fun getBaselineInventario(): InventarioRegistro {
@@ -510,10 +967,10 @@ class LedgerRepository @Inject constructor(
 
     suspend fun exportBackupToUri(uri: Uri): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val current = buildRegistroWithInventario()
+            val container = buildCloudLedgerContainer()
             val payload = RegistroBackupPayload(
                 exportedAt = java.time.Instant.now().toString(),
-                registro = current
+                container = container
             )
             val json = gson.toJson(payload)
             documentStorageRepository.saveText(
@@ -537,7 +994,7 @@ class LedgerRepository @Inject constructor(
 
             val cleanedJson = sanitizeJsonString(rawJson)
 
-            val imported: RegistroTCP = try {
+            val importedContainer: CloudLedgerContainer? = try {
                 val rootElement = JsonParser().parse(cleanedJson)
                 if (!rootElement.isJsonObject) {
                     throw Exception("El archivo no contiene un JSON de respaldo válido")
@@ -545,44 +1002,87 @@ class LedgerRepository @Inject constructor(
 
                 val rootObject = rootElement.asJsonObject
 
-                if (rootObject.has("registro")) {
+                if (rootObject.has("container")) {
+                    parseCloudLedgerContainer(rootObject.get("container").toString())
+                } else if (rootObject.has("activeWorkspaceId") && rootObject.has("workspaces")) {
+                    parseCloudLedgerContainer(rootElement.toString())
+                } else if (rootObject.has("registro")) {
                     val registroElement = rootObject.get("registro")
                     val legacyRegistro = tryParseLegacyRegistro(registroElement.toString())
                     if (legacyRegistro != null) {
-                        migrateFromLegacy(legacyRegistro)
+                        CloudLedgerContainer(
+                            activeWorkspaceId = DEFAULT_WORKSPACE_ID,
+                            workspaces = listOf(
+                                CloudWorkspaceEntry(
+                                    id = DEFAULT_WORKSPACE_ID,
+                                    name = legacyRegistro.generales?.nombre?.takeIf { !it.isNullOrBlank() } ?: "Negocio principal",
+                                    registro = migrateFromLegacy(legacyRegistro)
+                                )
+                            )
+                        )
                     } else {
-                        gson.fromJson(registroElement.toString(), RegistroTCP::class.java)
+                        val registro = gson.fromJson(registroElement.toString(), RegistroTCP::class.java)
                             ?: throw Exception("No se pudo interpretar el registro del archivo")
+                        CloudLedgerContainer(
+                            activeWorkspaceId = DEFAULT_WORKSPACE_ID,
+                            workspaces = listOf(
+                                CloudWorkspaceEntry(
+                                    id = DEFAULT_WORKSPACE_ID,
+                                    name = registro.generales.nombre.takeIf { it.isNotBlank() } ?: "Negocio principal",
+                                    registro = normalizeImportedRegistro(registro)
+                                )
+                            )
+                        )
                     }
                 } else {
                     val legacyRegistro = tryParseLegacyRegistro(cleanedJson)
                     if (legacyRegistro != null) {
-                        migrateFromLegacy(legacyRegistro)
+                        CloudLedgerContainer(
+                            activeWorkspaceId = DEFAULT_WORKSPACE_ID,
+                            workspaces = listOf(
+                                CloudWorkspaceEntry(
+                                    id = DEFAULT_WORKSPACE_ID,
+                                    name = legacyRegistro.generales?.nombre?.takeIf { !it.isNullOrBlank() } ?: "Negocio principal",
+                                    registro = migrateFromLegacy(legacyRegistro)
+                                )
+                            )
+                        )
                     } else {
-                        gson.fromJson(rootElement.toString(), RegistroTCP::class.java)
+                        val registro = gson.fromJson(rootElement.toString(), RegistroTCP::class.java)
                             ?: throw Exception("No se pudo interpretar el registro del archivo")
+                        CloudLedgerContainer(
+                            activeWorkspaceId = DEFAULT_WORKSPACE_ID,
+                            workspaces = listOf(
+                                CloudWorkspaceEntry(
+                                    id = DEFAULT_WORKSPACE_ID,
+                                    name = registro.generales.nombre.takeIf { it.isNotBlank() } ?: "Negocio principal",
+                                    registro = normalizeImportedRegistro(registro)
+                                )
+                            )
+                        )
                     }
                 }
             } catch (e: Exception) {
                 val legacyRegistro = tryParseLegacyRegistro(cleanedJson)
                 if (legacyRegistro != null) {
-                    migrateFromLegacy(legacyRegistro)
+                    CloudLedgerContainer(
+                        activeWorkspaceId = DEFAULT_WORKSPACE_ID,
+                        workspaces = listOf(
+                            CloudWorkspaceEntry(
+                                id = DEFAULT_WORKSPACE_ID,
+                                name = legacyRegistro.generales?.nombre?.takeIf { !it.isNullOrBlank() } ?: "Negocio principal",
+                                registro = migrateFromLegacy(legacyRegistro)
+                            )
+                        )
+                    )
                 } else {
                     throw e
                 }
             }
 
-            val normalized = normalizeImportedRegistro(imported)
-            if (hasInventarioData(normalized.inventario)) {
-                inventarioRepository.fromInventarioRegistro(normalized.inventario)
-            }
-            if (hasTercerosData(normalized.terceros)) {
-                tercerosRepository.fromTercerosRegistro(normalized.terceros)
-            }
-
-            val registroSinInventario = stripInventario(normalized)
-            saveUserEditedRegistro(registroSinInventario)
-            Result.success(registroSinInventario)
+            val container = importedContainer ?: throw Exception("No se pudo interpretar el backup")
+            applyCloudLedgerContainer(container, serverVersion = "").getOrThrow()
+            Result.success(getRegistro())
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -766,16 +1266,19 @@ class LedgerRepository @Inject constructor(
         }
     }
 
+    private fun cloudContainersEqual(local: CloudLedgerContainer, remote: CloudLedgerContainer): Boolean {
+        return gson.toJson(local) == gson.toJson(remote)
+    }
+
     suspend fun uploadLocalToRemote(): Result<SyncResult> {
         return try {
             val token = authRepository.getToken() ?: return Result.failure(Exception("No token"))
-            val localRegistro = buildRegistroWithInventario()
-            val inventarioRegistro = inventarioRepository.toInventarioRegistro()
+            val container = buildCloudLedgerContainer()
             val updateResponse = apiService.updateLedger(
                 "Bearer $token",
                 UpdateLedgerRequest(
-                    registro = stripInventario(localRegistro),
-                    inventarioRegistro = inventarioRegistro
+                    registro = gson.toJsonTree(container),
+                    inventarioRegistro = null
                 )
             )
             if (!updateResponse.isSuccessful) {
@@ -788,9 +1291,9 @@ class LedgerRepository @Inject constructor(
 
             val refreshedRemote = fetchRemote(token)
             val refreshedVersion = refreshedRemote.updatedAt.orEmpty()
-            val registroFinal = buildRemoteRegistro(refreshedRemote) ?: buildRegistroWithInventario()
+            val containerFinal = buildRemoteContainer(refreshedRemote) ?: container
 
-            replaceLocalWithRemote(registroFinal, refreshedVersion).getOrThrow()
+            applyCloudLedgerContainer(containerFinal, refreshedVersion).getOrThrow()
 
             Result.success(
                 SyncResult(
@@ -807,6 +1310,7 @@ class LedgerRepository @Inject constructor(
     suspend fun uploadMergedToRemote(mergedRegistro: RegistroTCP): Result<SyncResult> {
         return try {
             val token = authRepository.getToken() ?: return Result.failure(Exception("No token"))
+            val currentWorkspaceId = getCurrentWorkspaceId()
             val registroConInventario = buildRegistroWithInventario().copy(
                 generales = mergedRegistro.generales,
                 ingresos = mergedRegistro.ingresos,
@@ -814,11 +1318,26 @@ class LedgerRepository @Inject constructor(
                 tributos = mergedRegistro.tributos,
                 inventario = mergedRegistro.inventario
             )
+            val container = buildCloudLedgerContainer().let { existing ->
+                existing.copy(
+                    workspaces = existing.workspaces.map { entry ->
+                        if (entry.id == currentWorkspaceId) {
+                            entry.copy(
+                                name = registroConInventario.generales.nombre.takeIf { it.isNotBlank() } ?: entry.name,
+                                registro = registroConInventario,
+                                accounting = buildAccountingWorkspaceState()
+                            )
+                        } else {
+                            entry
+                        }
+                    }
+                )
+            }
             val updateResponse = apiService.updateLedger(
                 "Bearer $token",
                 UpdateLedgerRequest(
-                    registro = stripInventario(registroConInventario),
-                    inventarioRegistro = registroConInventario.inventario
+                    registro = gson.toJsonTree(container),
+                    inventarioRegistro = null
                 )
             )
             if (!updateResponse.isSuccessful) {
@@ -831,9 +1350,9 @@ class LedgerRepository @Inject constructor(
 
             val refreshedRemote = fetchRemote(token)
             val refreshedVersion = refreshedRemote.updatedAt.orEmpty()
-            val registroFinal = buildRemoteRegistro(refreshedRemote) ?: registroConInventario
+            val containerFinal = buildRemoteContainer(refreshedRemote) ?: container
 
-            replaceLocalWithRemote(registroFinal, refreshedVersion).getOrThrow()
+            applyCloudLedgerContainer(containerFinal, refreshedVersion).getOrThrow()
 
             Result.success(
                 SyncResult(
@@ -877,6 +1396,7 @@ class LedgerRepository @Inject constructor(
 
     suspend fun updateGenerales(data: GeneralesData) {
         val current = getRegistro()
+        updateWorkspaceDisplayNameIfNeeded(data.nombre)
         saveUserEditedRegistro(current.copy(generales = data))
     }
 
@@ -1262,9 +1782,9 @@ class LedgerRepository @Inject constructor(
         return try {
             val token = authRepository.getToken() ?: return Result.failure(Exception("No token"))
             val remote = fetchRemote(token)
-            val remoteRegistro = buildRemoteRegistro(remote) ?: return Result.success(getRegistro())
-            replaceLocalWithRemote(remoteRegistro, remote.updatedAt.orEmpty())
-                .map { remoteRegistro }
+            val remoteContainer = buildRemoteContainer(remote) ?: return Result.success(getRegistro())
+            applyCloudLedgerContainer(remoteContainer, remote.updatedAt.orEmpty())
+                .map { getRegistro() }
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -1282,14 +1802,14 @@ class LedgerRepository @Inject constructor(
             }
 
             val token = authRepository.getToken() ?: return Result.failure(Exception("No token"))
-            val localRegistro = buildRegistroWithInventario()
+            val localContainer = buildCloudLedgerContainer()
             val remote = fetchRemote(token)
-            val remoteRegistro = buildRemoteRegistro(remote)
+            val remoteContainer = buildRemoteContainer(remote)
             val result = when {
-                remoteRegistro != null -> {
-                    replaceLocalWithRemote(remoteRegistro, remote.updatedAt.orEmpty())
+                remoteContainer != null -> {
+                    applyCloudLedgerContainer(remoteContainer, remote.updatedAt.orEmpty())
                 }
-                !isRegistroEffectivelyEmpty(localRegistro) || isLocalModified() -> {
+                localContainer.workspaces.isNotEmpty() || isLocalModified() -> {
                     uploadLocalToRemote()
                 }
                 else -> {
@@ -1311,6 +1831,7 @@ class LedgerRepository @Inject constructor(
         return try {
             val token = authRepository.getToken() ?: return Result.failure(Exception("No token"))
             val localRegistro = buildRegistroWithInventario()
+            val localContainer = buildCloudLedgerContainer()
             val localModified = isLocalModified()
             val hasBaseline = hasBaselineVersion()
             val hasLocalData = hasLocalSnapshot()
@@ -1318,6 +1839,7 @@ class LedgerRepository @Inject constructor(
             val baselineInventario = getBaselineInventario()
             val remote = fetchRemote(token)
             val remoteRegistro = buildRemoteRegistro(remote)
+            val remoteContainer = buildRemoteContainer(remote)
             val remoteVersion = remote.updatedAt.orEmpty()
             val localEmpty = isRegistroEffectivelyEmpty(localRegistro)
             val serverChanged = hasBaseline && remoteVersion != baselineVersion
@@ -1327,11 +1849,11 @@ class LedgerRepository @Inject constructor(
                 hasInventarioConflicts(localRegistro.inventario, remoteInventario, baselineInventario)
 
             when {
-                remoteRegistro == null && !localModified -> {
+                remoteContainer == null && !localModified -> {
                     Result.success(SyncResult(true, "No hay datos para sincronizar", SyncAction.NO_CHANGES))
                 }
 
-                remoteRegistro == null && localModified -> {
+                remoteContainer == null && localModified -> {
                     Result.success(
                         SyncResult(
                             success = true,
@@ -1342,8 +1864,8 @@ class LedgerRepository @Inject constructor(
                     )
                 }
 
-                remoteRegistro != null && !localModified && !hasBaseline && localEmpty -> {
-                    replaceLocalWithRemote(remoteRegistro, remoteVersion)
+                remoteContainer != null && !localModified && !hasBaseline && localEmpty -> {
+                    applyCloudLedgerContainer(remoteContainer, remoteVersion)
                 }
 
                 !localModified && (!hasBaseline || !hasLocalData || serverChanged) -> {
@@ -1353,7 +1875,8 @@ class LedgerRepository @Inject constructor(
                             message = "Se encontraron cambios en la nube. ¿Deseas actualizar tus datos locales?",
                             action = SyncAction.PULL_ONLY,
                             needsUserDecision = true,
-                            remoteRegistro = remoteRegistro,
+                            remoteRegistro = remoteContainer?.workspaces?.firstOrNull { it.id == remoteContainer.activeWorkspaceId }?.registro
+                                ?: remoteRegistro,
                             remoteVersion = remoteVersion
                         )
                     )
@@ -1363,37 +1886,20 @@ class LedgerRepository @Inject constructor(
                     Result.success(SyncResult(true, "Ya estás sincronizado con la nube", SyncAction.NO_CHANGES))
                 }
 
-                localModified && !hasBaseline && remoteRegistro != null -> {
-                    val conflictInfo = checkForConflicts(
-                        local = localRegistro,
-                        remote = remoteRegistro,
-                        forceConflict = inventarioConflict,
-                        extraConflictMessage = if (inventarioConflict) {
-                            "Conflicto en datos del punto de venta"
-                        } else {
-                            null
-                        }
-                    )
-                    val merged = if (!conflictInfo.hasConflict) {
-                        mergeVersions(localRegistro, remoteRegistro, baselineInventario)
-                    } else {
-                        null
-                    }
-                    val message = if (conflictInfo.hasConflict) {
-                        "Ya existen datos en nube y también cambios locales. Elige cómo resolver."
-                    } else {
-                        "Hay datos locales y remotos sin conflicto. Puedes hacer merge."
-                    }
+                localModified && !hasBaseline && remoteContainer != null -> {
                     Result.success(
                         SyncResult(
                             success = true,
-                            message = message,
-                            action = if (conflictInfo.hasConflict) SyncAction.CONFLICT_DETECTED else SyncAction.MERGED,
-                            conflictInfo = conflictInfo,
+                            message = "Ya existen datos en nube y también cambios locales. Para múltiples negocios, elige usar nube o teléfono.",
+                            action = SyncAction.CONFLICT_DETECTED,
+                            conflictInfo = ConflictInfo(
+                                hasConflict = true,
+                                conflictMessage = "Conflicto entre contenedores de negocios",
+                                mergePossible = false
+                            ),
                             needsUserDecision = true,
-                            remoteRegistro = remoteRegistro,
-                            remoteVersion = remoteVersion,
-                            mergedRegistro = merged
+                            remoteRegistro = remoteContainer.workspaces.firstOrNull { it.id == remoteContainer.activeWorkspaceId }?.registro,
+                            remoteVersion = remoteVersion
                         )
                     )
                 }
@@ -1410,38 +1916,27 @@ class LedgerRepository @Inject constructor(
                 }
 
                 localModified && serverChanged -> {
-                    val conflictInfo = checkForConflicts(
-                        local = localRegistro,
-                        remote = remoteRegistro,
-                        forceConflict = inventarioConflict,
-                        extraConflictMessage = if (inventarioConflict) {
-                            "Conflicto en datos del punto de venta"
-                        } else {
-                            null
-                        }
-                    )
-                    val merged = if (!conflictInfo.hasConflict && remoteRegistro != null) {
-                        mergeVersions(localRegistro, remoteRegistro, baselineInventario)
+                    val identicalContainers = remoteContainer?.let { cloudContainersEqual(localContainer, it) } == true
+                    if (identicalContainers) {
+                        Result.success(SyncResult(true, "Ya estás sincronizado con la nube", SyncAction.NO_CHANGES))
                     } else {
-                        null
-                    }
-                    val message = if (conflictInfo.hasConflict) {
-                        "Hay conflictos entre nube y teléfono. Elige cómo resolver."
-                    } else {
-                        "Hay cambios en nube y teléfono sin conflicto por día. Puedes hacer merge."
-                    }
-                    Result.success(
-                        SyncResult(
-                            success = true,
-                            message = message,
-                            action = if (conflictInfo.hasConflict) SyncAction.CONFLICT_DETECTED else SyncAction.MERGED,
-                            conflictInfo = conflictInfo,
-                            needsUserDecision = true,
-                            remoteRegistro = remoteRegistro,
-                            remoteVersion = remoteVersion,
-                            mergedRegistro = merged
+                        Result.success(
+                            SyncResult(
+                                success = true,
+                                message = "Hay cambios en nube y teléfono. Con múltiples negocios, debes elegir usar nube o teléfono.",
+                                action = SyncAction.CONFLICT_DETECTED,
+                                conflictInfo = ConflictInfo(
+                                    hasConflict = true,
+                                    conflictMessage = "Conflicto entre contenedores de negocios",
+                                    mergePossible = false
+                                ),
+                                needsUserDecision = true,
+                                remoteRegistro = remoteContainer?.workspaces?.firstOrNull { it.id == remoteContainer.activeWorkspaceId }?.registro
+                                    ?: remoteRegistro,
+                                remoteVersion = remoteVersion
+                            )
                         )
-                    )
+                    }
                 }
 
                 else -> Result.success(SyncResult(true, "Sin cambios", SyncAction.NO_CHANGES))

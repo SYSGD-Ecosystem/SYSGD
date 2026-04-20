@@ -24,6 +24,8 @@ data class LedgerUiState(
     val notaPorAsientoId: Map<String, String> = emptyMap(),
     val tributoConfigs: List<TributoConfig> = emptyList(),
     val tributoCuentaBases: List<TributoCuentaBase> = emptyList(),
+    val workspaceProfiles: List<WorkspaceProfile> = emptyList(),
+    val currentWorkspaceId: String = "",
     val posIntegrationConfig: PosIntegrationConfig = PosIntegrationConfig(
         ingresoCuentaId = CuentasContablesPorDefecto.ingresosVentas().id,
         gastoCuentaId = CuentasContablesPorDefecto.gastosActividad().id
@@ -129,6 +131,16 @@ class LedgerViewModel @Inject constructor(
         viewModelScope.launch {
             ledgerRepository.posIntegrationConfig.collect { config ->
                 _uiState.update { it.copy(posIntegrationConfig = config) }
+            }
+        }
+        viewModelScope.launch {
+            ledgerRepository.workspaceProfiles.collect { workspaces ->
+                _uiState.update { it.copy(workspaceProfiles = workspaces) }
+            }
+        }
+        viewModelScope.launch {
+            ledgerRepository.currentWorkspaceId.collect { workspaceId ->
+                _uiState.update { it.copy(currentWorkspaceId = workspaceId) }
             }
         }
     }
@@ -247,6 +259,18 @@ class LedgerViewModel @Inject constructor(
                 porcentaje = porcentaje,
                 cuentaIds = cuentaIds
             )
+        }
+    }
+
+    fun createWorkspace(nombre: String) {
+        viewModelScope.launch {
+            ledgerRepository.createWorkspace(nombre)
+        }
+    }
+
+    fun switchWorkspace(workspaceId: String) {
+        viewModelScope.launch {
+            ledgerRepository.switchWorkspace(workspaceId)
         }
     }
 

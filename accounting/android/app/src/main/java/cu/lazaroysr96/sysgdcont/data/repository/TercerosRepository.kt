@@ -42,14 +42,16 @@ class TercerosRepository @Inject constructor(
     }
 
     private suspend fun markLocalModified() {
-        context.tercerosDataStore.edit { prefs ->
-            prefs[TERCEROS_LOCAL_MODIFIED_KEY] = "true"
-        }
+        setLocalModified(true)
     }
 
     suspend fun clearLocalModified() {
+        setLocalModified(false)
+    }
+
+    suspend fun setLocalModified(modified: Boolean) {
         context.tercerosDataStore.edit { prefs ->
-            prefs[TERCEROS_LOCAL_MODIFIED_KEY] = "false"
+            prefs[TERCEROS_LOCAL_MODIFIED_KEY] = if (modified) "true" else "false"
         }
     }
 
