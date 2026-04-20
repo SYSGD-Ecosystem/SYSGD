@@ -157,9 +157,21 @@ class LedgerViewModel @Inject constructor(
         }
     }
 
+    fun editIngresoById(entryId: String, month: String, newDia: Int, importe: Double, cuenta: String = "", nota: String = "") {
+        viewModelScope.launch {
+            ledgerRepository.updateIngresoById(entryId, month, newDia, importe, cuenta, nota)
+        }
+    }
+
     fun editGasto(month: String, oldDia: Int, newDia: Int, importe: Double, cuenta: String = "", nota: String = "") {
         viewModelScope.launch {
             ledgerRepository.updateGasto(month, oldDia, newDia, importe, cuenta, nota)
+        }
+    }
+
+    fun editGastoById(entryId: String, month: String, newDia: Int, importe: Double, cuenta: String = "", nota: String = "") {
+        viewModelScope.launch {
+            ledgerRepository.updateGastoById(entryId, month, newDia, importe, cuenta, nota)
         }
     }
 
@@ -169,9 +181,21 @@ class LedgerViewModel @Inject constructor(
         }
     }
 
+    fun deleteIngresoById(month: String, entryId: String) {
+        viewModelScope.launch {
+            ledgerRepository.deleteIngresoById(month, entryId)
+        }
+    }
+
     fun deleteGasto(month: String, dia: Int) {
         viewModelScope.launch {
             ledgerRepository.deleteGasto(month, dia)
+        }
+    }
+
+    fun deleteGastoById(month: String, entryId: String) {
+        viewModelScope.launch {
+            ledgerRepository.deleteGastoById(month, entryId)
         }
     }
 

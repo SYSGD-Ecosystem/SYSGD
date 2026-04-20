@@ -1,6 +1,7 @@
 package cu.lazaroysr96.sysgdcont.ui.main.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,18 +20,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import cu.lazaroysr96.sysgdcont.data.model.CuentaContable
 import cu.lazaroysr96.sysgdcont.data.model.DayAmountRow
 import cu.lazaroysr96.sysgdcont.data.repository.LedgerConstants
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
 import java.util.Calendar
-
-private data class PendingIngresoEntry(
-    val month: String,
-    val dia: Int,
-    val importe: Double,
-    val cuentaId: String,
-    val nota: String
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,11 +35,8 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
     var isEditMode by remember { mutableStateOf(false) }
     var editEntry by remember { mutableStateOf<Pair<String, DayAmountRow>?>(null) }
     var expandedMonths by remember { mutableStateOf(setOf<String>()) }
+    var expandedDaysByMonth by remember { mutableStateOf<Map<String, Set<String>>>(emptyMap()) }
     var preselectedMonth by remember { mutableStateOf<String?>(null) }
-    
-    var showDuplicateDialog by remember { mutableStateOf(false) }
-    var pendingDuplicateEntry by remember { mutableStateOf<PendingIngresoEntry?>(null) }
-    var existingImporte by remember { mutableStateOf(0.0) }
 
     Scaffold(floatingActionButton = {
         FloatingActionButton(onClick = {
@@ -80,30 +71,44 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column {
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        expandedMonths = if (isExpanded) {
-                                            expandedMonths - month
-                                        } else {
-                                            expandedMonths + month
-                                        }
-                                    }
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(LedgerConstants.monthLabels[month] ?: month)
-                                }
-                                Text("${String.format("%.2f", total)} CUP")
-                            }
+    modifier = Modifier
+        .fillMaxWidth()
+        .clickable {
+            expandedMonths = if (isExpanded) {
+                expandedMonths - month
+            } else {
+                expandedMonths + month
+            }
+        }
+        .padding(start = 12.dp, top = 4.dp, bottom = 4.dp, end = 4.dp),
+    horizontalArrangement = Arrangement.SpaceBetween,
+    verticalAlignment = Alignment.CenterVertically
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(LedgerConstants.monthLabels[month] ?: month)
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text("${String.format("%.2f", total)} CUP")
+        IconButton(onClick = {
+            isEditMode = false
+            editEntry = null
+            preselectedMonth = month
+            showDialog = true
+        }) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = "Agregar registro",
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
 
                             AnimatedVisibility(visible = isExpanded) {
                                 Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
@@ -114,91 +119,34 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     } else {
-                                        entries.sortedBy { it.dia }.forEach { entry ->
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.Top
-                                            ) {
-                                                Column(
-                                                    modifier = Modifier.weight(1f),
-                                                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                                                ) {
-                                                    Row {
-                                                        Text(
-                                                            "Día ${entry.dia}",
-                                                            style = MaterialTheme.typography.bodySmall
-                                                        )
-                                                        Spacer(modifier = Modifier.width(16.dp))
-                                                        Text(
-                                                            "${entry.importe} CUP",
-                                                            style = MaterialTheme.typography.bodySmall
-                                                        )
+                                        entries
+                                            .groupBy { it.dia }
+                                            .toSortedMap(compareBy { it.toIntOrNull() ?: 0 })
+                                            .forEach { (dia, dayEntries) ->
+                                                val expandedDays = expandedDaysByMonth[month].orEmpty()
+                                                val dayExpanded = expandedDays.contains(dia)
+                                                IngresoDayCard(
+                                                    dia = dia,
+                                                    entries = dayEntries.sortedBy { it.id },
+                                                    isExpanded = dayExpanded,
+                                                    cuentasPorId = cuentasPorId,
+                                                    cuentaPorAsientoId = uiState.cuentaPorAsientoId,
+                                                    notaPorAsientoId = uiState.notaPorAsientoId,
+                                                    onToggle = {
+                                                        expandedDaysByMonth = expandedDaysByMonth.toMutableMap().apply {
+                                                            this[month] = if (dayExpanded) expandedDays - dia else expandedDays + dia
+                                                        }
+                                                    },
+                                                    onEdit = { entry ->
+                                                        isEditMode = true
+                                                        editEntry = month to entry
+                                                        showDialog = true
+                                                    },
+                                                    onDelete = { entry ->
+                                                        viewModel.deleteIngresoById(month, entry.id)
                                                     }
-                                                    uiState.cuentaPorAsientoId[entry.id]?.let { cuentaId ->
-                                                        Text(
-                                                            cuentasPorId[cuentaId]?.let { "${it.codigo} · ${it.nombre}" } ?: "Cuenta asociada",
-                                                            style = MaterialTheme.typography.bodySmall,
-                                                            color = MaterialTheme.colorScheme.primary
-                                                        )
-                                                    }
-                                                    uiState.notaPorAsientoId[entry.id]?.takeIf { it.isNotBlank() }?.let { nota ->
-                                                        Text(
-                                                            nota,
-                                                            style = MaterialTheme.typography.bodySmall,
-                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                        )
-                                                    }
-                                                }
-                                                Row {
-                                                    IconButton(
-                                                        onClick = {
-                                                            isEditMode = true
-                                                            editEntry = month to entry
-                                                            showDialog = true
-                                                        },
-                                                        modifier = Modifier.size(32.dp)
-                                                    ) {
-                                                        Icon(
-                                                            Icons.Default.Edit,
-                                                            contentDescription = "Editar",
-                                                            modifier = Modifier.size(18.dp)
-                                                        )
-                                                    }
-                                                    IconButton(
-                                                        onClick = {
-                                                            viewModel.deleteIngreso(month, entry.dia.toIntOrNull() ?: 0)
-                                                        },
-                                                        modifier = Modifier.size(32.dp)
-                                                    ) {
-                                                        Icon(
-                                                            Icons.Default.Delete,
-                                                            contentDescription = "Eliminar",
-                                                            modifier = Modifier.size(18.dp)
-                                                        )
-                                                    }
-                                                }
+                                                )
                                             }
-                                        }
-                                    }
-                                    
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        TextButton(
-                                            onClick = {
-                                                isEditMode = false
-                                                editEntry = null
-                                                preselectedMonth = month
-                                                showDialog = true
-                                            }
-                                        ) {
-                                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Agregar registro")
                                         }
                                     }
                                 }
@@ -208,7 +156,6 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
                 }
             }
         }
-    }
 
     IngresoDialog(
         visible = showDialog,
@@ -223,9 +170,6 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
         initialCuenta = editEntry?.second?.id?.let { uiState.cuentaPorAsientoId[it] },
         initialNota = editEntry?.second?.id?.let { uiState.notaPorAsientoId[it] },
         cuentasDisponibles = uiState.cuentasIngreso,
-        existingEntries = if (isEditMode && editEntry != null) {
-            uiState.registro.ingresos[editEntry?.first] ?: emptyList()
-        } else emptyList(),
         onDismiss = {
             showDialog = false
             isEditMode = false
@@ -233,84 +177,132 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
             preselectedMonth = null
         },
         onConfirm = { month, dia, importe, cuenta, nota ->
-            val existing = (if (isEditMode && editEntry != null) {
-                uiState.registro.ingresos[month]?.filter { it.dia != editEntry?.second?.dia }
-            } else uiState.registro.ingresos[month]) ?: emptyList()
-            
-            val existingEntry = existing.find { it.dia == dia.toString() }
-            
-            if (existingEntry != null && !isEditMode) {
-                existingImporte = existingEntry.importe.toDoubleOrNull() ?: 0.0
-                pendingDuplicateEntry = PendingIngresoEntry(month, dia, importe, cuenta, nota)
-                showDuplicateDialog = true
+            if (isEditMode && editEntry != null) {
+                viewModel.editIngresoById(editEntry!!.second.id, month, dia, importe, cuenta, nota)
             } else {
-                if (isEditMode && editEntry != null) {
-                    val oldDia = editEntry?.second?.dia?.toIntOrNull() ?: 0
-                    viewModel.editIngreso(month, oldDia, dia, importe, cuenta, nota)
-                } else {
-                    viewModel.addIngreso(month, dia, importe, cuenta, nota)
-                }
-                showDialog = false
-                isEditMode = false
-                editEntry = null
-                preselectedMonth = null
+                viewModel.addIngreso(month, dia, importe, cuenta, nota)
             }
+            showDialog = false
+            isEditMode = false
+            editEntry = null
+            preselectedMonth = null
         }
     )
+}
 
-    if (showDuplicateDialog && pendingDuplicateEntry != null) {
-        AlertDialog(
-            onDismissRequest = { 
-                showDuplicateDialog = false
-                pendingDuplicateEntry = null
-            },
-            title = { Text("Día ya existe") },
-            text = { 
-                Text("Ya existe un registro de ${String.format("%.2f", existingImporte)} CUP para el día ${pendingDuplicateEntry?.dia}. ¿Qué deseas hacer?")
-            },
-            confirmButton = {
-                Row {
-                    TextButton(
-                        onClick = {
-                            val entry = pendingDuplicateEntry!!
-                            viewModel.editIngreso(entry.month, entry.dia, entry.dia, entry.importe + existingImporte, entry.cuentaId, entry.nota)
-                            showDuplicateDialog = false
-                            pendingDuplicateEntry = null
-                            showDialog = false
-                            isEditMode = false
-                            editEntry = null
-                            preselectedMonth = null
-                        }
-                    ) {
-                        Text("Sumar")
-                    }
-                    TextButton(
-                        onClick = {
-                            val entry = pendingDuplicateEntry!!
-                            viewModel.editIngreso(entry.month, entry.dia, entry.dia, entry.importe, entry.cuentaId, entry.nota)
-                            showDuplicateDialog = false
-                            pendingDuplicateEntry = null
-                            showDialog = false
-                            isEditMode = false
-                            editEntry = null
-                            preselectedMonth = null
-                        }
-                    ) {
-                        Text("Reemplazar")
-                    }
+@Composable
+private fun IngresoDayCard(
+    dia: String,
+    entries: List<DayAmountRow>,
+    isExpanded: Boolean,
+    cuentasPorId: Map<String, CuentaContable>,
+    cuentaPorAsientoId: Map<String, String>,
+    notaPorAsientoId: Map<String, String>,
+    onToggle: () -> Unit,
+    onEdit: (DayAmountRow) -> Unit,
+    onDelete: (DayAmountRow) -> Unit
+) {
+    val totalDia = entries.sumOf { it.importe.toDoubleOrNull() ?: 0.0 }
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize()
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onToggle)
+                    .padding(vertical = 10.dp, horizontal = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Día $dia", style = MaterialTheme.typography.titleSmall)
                 }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { 
-                        showDuplicateDialog = false
-                        pendingDuplicateEntry = null
-                    }
-                ) {
-                    Text("Cancelar")
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        String.format("%.2f CUP", totalDia),
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Text(
+                        "${entries.size} movimiento(s)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
-        )
+
+            AnimatedVisibility(visible = isExpanded) {
+                Column(
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    entries.forEachIndexed { index, entry ->
+                        if (index > 0) {
+                            Divider()
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    "${entry.importe} CUP",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                cuentaPorAsientoId[entry.id]?.let { cuentaId ->
+                                    Text(
+                                        cuentasPorId[cuentaId]?.let { "${it.codigo} · ${it.nombre}" } ?: "Cuenta asociada",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                notaPorAsientoId[entry.id]?.takeIf { it.isNotBlank() }?.let { nota ->
+                                    Text(
+                                        nota,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            Row {
+                                IconButton(
+                                    onClick = { onEdit(entry) },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Edit,
+                                        contentDescription = "Editar",
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                IconButton(
+                                    onClick = { onDelete(entry) },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = "Eliminar",
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -325,12 +317,10 @@ fun IngresoDialog(
     initialCuenta: String? = null,
     initialNota: String? = null,
     cuentasDisponibles: List<cu.lazaroysr96.sysgdcont.data.model.CuentaContable> = emptyList(),
-    existingEntries: List<DayAmountRow> = emptyList(),
     onDismiss: () -> Unit,
     onConfirm: (month: String, dia: Int, importe: Double, cuenta: String, nota: String) -> Unit
 ) {
     if (visible) {
-        val currentDay = Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
         val currentMonthIndex = Calendar.getInstance().get(Calendar.MONTH)
         val currentMonth = LedgerConstants.MONTHS.getOrNull(currentMonthIndex) ?: "ENE"
         

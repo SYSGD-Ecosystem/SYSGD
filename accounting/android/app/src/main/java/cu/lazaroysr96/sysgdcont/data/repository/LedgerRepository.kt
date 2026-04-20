@@ -896,12 +896,28 @@ class LedgerRepository @Inject constructor(
         deleteEntry("gastos", month, dia)
     }
 
+    suspend fun deleteIngresoById(month: String, entryId: String) {
+        deleteEntryById("ingresos", month, entryId)
+    }
+
+    suspend fun deleteGastoById(month: String, entryId: String) {
+        deleteEntryById("gastos", month, entryId)
+    }
+
     suspend fun updateIngreso(month: String, oldDia: Int, newDia: Int, importe: Double, cuenta: String = "", nota: String = "") {
         updateEntry("ingresos", month, oldDia, newDia, importe, cuenta, nota)
     }
 
     suspend fun updateGasto(month: String, oldDia: Int, newDia: Int, importe: Double, cuenta: String = "", nota: String = "") {
         updateEntry("gastos", month, oldDia, newDia, importe, cuenta, nota)
+    }
+
+    suspend fun updateIngresoById(entryId: String, month: String, newDia: Int, importe: Double, cuenta: String = "", nota: String = "") {
+        updateEntryById("ingresos", entryId, month, newDia, importe, cuenta, nota)
+    }
+
+    suspend fun updateGastoById(entryId: String, month: String, newDia: Int, importe: Double, cuenta: String = "", nota: String = "") {
+        updateEntryById("gastos", entryId, month, newDia, importe, cuenta, nota)
     }
 
     suspend fun registrarIngresoDesdePuntoVenta(fechaIso: String, total: Double) {
@@ -1006,6 +1022,28 @@ class LedgerRepository @Inject constructor(
         saveRegistroAplicandoTributos(updated)
     }
 
+    private suspend fun deleteEntryById(type: String, month: String, entryId: String) {
+        val current = getRegistro()
+        val entries = when (type) {
+            "ingresos" -> current.ingresos.toMutableMap()
+            "gastos" -> current.gastos.toMutableMap()
+            else -> return
+        }
+
+        val monthEntries = entries[month]?.toMutableList() ?: mutableListOf()
+        val removed = monthEntries.removeAll { it.id == entryId }
+        if (!removed) return
+        deleteEntryMetadata(entryId)
+
+        entries[month] = monthEntries
+        val updated = when (type) {
+            "ingresos" -> current.copy(ingresos = entries)
+            "gastos" -> current.copy(gastos = entries)
+            else -> current
+        }
+        saveRegistroAplicandoTributos(updated)
+    }
+
     private suspend fun addEntry(type: String, month: String, dia: Int, importe: Double, cuenta: String = "", nota: String = "") {
         val current = getRegistro()
         val entries = when (type) {
@@ -1024,6 +1062,48 @@ class LedgerRepository @Inject constructor(
         val updated = when (type) {
             "ingresos" -> current.copy(ingresos = entries)
             "gastos" -> current.copy(gastos = entries)
+            else -> current
+        }
+        saveRegistroAplicandoTributos(updated)
+    }
+
+    private suspend fun updateEntryById(
+        type: String,
+        entryId: String,
+        month: String,
+        newDia: Int,
+        importe: Double,
+        cuenta: String = "",
+        nota: String = ""
+    ) {
+        val current = getRegistro()
+        val sourceEntries = when (type) {
+            "ingresos" -> current.ingresos.toMutableMap()
+            "gastos" -> current.gastos.toMutableMap()
+            else -> return
+        }
+
+        val actualSourceMonth = sourceEntries.entries.firstOrNull { entry ->
+            entry.value.any { it.id == entryId }
+        }?.key ?: month
+
+        val monthEntriesOrigen = sourceEntries[actualSourceMonth]?.toMutableList() ?: mutableListOf()
+        val previousEntry = monthEntriesOrigen.firstOrNull { it.id == entryId } ?: return
+        monthEntriesOrigen.removeAll { it.id == entryId }
+        sourceEntries[actualSourceMonth] = monthEntriesOrigen
+
+        if (newDia !in 1..31 || importe <= 0.0) {
+            deleteEntryMetadata(entryId)
+        } else {
+            val monthEntriesDestino = sourceEntries[month]?.toMutableList() ?: mutableListOf()
+            monthEntriesDestino.add(previousEntry.copy(dia = newDia.toString(), importe = String.format("%.2f", importe)))
+            sourceEntries[month] = monthEntriesDestino.sortedBy { it.dia.toIntOrNull() ?: 0 }
+            saveEntryMetadata(entryId, month, type, cuenta, nota)
+        }
+
+        val updated = when (type) {
+            "ingresos" -> current.copy(ingresos = sourceEntries)
+            "gastos" -> current.copy(gastos = sourceEntries)
             else -> current
         }
         saveRegistroAplicandoTributos(updated)
