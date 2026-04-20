@@ -306,6 +306,8 @@ class InventarioRepository @Inject constructor(
         markLocalModified()
     }
 
+    suspend fun obtenerVenta(ventaId: String): Venta? = ventaDao.getById(ventaId)
+
     fun getProductosCompra(): Flow<List<ProductoCompra>> = catalogoCompraDao.getAllActivos()
 
     suspend fun agregarProductoCompra(
@@ -418,6 +420,8 @@ class InventarioRepository @Inject constructor(
         compraDao.anularCompra(compraId)
         markLocalModified()
     }
+
+    suspend fun obtenerCompra(compraId: String): Compra? = compraDao.getById(compraId)
 
     suspend fun toInventarioRegistro(): InventarioRegistro {
         val productos = productoDao.getAll()

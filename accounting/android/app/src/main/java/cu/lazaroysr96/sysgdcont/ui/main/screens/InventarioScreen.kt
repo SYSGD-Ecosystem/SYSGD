@@ -47,6 +47,7 @@ import cu.lazaroysr96.sysgdcont.data.model.InventarioVinculoEdicion
 import cu.lazaroysr96.sysgdcont.data.model.TipoProductoInv
 import cu.lazaroysr96.sysgdcont.data.model.ModoStock
 import cu.lazaroysr96.sysgdcont.data.model.FormaPago
+import cu.lazaroysr96.sysgdcont.data.model.CuentaContable
 import cu.lazaroysr96.sysgdcont.viewmodel.InventarioViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.FacturaViewModel
 import java.time.Instant
@@ -657,7 +658,11 @@ private fun MasContent(viewModel: InventarioViewModel, padding: PaddingValues) {
     val resumenBalanceMes = uiState.totalVentasMes - uiState.totalComprasMes
     val context = LocalContext.current
     var facturaExpanded by rememberSaveable { mutableStateOf(false) }
+    var integracionExpanded by rememberSaveable { mutableStateOf(false) }
     var showArchivedDialog by rememberSaveable { mutableStateOf(false) }
+    var integracionActiva by rememberSaveable { mutableStateOf(false) }
+    var cuentaIngresoSeleccionada by rememberSaveable { mutableStateOf<String?>(null) }
+    var cuentaGastoSeleccionada by rememberSaveable { mutableStateOf<String?>(null) }
     val logoPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { tomarPermisoLecturaPersistente(context, it) }
         viewModel.updateLogoFacturaUri(uri?.toString())
@@ -665,6 +670,12 @@ private fun MasContent(viewModel: InventarioViewModel, padding: PaddingValues) {
     val firmaVendedorPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { tomarPermisoLecturaPersistente(context, it) }
         viewModel.updateFirmaVendedorFacturaUri(uri?.toString())
+    }
+
+    LaunchedEffect(uiState.posIntegrationConfig) {
+        integracionActiva = uiState.posIntegrationConfig.enabled
+        cuentaIngresoSeleccionada = uiState.posIntegrationConfig.ingresoCuentaId
+        cuentaGastoSeleccionada = uiState.posIntegrationConfig.gastoCuentaId
     }
 
     LazyColumn(
@@ -686,6 +697,104 @@ private fun MasContent(viewModel: InventarioViewModel, padding: PaddingValues) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+
+        item {
+            Card {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { integracionExpanded = !integracionExpanded },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text("Integración contable", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(
+                                "Totaliza diariamente ventas y compras del punto de venta hacia el registro contable.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(
+                            if (integracionExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = null
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = integracionExpanded,
+                        enter = expandVertically(),
+                        exit = shrinkVertically()
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Text("Activar integración")
+                                    Text(
+                                        "Usa cuentas contables para registrar automáticamente ventas y compras del día.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Switch(
+                                    checked = integracionActiva,
+                                    onCheckedChange = { integracionActiva = it }
+                                )
+                            }
+
+                            CuentaContableSelector(
+                                label = "Cuenta para ventas",
+                                placeholder = "Selecciona una cuenta acreedora",
+                                cuentas = uiState.cuentasIngresoContables,
+                                selectedCuentaId = cuentaIngresoSeleccionada,
+                                onCuentaSelected = { cuentaIngresoSeleccionada = it }
+                            )
+
+                            CuentaContableSelector(
+                                label = "Cuenta para compras",
+                                placeholder = "Selecciona una cuenta deudora",
+                                cuentas = uiState.cuentasGastoContables,
+                                selectedCuentaId = cuentaGastoSeleccionada,
+                                onCuentaSelected = { cuentaGastoSeleccionada = it }
+                            )
+
+                            Button(
+                                onClick = {
+                                    viewModel.actualizarIntegracionContable(
+                                        enabled = integracionActiva,
+                                        ingresoCuentaId = cuentaIngresoSeleccionada,
+                                        gastoCuentaId = cuentaGastoSeleccionada
+                                    )
+                                },
+                                modifier = Modifier.align(Alignment.End),
+                                enabled = !integracionActiva || (!cuentaIngresoSeleccionada.isNullOrBlank() && !cuentaGastoSeleccionada.isNullOrBlank())
+                            ) {
+                                Icon(Icons.Default.Save, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Guardar")
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -902,6 +1011,48 @@ private fun MasContent(viewModel: InventarioViewModel, padding: PaddingValues) {
             onRestore = { itemId -> viewModel.restaurarItemInventario(itemId) },
             onDismiss = { showArchivedDialog = false }
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CuentaContableSelector(
+    label: String,
+    placeholder: String,
+    cuentas: List<CuentaContable>,
+    selectedCuentaId: String?,
+    onCuentaSelected: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val cuentaSeleccionada = cuentas.firstOrNull { it.id == selectedCuentaId }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded }
+    ) {
+        OutlinedTextField(
+            value = cuentaSeleccionada?.let { "${it.codigo} · ${it.nombre}" } ?: "",
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.menuAnchor().fillMaxWidth(),
+            placeholder = { Text(placeholder) }
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            cuentas.forEach { cuenta ->
+                DropdownMenuItem(
+                    text = { Text("${cuenta.codigo} · ${cuenta.nombre}") },
+                    onClick = {
+                        onCuentaSelected(cuenta.id)
+                        expanded = false
+                    }
+                )
+            }
+        }
     }
 }
 

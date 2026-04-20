@@ -9,6 +9,8 @@ import cu.lazaroysr96.sysgdcont.data.MIGRATION_3_4
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_4_5
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_5_6
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_6_7
+import cu.lazaroysr96.sysgdcont.data.MIGRATION_7_8
+import cu.lazaroysr96.sysgdcont.data.MIGRATION_8_9
 import cu.lazaroysr96.sysgdcont.data.dao.CatalogoCompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.CatalogoVentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
@@ -44,7 +46,9 @@ object DatabaseModule {
                 MIGRATION_3_4,
                 MIGRATION_4_5,
                 MIGRATION_5_6,
-                MIGRATION_6_7
+                MIGRATION_6_7,
+                MIGRATION_7_8,
+                MIGRATION_8_9
             )
             .build()
     }

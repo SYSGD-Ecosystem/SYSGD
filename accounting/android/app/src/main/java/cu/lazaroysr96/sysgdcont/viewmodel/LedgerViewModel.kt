@@ -16,6 +16,18 @@ data class LedgerUiState(
     val isLoading: Boolean = false,
     val registro: RegistroTCP = RegistroTCP(),
     val annualReport: AnnualReport? = null,
+    val cuentasContables: List<CuentaContable> = emptyList(),
+    val cuentasIngreso: List<CuentaContable> = emptyList(),
+    val cuentasGasto: List<CuentaContable> = emptyList(),
+    val saldoPorCuentaId: Map<String, Double> = emptyMap(),
+    val cuentaPorAsientoId: Map<String, String> = emptyMap(),
+    val notaPorAsientoId: Map<String, String> = emptyMap(),
+    val tributoConfigs: List<TributoConfig> = emptyList(),
+    val tributoCuentaBases: List<TributoCuentaBase> = emptyList(),
+    val posIntegrationConfig: PosIntegrationConfig = PosIntegrationConfig(
+        ingresoCuentaId = CuentasContablesPorDefecto.ingresosVentas().id,
+        gastoCuentaId = CuentasContablesPorDefecto.gastosActividad().id
+    ),
     val lastSync: String? = null,
     val hasLocalChanges: Boolean = false,
     val experimentalFeaturesEnabled: Boolean = false,
@@ -46,6 +58,9 @@ class LedgerViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            ledgerRepository.ensureDefaultAccounts()
+        }
+        viewModelScope.launch {
             ledgerRepository.registro.collect { registro ->
                 val report = ledgerRepository.calculateAnnualReport(registro)
                 _uiState.update { it.copy(registro = registro, annualReport = report) }
@@ -69,6 +84,51 @@ class LedgerViewModel @Inject constructor(
         viewModelScope.launch {
             ledgerRepository.hideInventarioDisclaimer.collect { hide ->
                 _uiState.update { it.copy(hideInventarioDisclaimer = hide) }
+            }
+        }
+        viewModelScope.launch {
+            ledgerRepository.cuentasContables.collect { cuentas ->
+                _uiState.update { it.copy(cuentasContables = cuentas) }
+            }
+        }
+        viewModelScope.launch {
+            ledgerRepository.cuentasIngreso.collect { cuentas ->
+                _uiState.update { it.copy(cuentasIngreso = cuentas) }
+            }
+        }
+        viewModelScope.launch {
+            ledgerRepository.cuentasGasto.collect { cuentas ->
+                _uiState.update { it.copy(cuentasGasto = cuentas) }
+            }
+        }
+        viewModelScope.launch {
+            ledgerRepository.ingresoGastoCuentas.collect { links ->
+                _uiState.update { it.copy(cuentaPorAsientoId = links.associate { link -> link.ingresoGastoId to link.cuentaId }) }
+            }
+        }
+        viewModelScope.launch {
+            ledgerRepository.ingresoGastoNotas.collect { notas ->
+                _uiState.update { it.copy(notaPorAsientoId = notas.associate { nota -> nota.ingresoGastoId to nota.nota }) }
+            }
+        }
+        viewModelScope.launch {
+            ledgerRepository.saldoPorCuenta.collect { saldos ->
+                _uiState.update { it.copy(saldoPorCuentaId = saldos) }
+            }
+        }
+        viewModelScope.launch {
+            ledgerRepository.tributoConfigs.collect { configs ->
+                _uiState.update { it.copy(tributoConfigs = configs) }
+            }
+        }
+        viewModelScope.launch {
+            ledgerRepository.tributoCuentaBases.collect { relaciones ->
+                _uiState.update { it.copy(tributoCuentaBases = relaciones) }
+            }
+        }
+        viewModelScope.launch {
+            ledgerRepository.posIntegrationConfig.collect { config ->
+                _uiState.update { it.copy(posIntegrationConfig = config) }
             }
         }
     }
@@ -121,9 +181,48 @@ class LedgerViewModel @Inject constructor(
         }
     }
 
+    fun crearCuentaContable(
+        codigo: String,
+        nombre: String,
+        naturaleza: String,
+        tipo: String
+    ) {
+        viewModelScope.launch {
+            ledgerRepository.crearCuentaContable(codigo, nombre, naturaleza, tipo)
+        }
+    }
+
+    fun actualizarConfiguracionPos(
+        enabled: Boolean,
+        ingresoCuentaId: String?,
+        gastoCuentaId: String?
+    ) {
+        viewModelScope.launch {
+            ledgerRepository.updatePosIntegrationConfig(enabled, ingresoCuentaId, gastoCuentaId)
+        }
+    }
+
     fun updateTributos(month: String, values: TributoRow) {
         viewModelScope.launch {
             ledgerRepository.updateTributos(month, values)
+        }
+    }
+
+    fun actualizarTributoConfig(
+        key: String,
+        incluido: Boolean,
+        autocalcular: Boolean,
+        porcentaje: Double,
+        cuentaIds: List<String>
+    ) {
+        viewModelScope.launch {
+            ledgerRepository.updateTributoConfig(
+                key = key,
+                incluido = incluido,
+                autocalcular = autocalcular,
+                porcentaje = porcentaje,
+                cuentaIds = cuentaIds
+            )
         }
     }
 

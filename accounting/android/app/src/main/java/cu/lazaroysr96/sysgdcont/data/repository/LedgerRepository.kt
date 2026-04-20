@@ -26,6 +26,7 @@ import com.itextpdf.layout.properties.UnitValue
 import com.itextpdf.layout.properties.VerticalAlignment
 import com.google.gson.Gson
 import com.google.gson.JsonParser
+import cu.lazaroysr96.sysgdcont.data.AppDatabase
 import cu.lazaroysr96.sysgdcont.data.api.ApiService
 import cu.lazaroysr96.sysgdcont.data.model.*
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -41,7 +42,9 @@ import org.json.JSONObject
 import retrofit2.Response
 import java.io.File
 import java.io.IOException
+import java.time.LocalDate
 import java.util.Locale
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -52,12 +55,20 @@ class InsufficientCreditsException(message: String) : Exception(message)
 @Singleton
 class LedgerRepository @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val appDatabase: AppDatabase,
     private val apiService: ApiService,
     private val authRepository: AuthRepository,
     private val inventarioRepository: InventarioRepository,
     private val tercerosRepository: TercerosRepository,
     private val documentStorageRepository: DocumentStorageRepository
 ) {
+    private val cuentaContableDao by lazy { appDatabase.cuentaContableDao() }
+    private val ingresoGastoCuentaDao by lazy { appDatabase.ingresoGastoCuentaDao() }
+    private val ingresoGastoNotaDao by lazy { appDatabase.ingresoGastoNotaDao() }
+    private val posIntegrationConfigDao by lazy { appDatabase.posIntegrationConfigDao() }
+    private val tributoConfigDao by lazy { appDatabase.tributoConfigDao() }
+    private val tributoCuentaBaseDao by lazy { appDatabase.tributoCuentaBaseDao() }
+
     private data class RegistroBackupPayload(
         val app: String = "SYSGD Cont Android",
         val schemaVersion: Int = 1,
@@ -191,6 +202,35 @@ class LedgerRepository @Inject constructor(
         ledgerModified || inventarioModified || tercerosModified
     }
 
+    val cuentasContables: Flow<List<CuentaContable>> = cuentaContableDao.observeActivas()
+
+    val cuentasIngreso: Flow<List<CuentaContable>> =
+        cuentaContableDao.observeByTipoNaturaleza(TipoCuenta.INGRESO, NaturalezaCuenta.ACREEDORA)
+
+    val cuentasGasto: Flow<List<CuentaContable>> =
+        cuentaContableDao.observeByTipoNaturaleza(TipoCuenta.GASTO, NaturalezaCuenta.DEUDORA)
+
+    val ingresoGastoCuentas: Flow<List<IngresoGastoCuenta>> = ingresoGastoCuentaDao.observeAll()
+    val ingresoGastoNotas: Flow<List<IngresoGastoNota>> = ingresoGastoNotaDao.observeAll()
+    val tributoConfigs: Flow<List<TributoConfig>> = tributoConfigDao.observeAll()
+    val tributoCuentaBases: Flow<List<TributoCuentaBase>> = tributoCuentaBaseDao.observeAll()
+
+    val posIntegrationConfig: Flow<PosIntegrationConfig> =
+        posIntegrationConfigDao.observeById().map { config ->
+            config ?: PosIntegrationConfig(
+                ingresoCuentaId = CuentasContablesPorDefecto.ingresosVentas().id,
+                gastoCuentaId = CuentasContablesPorDefecto.gastosActividad().id
+            )
+        }
+
+    val saldoPorCuenta: Flow<Map<String, Double>> = combine(
+        registro,
+        cuentasContables,
+        ingresoGastoCuentas
+    ) { currentRegistro, cuentas, links ->
+        computeAccountBalances(currentRegistro, cuentas, links)
+    }
+
     suspend fun getRegistro(): RegistroTCP = registro.first()
 
     private suspend fun saveRegistro(registro: RegistroTCP, modifiedByUser: Boolean) {
@@ -220,6 +260,134 @@ class LedgerRepository @Inject constructor(
 
     suspend fun saveUserEditedRegistro(registro: RegistroTCP) {
         saveRegistro(registro, modifiedByUser = true)
+    }
+
+    private suspend fun saveRegistroAplicandoTributos(registro: RegistroTCP, modifiedByUser: Boolean = true) {
+        saveRegistro(applyAutoCalculatedTributos(registro), modifiedByUser = modifiedByUser)
+    }
+
+    private suspend fun refreshAutoCalculatedTributos(modifiedByUser: Boolean = false) {
+        saveRegistroAplicandoTributos(getRegistro(), modifiedByUser = modifiedByUser)
+    }
+
+    suspend fun ensureDefaultAccounts() {
+        val existentes = cuentaContableDao.getActivas().associateBy { it.codigo }
+        val faltantes = CuentasContablesPorDefecto.todas().filter { existentes[it.codigo] == null }
+        if (faltantes.isNotEmpty()) {
+            cuentaContableDao.insertAll(faltantes)
+        }
+
+        val configs = tributoConfigDao.getAll()
+        if (configs.isEmpty()) {
+            tributoConfigDao.insertAll(TributoConfigsPorDefecto.entidades())
+        }
+
+        val relaciones = tributoCuentaBaseDao.getAll()
+        if (relaciones.none { it.tributoKey == TributoKeys.VENTAS }) {
+            tributoCuentaBaseDao.insertAll(
+                listOf(
+                    TributoCuentaBase(
+                        tributoKey = TributoKeys.VENTAS,
+                        cuentaId = CuentasContablesPorDefecto.ingresosVentas().id
+                    )
+                )
+            )
+        }
+
+        val actualConfig = posIntegrationConfigDao.getById()
+        if (actualConfig == null) {
+            posIntegrationConfigDao.insert(
+                PosIntegrationConfig(
+                    enabled = false,
+                    ingresoCuentaId = CuentasContablesPorDefecto.ingresosVentas().id,
+                    gastoCuentaId = CuentasContablesPorDefecto.gastosActividad().id
+                )
+            )
+        }
+
+        refreshAutoCalculatedTributos(modifiedByUser = false)
+    }
+
+    suspend fun crearCuentaContable(
+        codigo: String,
+        nombre: String,
+        naturaleza: String,
+        tipo: String
+    ) {
+        val codigoNormalizado = codigo.trim()
+        val nombreNormalizado = nombre.trim()
+        require(codigoNormalizado.isNotBlank()) { "El código es obligatorio" }
+        require(nombreNormalizado.isNotBlank()) { "El nombre es obligatorio" }
+
+        val existente = cuentaContableDao.getByCodigo(codigoNormalizado)
+        require(existente == null) { "Ya existe una cuenta con ese código" }
+
+        val ahora = System.currentTimeMillis()
+        cuentaContableDao.insert(
+            CuentaContable(
+                id = UUID.randomUUID().toString(),
+                codigo = codigoNormalizado,
+                nombre = nombreNormalizado,
+                naturaleza = naturaleza,
+                tipo = tipo,
+                createdAt = ahora,
+                updatedAt = ahora
+            )
+        )
+    }
+
+    suspend fun updatePosIntegrationConfig(
+        enabled: Boolean,
+        ingresoCuentaId: String?,
+        gastoCuentaId: String?
+    ) {
+        val actual = posIntegrationConfigDao.getById()
+        posIntegrationConfigDao.insert(
+            (actual ?: PosIntegrationConfig()).copy(
+                enabled = enabled,
+                ingresoCuentaId = ingresoCuentaId,
+                gastoCuentaId = gastoCuentaId,
+                updatedAt = System.currentTimeMillis()
+            )
+        )
+    }
+
+    suspend fun updateTributoConfig(
+        key: String,
+        incluido: Boolean,
+        autocalcular: Boolean,
+        porcentaje: Double,
+        cuentaIds: List<String>
+    ) {
+        val actual = tributoConfigDao.getAll().firstOrNull { it.key == key }
+            ?: TributoConfigsPorDefecto.entidades().firstOrNull { it.key == key }
+            ?: return
+
+        tributoConfigDao.insert(
+            actual.copy(
+                incluido = incluido,
+                autocalcular = autocalcular,
+                porcentaje = porcentaje,
+                updatedAt = System.currentTimeMillis()
+            )
+        )
+
+        tributoCuentaBaseDao.deleteByTributoKey(key)
+        val cuentas = cuentaIds
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .map { cuentaId ->
+                TributoCuentaBase(
+                    tributoKey = key,
+                    cuentaId = cuentaId
+                )
+            }
+        if (cuentas.isNotEmpty()) {
+            tributoCuentaBaseDao.insertAll(cuentas)
+        }
+
+        refreshAutoCalculatedTributos(modifiedByUser = true)
     }
 
     suspend fun setExperimentalFeaturesEnabled(enabled: Boolean) {
@@ -736,6 +904,54 @@ class LedgerRepository @Inject constructor(
         updateEntry("gastos", month, oldDia, newDia, importe, cuenta, nota)
     }
 
+    suspend fun registrarIngresoDesdePuntoVenta(fechaIso: String, total: Double) {
+        val config = posIntegrationConfigDao.getById() ?: return
+        if (!config.enabled || config.ingresoCuentaId.isNullOrBlank()) return
+        registrarMovimientoIntegrado(
+            type = "ingresos",
+            fechaIso = fechaIso,
+            importeDelta = total,
+            cuentaId = config.ingresoCuentaId,
+            nota = "Integración automática: ventas del punto de venta"
+        )
+    }
+
+    suspend fun revertirIngresoDesdePuntoVenta(fechaIso: String, total: Double) {
+        val config = posIntegrationConfigDao.getById() ?: return
+        if (!config.enabled || config.ingresoCuentaId.isNullOrBlank()) return
+        registrarMovimientoIntegrado(
+            type = "ingresos",
+            fechaIso = fechaIso,
+            importeDelta = -total,
+            cuentaId = config.ingresoCuentaId,
+            nota = "Integración automática: ventas del punto de venta"
+        )
+    }
+
+    suspend fun registrarGastoDesdePuntoVenta(fechaIso: String, total: Double) {
+        val config = posIntegrationConfigDao.getById() ?: return
+        if (!config.enabled || config.gastoCuentaId.isNullOrBlank()) return
+        registrarMovimientoIntegrado(
+            type = "gastos",
+            fechaIso = fechaIso,
+            importeDelta = total,
+            cuentaId = config.gastoCuentaId,
+            nota = "Integración automática: compras del punto de venta"
+        )
+    }
+
+    suspend fun revertirGastoDesdePuntoVenta(fechaIso: String, total: Double) {
+        val config = posIntegrationConfigDao.getById() ?: return
+        if (!config.enabled || config.gastoCuentaId.isNullOrBlank()) return
+        registrarMovimientoIntegrado(
+            type = "gastos",
+            fechaIso = fechaIso,
+            importeDelta = -total,
+            cuentaId = config.gastoCuentaId,
+            nota = "Integración automática: compras del punto de venta"
+        )
+    }
+
     private suspend fun updateEntry(type: String, month: String, oldDia: Int, newDia: Int, importe: Double, cuenta: String = "", nota: String = "") {
         val current = getRegistro()
         val entries = when (type) {
@@ -745,14 +961,16 @@ class LedgerRepository @Inject constructor(
         }
 
         val monthEntries = entries[month]?.toMutableList() ?: mutableListOf()
-        
-        // Remove old entry
+        val previousEntry = monthEntries.firstOrNull { it.dia == oldDia.toString() }
+
         monthEntries.removeAll { it.dia == oldDia.toString() }
-        
-        // Add new entry with new day
+
         if (newDia in 1..31 && importe > 0) {
-            val entryId = java.util.UUID.randomUUID().toString()
+            val entryId = previousEntry?.id?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
             monthEntries.add(DayAmountRow(entryId, newDia.toString(), String.format("%.2f", importe)))
+            saveEntryMetadata(entryId, month, type, cuenta, nota)
+        } else {
+            previousEntry?.id?.let { deleteEntryMetadata(it) }
         }
 
         entries[month] = monthEntries
@@ -762,7 +980,7 @@ class LedgerRepository @Inject constructor(
             "gastos" -> current.copy(gastos = entries)
             else -> current
         }
-        saveUserEditedRegistro(updated)
+        saveRegistroAplicandoTributos(updated)
     }
 
     private suspend fun deleteEntry(type: String, month: String, dia: Int) {
@@ -774,7 +992,9 @@ class LedgerRepository @Inject constructor(
         }
 
         val monthEntries = entries[month]?.toMutableList() ?: mutableListOf()
+        val idsEliminados = monthEntries.filter { it.dia == dia.toString() }.map { it.id }
         monthEntries.removeAll { it.dia == dia.toString() }
+        idsEliminados.forEach { deleteEntryMetadata(it) }
 
         entries[month] = monthEntries
 
@@ -783,7 +1003,7 @@ class LedgerRepository @Inject constructor(
             "gastos" -> current.copy(gastos = entries)
             else -> current
         }
-        saveUserEditedRegistro(updated)
+        saveRegistroAplicandoTributos(updated)
     }
 
     private suspend fun addEntry(type: String, month: String, dia: Int, importe: Double, cuenta: String = "", nota: String = "") {
@@ -795,8 +1015,9 @@ class LedgerRepository @Inject constructor(
         }
 
         val monthEntries = entries[month]?.toMutableList() ?: mutableListOf()
-        val entryId = java.util.UUID.randomUUID().toString()
+        val entryId = UUID.randomUUID().toString()
         monthEntries.add(DayAmountRow(entryId, dia.toString(), String.format("%.2f", importe)))
+        saveEntryMetadata(entryId, month, type, cuenta, nota)
 
         entries[month] = monthEntries
 
@@ -805,7 +1026,109 @@ class LedgerRepository @Inject constructor(
             "gastos" -> current.copy(gastos = entries)
             else -> current
         }
-        saveUserEditedRegistro(updated)
+        saveRegistroAplicandoTributos(updated)
+    }
+
+    private suspend fun saveEntryMetadata(
+        entryId: String,
+        month: String,
+        type: String,
+        cuentaId: String,
+        nota: String
+    ) {
+        val asientoTipo = if (type == "ingresos") TipoCuenta.INGRESO else TipoCuenta.GASTO
+        val cuentaNormalizada = cuentaId.trim()
+        val notaNormalizada = nota.trim()
+
+        if (cuentaNormalizada.isBlank()) {
+            ingresoGastoCuentaDao.deleteByEntryId(entryId)
+        } else {
+            ingresoGastoCuentaDao.insert(
+                IngresoGastoCuenta(
+                    id = "cuenta_$entryId",
+                    ingresoGastoId = entryId,
+                    mes = month,
+                    tipo = asientoTipo,
+                    cuentaId = cuentaNormalizada
+                )
+            )
+        }
+
+        if (notaNormalizada.isBlank()) {
+            ingresoGastoNotaDao.deleteByEntryId(entryId)
+        } else {
+            ingresoGastoNotaDao.insert(
+                IngresoGastoNota(
+                    id = "nota_$entryId",
+                    ingresoGastoId = entryId,
+                    mes = month,
+                    tipo = asientoTipo,
+                    nota = notaNormalizada
+                )
+            )
+        }
+    }
+
+    private suspend fun deleteEntryMetadata(entryId: String) {
+        ingresoGastoCuentaDao.deleteByEntryId(entryId)
+        ingresoGastoNotaDao.deleteByEntryId(entryId)
+    }
+
+    private suspend fun registrarMovimientoIntegrado(
+        type: String,
+        fechaIso: String,
+        importeDelta: Double,
+        cuentaId: String,
+        nota: String
+    ) {
+        if (importeDelta == 0.0) return
+
+        val fecha = LocalDate.parse(fechaIso)
+        val month = LedgerConstants.MONTHS.getOrElse(fecha.monthValue - 1) { LedgerConstants.MONTHS.first() }
+        val dia = fecha.dayOfMonth.toString()
+        val current = getRegistro()
+        val entries = when (type) {
+            "ingresos" -> current.ingresos.toMutableMap()
+            "gastos" -> current.gastos.toMutableMap()
+            else -> return
+        }
+        val monthEntries = entries[month]?.toMutableList() ?: mutableListOf()
+        val cuentas = ingresoGastoCuentaDao.getAll().associateBy { it.ingresoGastoId }
+        val notas = ingresoGastoNotaDao.getAll().associateBy { it.ingresoGastoId }
+        val entry = monthEntries.firstOrNull {
+            it.dia == dia &&
+                cuentas[it.id]?.cuentaId == cuentaId &&
+                notas[it.id]?.nota == nota
+        }
+
+        if (entry != null) {
+            val nuevoImporte = parseCurrency(entry.importe) + importeDelta
+            monthEntries.removeAll { it.id == entry.id }
+            if (nuevoImporte > 0.0) {
+                monthEntries.add(entry.copy(importe = String.format(Locale.US, "%.2f", nuevoImporte)))
+                saveEntryMetadata(entry.id, month, type, cuentaId, nota)
+            } else {
+                deleteEntryMetadata(entry.id)
+            }
+        } else if (importeDelta > 0.0) {
+            val entryId = UUID.randomUUID().toString()
+            monthEntries.add(
+                DayAmountRow(
+                    id = entryId,
+                    dia = dia,
+                    importe = String.format(Locale.US, "%.2f", importeDelta)
+                )
+            )
+            saveEntryMetadata(entryId, month, type, cuentaId, nota)
+        }
+
+        entries[month] = monthEntries.sortedBy { it.dia.toIntOrNull() ?: 0 }
+        val updated = when (type) {
+            "ingresos" -> current.copy(ingresos = entries)
+            "gastos" -> current.copy(gastos = entries)
+            else -> current
+        }
+        saveRegistroAplicandoTributos(updated)
     }
 
     suspend fun updateTributos(month: String, values: TributoRow) {
@@ -822,7 +1145,37 @@ class LedgerRepository @Inject constructor(
             }
             newTributos.add(values)
         }
-        saveUserEditedRegistro(current.copy(tributos = newTributos))
+        saveRegistroAplicandoTributos(current.copy(tributos = newTributos))
+    }
+
+    fun buildEditableTributos(
+        registro: RegistroTCP,
+        configs: List<TributoConfig>,
+        relaciones: List<TributoCuentaBase>,
+        cuentaPorAsientoId: Map<String, String>,
+        month: String
+    ): List<TributoEditable> {
+        val row = tributoRowForMonth(registro, month)
+        val cuentasPorTributo = relaciones.groupBy { it.tributoKey }
+        return configs.sortedBy { it.orden }.map { config ->
+            val monto = tributoValue(row, config.key)
+            val baseImponible = if (config.incluido && config.autocalcular) {
+                calculateBaseImponible(
+                    registro = registro,
+                    month = month,
+                    cuentaIds = cuentasPorTributo[config.key].orEmpty().map { it.cuentaId }.toSet(),
+                    cuentaPorAsientoId = cuentaPorAsientoId
+                )
+            } else {
+                0.0
+            }
+            TributoEditable(
+                config = config,
+                selectedCuentaIds = cuentasPorTributo[config.key].orEmpty().map { it.cuentaId }.toSet(),
+                monto = monto,
+                baseImponible = baseImponible
+            )
+        }
     }
 
     suspend fun pull(): Result<RegistroTCP> {
@@ -1163,6 +1516,129 @@ class LedgerRepository @Inject constructor(
     private fun normalizeAmount(value: String): String {
         val number = value.toDoubleOrNull() ?: 0.0
         return String.format(Locale.US, "%.2f", number)
+    }
+
+    private suspend fun applyAutoCalculatedTributos(registro: RegistroTCP): RegistroTCP {
+        val configs = tributoConfigDao.getAll().ifEmpty { TributoConfigsPorDefecto.entidades() }
+        val relaciones = tributoCuentaBaseDao.getAll()
+        val relacionesPorTributo = relaciones.groupBy { it.tributoKey }
+        val cuentaPorAsientoId = ingresoGastoCuentaDao.getAll().associate { it.ingresoGastoId to it.cuentaId }
+        val tributosActualizados = LedgerConstants.MONTHS.mapIndexed { index, month ->
+            val actual = registro.tributos.getOrNull(index)
+                ?: TributoRow(mes = LedgerConstants.monthLabels[month] ?: month)
+            val base = if (actual.mes.isBlank()) {
+                actual.copy(mes = LedgerConstants.monthLabels[month] ?: month)
+            } else {
+                actual
+            }
+            configs.fold(base) { row, config ->
+                val seleccionado = relacionesPorTributo[config.key].orEmpty().map { it.cuentaId }.toSet()
+                when {
+                    !config.incluido -> updateTributoValue(row, config.key, "")
+                    config.autocalcular -> {
+                        val baseImponible = calculateBaseImponible(registro, month, seleccionado, cuentaPorAsientoId)
+                        val monto = if (baseImponible > 0.0 && config.porcentaje > 0.0) {
+                            String.format(Locale.US, "%.2f", round2(baseImponible * config.porcentaje / 100.0))
+                        } else {
+                            ""
+                        }
+                        updateTributoValue(row, config.key, monto)
+                    }
+                    else -> row
+                }
+            }
+        }
+        return registro.copy(tributos = tributosActualizados)
+    }
+
+    private fun tributoRowForMonth(registro: RegistroTCP, month: String): TributoRow {
+        val index = LedgerConstants.MONTHS.indexOf(month)
+        return if (index in registro.tributos.indices) {
+            registro.tributos[index]
+        } else {
+            TributoRow(mes = LedgerConstants.monthLabels[month] ?: month)
+        }
+    }
+
+    private fun tributoValue(row: TributoRow, key: String): String = when (key) {
+        TributoKeys.VENTAS -> row.ventas
+        TributoKeys.FUERZA -> row.fuerza
+        TributoKeys.SELLOS -> row.sellos
+        TributoKeys.ANUNCIOS -> row.anuncios
+        TributoKeys.CSS20 -> row.css20
+        TributoKeys.CSS14 -> row.css14
+        TributoKeys.OTROS -> row.otros
+        TributoKeys.RESTAURACION -> row.restauracion
+        TributoKeys.ARRENDAMIENTO -> row.arrendamiento
+        TributoKeys.EXONERADO -> row.exonerado
+        TributoKeys.OTROS_MFP -> row.otrosMFP
+        TributoKeys.CUOTA_MENSUAL -> row.cuotaMensual
+        else -> ""
+    }
+
+    private fun updateTributoValue(row: TributoRow, key: String, value: String): TributoRow = when (key) {
+        TributoKeys.VENTAS -> row.copy(ventas = value)
+        TributoKeys.FUERZA -> row.copy(fuerza = value)
+        TributoKeys.SELLOS -> row.copy(sellos = value)
+        TributoKeys.ANUNCIOS -> row.copy(anuncios = value)
+        TributoKeys.CSS20 -> row.copy(css20 = value)
+        TributoKeys.CSS14 -> row.copy(css14 = value)
+        TributoKeys.OTROS -> row.copy(otros = value)
+        TributoKeys.RESTAURACION -> row.copy(restauracion = value)
+        TributoKeys.ARRENDAMIENTO -> row.copy(arrendamiento = value)
+        TributoKeys.EXONERADO -> row.copy(exonerado = value)
+        TributoKeys.OTROS_MFP -> row.copy(otrosMFP = value)
+        TributoKeys.CUOTA_MENSUAL -> row.copy(cuotaMensual = value)
+        else -> row
+    }
+
+    private fun calculateBaseImponible(
+        registro: RegistroTCP,
+        month: String,
+        cuentaIds: Set<String>,
+        cuentaPorAsientoId: Map<String, String>
+    ): Double {
+        if (cuentaIds.isEmpty()) return 0.0
+        val ingresos = registro.ingresos[month].orEmpty()
+        val gastos = registro.gastos[month].orEmpty()
+        val total = ingresos.sumOf { row ->
+            val cuentaId = cuentaPorAsientoId[row.id]
+            if (cuentaId in cuentaIds) parseCurrency(row.importe) else 0.0
+        } + gastos.sumOf { row ->
+            val cuentaId = cuentaPorAsientoId[row.id]
+            if (cuentaId in cuentaIds) parseCurrency(row.importe) else 0.0
+        }
+        return round2(total)
+    }
+
+    private fun computeAccountBalances(
+        registro: RegistroTCP,
+        cuentas: List<CuentaContable>,
+        links: List<IngresoGastoCuenta>
+    ): Map<String, Double> {
+        val cuentasPorId = cuentas.associateBy { it.id }
+        val linksPorEntry = links.associateBy { it.ingresoGastoId }
+        val acumulado = mutableMapOf<String, Double>()
+
+        fun acumular(rows: Collection<List<DayAmountRow>>, tipoMovimiento: String) {
+            rows.flatten().forEach { row ->
+                val link = linksPorEntry[row.id] ?: return@forEach
+                val cuenta = cuentasPorId[link.cuentaId] ?: return@forEach
+                val importe = parseCurrency(row.importe)
+                val signo = when {
+                    cuenta.naturaleza == NaturalezaCuenta.ACREEDORA && tipoMovimiento == TipoCuenta.INGRESO -> 1.0
+                    cuenta.naturaleza == NaturalezaCuenta.ACREEDORA && tipoMovimiento == TipoCuenta.GASTO -> -1.0
+                    cuenta.naturaleza == NaturalezaCuenta.DEUDORA && tipoMovimiento == TipoCuenta.GASTO -> 1.0
+                    cuenta.naturaleza == NaturalezaCuenta.DEUDORA && tipoMovimiento == TipoCuenta.INGRESO -> -1.0
+                    else -> 1.0
+                }
+                acumulado[cuenta.id] = round2((acumulado[cuenta.id] ?: 0.0) + importe * signo)
+            }
+        }
+
+        acumular(registro.ingresos.values, TipoCuenta.INGRESO)
+        acumular(registro.gastos.values, TipoCuenta.GASTO)
+        return acumulado
     }
 
     fun calculateAnnualReport(registro: RegistroTCP): AnnualReport {

@@ -128,6 +128,9 @@ interface CatalogoCompraDao {
 
 @Dao
 interface VentaDao {
+    @Query("SELECT * FROM ventas WHERE id = :ventaId LIMIT 1")
+    suspend fun getById(ventaId: String): Venta?
+
     @Query("SELECT * FROM ventas WHERE fecha = :fecha AND anulada = 0 ORDER BY hora DESC")
     fun getVentasDelDia(fecha: String): Flow<List<Venta>>
 
@@ -186,6 +189,9 @@ interface VentaDao {
 
 @Dao
 interface CompraDao {
+    @Query("SELECT * FROM compras WHERE id = :compraId LIMIT 1")
+    suspend fun getById(compraId: String): Compra?
+
     @Query("SELECT * FROM compras WHERE fecha = :fecha AND anulada = 0 ORDER BY hora DESC")
     fun getComprasDelDia(fecha: String): Flow<List<Compra>>
 

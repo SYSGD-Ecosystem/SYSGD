@@ -755,7 +755,8 @@ fun MainScreen(
                 composable(CATALOGOS_ROUTE) { 
                     CatalogosScreen(
                         onNavigateBack = { navController.popBackStack() },
-                        inventarioViewModel = inventarioViewModel
+                        inventarioViewModel = inventarioViewModel,
+                        ledgerViewModel = ledgerViewModel
                     ) 
                 }
                 composable(LICENSES_ROUTE) {

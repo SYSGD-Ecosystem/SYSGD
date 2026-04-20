@@ -19,18 +19,24 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import cu.lazaroysr96.sysgdcont.data.model.CuentaContable
+import cu.lazaroysr96.sysgdcont.data.model.NaturalezaCuenta
+import cu.lazaroysr96.sysgdcont.data.model.TipoCuenta
 import cu.lazaroysr96.sysgdcont.data.model.Producto
 import cu.lazaroysr96.sysgdcont.viewmodel.InventarioViewModel
+import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CatalogosScreen(
     onNavigateBack: () -> Unit,
-    inventarioViewModel: InventarioViewModel
+    inventarioViewModel: InventarioViewModel,
+    ledgerViewModel: LedgerViewModel
 ) {
     var selectedTab by remember { mutableStateOf(1) } // Default to Products
     val tabs = listOf("Cuentas", "Productos")
     val productosState by inventarioViewModel.uiState.collectAsStateWithLifecycle()
+    val ledgerState by ledgerViewModel.uiState.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -52,7 +58,11 @@ fun CatalogosScreen(
         }
 
         when (selectedTab) {
-            0 -> CuentasTab()
+            0 -> CuentasTab(
+                cuentas = ledgerState.cuentasContables,
+                saldoPorCuentaId = ledgerState.saldoPorCuentaId,
+                onAddCuenta = ledgerViewModel::crearCuentaContable
+            )
             1 -> ProductosTab(
                 productos = productosState.productosBase,
                 onAddProduct = { nombre, emoji, unidad ->
@@ -67,8 +77,21 @@ fun CatalogosScreen(
 }
 
 @Composable
-private fun CuentasTab() {
+private fun CuentasTab(
+    cuentas: List<CuentaContable>,
+    saldoPorCuentaId: Map<String, Double>,
+    onAddCuenta: (codigo: String, nombre: String, naturaleza: String, tipo: String) -> Unit
+) {
     var showAddDialog by remember { mutableStateOf(false) }
+    var search by remember { mutableStateOf("") }
+    val cuentasFiltradas = remember(cuentas, search) {
+        val query = search.trim().lowercase()
+        if (query.isBlank()) cuentas
+        else cuentas.filter {
+            it.codigo.lowercase().contains(query) ||
+                it.nombre.lowercase().contains(query)
+        }
+    }
     
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -79,8 +102,8 @@ private fun CuentasTab() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedTextField(
-                value = "",
-                onValueChange = { },
+                value = search,
+                onValueChange = { search = it },
                 label = { Text("Buscar") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 modifier = Modifier.weight(1f),
@@ -104,12 +127,70 @@ private fun CuentasTab() {
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
             }
-            item {
-                Text(
-                    "No hay cuentas registradas. Agrega tu primera cuenta contable.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            if (cuentasFiltradas.isEmpty()) {
+                item {
+                    Text(
+                        if (cuentas.isEmpty()) {
+                            "No hay cuentas registradas. Agrega tu primera cuenta contable."
+                        } else {
+                            "No hay resultados para esa búsqueda."
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                items(cuentasFiltradas, key = { it.id }) { cuenta ->
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    cuenta.codigo,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    TipoCuenta.label(cuenta.tipo),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Text(
+                                cuenta.nombre,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                "Naturaleza ${NaturalezaCuenta.label(cuenta.naturaleza)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Divider()
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "Saldo",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    String.format("%.2f CUP", saldoPorCuentaId[cuenta.id] ?: 0.0),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -117,7 +198,8 @@ private fun CuentasTab() {
     if (showAddDialog) {
         AddCuentaDialog(
             onDismiss = { showAddDialog = false },
-            onConfirm = { cuenta -> 
+            onConfirm = { codigo, nombre, naturaleza, tipo ->
+                onAddCuenta(codigo, nombre, naturaleza, tipo)
                 showAddDialog = false
             }
         )
@@ -128,7 +210,7 @@ private fun CuentasTab() {
 @Composable
 private fun AddCuentaDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
+    onConfirm: (codigo: String, nombre: String, naturaleza: String, tipo: String) -> Unit
 ) {
     var codigo by remember { mutableStateOf("") }
     var nombre by remember { mutableStateOf("") }
@@ -218,7 +300,7 @@ private fun AddCuentaDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(codigo) },
+                onClick = { onConfirm(codigo, nombre, naturaleza, tipo) },
                 enabled = codigo.isNotBlank() && nombre.isNotBlank()
             ) {
                 Text("Guardar")

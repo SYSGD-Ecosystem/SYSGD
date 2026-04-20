@@ -24,10 +24,19 @@ import cu.lazaroysr96.sysgdcont.data.repository.LedgerConstants
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
 import java.util.Calendar
 
+private data class PendingIngresoEntry(
+    val month: String,
+    val dia: Int,
+    val importe: Double,
+    val cuentaId: String,
+    val nota: String
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IngresosScreen(viewModel: LedgerViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val cuentasPorId = remember(uiState.cuentasIngreso) { uiState.cuentasIngreso.associateBy { it.id } }
     var showDialog by remember { mutableStateOf(false) }
     var isEditMode by remember { mutableStateOf(false) }
     var editEntry by remember { mutableStateOf<Pair<String, DayAmountRow>?>(null) }
@@ -35,7 +44,7 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
     var preselectedMonth by remember { mutableStateOf<String?>(null) }
     
     var showDuplicateDialog by remember { mutableStateOf(false) }
-    var pendingDuplicateEntry by remember { mutableStateOf<Triple<String, Int, Double>?>(null) }
+    var pendingDuplicateEntry by remember { mutableStateOf<PendingIngresoEntry?>(null) }
     var existingImporte by remember { mutableStateOf(0.0) }
 
     Scaffold(floatingActionButton = {
@@ -109,18 +118,37 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
+                                                verticalAlignment = Alignment.Top
                                             ) {
-                                                Row {
-                                                    Text(
-                                                        "Día ${entry.dia}",
-                                                        style = MaterialTheme.typography.bodySmall
-                                                    )
-                                                    Spacer(modifier = Modifier.width(16.dp))
-                                                    Text(
-                                                        "${entry.importe} CUP",
-                                                        style = MaterialTheme.typography.bodySmall
-                                                    )
+                                                Column(
+                                                    modifier = Modifier.weight(1f),
+                                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                                ) {
+                                                    Row {
+                                                        Text(
+                                                            "Día ${entry.dia}",
+                                                            style = MaterialTheme.typography.bodySmall
+                                                        )
+                                                        Spacer(modifier = Modifier.width(16.dp))
+                                                        Text(
+                                                            "${entry.importe} CUP",
+                                                            style = MaterialTheme.typography.bodySmall
+                                                        )
+                                                    }
+                                                    uiState.cuentaPorAsientoId[entry.id]?.let { cuentaId ->
+                                                        Text(
+                                                            cuentasPorId[cuentaId]?.let { "${it.codigo} · ${it.nombre}" } ?: "Cuenta asociada",
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = MaterialTheme.colorScheme.primary
+                                                        )
+                                                    }
+                                                    uiState.notaPorAsientoId[entry.id]?.takeIf { it.isNotBlank() }?.let { nota ->
+                                                        Text(
+                                                            nota,
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
                                                 }
                                                 Row {
                                                     IconButton(
@@ -192,6 +220,9 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
             else -> Calendar.getInstance().get(Calendar.DAY_OF_MONTH).toString()
         },
         initialImporte = editEntry?.second?.importe,
+        initialCuenta = editEntry?.second?.id?.let { uiState.cuentaPorAsientoId[it] },
+        initialNota = editEntry?.second?.id?.let { uiState.notaPorAsientoId[it] },
+        cuentasDisponibles = uiState.cuentasIngreso,
         existingEntries = if (isEditMode && editEntry != null) {
             uiState.registro.ingresos[editEntry?.first] ?: emptyList()
         } else emptyList(),
@@ -210,7 +241,7 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
             
             if (existingEntry != null && !isEditMode) {
                 existingImporte = existingEntry.importe.toDoubleOrNull() ?: 0.0
-                pendingDuplicateEntry = Triple(month, dia, importe)
+                pendingDuplicateEntry = PendingIngresoEntry(month, dia, importe, cuenta, nota)
                 showDuplicateDialog = true
             } else {
                 if (isEditMode && editEntry != null) {
@@ -235,14 +266,14 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
             },
             title = { Text("Día ya existe") },
             text = { 
-                Text("Ya existe un registro de ${String.format("%.2f", existingImporte)} CUP para el día ${pendingDuplicateEntry?.second}. ¿Qué deseas hacer?")
+                Text("Ya existe un registro de ${String.format("%.2f", existingImporte)} CUP para el día ${pendingDuplicateEntry?.dia}. ¿Qué deseas hacer?")
             },
             confirmButton = {
                 Row {
                     TextButton(
                         onClick = {
                             val entry = pendingDuplicateEntry!!
-                            viewModel.addIngreso(entry.first, entry.second, entry.third + existingImporte, "", "")
+                            viewModel.editIngreso(entry.month, entry.dia, entry.dia, entry.importe + existingImporte, entry.cuentaId, entry.nota)
                             showDuplicateDialog = false
                             pendingDuplicateEntry = null
                             showDialog = false
@@ -256,7 +287,7 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
                     TextButton(
                         onClick = {
                             val entry = pendingDuplicateEntry!!
-                            viewModel.addIngreso(entry.first, entry.second, entry.third, "", "")
+                            viewModel.editIngreso(entry.month, entry.dia, entry.dia, entry.importe, entry.cuentaId, entry.nota)
                             showDuplicateDialog = false
                             pendingDuplicateEntry = null
                             showDialog = false
@@ -293,6 +324,7 @@ fun IngresoDialog(
     initialImporte: String? = null,
     initialCuenta: String? = null,
     initialNota: String? = null,
+    cuentasDisponibles: List<cu.lazaroysr96.sysgdcont.data.model.CuentaContable> = emptyList(),
     existingEntries: List<DayAmountRow> = emptyList(),
     onDismiss: () -> Unit,
     onConfirm: (month: String, dia: Int, importe: Double, cuenta: String, nota: String) -> Unit
@@ -305,9 +337,17 @@ fun IngresoDialog(
         var selectedMonth by remember { mutableStateOf(initialMonth ?: currentMonth) }
         var dia by remember { mutableStateOf(initialDia ?: if (initialDia != null) initialDia else "") }
         var importe by remember { mutableStateOf(initialImporte ?: "") }
-        var cuenta by remember { mutableStateOf(initialCuenta ?: "") }
+        var cuenta by remember { mutableStateOf(initialCuenta ?: cuentasDisponibles.firstOrNull()?.id.orEmpty()) }
         var nota by remember { mutableStateOf(initialNota ?: "") }
         var expanded by remember { mutableStateOf(false) }
+        var expandedCuenta by remember { mutableStateOf(false) }
+        val cuentaSeleccionada = cuentasDisponibles.firstOrNull { it.id == cuenta }
+
+        LaunchedEffect(cuentasDisponibles, initialCuenta) {
+            if (cuenta.isBlank() && initialCuenta.isNullOrBlank() && cuentasDisponibles.isNotEmpty()) {
+                cuenta = cuentasDisponibles.first().id
+            }
+        }
 
         AlertDialog(
             onDismissRequest = onDismiss,
@@ -370,14 +410,34 @@ fun IngresoDialog(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    OutlinedTextField(
-                        value = cuenta,
-                        onValueChange = { cuenta = it },
-                        label = { Text("Cuenta (Opcional)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        placeholder = { Text("Ej: Ventas, Servicios") }
-                    )
+                    ExposedDropdownMenuBox(
+                        expanded = expandedCuenta,
+                        onExpandedChange = { expandedCuenta = !expandedCuenta }
+                    ) {
+                        OutlinedTextField(
+                            value = cuentaSeleccionada?.let { "${it.codigo} · ${it.nombre}" } ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Cuenta contable") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCuenta) },
+                            modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            placeholder = { Text("Selecciona una cuenta de ingreso") }
+                        )
+                        ExposedDropdownMenu(
+                            expanded = expandedCuenta,
+                            onDismissRequest = { expandedCuenta = false }
+                        ) {
+                            cuentasDisponibles.forEach { cuentaItem ->
+                                DropdownMenuItem(
+                                    text = { Text("${cuentaItem.codigo} · ${cuentaItem.nombre}") },
+                                    onClick = {
+                                        cuenta = cuentaItem.id
+                                        expandedCuenta = false
+                                    }
+                                )
+                            }
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(8.dp))
 

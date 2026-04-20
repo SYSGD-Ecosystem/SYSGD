@@ -10,12 +10,15 @@ import cu.lazaroysr96.sysgdcont.data.model.Compra
 import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
 import cu.lazaroysr96.sysgdcont.data.model.InventarioVinculoEdicion
+import cu.lazaroysr96.sysgdcont.data.model.CuentaContable
 import cu.lazaroysr96.sysgdcont.data.model.TipoProductoInv
 import cu.lazaroysr96.sysgdcont.data.model.ModoStock
+import cu.lazaroysr96.sysgdcont.data.model.PosIntegrationConfig
 import cu.lazaroysr96.sysgdcont.data.model.Producto
 import cu.lazaroysr96.sysgdcont.data.repository.ConfiguracionFacturacion
 import cu.lazaroysr96.sysgdcont.data.repository.FacturaRepository
 import cu.lazaroysr96.sysgdcont.data.repository.InventarioRepository
+import cu.lazaroysr96.sysgdcont.data.repository.LedgerRepository
 // import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -79,13 +82,17 @@ data class InventarioUiState(
     val logoFacturaUri: String? = null,
     val firmaVendedorFacturaUri: String? = null,
     val reporteDesde: LocalDate = LocalDate.now().withDayOfMonth(1),
-    val reporteHasta: LocalDate = LocalDate.now()
+    val reporteHasta: LocalDate = LocalDate.now(),
+    val cuentasIngresoContables: List<CuentaContable> = emptyList(),
+    val cuentasGastoContables: List<CuentaContable> = emptyList(),
+    val posIntegrationConfig: PosIntegrationConfig = PosIntegrationConfig()
 )
 
 @HiltViewModel
 class InventarioViewModel @Inject constructor(
     private val repo: InventarioRepository,
-    private val facturaRepository: FacturaRepository
+    private val facturaRepository: FacturaRepository,
+    private val ledgerRepository: LedgerRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(InventarioUiState())
@@ -148,6 +155,21 @@ class InventarioViewModel @Inject constructor(
                         firmaVendedorFacturaUri = config.firmaVendedorUri
                     )
                 }
+            }
+        }
+        viewModelScope.launch {
+            ledgerRepository.cuentasIngreso.collect { cuentas ->
+                _uiState.update { it.copy(cuentasIngresoContables = cuentas) }
+            }
+        }
+        viewModelScope.launch {
+            ledgerRepository.cuentasGasto.collect { cuentas ->
+                _uiState.update { it.copy(cuentasGastoContables = cuentas) }
+            }
+        }
+        viewModelScope.launch {
+            ledgerRepository.posIntegrationConfig.collect { config ->
+                _uiState.update { it.copy(posIntegrationConfig = config) }
             }
         }
     }
@@ -295,6 +317,17 @@ class InventarioViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = "No se pudo guardar la configuración") }
             }
+        }
+    }
+
+    fun actualizarIntegracionContable(
+        enabled: Boolean,
+        ingresoCuentaId: String?,
+        gastoCuentaId: String?
+    ) {
+        viewModelScope.launch {
+            ledgerRepository.updatePosIntegrationConfig(enabled, ingresoCuentaId, gastoCuentaId)
+            _uiState.update { it.copy(snackbarMessage = "Integración contable actualizada") }
         }
     }
 
@@ -632,6 +665,10 @@ class InventarioViewModel @Inject constructor(
             try {
                 val fecha = _uiState.value.fechaTrabajo.format(DateTimeFormatter.ISO_LOCAL_DATE)
                 repo.registrarVenta(cart, fecha)
+                ledgerRepository.registrarIngresoDesdePuntoVenta(
+                    fechaIso = fecha,
+                    total = cart.entries.sumOf { (producto, cantidad) -> producto.precio * cantidad }
+                )
                 _uiState.update {
                     it.copy(
                         cart = emptyMap(),
@@ -654,6 +691,10 @@ class InventarioViewModel @Inject constructor(
             try {
                 val fecha = _uiState.value.fechaTrabajo.format(DateTimeFormatter.ISO_LOCAL_DATE)
                 repo.registrarCompra(cart, fecha)
+                ledgerRepository.registrarGastoDesdePuntoVenta(
+                    fechaIso = fecha,
+                    total = cart.entries.sumOf { (producto, cantidad) -> producto.precio * cantidad }
+                )
                 _uiState.update {
                     it.copy(
                         cartCompra = emptyMap(),
@@ -671,7 +712,11 @@ class InventarioViewModel @Inject constructor(
     fun anularVenta(ventaId: String) {
         viewModelScope.launch {
             try {
+                val venta = repo.obtenerVenta(ventaId)
                 repo.anularVenta(ventaId)
+                venta?.let {
+                    ledgerRepository.revertirIngresoDesdePuntoVenta(it.fecha, it.total)
+                }
                 _uiState.update { it.copy(snackbarMessage = "Venta anulada") }
                 cargarVentasDelMes(_uiState.value.mesActual)
             } catch (e: Exception) {
@@ -683,7 +728,11 @@ class InventarioViewModel @Inject constructor(
     fun anularCompra(compraId: String) {
         viewModelScope.launch {
             try {
+                val compra = repo.obtenerCompra(compraId)
                 repo.anularCompra(compraId)
+                compra?.let {
+                    ledgerRepository.revertirGastoDesdePuntoVenta(it.fecha, it.total)
+                }
                 _uiState.update { it.copy(snackbarMessage = "Compra anulada") }
                 cargarComprasDelMes(_uiState.value.mesActual)
             } catch (e: Exception) {

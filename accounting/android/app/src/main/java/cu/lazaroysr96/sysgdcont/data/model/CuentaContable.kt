@@ -52,3 +52,29 @@ object TipoCuenta {
         else -> tipo
     }
 }
+
+object CuentasContablesPorDefecto {
+    const val CODIGO_INGRESOS_VENTAS = "740"
+    const val CODIGO_GASTOS_ACTIVIDAD = "810"
+
+    fun ingresosVentas(): CuentaContable = CuentaContable(
+        id = "cuenta_740_ingresos_ventas_bienes_servicios",
+        codigo = CODIGO_INGRESOS_VENTAS,
+        nombre = "Ingresos por ventas de bienes y servicios",
+        tipo = TipoCuenta.INGRESO,
+        naturaleza = NaturalezaCuenta.ACREEDORA
+    )
+
+    fun gastosActividad(): CuentaContable = CuentaContable(
+        id = "cuenta_810_gastos_actividad",
+        codigo = CODIGO_GASTOS_ACTIVIDAD,
+        nombre = "Gastos de la actividad",
+        tipo = TipoCuenta.GASTO,
+        naturaleza = NaturalezaCuenta.DEUDORA
+    )
+
+    fun todas(): List<CuentaContable> = listOf(
+        ingresosVentas(),
+        gastosActividad()
+    )
+}
