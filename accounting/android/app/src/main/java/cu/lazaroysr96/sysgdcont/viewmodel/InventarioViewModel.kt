@@ -369,6 +369,17 @@ class InventarioViewModel @Inject constructor(
         }
     }
 
+    fun generarInformeInventarioPdf() {
+        viewModelScope.launch {
+            try {
+                val path = facturaRepository.generarInformeInventarioPdf()
+                _uiState.update { it.copy(snackbarMessage = "Informe de inventario guardado en Documentos de SYSGD: $path") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al generar informe de inventario") }
+            }
+        }
+    }
+
     private fun observarDiaTrabajo(fecha: LocalDate) {
         val fechaIso = fecha.format(DateTimeFormatter.ISO_LOCAL_DATE)
 

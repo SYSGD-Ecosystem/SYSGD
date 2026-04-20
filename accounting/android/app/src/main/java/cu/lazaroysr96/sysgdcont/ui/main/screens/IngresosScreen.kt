@@ -30,7 +30,7 @@ import java.util.Calendar
 @Composable
 fun IngresosScreen(viewModel: LedgerViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val cuentasPorId = remember(uiState.cuentasIngreso) { uiState.cuentasIngreso.associateBy { it.id } }
+    val cuentasPorId = remember(uiState.cuentasContables) { uiState.cuentasContables.associateBy { it.id } }
     var showDialog by remember { mutableStateOf(false) }
     var isEditMode by remember { mutableStateOf(false) }
     var editEntry by remember { mutableStateOf<Pair<String, DayAmountRow>?>(null) }
@@ -263,14 +263,15 @@ private fun IngresoDayCard(
                                 )
                                 cuentaPorAsientoId[entry.id]?.let { cuentaId ->
                                     Text(
-                                        cuentasPorId[cuentaId]?.let { "${it.codigo} · ${it.nombre}" } ?: "Cuenta asociada",
+                                        cuentasPorId[cuentaId]?.let { "Cuenta: ${it.codigo} · ${it.nombre}" }
+                                            ?: "Cuenta: $cuentaId",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.primary
                                     )
                                 }
                                 notaPorAsientoId[entry.id]?.takeIf { it.isNotBlank() }?.let { nota ->
                                     Text(
-                                        nota,
+                                        "Nota: $nota",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )

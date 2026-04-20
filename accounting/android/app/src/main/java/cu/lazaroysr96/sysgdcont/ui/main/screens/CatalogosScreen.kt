@@ -26,6 +26,11 @@ import cu.lazaroysr96.sysgdcont.data.model.Producto
 import cu.lazaroysr96.sysgdcont.viewmodel.InventarioViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
 
+private data class CuentaTreeNode(
+    val cuenta: CuentaContable,
+    val children: List<CuentaTreeNode> = emptyList()
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CatalogosScreen(
@@ -84,13 +89,9 @@ private fun CuentasTab(
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
     var search by remember { mutableStateOf("") }
+    var expandedAccountIds by remember { mutableStateOf(setOf<String>()) }
     val cuentasFiltradas = remember(cuentas, search) {
-        val query = search.trim().lowercase()
-        if (query.isBlank()) cuentas
-        else cuentas.filter {
-            it.codigo.lowercase().contains(query) ||
-                it.nombre.lowercase().contains(query)
-        }
+        buildCuentaTree(cuentas, search)
     }
     
     Column(modifier = Modifier.fillMaxSize()) {
@@ -140,56 +141,19 @@ private fun CuentasTab(
                     )
                 }
             } else {
-                items(cuentasFiltradas, key = { it.id }) { cuenta ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    cuenta.codigo,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    TipoCuenta.label(cuenta.tipo),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Text(
-                                cuenta.nombre,
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Text(
-                                "Naturaleza ${NaturalezaCuenta.label(cuenta.naturaleza)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Divider()
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    "Saldo",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    String.format("%.2f CUP", saldoPorCuentaId[cuenta.id] ?: 0.0),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+                items(cuentasFiltradas, key = { it.cuenta.id }) { node ->
+                    CuentaTreeCard(
+                        node = node,
+                        saldoPorCuentaId = saldoPorCuentaId,
+                        expandedIds = expandedAccountIds,
+                        onToggle = { cuentaId ->
+                            expandedAccountIds = if (cuentaId in expandedAccountIds) {
+                                expandedAccountIds - cuentaId
+                            } else {
+                                expandedAccountIds + cuentaId
                             }
                         }
-                    }
+                    )
                 }
             }
         }
@@ -203,6 +167,140 @@ private fun CuentasTab(
                 showAddDialog = false
             }
         )
+    }
+}
+
+private fun buildCuentaTree(
+    cuentas: List<CuentaContable>,
+    search: String
+): List<CuentaTreeNode> {
+    val cuentasOrdenadas = cuentas.sortedWith(compareBy<CuentaContable> { it.codigo }.thenBy { it.nombre })
+    val childrenByParent = cuentasOrdenadas
+        .filter { !it.padreId.isNullOrBlank() }
+        .groupBy { it.padreId!! }
+
+    fun buildNode(cuenta: CuentaContable): CuentaTreeNode {
+        val children = childrenByParent[cuenta.id].orEmpty().map(::buildNode)
+        return CuentaTreeNode(cuenta = cuenta, children = children)
+    }
+
+    val roots = cuentasOrdenadas
+        .filter { cuenta -> cuenta.padreId.isNullOrBlank() || cuentasOrdenadas.none { it.id == cuenta.padreId } }
+        .map(::buildNode)
+
+    val query = search.trim().lowercase()
+    if (query.isBlank()) return roots
+
+    fun filterNode(node: CuentaTreeNode): CuentaTreeNode? {
+        val filteredChildren = node.children.mapNotNull(::filterNode)
+        val selfMatches = node.cuenta.codigo.lowercase().contains(query) ||
+            node.cuenta.nombre.lowercase().contains(query)
+        return if (selfMatches || filteredChildren.isNotEmpty()) {
+            node.copy(children = filteredChildren)
+        } else {
+            null
+        }
+    }
+
+    return roots.mapNotNull(::filterNode)
+}
+
+@Composable
+private fun CuentaTreeCard(
+    node: CuentaTreeNode,
+    saldoPorCuentaId: Map<String, Double>,
+    expandedIds: Set<String>,
+    onToggle: (String) -> Unit,
+    level: Int = 0
+) {
+    val cuenta = node.cuenta
+    val hasChildren = node.children.isNotEmpty()
+    val isExpanded = cuenta.id in expandedIds
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = (level * 12).dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (hasChildren) Modifier.clickable { onToggle(cuenta.id) } else Modifier
+                    ),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (hasChildren) {
+                        Icon(
+                            if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = null
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            cuenta.codigo,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            cuenta.nombre,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                }
+                Text(
+                    TipoCuenta.label(cuenta.tipo),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                "Naturaleza ${NaturalezaCuenta.label(cuenta.naturaleza)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Divider()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    if (hasChildren) "Saldo acumulado" else "Saldo",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    String.format("%.2f CUP", saldoPorCuentaId[cuenta.id] ?: 0.0),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
+
+    if (hasChildren && isExpanded) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            node.children.forEach { child ->
+                CuentaTreeCard(
+                    node = child,
+                    saldoPorCuentaId = saldoPorCuentaId,
+                    expandedIds = expandedIds,
+                    onToggle = onToggle,
+                    level = level + 1
+                )
+            }
+        }
     }
 }
 

@@ -1004,6 +1004,20 @@ class InventarioRepository @Inject constructor(
         return productoDao.getByIds(ids.toList()).associateBy { it.id }
     }
 
+    suspend fun getItemsInventarioParaReporte(): List<ItemInventario> {
+        val items = (itemInventarioDao.getItemsVenta().first() + itemInventarioDao.getItemsCompra().first())
+            .distinctBy { it.id }
+            .sortedBy { it.productoId }
+        return items.map { enriquecerItemInventario(it) }
+    }
+
+    suspend fun getAlmacenesPorIds(ids: Collection<String>): Map<String, Almacen> {
+        if (ids.isEmpty()) return emptyMap()
+        return almacenDao.getAllActivos().first()
+            .filter { it.id in ids }
+            .associateBy { it.id }
+    }
+
     private suspend fun enriquecerItemInventario(item: ItemInventario): ItemInventario {
         if (item.modoStock != ModoStock.VINCULADO.name) return item
         return item.copy(stockDisponible = calcularStockDisponible(item))

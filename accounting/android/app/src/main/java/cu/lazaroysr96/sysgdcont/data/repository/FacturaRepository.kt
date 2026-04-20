@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.map
 import java.io.File
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlin.math.roundToLong
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -373,6 +374,75 @@ class FacturaRepository @Inject constructor(
                 .setBold()
                 .setTextAlignment(TextAlignment.RIGHT)
         )
+        document.close()
+        return pdfFile.absolutePath
+    }
+
+    suspend fun generarInformeInventarioPdf(): String {
+        val items = inventarioRepository.getItemsInventarioParaReporte()
+        if (items.isEmpty()) {
+            throw IllegalStateException("No hay productos en el almacén para generar el informe")
+        }
+
+        val productos = inventarioRepository.getProductosPorIds(items.map { it.productoId })
+        val almacenes = inventarioRepository.getAlmacenesPorIds(items.map { it.almacenId })
+        val nombre = getConfiguracionFacturacionActual().nombreEmpresa
+        val fecha = LocalDate.now()
+        val pdfFile = documentStorageRepository.createDocumentFile(
+            DocumentCategory.INFORMES,
+            "informe_inventario_${fecha}.pdf"
+        )
+        val writer = PdfWriter(pdfFile)
+        val pdfDoc = PdfDocument(writer)
+        val document = Document(pdfDoc)
+
+        document.add(
+            Paragraph("INFORME DE INVENTARIO")
+                .setFontSize(18f)
+                .setBold()
+                .setTextAlignment(TextAlignment.CENTER)
+        )
+        document.add(Paragraph(nombre).setTextAlignment(TextAlignment.CENTER).setFontSize(11f))
+        document.add(Paragraph("Fecha: $fecha").setFontSize(10f))
+        document.add(Paragraph("Productos activos en almacén: ${items.size}").setFontSize(10f))
+        document.add(Paragraph("\n"))
+
+        val table = Table(UnitValue.createPercentArray(floatArrayOf(14f, 30f, 13f, 16f, 12f, 15f)))
+            .useAllAvailableWidth()
+        listOf("Código", "Producto", "Almacén", "Modo", "Unidad", "Disponibilidad").forEach { titulo ->
+            table.addHeaderCell(Cell().add(Paragraph(titulo).setBold()))
+        }
+
+        items.forEachIndexed { index, item ->
+            val producto = productos[item.productoId]
+            val nombreProducto = producto?.nombre ?: item.productoId
+            val unidad = producto?.unidad?.ifBlank { "und" } ?: "und"
+            val almacen = almacenes[item.almacenId]?.nombre ?: "Almacén principal"
+            val stockTexto = when {
+                item.stockDisponible.isInfinite() -> "Ilimitado"
+                else -> {
+                    val valor = item.stockDisponible
+                    if ((valor * 100).roundToLong() % 100L == 0L) {
+                        valor.toInt().toString()
+                    } else {
+                        "%.2f".format(valor)
+                    }
+                }
+            }
+
+            table.addCell(Cell().add(Paragraph((index + 1).toString()).setFontSize(9f)))
+            table.addCell(Cell().add(Paragraph(nombreProducto).setFontSize(9f)))
+            table.addCell(Cell().add(Paragraph(almacen).setFontSize(9f)))
+            table.addCell(Cell().add(Paragraph(item.modoStock).setFontSize(9f)))
+            table.addCell(Cell().add(Paragraph(unidad).setFontSize(9f)))
+            table.addCell(
+                Cell().add(
+                    Paragraph(stockTexto).setFontSize(9f).setTextAlignment(TextAlignment.RIGHT)
+                )
+            )
+        }
+
+        document.add(table)
         document.close()
         return pdfFile.absolutePath
     }

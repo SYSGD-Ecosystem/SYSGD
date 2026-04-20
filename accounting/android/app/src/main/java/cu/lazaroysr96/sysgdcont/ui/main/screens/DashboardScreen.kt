@@ -74,8 +74,6 @@ fun DashboardScreen(
     onSwitchWorkspace: (String) -> Unit,
     onCreateWorkspace: (String) -> Unit,
     onOpenRegistro: () -> Unit,
-    onOpenTributos: () -> Unit,
-    onOpenResumen: () -> Unit,
     onOpenVentas: () -> Unit,
     onOpenNomencladores: () -> Unit,
     onOpenCatalogos: () -> Unit,

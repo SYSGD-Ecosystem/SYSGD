@@ -2213,7 +2213,23 @@ class LedgerRepository @Inject constructor(
 
         acumular(registro.ingresos.values, TipoCuenta.INGRESO)
         acumular(registro.gastos.values, TipoCuenta.GASTO)
-        return acumulado
+
+        val hijosPorPadre = cuentas
+            .filter { !it.padreId.isNullOrBlank() }
+            .groupBy { it.padreId!! }
+
+        fun totalCuenta(cuentaId: String, visitados: MutableSet<String> = mutableSetOf()): Double {
+            if (!visitados.add(cuentaId)) return acumulado[cuentaId] ?: 0.0
+            val propio = acumulado[cuentaId] ?: 0.0
+            val hijos = hijosPorPadre[cuentaId].orEmpty().sumOf { hijo ->
+                totalCuenta(hijo.id, visitados.toMutableSet())
+            }
+            return round2(propio + hijos)
+        }
+
+        return cuentas.associate { cuenta ->
+            cuenta.id to totalCuenta(cuenta.id)
+        }
     }
 
     fun calculateAnnualReport(registro: RegistroTCP): AnnualReport {

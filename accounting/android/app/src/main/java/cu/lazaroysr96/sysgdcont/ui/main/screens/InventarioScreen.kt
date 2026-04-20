@@ -1182,6 +1182,7 @@ private fun InventarioContent(viewModel: InventarioViewModel, padding: PaddingVa
                     viewModel.showMoverDialog(item)
                 }
             },
+            onGenerarInforme = viewModel::generarInformeInventarioPdf,
             onArchive = { item, nombre ->
                 viewModel.showArchiveDialog(item, nombre)
             }
@@ -1237,6 +1238,7 @@ private fun AlmacenSection(
     productosVenta: List<ProductoVenta>,
     onAjustarStock: (ItemInventario) -> Unit,
     onMover: ((ItemInventario) -> Unit)?,
+    onGenerarInforme: () -> Unit,
     onArchive: (ItemInventario, String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(true) }
@@ -1283,6 +1285,15 @@ private fun AlmacenSection(
                 exit = shrinkVertically()
             ) {
                 Column(modifier = Modifier.padding(top = 12.dp)) {
+                    OutlinedButton(
+                        onClick = onGenerarInforme,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.PictureAsPdf, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Generar informe de inventario")
+                    }
+
                     if (items.isEmpty()) {
                         Box(
                             modifier = Modifier

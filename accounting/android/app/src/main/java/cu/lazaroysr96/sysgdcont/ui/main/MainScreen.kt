@@ -703,16 +703,6 @@ fun MainScreen(
                                 launchSingleTop = true
                             }
                         },
-                        onOpenTributos = {
-                            navController.navigate(MainTab.Tributos.route) {
-                                launchSingleTop = true
-                            }
-                        },
-                        onOpenResumen = {
-                            navController.navigate(MainTab.Resumen.route) {
-                                launchSingleTop = true
-                            }
-                        },
                         onOpenVentas = {
                             navController.navigate(VENTAS_ROUTE) {
                                 launchSingleTop = true

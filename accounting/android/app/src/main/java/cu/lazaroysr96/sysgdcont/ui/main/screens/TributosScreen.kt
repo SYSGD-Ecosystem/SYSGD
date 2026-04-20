@@ -245,6 +245,12 @@ private fun TributoItemCard(
     onAutocalcularChange: (Boolean) -> Unit,
     onEdit: () -> Unit
 ) {
+    val montoVisible = when {
+        !item.config.incluido -> ""
+        item.config.autocalcular -> item.monto
+        else -> monto
+    }
+
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -302,7 +308,7 @@ private fun TributoItemCard(
             }
 
             OutlinedTextField(
-                value = monto,
+                value = montoVisible,
                 onValueChange = onMontoChange,
                 label = { Text("Monto del mes") },
                 modifier = Modifier.fillMaxWidth(),
