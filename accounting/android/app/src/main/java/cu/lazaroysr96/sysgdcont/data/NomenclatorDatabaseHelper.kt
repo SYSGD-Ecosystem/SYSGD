@@ -13,7 +13,7 @@ class NomenclatorDatabaseHelper @Inject constructor(
     @ApplicationContext
     private val context: Context
 ) {
-    private val databaseName = "filesdata.db"
+    private val databaseName = "database.db"
 
     fun openDatabase(): SQLiteDatabase {
         val dbFile = context.getDatabasePath(databaseName)

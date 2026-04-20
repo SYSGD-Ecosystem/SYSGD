@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -29,6 +28,7 @@ import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cu.lazaroysr96.sysgdcont.data.model.AccountingItem
+import cu.lazaroysr96.sysgdcont.data.model.AccountingSubaccount
 import cu.lazaroysr96.sysgdcont.data.model.CnaeItem
 import cu.lazaroysr96.sysgdcont.data.model.NomenclatorType
 import cu.lazaroysr96.sysgdcont.viewmodel.NomenclatorViewModel
@@ -114,7 +115,7 @@ fun NomenclatorsScreen(
                         if (uiState.selectedType == NomenclatorType.CNAE)
                             "Buscar por codigo, descripcion o estructura"
                         else
-                            "Buscar por codigo, nombre, categoria o subcategoria"
+                            "Buscar por codigo, nombre, descripcion o subcuenta"
                     )
                 },
                 singleLine = true
@@ -447,17 +448,14 @@ private fun AccountingResults(items: List<AccountingItem>) {
             items = items,
             key = {
                 listOf(
-                    it.itemType,
                     it.categoryCode,
-                    it.categoryName,
                     it.subcategoryCode,
-                    it.accountCode,
-                    it.subaccountCode,
-                    it.displayCode
+                    it.accountCode
                 ).joinToString("|")
             }
         ) { item ->
             var expanded by remember { mutableStateOf(false) }
+            var showDescription by remember { mutableStateOf(false) }
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -470,13 +468,21 @@ private fun AccountingResults(items: List<AccountingItem>) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(item.displayName, fontWeight = FontWeight.SemiBold)
+                            Text(item.accountName, fontWeight = FontWeight.SemiBold)
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                "${item.displayCode} • ${item.displayNature}",
+                                "${item.accountCode} • ${item.accountNature}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary
                             )
+                            if (item.subaccounts.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    "${item.subaccounts.size} subcuenta(s)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                         Icon(
                             if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -492,7 +498,6 @@ private fun AccountingResults(items: List<AccountingItem>) {
                         Column(modifier = Modifier.padding(top = 12.dp)) {
                             Divider()
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("Tipo: ${item.itemType}", style = MaterialTheme.typography.bodySmall)
                             Text(
                                 "Categoria: ${item.categoryCode} - ${item.categoryName}",
                                 style = MaterialTheme.typography.bodySmall
@@ -512,21 +517,73 @@ private fun AccountingResults(items: List<AccountingItem>) {
                                 "Naturaleza de cuenta: ${item.accountNature}",
                                 style = MaterialTheme.typography.bodySmall
                             )
-                            if (item.subaccountCode.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(6.dp))
+                            if (item.accountDescription.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                TextButton(
+                                    onClick = { showDescription = true },
+                                    contentPadding = PaddingValues(0.dp)
+                                ) {
+                                    Text("Ver descripcion")
+                                }
+                            }
+                            if (item.subaccounts.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    "Subcuenta: ${item.subaccountCode} - ${item.subaccountName}",
-                                    style = MaterialTheme.typography.bodyMedium
+                                    "Subcuentas",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold
                                 )
-                                Text(
-                                    "Naturaleza de subcuenta: ${item.subaccountNature}",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    item.subaccounts.forEach { subaccount ->
+                                        SubaccountRow(subaccount)
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
+
+            if (showDescription) {
+                AlertDialog(
+                    onDismissRequest = { showDescription = false },
+                    confirmButton = {
+                        TextButton(onClick = { showDescription = false }) {
+                            Text("Cerrar")
+                        }
+                    },
+                    title = {
+                        Text("${item.accountCode} - ${item.accountName}")
+                    },
+                    text = {
+                        Text(item.accountDescription)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SubaccountRow(subaccount: AccountingSubaccount) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                "${subaccount.code} - ${subaccount.name}",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                "Naturaleza: ${subaccount.nature}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

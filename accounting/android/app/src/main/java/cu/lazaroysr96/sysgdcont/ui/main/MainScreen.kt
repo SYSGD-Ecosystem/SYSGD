@@ -718,6 +718,11 @@ fun MainScreen(
                                 launchSingleTop = true
                             }
                         },
+                        onOpenNomencladores = {
+                            navController.navigate(NOMENCLATORS_ROUTE) {
+                                launchSingleTop = true
+                            }
+                        },
                         onOpenCatalogos = {
                             navController.navigate(CATALOGOS_ROUTE) {
                                 launchSingleTop = true

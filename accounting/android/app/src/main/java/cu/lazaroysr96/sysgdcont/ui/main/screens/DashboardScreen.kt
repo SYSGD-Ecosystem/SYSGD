@@ -18,13 +18,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Summarize
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.AlertDialog
@@ -78,6 +77,7 @@ fun DashboardScreen(
     onOpenTributos: () -> Unit,
     onOpenResumen: () -> Unit,
     onOpenVentas: () -> Unit,
+    onOpenNomencladores: () -> Unit,
     onOpenCatalogos: () -> Unit,
     onOpenTerceros: () -> Unit,
     onOpenDocumentos: () -> Unit,
@@ -102,51 +102,43 @@ fun DashboardScreen(
             onClick = onOpenRegistro,
         ),
         DashboardShortcut(
-            title = "Tributos",
-            subtitle = "Obligaciones y cálculos",
-            icon = Icons.Default.AccountBalance,
+            title = "Nomencladores",
+            subtitle = "CNAE y cuentas contables",
+            icon = Icons.Default.AccountTree,
             iconTint = shortcutTones[1].second,
             iconBackground = shortcutTones[1].first,
-            onClick = onOpenTributos,
-        ),
-        DashboardShortcut(
-            title = "Resumen",
-            subtitle = "Totales y PDF anual",
-            icon = Icons.Default.Summarize,
-            iconTint = shortcutTones[2].second,
-            iconBackground = shortcutTones[2].first,
-            onClick = onOpenResumen,
+            onClick = onOpenNomencladores,
         ),
         DashboardShortcut(
             title = "Punto de venta",
             subtitle = "Ventas y compras",
             icon = Icons.Default.Inventory2,
-            iconTint = shortcutTones[3].second,
-            iconBackground = shortcutTones[3].first,
+            iconTint = shortcutTones[2].second,
+            iconBackground = shortcutTones[2].first,
             onClick = onOpenVentas,
         ),
         DashboardShortcut(
             title = "Catálogos",
             subtitle = "Cuentas y productos",
             icon = Icons.Default.ListAlt,
-            iconTint = shortcutTones[4].second,
-            iconBackground = shortcutTones[4].first,
+            iconTint = shortcutTones[3].second,
+            iconBackground = shortcutTones[3].first,
             onClick = onOpenCatalogos,
         ),
         DashboardShortcut(
             title = "Terceros",
             subtitle = "Clientes, deudas y cuentas",
             icon = Icons.Default.People,
-            iconTint = shortcutTones[0].second,
-            iconBackground = shortcutTones[0].first,
+            iconTint = shortcutTones[4].second,
+            iconBackground = shortcutTones[4].first,
             onClick = onOpenTerceros,
         ),
         DashboardShortcut(
             title = "Documentos",
             subtitle = "Archivos y evidencias",
             icon = Icons.Default.Description,
-            iconTint = shortcutTones[1].second,
-            iconBackground = shortcutTones[1].first,
+            iconTint = shortcutTones[0].second,
+            iconBackground = shortcutTones[0].first,
             onClick = onOpenDocumentos,
         ),
     )

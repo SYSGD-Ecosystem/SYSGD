@@ -33,8 +33,13 @@ data class AccountingSubcategory(
     val name: String
 )
 
+data class AccountingSubaccount(
+    val code: String,
+    val name: String,
+    val nature: String
+)
+
 data class AccountingItem(
-    val itemType: String,
     val categoryCode: String,
     val categoryName: String,
     val subcategoryCode: String,
@@ -42,10 +47,6 @@ data class AccountingItem(
     val accountCode: String,
     val accountName: String,
     val accountNature: String,
-    val subaccountCode: String,
-    val subaccountName: String,
-    val subaccountNature: String,
-    val displayCode: String,
-    val displayName: String,
-    val displayNature: String
+    val accountDescription: String,
+    val subaccounts: List<AccountingSubaccount> = emptyList()
 )
