@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -376,65 +377,17 @@ fun MainScreen(
                             Spacer(modifier = Modifier.height(8.dp))
                             Divider()
                             Text(
-                                "Contabilidad",
+                                "Registro Contable DJ",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                             NavigationDrawerItem(
-                                    label = { Text("General") },
+                                    label = { Text("Registro Contable DJ") },
                                     selected = currentRoute == MainTab.Generales.route,
-                                    icon = { Icon(MainTab.Generales.icon, contentDescription = null) },
+                                    icon = { Icon(Icons.Default.MenuBook, contentDescription = null) },
                                     onClick = {
                                         navController.navigate(MainTab.Generales.route) {
-                                            popUpTo(navController.graph.startDestinationId)
-                                            launchSingleTop = true
-                                        }
-                                        drawerScope.launch { drawerState.close() }
-                                    }
-                            )
-                            NavigationDrawerItem(
-                                    label = { Text("Ingresos") },
-                                    selected = currentRoute == MainTab.Ingresos.route,
-                                    icon = { Icon(MainTab.Ingresos.icon, contentDescription = null) },
-                                    onClick = {
-                                        navController.navigate(MainTab.Ingresos.route) {
-                                            popUpTo(navController.graph.startDestinationId)
-                                            launchSingleTop = true
-                                        }
-                                        drawerScope.launch { drawerState.close() }
-                                    }
-                            )
-                            NavigationDrawerItem(
-                                    label = { Text("Gastos") },
-                                    selected = currentRoute == MainTab.Gastos.route,
-                                    icon = { Icon(MainTab.Gastos.icon, contentDescription = null) },
-                                    onClick = {
-                                        navController.navigate(MainTab.Gastos.route) {
-                                            popUpTo(navController.graph.startDestinationId)
-                                            launchSingleTop = true
-                                        }
-                                        drawerScope.launch { drawerState.close() }
-                                    }
-                            )
-                            NavigationDrawerItem(
-                                    label = { Text("Tributos") },
-                                    selected = currentRoute == MainTab.Tributos.route,
-                                    icon = { Icon(MainTab.Tributos.icon, contentDescription = null) },
-                                    onClick = {
-                                        navController.navigate(MainTab.Tributos.route) {
-                                            popUpTo(navController.graph.startDestinationId)
-                                            launchSingleTop = true
-                                        }
-                                        drawerScope.launch { drawerState.close() }
-                                    }
-                            )
-                            NavigationDrawerItem(
-                                    label = { Text("Resumen") },
-                                    selected = currentRoute == MainTab.Resumen.route,
-                                    icon = { Icon(MainTab.Resumen.icon, contentDescription = null) },
-                                    onClick = {
-                                        navController.navigate(MainTab.Resumen.route) {
                                             popUpTo(navController.graph.startDestinationId)
                                             launchSingleTop = true
                                         }
@@ -741,18 +694,8 @@ fun MainScreen(
                         report = ledgerState.annualReport,
                         lastSync = ledgerState.lastSync,
                         hasLocalChanges = ledgerState.hasLocalChanges,
-                        onOpenGenerales = {
+                        onOpenRegistro = {
                             navController.navigate(MainTab.Generales.route) {
-                                launchSingleTop = true
-                            }
-                        },
-                        onOpenIngresos = {
-                            navController.navigate(MainTab.Ingresos.route) {
-                                launchSingleTop = true
-                            }
-                        },
-                        onOpenGastos = {
-                            navController.navigate(MainTab.Gastos.route) {
                                 launchSingleTop = true
                             }
                         },

@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,11 +21,9 @@ import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.ListAlt
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Summarize
-import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -62,9 +60,7 @@ fun DashboardScreen(
     report: AnnualReport?,
     lastSync: String?,
     hasLocalChanges: Boolean,
-    onOpenGenerales: () -> Unit,
-    onOpenIngresos: () -> Unit,
-    onOpenGastos: () -> Unit,
+    onOpenRegistro: () -> Unit,
     onOpenTributos: () -> Unit,
     onOpenResumen: () -> Unit,
     onOpenVentas: () -> Unit,
@@ -72,77 +68,70 @@ fun DashboardScreen(
     onOpenTerceros: () -> Unit,
     onOpenDocumentos: () -> Unit,
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+    val isDarkTheme = colorScheme.background.luminance() < 0.5f
+    val shortcutTones = listOf(
+        colorScheme.primaryContainer to colorScheme.onPrimaryContainer,
+        colorScheme.secondaryContainer to colorScheme.onSecondaryContainer,
+        colorScheme.tertiaryContainer to colorScheme.onTertiaryContainer,
+        colorScheme.surfaceVariant to colorScheme.onSurfaceVariant,
+        colorScheme.errorContainer to colorScheme.onErrorContainer,
+    )
     val shortcuts = listOf(
         DashboardShortcut(
-            title = "General",
-            subtitle = "Datos del contribuyente",
-            icon = Icons.Default.Person,
-            iconTint = Color(0xFF1177F2),
-            iconBackground = Color(0xFFD8EBFF),
-            onClick = onOpenGenerales,
-        ),
-        DashboardShortcut(
-            title = "Ingresos",
-            subtitle = "Registro diario de entradas",
-            icon = Icons.Default.TrendingUp,
-            iconTint = Color(0xFF1FA463),
-            iconBackground = Color(0xFFDDF6E9),
-            onClick = onOpenIngresos,
-        ),
-        DashboardShortcut(
-            title = "Gastos",
-            subtitle = "Control de salidas",
-            icon = Icons.Default.TrendingDown,
-            iconTint = Color(0xFFFF8E3C),
-            iconBackground = Color(0xFFFFEDD9),
-            onClick = onOpenGastos,
+            title = "Registro DJ",
+            subtitle = "Ingresos y gastos",
+            icon = Icons.Default.MenuBook,
+            iconTint = shortcutTones[0].second,
+            iconBackground = shortcutTones[0].first,
+            onClick = onOpenRegistro,
         ),
         DashboardShortcut(
             title = "Tributos",
             subtitle = "Obligaciones y cálculos",
             icon = Icons.Default.AccountBalance,
-            iconTint = Color(0xFF7B61FF),
-            iconBackground = Color(0xFFEAE4FF),
+            iconTint = shortcutTones[1].second,
+            iconBackground = shortcutTones[1].first,
             onClick = onOpenTributos,
         ),
         DashboardShortcut(
             title = "Resumen",
             subtitle = "Totales y PDF anual",
             icon = Icons.Default.Summarize,
-            iconTint = Color(0xFF0A7EA4),
-            iconBackground = Color(0xFFD8F4FF),
+            iconTint = shortcutTones[2].second,
+            iconBackground = shortcutTones[2].first,
             onClick = onOpenResumen,
         ),
         DashboardShortcut(
             title = "Punto de venta",
             subtitle = "Ventas y compras",
             icon = Icons.Default.Inventory2,
-            iconTint = Color(0xFF118AB2),
-            iconBackground = Color(0xFFD6F4FB),
+            iconTint = shortcutTones[3].second,
+            iconBackground = shortcutTones[3].first,
             onClick = onOpenVentas,
         ),
         DashboardShortcut(
             title = "Catálogos",
             subtitle = "Cuentas y productos",
             icon = Icons.Default.ListAlt,
-            iconTint = Color(0xFF2864DC),
-            iconBackground = Color(0xFFE0E8FF),
+            iconTint = shortcutTones[4].second,
+            iconBackground = shortcutTones[4].first,
             onClick = onOpenCatalogos,
         ),
         DashboardShortcut(
             title = "Terceros",
             subtitle = "Clientes, deudas y cuentas",
             icon = Icons.Default.People,
-            iconTint = Color(0xFF9A4DCC),
-            iconBackground = Color(0xFFF1E2FF),
+            iconTint = shortcutTones[0].second,
+            iconBackground = shortcutTones[0].first,
             onClick = onOpenTerceros,
         ),
         DashboardShortcut(
             title = "Documentos",
             subtitle = "Archivos y evidencias",
             icon = Icons.Default.Description,
-            iconTint = Color(0xFFB77016),
-            iconBackground = Color(0xFFFFF0DB),
+            iconTint = shortcutTones[1].second,
+            iconBackground = shortcutTones[1].first,
             onClick = onOpenDocumentos,
         ),
     )
@@ -152,13 +141,11 @@ fun DashboardScreen(
     val ingresos = report?.totalIngresos ?: 0.0
     val gastos = report?.totalGastos ?: 0.0
     val neto = report?.baseImponible ?: 0.0
-    val latestMonth = report?.monthly
-        ?.maxByOrNull { it.ingresos + it.gastos + it.tributos + it.otrosDeducibles }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF2F5FA))
+            .background(colorScheme.background)
             .verticalScroll(rememberScrollState())
     ) {
         Box(
@@ -166,7 +153,11 @@ fun DashboardScreen(
                 .fillMaxWidth()
                 .background(
                     brush = Brush.linearGradient(
-                        colors = listOf(Color(0xFF0E7AE6), Color(0xFF34D0BE))
+                        colors = listOf(
+                            colorScheme.secondary,
+                            colorScheme.primary,
+                            colorScheme.secondary.copy(alpha = if (isDarkTheme) 0.82f else 0.92f)
+                        )
                     ),
                     shape = RoundedCornerShape(bottomStart = 34.dp, bottomEnd = 34.dp)
                 )
@@ -176,14 +167,14 @@ fun DashboardScreen(
                 Text(
                     text = "Panel principal",
                     style = MaterialTheme.typography.labelLarge,
-                    color = Color.White.copy(alpha = 0.88f)
+                    color = colorScheme.onPrimary.copy(alpha = 0.88f)
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = nombreContribuyente,
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = colorScheme.onPrimary,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -191,7 +182,7 @@ fun DashboardScreen(
                 Text(
                     text = "Visión rápida del año $anio y acceso a todas las herramientas.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.92f)
+                    color = colorScheme.onPrimary.copy(alpha = 0.92f)
                 )
                 Spacer(modifier = Modifier.height(20.dp))
                 DashboardHeroCard(
@@ -200,28 +191,20 @@ fun DashboardScreen(
                     neto = neto,
                     lastSync = lastSync,
                     hasLocalChanges = hasLocalChanges,
-                    latestMonthLabel = latestMonth?.month,
+                    isDarkTheme = isDarkTheme,
                 )
             }
         }
 
         Column(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            DashboardInsightsCard(
-                actividad = generales.actividad,
-                nit = generales.nit,
-                codigoOnat = generales.codigo,
-                latestMonthLabel = latestMonth?.month,
-                latestMonthNet = latestMonth?.neto,
-            )
-
             Text(
                 text = "Accesos rápidos",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF162033)
+                color = colorScheme.onBackground
             )
 
             shortcuts.chunked(2).forEach { rowItems ->
@@ -253,8 +236,9 @@ private fun DashboardHeroCard(
     neto: Double,
     lastSync: String?,
     hasLocalChanges: Boolean,
-    latestMonthLabel: String?,
+    isDarkTheme: Boolean,
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Card(
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
@@ -265,12 +249,16 @@ private fun DashboardHeroCard(
                 .fillMaxWidth()
                 .background(
                     brush = Brush.linearGradient(
-                        colors = listOf(Color(0xFF123B6D), Color(0xFF0F5B97), Color(0xFF1A88B5))
+                        colors = listOf(
+                            colorScheme.secondary.copy(alpha = if (isDarkTheme) 0.85f else 1f),
+                            colorScheme.primary.copy(alpha = if (isDarkTheme) 0.80f else 0.95f),
+                            colorScheme.secondaryContainer.copy(alpha = if (isDarkTheme) 0.70f else 0.92f)
+                        )
                     )
                 )
-                .padding(20.dp)
+                .padding(16.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -279,26 +267,30 @@ private fun DashboardHeroCard(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Balance acumulado",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color.White.copy(alpha = 0.88f)
+                            style = MaterialTheme.typography.labelLarge,
+                            color = colorScheme.onPrimary.copy(alpha = 0.88f)
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = formatMoney(neto),
-                            style = MaterialTheme.typography.headlineLarge,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color.White,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = colorScheme.onPrimary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-
-                    StatusPill(
-                        text = if (hasLocalChanges) "Pendiente de sincronizar" else "Datos al día",
-                        background = if (hasLocalChanges) Color(0x33FFB15C) else Color(0x3328D17C),
-                        contentColor = Color.White
-                    )
                 }
+
+                StatusPill(
+                        text = if (hasLocalChanges) "Pendiente de sincronizar" else "Datos al día",
+                        background = if (hasLocalChanges) {
+                            colorScheme.tertiary.copy(alpha = if (isDarkTheme) 0.30f else 0.22f)
+                        } else {
+                            colorScheme.primary.copy(alpha = if (isDarkTheme) 0.28f else 0.20f)
+                        },
+                        contentColor = colorScheme.onPrimary
+                    )
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -308,28 +300,12 @@ private fun DashboardHeroCard(
                     HeroMetric(label = "Gastos", value = formatMoney(gastos), modifier = Modifier.weight(1f))
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = lastSync?.takeIf { it.isNotBlank() }?.let { "Última sincronización: $it" }
-                            ?: "Aún no hay una sincronización registrada",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.80f),
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    latestMonthLabel?.let {
-                        Spacer(modifier = Modifier.width(12.dp))
-                        StatusPill(
-                            text = "Mes fuerte: $it",
-                            background = Color(0x26FFFFFF),
-                            contentColor = Color.White
-                        )
-                    }
-                }
+                Text(
+                    text = lastSync?.takeIf { it.isNotBlank() }?.let { "Última sincronización: $it" }
+                        ?: "Aún no hay una sincronización registrada",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onPrimary.copy(alpha = 0.80f),
+                )
             }
         }
     }
@@ -341,117 +317,26 @@ private fun HeroMetric(
     value: String,
     modifier: Modifier = Modifier,
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.14f)
+        color = colorScheme.surface.copy(alpha = 0.16f)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelLarge,
-                color = Color.White.copy(alpha = 0.80f)
+                style = MaterialTheme.typography.labelMedium,
+                color = colorScheme.onPrimary.copy(alpha = 0.80f)
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-        }
-    }
-}
-
-@Composable
-private fun DashboardInsightsCard(
-    actividad: String,
-    nit: String,
-    codigoOnat: String,
-    latestMonthLabel: String?,
-    latestMonthNet: Double?,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            Text(
-                text = "Estado del registro",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF162033)
+                color = colorScheme.onPrimary
             )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                InsightBlock(
-                    title = "Actividad",
-                    value = actividad.ifBlank { "Pendiente por completar" },
-                    modifier = Modifier.weight(1f)
-                )
-                InsightBlock(
-                    title = "NIT",
-                    value = nit.ifBlank { "Sin definir" },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                InsightBlock(
-                    title = "Código ONAT",
-                    value = codigoOnat.ifBlank { "Sin definir" },
-                    modifier = Modifier.weight(1f)
-                )
-                InsightBlock(
-                    title = "Mes destacado",
-                    value = if (latestMonthLabel != null && latestMonthNet != null) {
-                        "$latestMonthLabel · ${formatMoney(latestMonthNet)}"
-                    } else {
-                        "Sin movimiento todavía"
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-            }
         }
-    }
-}
-
-@Composable
-private fun InsightBlock(
-    title: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
-            .background(Color(0xFFF4F8FD))
-            .padding(14.dp)
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelMedium,
-            color = Color(0xFF5F6D82)
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF162033),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
     }
 }
 
@@ -461,22 +346,23 @@ private fun DashboardShortcutCard(
     shortcut: DashboardShortcut,
     modifier: Modifier = Modifier,
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Card(
         onClick = shortcut.onClick,
         modifier = modifier,
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(58.dp)
+                    .size(50.dp)
                     .background(shortcut.iconBackground, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
@@ -484,21 +370,21 @@ private fun DashboardShortcutCard(
                     imageVector = shortcut.icon,
                     contentDescription = shortcut.title,
                     tint = shortcut.iconTint,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = shortcut.title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF162033)
+                    color = colorScheme.onSurface
                 )
                 Text(
                     text = shortcut.subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF64748B),
+                    color = colorScheme.onSurfaceVariant,
                     minLines = 2,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -518,7 +404,7 @@ private fun StatusPill(
         modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
             .background(background)
-            .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(999.dp))
+            .border(1.dp, contentColor.copy(alpha = 0.18f), RoundedCornerShape(999.dp))
             .padding(horizontal = 12.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
