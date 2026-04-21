@@ -38,7 +38,7 @@ fun CatalogosScreen(
     inventarioViewModel: InventarioViewModel,
     ledgerViewModel: LedgerViewModel
 ) {
-    var selectedTab by remember { mutableStateOf(1) } // Default to Products
+    var selectedTab by remember { mutableStateOf(0) } // Default to Products
     val tabs = listOf("Cuentas", "Productos")
     val productosState by inventarioViewModel.uiState.collectAsStateWithLifecycle()
     val ledgerState by ledgerViewModel.uiState.collectAsStateWithLifecycle()

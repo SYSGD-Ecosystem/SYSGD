@@ -25,6 +25,9 @@ import cu.lazaroysr96.sysgdcont.data.model.DayAmountRow
 import cu.lazaroysr96.sysgdcont.data.repository.LedgerConstants
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
 import java.util.Calendar
+import android.util.Log
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -157,6 +160,8 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
             }
         }
 
+        val context = LocalContext.current
+
     IngresoDialog(
         visible = showDialog,
         isEditMode = isEditMode,
@@ -178,6 +183,12 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
         },
         onConfirm = { month, dia, importe, cuenta, nota ->
             if (isEditMode && editEntry != null) {
+                Log.e("SYSGD_EDIT", "editEntry: ${editEntry?.second}")
+                Toast.makeText(
+                    context,
+                    "Editando ingreso del día ${editEntry?.second?.dia} con importe ${editEntry?.second?.importe}",
+                    Toast.LENGTH_SHORT
+                ).show()
                 viewModel.editIngresoById(editEntry!!.second.id, month, dia, importe, cuenta, nota)
             } else {
                 viewModel.addIngreso(month, dia, importe, cuenta, nota)
@@ -306,6 +317,15 @@ private fun IngresoDayCard(
         }
     }
 }
+
+data class IngresoGastoInput(
+    val entryId: String? = null, // null = nuevo, con valor = edición
+    val month: String,
+    val dia: Int,
+    val importe: Double,
+    val cuenta: String,
+    val nota: String
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -447,6 +467,7 @@ fun IngresoDialog(
                         val diaInt = dia.toIntOrNull()
                         val importeDouble = importe.toDoubleOrNull()
                         if (diaInt != null && importeDouble != null && diaInt in 1..31 && importeDouble > 0) {
+                            Log.e("SYSGD_EDIT", "previousEntry encontrado:")
                             onConfirm(selectedMonth, diaInt, importeDouble, cuenta, nota)
                         }
                     },
