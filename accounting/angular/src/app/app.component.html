@@ -34,6 +34,7 @@
         <button [class.active]="activeTab === 'ledger'" (click)="activeTab = 'ledger'">Ingresos y gastos</button>
         <button [class.active]="activeTab === 'inventario'" (click)="activeTab = 'inventario'">Gestión de compras y ventas</button>
         <button [class.active]="activeTab === 'recursos'" (click)="activeTab = 'recursos'">Recursos</button>
+        <button [class.active]="activeTab === 'advanced'" (click)="activeTab = 'advanced'">Avanzadas</button>
       </aside>
 
       <div class="content-area">
@@ -104,6 +105,13 @@
         />
 
         <app-resources-section *ngIf="activeTab === 'recursos'" />
+
+        <app-advanced-section
+          *ngIf="activeTab === 'advanced'"
+          [registro]="registro"
+          (restoreFromJson)="restoreFromJsonText($event)"
+          (importFile)="importRegistroJson($event)"
+        />
 
         <div class="bottom-tabs card" *ngIf="activeTab === 'ledger'">
           <button [class.active]="ledgerTab === 'generales'" (click)="ledgerTab = 'generales'">Generales</button>

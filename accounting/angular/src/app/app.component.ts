@@ -17,6 +17,7 @@ import { ResourcesSectionComponent } from './features/resources-section/resource
 import { ResumenSectionComponent } from './features/resumen-section/resumen-section.component';
 import { InventarioSectionComponent } from './features/inventario-section/inventario-section.component';
 import { TributosSectionComponent } from './features/tributos-section/tributos-section.component';
+import { AdvancedSectionComponent } from './features/advanced-section/advanced-section.component';
 import { LedgerService } from './services/ledger.service';
 import { AuthService, type AuthUser } from './services/auth.service';
 import { RegistroSyncService } from './services/registro-sync.service';
@@ -32,7 +33,8 @@ import { RegistroSyncService } from './services/registro-sync.service';
     ResourcesSectionComponent,
     TributosSectionComponent,
     ResumenSectionComponent,
-    InventarioSectionComponent
+    InventarioSectionComponent,
+    AdvancedSectionComponent
   ],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './app.component.html',
@@ -81,7 +83,7 @@ export class AppComponent implements OnInit {
     'Isla de la Juventud': ['Isla de la Juventud']
   };
 
-  activeTab: 'ledger' | 'inventario' | 'recursos' = 'ledger';
+  activeTab: 'ledger' | 'inventario' | 'recursos' | 'advanced' = 'ledger';
   ledgerTab: 'generales' | 'movimientos' | 'tributos' | 'resumen' = 'generales';
   months = MONTHS;
   threshold = SIMPLIFIED_THRESHOLD_CUP;
@@ -358,6 +360,18 @@ export class AppComponent implements OnInit {
       this.backupMessage = 'Backup importado y restaurado correctamente.';
     } catch (error) {
       this.backupMessage = this.formatError(error, 'No se pudo importar el archivo JSON.');
+    }
+  }
+
+  restoreFromJsonText(jsonString: string): void {
+    try {
+      this.registro = this.ledger.importBackup(jsonString);
+      this.patchForms();
+      this.refreshReport();
+      void this.syncToServer();
+      this.backupMessage = 'Datos restaurados desde JSON correctamente.';
+    } catch (error) {
+      this.backupMessage = this.formatError(error, 'No se pudieron restaurar los datos desde JSON.');
     }
   }
 
