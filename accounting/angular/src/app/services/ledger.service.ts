@@ -581,6 +581,25 @@ export class LedgerService {
   normalizeWorkspacesResponse(response: ContLedgerResponse): RegistroTCP {
     console.log('[LEDGER] normalizeWorkspacesResponse:', JSON.stringify(response).slice(0, 500));
 
+    const remote = response as unknown as { registro?: { activeWorkspaceId?: string; workspaces?: unknown[] } };
+    
+    if (remote.registro?.activeWorkspaceId && remote.registro?.workspaces) {
+      console.log('[LEDGER] Formato nuevo detectado (workspaces dentro de registro)');
+      const activeId = remote.registro.activeWorkspaceId;
+      const workspaces = remote.registro.workspaces as Array<{ id: string; name: string; registro: RegistroTCP }>;
+      
+      this.setActiveWorkspaceId(activeId);
+      this.saveAvailableWorkspaces(workspaces.map((w) => ({ id: w.id, name: w.name })));
+
+      const activeWorkspace = workspaces.find((w) => w.id === activeId);
+      if (!activeWorkspace) {
+        console.warn('[LEDGER] No se encontró workspace activo, usando vacío');
+        return this.emptyRegistro();
+      }
+
+      return this.normalizeRegistro(activeWorkspace.registro);
+    }
+
     if (!response.activeWorkspaceId && !response.workspaces) {
       console.log('[LEDGER] Formato antiguo detectado');
       const oldFormat = response as unknown as { registro: RegistroTCP; inventarioRegistro?: InventarioRegistro };
