@@ -100,6 +100,16 @@ h1 {
   gap: 8px;
 }
 
+.workspace-select {
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  background: #eff6ff;
+  color: #1e40af;
+  max-width: 180px;
+}
+
 .user-pill {
   border-radius: 999px;
   border: 1px solid #d1d5db;

@@ -2,13 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from './auth.service';
-import type { InventarioRegistro, RegistroTCP } from '../models/ledger-entry.model';
-
-interface ContLedgerResponse {
-  registro: RegistroTCP | null;
-  inventarioRegistro: InventarioRegistro | null;
-  updatedAt: string | null;
-}
+import type { ContLedgerResponse, InventarioRegistro, RegistroTCP } from '../models/ledger-entry.model';
 
 type TcpPdfMonthRow = {
   dia: string;

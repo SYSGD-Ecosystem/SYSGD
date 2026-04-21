@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import {
   AlertMessage,
   AnnualReport,
+  ContLedgerResponse,
   DayAmountRow,
   GeneralesData,
   MAX_MONTH_ROWS,
@@ -18,6 +19,12 @@ import {
 } from '../models/ledger-entry.model';
 
 const LEDGER_CACHE_KEY = 'sysgd-cont:registro-tcp';
+const WORKSPACE_CACHE_KEY = 'sysgd-cont:workspace-id';
+
+interface WorkspaceData {
+  id: string;
+  name: string;
+}
 
 const monthLabel: Record<MonthKey, string> = {
   ENE: 'Enero',
@@ -548,5 +555,49 @@ export class LedgerService {
 
   private round2(value: number): number {
     return Math.round(value * 100) / 100;
+  }
+
+  getActiveWorkspaceId(): string | null {
+    return localStorage.getItem(WORKSPACE_CACHE_KEY);
+  }
+
+  setActiveWorkspaceId(id: string): void {
+    localStorage.setItem(WORKSPACE_CACHE_KEY, id);
+  }
+
+  getAvailableWorkspaces(): WorkspaceData[] {
+    try {
+      const raw = localStorage.getItem('sysgd-cont:workspaces-list');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  saveAvailableWorkspaces(workspaces: WorkspaceData[]): void {
+    localStorage.setItem('sysgd-cont:workspaces-list', JSON.stringify(workspaces));
+  }
+
+  normalizeWorkspacesResponse(response: ContLedgerResponse): RegistroTCP {
+    if (!response.activeWorkspaceId && !response.workspaces) {
+      const oldFormat = response as unknown as { registro: RegistroTCP; inventarioRegistro?: InventarioRegistro };
+      if (oldFormat.registro) {
+        return this.normalizeRegistro(oldFormat.registro);
+      }
+    }
+
+    const activeId = response.activeWorkspaceId;
+    const workspaces = response.workspaces ?? [];
+
+    this.setActiveWorkspaceId(activeId);
+    this.saveAvailableWorkspaces(workspaces.map((w) => ({ id: w.id, name: w.name })));
+
+    const activeWorkspace = workspaces.find((w) => w.id === activeId);
+    if (!activeWorkspace) {
+      console.warn('[LEDGER] No se encontró workspace activo, usando vacío');
+      return this.emptyRegistro();
+    }
+
+    return this.normalizeRegistro(activeWorkspace.registro);
   }
 }

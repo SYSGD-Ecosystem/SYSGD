@@ -30,8 +30,50 @@ export interface GeneralesData {
 }
 
 export interface DayAmountRow {
+  id?: string;
   dia: string;
   importe: string;
+}
+
+export interface IngresoGastoCuenta {
+  id: string;
+  ingresoGastoId: string;
+  mes: string;
+  tipo: 'INGRESO' | 'GASTO';
+  cuentaId: string;
+  createdAt: number;
+}
+
+export interface IngresoGastoNota {
+  id: string;
+  ingresoGastoId: string;
+  mes: string;
+  tipo: 'INGRESO' | 'GASTO';
+  nota: string;
+  createdAt: number;
+}
+
+export interface WorkspaceAccounting {
+  cuentasContables: unknown[];
+  ingresoGastoCuentas: IngresoGastoCuenta[];
+  ingresoGastoNotas: IngresoGastoNota[];
+  posIntegrationConfig: unknown;
+  tributoConfigs: unknown[];
+  tributoCuentaBases: unknown[];
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  accounting: WorkspaceAccounting;
+  registro: RegistroTCP;
+}
+
+export interface ContLedgerResponse {
+  activeWorkspaceId: string;
+  workspaces: Workspace[];
+  inventario: InventarioRegistro;
+  updatedAt: string;
 }
 
 export type MonthEntries = Record<MonthKey, DayAmountRow[]>;

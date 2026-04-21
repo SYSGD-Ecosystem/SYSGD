@@ -100,6 +100,14 @@ export class AppComponent implements OnInit {
   report: AnnualReport = this.ledger.getAnnualReport();
   alerts: AlertMessage[] = this.ledger.buildAlerts();
   djPreview = this.ledger.declarationPreview();
+  workspaces: { id: string; name: string }[] = this.ledger.getAvailableWorkspaces();
+  activeWorkspaceId: string | null = this.ledger.getActiveWorkspaceId();
+
+  get activeWorkspaceName(): string {
+    if (!this.activeWorkspaceId) return 'Sin espacio de trabajo';
+    const ws = this.workspaces.find((w) => w.id === this.activeWorkspaceId);
+    return ws?.name ?? 'Espacio de trabajo';
+  }
 
   get selectedMonthIngresosTotal(): number {
     return this.monthTotal(this.registro.ingresos[this.selectedMonth]);
@@ -226,6 +234,17 @@ export class AppComponent implements OnInit {
     this.currentUser = null;
     this.authError = '';
     this.offlineRecoveryAvailable = false;
+    this.workspaces = [];
+    this.activeWorkspaceId = null;
+    localStorage.removeItem('sysgd-cont:registro-tcp');
+    localStorage.removeItem('sysgd-cont:workspace-id');
+    localStorage.removeItem('sysgd-cont:workspaces-list');
+  }
+
+  async changeWorkspace(workspaceId: string): Promise<void> {
+    this.activeWorkspaceId = workspaceId;
+    this.ledger.setActiveWorkspaceId(workspaceId);
+    await this.syncRemoteWithLocal();
   }
 
   continueOffline(): void {
@@ -418,11 +437,10 @@ export class AppComponent implements OnInit {
     }
 
     const remote = await this.registroSync.pull(token);
-    if (remote.registro) {
-      this.registro = {
-        ...remote.registro,
-        inventario: remote.inventarioRegistro ?? remote.registro.inventario
-      };
+    if (remote) {
+      this.registro = this.ledger.normalizeWorkspacesResponse(remote);
+      this.workspaces = this.ledger.getAvailableWorkspaces();
+      this.activeWorkspaceId = this.ledger.getActiveWorkspaceId();
       this.ledger.saveRegistro(this.registro);
       this.patchForms();
       this.refreshReport();
