@@ -62,11 +62,13 @@ export class RegistroSyncService {
   ) {}
 
   async pull(token: string): Promise<ContLedgerResponse> {
-    return firstValueFrom(
+    const response = await firstValueFrom(
       this.http.get<ContLedgerResponse>(`${this.auth.apiBaseUrl}/api/cont-ledger`, {
         headers: this.auth.authHeaders(token)
       })
     );
+    console.log('[SYNC DEBUG] Datos recibidos del servidor:', JSON.stringify(response, null, 2));
+    return response;
   }
 
   async push(token: string, registro: RegistroTCP): Promise<void> {
