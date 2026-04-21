@@ -39,7 +39,8 @@
 
 .primary-btn,
 .file-btn,
-.secondary-btn {
+.secondary-btn,
+.danger-btn {
   padding: 0.5rem 1rem;
   border-radius: 4px;
   font-size: 0.9rem;
@@ -73,6 +74,15 @@
 
 .file-btn:hover {
   background: #43a047;
+}
+
+.danger-btn {
+  background: #d32f2f;
+  color: white;
+}
+
+.danger-btn:hover {
+  background: #b71c1c;
 }
 
 .message {

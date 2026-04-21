@@ -75,6 +75,16 @@ export class RegistroSyncService {
     );
   }
 
+  async pushRaw(token: string, data: unknown): Promise<void> {
+    await firstValueFrom(
+      this.http.put(
+        `${this.auth.apiBaseUrl}/api/cont-ledger`,
+        data,
+        { headers: this.auth.authHeaders(token) }
+      )
+    );
+  }
+
   async generateTcpPdf(token: string, registro: RegistroTCP): Promise<HttpResponse<Blob>> {
     const payload: TcpPdfPayload = {
       generalData: {

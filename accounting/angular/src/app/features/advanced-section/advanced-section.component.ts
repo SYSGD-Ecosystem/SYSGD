@@ -15,6 +15,7 @@ export class AdvancedSectionComponent {
   @Input() registro!: RegistroTCP;
   @Output() restoreFromJson = new EventEmitter<string>();
   @Output() importFile = new EventEmitter<File>();
+  @Output() pushRawJson = new EventEmitter<string>();
 
   jsonInput = '';
   message = '';
@@ -51,5 +52,16 @@ export class AdvancedSectionComponent {
   clearJsonInput(): void {
     this.jsonInput = '';
     this.message = '';
+  }
+
+  pushRawJsonToServer(): void {
+    if (!this.jsonInput.trim()) {
+      this.message = 'El campo está vacío.';
+      this.isError = true;
+      return;
+    }
+    this.pushRawJson.emit(this.jsonInput.trim());
+    this.message = 'Enviando al servidor...';
+    this.isError = false;
   }
 }

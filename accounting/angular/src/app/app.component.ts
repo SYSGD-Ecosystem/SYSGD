@@ -375,6 +375,23 @@ export class AppComponent implements OnInit {
     }
   }
 
+  async pushRawJsonToServer(jsonString: string): Promise<void> {
+    const token = this.auth.token;
+    if (!token) {
+      this.authError = 'Debes iniciar sesión para enviar datos al servidor';
+      return;
+    }
+
+    try {
+      const data = JSON.parse(jsonString);
+      await this.registroSync.pushRaw(token, data);
+      this.backupMessage = 'Datos enviados al servidor correctamente.';
+      await this.syncRemoteWithLocal();
+    } catch (error) {
+      this.backupMessage = this.formatError(error, 'No se pudieron enviar los datos al servidor.');
+    }
+  }
+
   async downloadPdf(): Promise<void> {
     const token = this.auth.token;
     if (!token) {

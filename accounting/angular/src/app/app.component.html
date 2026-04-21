@@ -111,6 +111,7 @@
           [registro]="registro"
           (restoreFromJson)="restoreFromJsonText($event)"
           (importFile)="importRegistroJson($event)"
+          (pushRawJson)="pushRawJsonToServer($event)"
         />
 
         <div class="bottom-tabs card" *ngIf="activeTab === 'ledger'">

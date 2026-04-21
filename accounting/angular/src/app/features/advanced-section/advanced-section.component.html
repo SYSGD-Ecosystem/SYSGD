@@ -24,6 +24,9 @@
           Importar archivo JSON
           <input type="file" accept=".json" (change)="onFileSelected($event)" hidden />
         </label>
+        <button type="button" class="danger-btn" (click)="pushRawJsonToServer()">
+          Enviar texto en bruto
+        </button>
       </div>
 
       <p *ngIf="message" class="message" [class.error]="isError">{{ message }}</p>
