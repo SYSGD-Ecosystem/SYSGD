@@ -6,7 +6,7 @@
     </div>
     <div class="session-box">
       <span class="badge" [class.offline]="!isOnline">{{ isOnline ? 'Conectado' : 'Offline' }}</span>
-      <select *ngIf="workspaces.length > 1" class="workspace-select" [value]="activeWorkspaceId" (change)="changeWorkspace($any($event.target).value)">
+      <select *ngIf="workspaces.length > 0" class="workspace-select" [value]="activeWorkspaceId" (change)="changeWorkspace($any($event.target).value)">
         <option *ngFor="let ws of workspaces" [value]="ws.id">{{ ws.name }}</option>
       </select>
       <span class="user-pill">{{ currentUser.name }}</span>

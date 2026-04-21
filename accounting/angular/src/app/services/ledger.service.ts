@@ -579,7 +579,10 @@ export class LedgerService {
   }
 
   normalizeWorkspacesResponse(response: ContLedgerResponse): RegistroTCP {
+    console.log('[LEDGER] normalizeWorkspacesResponse:', JSON.stringify(response).slice(0, 500));
+
     if (!response.activeWorkspaceId && !response.workspaces) {
+      console.log('[LEDGER] Formato antiguo detectado');
       const oldFormat = response as unknown as { registro: RegistroTCP; inventarioRegistro?: InventarioRegistro };
       if (oldFormat.registro) {
         return this.normalizeRegistro(oldFormat.registro);
@@ -589,6 +592,7 @@ export class LedgerService {
     const activeId = response.activeWorkspaceId;
     const workspaces = response.workspaces ?? [];
 
+    console.log('[LEDGER] Workspaces encontrados:', workspaces.length);
     this.setActiveWorkspaceId(activeId);
     this.saveAvailableWorkspaces(workspaces.map((w) => ({ id: w.id, name: w.name })));
 
