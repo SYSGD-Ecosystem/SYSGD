@@ -20,6 +20,7 @@ import {
 
 const LEDGER_CACHE_KEY = 'sysgd-cont:registro-tcp';
 const WORKSPACE_CACHE_KEY = 'sysgd-cont:workspace-id';
+const WORKSPACES_FULL_KEY = 'sysgd-cont:workspaces-full';
 
 interface WorkspaceData {
   id: string;
@@ -578,6 +579,19 @@ export class LedgerService {
     localStorage.setItem('sysgd-cont:workspaces-list', JSON.stringify(workspaces));
   }
 
+  saveWorkspacesFull(data: unknown): void {
+    localStorage.setItem(WORKSPACES_FULL_KEY, JSON.stringify(data));
+  }
+
+  getWorkspacesFull(): unknown | null {
+    try {
+      const raw = localStorage.getItem(WORKSPACES_FULL_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
   normalizeWorkspacesResponse(response: ContLedgerResponse): RegistroTCP {
     console.log('[LEDGER] normalizeWorkspacesResponse:', JSON.stringify(response).slice(0, 500));
 
@@ -590,6 +604,7 @@ export class LedgerService {
       
       this.setActiveWorkspaceId(activeId);
       this.saveAvailableWorkspaces(workspaces.map((w) => ({ id: w.id, name: w.name })));
+      this.saveWorkspacesFull(response);
 
       const activeWorkspace = workspaces.find((w) => w.id === activeId);
       if (!activeWorkspace) {

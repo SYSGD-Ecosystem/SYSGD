@@ -10,7 +10,7 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId "cu.lazaroysr96.sysgdcont.freemium"
+        applicationId "cu.lazaroysr96.sysgdcont"
         minSdk 24
         targetSdk 34
         versionCode 21

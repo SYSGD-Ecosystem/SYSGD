@@ -296,9 +296,8 @@ constructor(
         }
     }
 
-    private fun emptyWorkspaceSnapshot(name: String = "Negocio principal"): WorkspaceSnapshot {
-        val baseRegistro =
-                emptyRegistro().copy(generales = emptyRegistro().generales.copy(nombre = name))
+    private fun emptyWorkspaceSnapshot(): WorkspaceSnapshot {
+        val baseRegistro = emptyRegistro()
         return WorkspaceSnapshot(
                 registro = baseRegistro,
                 accounting =
@@ -444,9 +443,7 @@ constructor(
                     val id = entry.id?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
                     CloudWorkspaceEntry(
                             id = id,
-                            name = entry.name?.takeIf { it.isNotBlank() }
-                                            ?: registro.generales.nombre.takeIf { it.isNotBlank() }
-                                                    ?: "Negocio principal",
+                            name = entry.name?.takeIf { it.isNotBlank() } ?: "Negocio principal",
                             registro = normalizeImportedRegistro(registro),
                             accounting = normalizeAccountingState(entry.accounting)
                     )
@@ -493,11 +490,7 @@ constructor(
                     listOf(
                             WorkspaceProfile(
                                     id = getCurrentWorkspaceId(),
-                                    nombre =
-                                            getRegistro().generales.nombre.takeIf {
-                                                it.isNotBlank()
-                                            }
-                                                    ?: "Negocio principal"
+                                    nombre = "Negocio principal"
                             )
                     )
                 }
@@ -509,7 +502,7 @@ constructor(
                                 buildActiveWorkspaceSnapshot()
                             } else {
                                 readWorkspaceSnapshot(profile.id)
-                                        ?: emptyWorkspaceSnapshot(profile.nombre)
+                                        ?: emptyWorkspaceSnapshot()
                             }
                     snapshotToCloudEntry(profile, snapshot)
                 }
@@ -664,9 +657,7 @@ constructor(
         val existing = parseWorkspaceProfiles(prefs[WORKSPACES_KEY]).toMutableList()
         val currentId = prefs[CURRENT_WORKSPACE_ID_KEY] ?: DEFAULT_WORKSPACE_ID
         if (existing.none { it.id == currentId }) {
-            val currentName =
-                    getRegistro().generales.nombre.takeIf { it.isNotBlank() } ?: "Negocio principal"
-            existing.add(WorkspaceProfile(id = currentId, nombre = currentName))
+            existing.add(WorkspaceProfile(id = currentId, nombre = "Negocio principal"))
         }
         context.ledgerDataStore.edit { editable ->
             editable[WORKSPACES_KEY] = gson.toJson(existing.distinctBy { it.id })
@@ -738,7 +729,7 @@ constructor(
                 WorkspaceProfile(id = UUID.randomUUID().toString(), nombre = nombreNormalizado)
         val current = workspaceProfiles.first().toMutableList()
         current.add(profile)
-        val snapshot = emptyWorkspaceSnapshot(nombreNormalizado)
+        val snapshot = emptyWorkspaceSnapshot()
 
         context.ledgerDataStore.edit { prefs ->
             prefs[WORKSPACES_KEY] = gson.toJson(current.distinctBy { it.id })
@@ -760,10 +751,7 @@ constructor(
         persistActiveWorkspaceSnapshot(activeWorkspaceId)
         val snapshot =
                 readWorkspaceSnapshot(workspaceId)
-                        ?: emptyWorkspaceSnapshot(
-                                profiles.firstOrNull { it.id == workspaceId }?.nombre
-                                        ?: "Nuevo negocio"
-                        )
+                        ?: emptyWorkspaceSnapshot()
         applyWorkspaceSnapshot(snapshot)
 
         val updatedProfiles =
@@ -776,25 +764,6 @@ constructor(
             prefs[CURRENT_WORKSPACE_ID_KEY] = workspaceId
             prefs[WORKSPACES_KEY] = gson.toJson(updatedProfiles)
         }
-    }
-
-    private suspend fun updateWorkspaceDisplayNameIfNeeded(nombre: String) {
-        val nombreNormalizado = nombre.trim()
-        if (nombreNormalizado.isBlank()) return
-        val currentId = getCurrentWorkspaceId()
-        val profiles = workspaceProfiles.first()
-        val updated =
-                profiles.map { profile ->
-                    if (profile.id == currentId && profile.nombre != nombreNormalizado) {
-                        profile.copy(
-                                nombre = nombreNormalizado,
-                                updatedAt = System.currentTimeMillis()
-                        )
-                    } else {
-                        profile
-                    }
-                }
-        context.ledgerDataStore.edit { prefs -> prefs[WORKSPACES_KEY] = gson.toJson(updated) }
     }
 
     suspend fun crearCuentaContable(
@@ -988,11 +957,7 @@ constructor(
                         listOf(
                                 CloudWorkspaceEntry(
                                         id = DEFAULT_WORKSPACE_ID,
-                                        name =
-                                                legacyRegistro.generales.nombre.takeIf {
-                                                    it.isNotBlank()
-                                                }
-                                                        ?: "Negocio principal",
+                                        name = "Negocio principal",
                                         registro = legacyRegistro,
                                         accounting =
                                                 AccountingWorkspaceState(
@@ -1153,13 +1118,7 @@ constructor(
                                                         listOf(
                                                                 CloudWorkspaceEntry(
                                                                         id = DEFAULT_WORKSPACE_ID,
-                                                                        name =
-                                                                                registro.generales
-                                                                                        .nombre
-                                                                                        .takeIf {
-                                                                                            it.isNotBlank()
-                                                                                        }
-                                                                                        ?: "Negocio principal",
+                                                                        name = "Negocio principal",
                                                                         registro =
                                                                                 normalizeImportedRegistro(
                                                                                         registro
@@ -1207,13 +1166,7 @@ constructor(
                                                         listOf(
                                                                 CloudWorkspaceEntry(
                                                                         id = DEFAULT_WORKSPACE_ID,
-                                                                        name =
-                                                                                registro.generales
-                                                                                        .nombre
-                                                                                        .takeIf {
-                                                                                            it.isNotBlank()
-                                                                                        }
-                                                                                        ?: "Negocio principal",
+                                                                        name = "Negocio principal",
                                                                         registro =
                                                                                 normalizeImportedRegistro(
                                                                                         registro
@@ -1232,13 +1185,7 @@ constructor(
                                                     listOf(
                                                             CloudWorkspaceEntry(
                                                                     id = DEFAULT_WORKSPACE_ID,
-                                                                    name =
-                                                                            legacyRegistro.generales
-                                                                                    ?.nombre
-                                                                                    ?.takeIf {
-                                                                                        !it.isNullOrBlank()
-                                                                                    }
-                                                                                    ?: "Negocio principal",
+                                                                    name = "Negocio principal",
                                                                     registro =
                                                                             migrateFromLegacy(
                                                                                     legacyRegistro
@@ -1623,7 +1570,6 @@ constructor(
 
     suspend fun updateGenerales(data: GeneralesData) {
         val current = getRegistro()
-        updateWorkspaceDisplayNameIfNeeded(data.nombre)
         saveUserEditedRegistro(current.copy(generales = data))
     }
 

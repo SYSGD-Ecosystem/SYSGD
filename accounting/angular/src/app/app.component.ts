@@ -244,8 +244,21 @@ export class AppComponent implements OnInit {
   }
 
   async changeWorkspace(workspaceId: string): Promise<void> {
+    const token = this.auth.token;
+    if (!token) return;
+
     this.activeWorkspaceId = workspaceId;
     this.ledger.setActiveWorkspaceId(workspaceId);
+
+    const workspacesFull = this.ledger.getWorkspacesFull();
+    if (workspacesFull) {
+      try {
+        await this.registroSync.pushRaw(token, workspacesFull);
+      } catch (error) {
+        console.error('Error al guardar workspace en servidor:', error);
+      }
+    }
+
     await this.syncRemoteWithLocal();
   }
 

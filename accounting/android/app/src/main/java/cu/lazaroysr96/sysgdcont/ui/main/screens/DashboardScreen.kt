@@ -1,5 +1,6 @@
 package cu.lazaroysr96.sysgdcont.ui.main.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,10 +17,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.MenuBook
@@ -28,13 +33,21 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+// import androidx.compose.material3.ExposedDropdownMenu
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,12 +60,18 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cu.lazaroysr96.sysgdcont.data.model.AnnualReport
+import cu.lazaroysr96.sysgdcont.data.model.CuentaContable
 import cu.lazaroysr96.sysgdcont.data.model.GeneralesData
 import cu.lazaroysr96.sysgdcont.data.model.WorkspaceProfile
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 private data class DashboardShortcut(
     val title: String,
@@ -71,6 +90,8 @@ fun DashboardScreen(
     hasLocalChanges: Boolean,
     workspaces: List<WorkspaceProfile>,
     currentWorkspaceId: String,
+    cuentasIngreso: List<CuentaContable>,
+    cuentasGasto: List<CuentaContable>,
     onSwitchWorkspace: (String) -> Unit,
     onCreateWorkspace: (String) -> Unit,
     onOpenRegistro: () -> Unit,
@@ -79,8 +100,18 @@ fun DashboardScreen(
     onOpenCatalogos: () -> Unit,
     onOpenTerceros: () -> Unit,
     onOpenDocumentos: () -> Unit,
+    onQuickRegisterOperation: (
+        fecha: LocalDate,
+        ingreso: Double?,
+        ingresoCuentaId: String?,
+        gasto: Double?,
+        gastoCuentaId: String?,
+        nota: String
+    ) -> Unit,
 ) {
     var showWorkspaceDialog by remember { mutableStateOf(false) }
+    var showQuickActions by remember { mutableStateOf(false) }
+    var showOperationDialog by remember { mutableStateOf(false) }
     val colorScheme = MaterialTheme.colorScheme
     val isDarkTheme = colorScheme.background.luminance() < 0.5f
     val shortcutTones = listOf(
@@ -141,102 +172,152 @@ fun DashboardScreen(
         ),
     )
 
-    val nombreContribuyente = generales.nombre.takeIf { it.isNotBlank() } ?: "Tu negocio"
+    val nombreContribuyente = generales.nombre.takeIf { it.isNotBlank() } ?: "Contribuyente sin nombre"
     val currentWorkspace = workspaces.firstOrNull { it.id == currentWorkspaceId }
     val anio = generales.anio
     val ingresos = report?.totalIngresos ?: 0.0
     val gastos = report?.totalGastos ?: 0.0
     val neto = report?.baseImponible ?: 0.0
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(colorScheme.background)
-            .verticalScroll(rememberScrollState())
     ) {
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            colorScheme.secondary,
-                            colorScheme.primary,
-                            colorScheme.secondary.copy(alpha = if (isDarkTheme) 0.82f else 0.92f)
-                        )
-                    ),
-                    shape = RoundedCornerShape(bottomStart = 34.dp, bottomEnd = 34.dp)
-                )
-                .padding(horizontal = 20.dp, vertical = 20.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
         ) {
-            Column {
-                Text(
-                    text = "Panel principal",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = colorScheme.onPrimary.copy(alpha = 0.88f)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                colorScheme.secondary,
+                                colorScheme.primary,
+                                colorScheme.secondary.copy(alpha = if (isDarkTheme) 0.82f else 0.92f)
+                            )
+                        ),
+                        shape = RoundedCornerShape(bottomStart = 34.dp, bottomEnd = 34.dp)
+                    )
+                    .padding(horizontal = 20.dp, vertical = 20.dp)
+            ) {
+                Column {
+                    // Text(
+                    //     text = "Panel principal",
+                    //     style = MaterialTheme.typography.labelLarge,
+                    //     color = colorScheme.onPrimary.copy(alpha = 0.88f)
+                    // )
+                    // Spacer(modifier = Modifier.height(6.dp))
+                    // Text(
+                    //     text = nombreContribuyente,
+                    //     style = MaterialTheme.typography.headlineMedium,
+                    //     fontWeight = FontWeight.Bold,
+                    //     color = colorScheme.onPrimary,
+                    //     maxLines = 2,
+                    //     overflow = TextOverflow.Ellipsis
+                    // )
+                    // Spacer(modifier = Modifier.height(6.dp))
+                    // Text(
+                    //     text = "Visión rápida del año $anio y acceso a todas las herramientas.",
+                    //     style = MaterialTheme.typography.bodyMedium,
+                    //     color = colorScheme.onPrimary.copy(alpha = 0.92f)
+                    // )
+
+                    WorkspaceOverviewCard(
+                    currentWorkspaceName = currentWorkspace?.nombre ?: "Negocio principal",
+                    totalWorkspaces = workspaces.size,
+                    onManage = { showWorkspaceDialog = true }
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+
+
+                    Spacer(modifier = Modifier.height(20.dp))
+                    DashboardHeroCard(
+                        ingresos = ingresos,
+                        gastos = gastos,
+                        neto = neto,
+                        lastSync = lastSync,
+                        hasLocalChanges = hasLocalChanges,
+                        isDarkTheme = isDarkTheme,
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // WorkspaceOverviewCard(
+                //     currentWorkspaceName = currentWorkspace?.nombre ?: "Negocio principal",
+                //     totalWorkspaces = workspaces.size,
+                //     onManage = { showWorkspaceDialog = true }
+                // )
+
                 Text(
-                    text = nombreContribuyente,
-                    style = MaterialTheme.typography.headlineMedium,
+                    text = "Accesos rápidos",
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = colorScheme.onPrimary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    color = colorScheme.onBackground
                 )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "Visión rápida del año $anio y acceso a todas las herramientas.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colorScheme.onPrimary.copy(alpha = 0.92f)
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-                DashboardHeroCard(
-                    ingresos = ingresos,
-                    gastos = gastos,
-                    neto = neto,
-                    lastSync = lastSync,
-                    hasLocalChanges = hasLocalChanges,
-                    isDarkTheme = isDarkTheme,
-                )
+
+                shortcuts.chunked(2).forEach { rowItems ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        rowItems.forEach { item ->
+                            DashboardShortcutCard(
+                                shortcut = item,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        if (rowItems.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(96.dp))
             }
         }
 
         Column(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(20.dp),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            WorkspaceOverviewCard(
-                currentWorkspaceName = currentWorkspace?.nombre ?: nombreContribuyente,
-                totalWorkspaces = workspaces.size,
-                onManage = { showWorkspaceDialog = true }
-            )
-
-            Text(
-                text = "Accesos rápidos",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = colorScheme.onBackground
-            )
-
-            shortcuts.chunked(2).forEach { rowItems ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    rowItems.forEach { item ->
-                        DashboardShortcutCard(
-                            shortcut = item,
-                            modifier = Modifier.weight(1f)
-                        )
+            AnimatedVisibility(visible = showQuickActions) {
+                QuickDashboardAction(
+                    label = "Registrar operación",
+                    icon = Icons.Default.EditNote,
+                    onClick = {
+                        showOperationDialog = true
+                        showQuickActions = false
                     }
-                    if (rowItems.size == 1) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-                }
+                )
             }
-
-            Spacer(modifier = Modifier.height(10.dp))
+            AnimatedVisibility(visible = showQuickActions) {
+                QuickDashboardAction(
+                    label = "Punto de venta",
+                    icon = Icons.Default.Inventory2,
+                    onClick = {
+                        onOpenVentas()
+                        showQuickActions = false
+                    }
+                )
+            }
+            FloatingActionButton(
+                onClick = { showQuickActions = !showQuickActions }
+            ) {
+                Icon(
+                    if (showQuickActions) Icons.Default.Close else Icons.Default.Add,
+                    contentDescription = if (showQuickActions) "Cerrar acciones rápidas" else "Abrir acciones rápidas"
+                )
+            }
         }
     }
 
@@ -254,6 +335,221 @@ fun DashboardScreen(
                 showWorkspaceDialog = false
             }
         )
+    }
+
+    if (showOperationDialog) {
+        DashboardOperacionDialog(
+            cuentasIngreso = cuentasIngreso,
+            cuentasGasto = cuentasGasto,
+            onDismiss = { showOperationDialog = false },
+            onConfirm = { fecha, ingreso, ingresoCuentaId, gasto, gastoCuentaId, nota ->
+                onQuickRegisterOperation(fecha, ingreso, ingresoCuentaId, gasto, gastoCuentaId, nota)
+                showOperationDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun QuickDashboardAction(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 4.dp,
+            shadowElevation = 2.dp
+        ) {
+            Text(
+                text = label,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
+        FloatingActionButton(onClick = onClick) {
+            Icon(icon, contentDescription = null)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DashboardOperacionDialog(
+    cuentasIngreso: List<CuentaContable>,
+    cuentasGasto: List<CuentaContable>,
+    onDismiss: () -> Unit,
+    onConfirm: (
+        fecha: LocalDate,
+        ingreso: Double?,
+        ingresoCuentaId: String?,
+        gasto: Double?,
+        gastoCuentaId: String?,
+        nota: String
+    ) -> Unit
+) {
+    var fecha by remember { mutableStateOf(LocalDate.now()) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var ingreso by remember { mutableStateOf("") }
+    var gasto by remember { mutableStateOf("") }
+    var nota by remember { mutableStateOf("") }
+    var ingresoCuentaId by remember { mutableStateOf(cuentasIngreso.firstOrNull()?.id.orEmpty()) }
+    var gastoCuentaId by remember { mutableStateOf(cuentasGasto.firstOrNull()?.id.orEmpty()) }
+    val formatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
+    val ingresoCuenta = cuentasIngreso.firstOrNull { it.id == ingresoCuentaId }
+    val gastoCuenta = cuentasGasto.firstOrNull { it.id == gastoCuentaId }
+    val ingresoValue = ingreso.toDoubleOrNull()?.takeIf { it > 0.0 }
+    val gastoValue = gasto.toDoubleOrNull()?.takeIf { it > 0.0 }
+    val canSubmit = (ingresoValue != null || gastoValue != null) &&
+        (ingresoValue == null || ingresoCuentaId.isNotBlank()) &&
+        (gastoValue == null || gastoCuentaId.isNotBlank())
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Registrar operación") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = fecha.format(formatter),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Fecha") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true }
+                )
+                OutlinedTextField(
+                    value = ingreso,
+                    onValueChange = { ingreso = it },
+                    label = { Text("Ingreso") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                )
+                CuentaSeleccionField(
+                    label = "Cuenta de ingreso",
+                    cuentas = cuentasIngreso,
+                    selectedCuenta = ingresoCuenta,
+                    onSelectCuenta = { ingresoCuentaId = it }
+                )
+                OutlinedTextField(
+                    value = gasto,
+                    onValueChange = { gasto = it },
+                    label = { Text("Gasto") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                )
+                CuentaSeleccionField(
+                    label = "Cuenta de gasto",
+                    cuentas = cuentasGasto,
+                    selectedCuenta = gastoCuenta,
+                    onSelectCuenta = { gastoCuentaId = it }
+                )
+                OutlinedTextField(
+                    value = nota,
+                    onValueChange = { nota = it },
+                    label = { Text("Nota") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = false,
+                    minLines = 2
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onConfirm(
+                        fecha,
+                        ingresoValue,
+                        ingresoCuentaId.takeIf { it.isNotBlank() },
+                        gastoValue,
+                        gastoCuentaId.takeIf { it.isNotBlank() },
+                        nota.trim()
+                    )
+                },
+                enabled = canSubmit
+            ) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = fecha.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            fecha = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancelar")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CuentaSeleccionField(
+    label: String,
+    cuentas: List<CuentaContable>,
+    selectedCuenta: CuentaContable?,
+    onSelectCuenta: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded }
+    ) {
+        OutlinedTextField(
+            value = selectedCuenta?.let { "${it.codigo} · ${it.nombre}" }.orEmpty(),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.menuAnchor().fillMaxWidth()
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            cuentas.forEach { cuenta ->
+                DropdownMenuItem(
+                    text = { Text("${cuenta.codigo} · ${cuenta.nombre}") },
+                    onClick = {
+                        onSelectCuenta(cuenta.id)
+                        expanded = false
+                    }
+                )
+            }
+        }
     }
 }
 

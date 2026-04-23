@@ -32,14 +32,32 @@ export const saveContLedger = async (req: Request, res: Response) => {
 		return;
 	}
 
-	const { registro, inventarioRegistro } = req.body as { registro?: unknown; inventarioRegistro?: unknown };
-	if (typeof registro === "undefined") {
-		res.status(400).json({ error: "Falta el campo registro" });
-		return;
+	const body = req.body as {
+		registro?: unknown;
+		inventarioRegistro?: unknown;
+		activeWorkspaceId?: string;
+		workspaces?: unknown[];
+		inventario?: unknown;
+	};
+
+	let registroToSave: unknown;
+	let inventarioRegistroToSave: unknown | undefined;
+
+	if (body.workspaces && body.activeWorkspaceId) {
+		console.log("[CONT-LEDGER] Recibido formato con workspaces");
+		registroToSave = body;
+		inventarioRegistroToSave = body.inventario ?? body.inventarioRegistro ?? undefined;
+	} else {
+		if (typeof body.registro === "undefined") {
+			res.status(400).json({ error: "Falta el campo registro" });
+			return;
+		}
+		registroToSave = body.registro;
+		inventarioRegistroToSave = body.inventarioRegistro;
 	}
 
 	try {
-		const saved = await upsertContLedgerByUser(user.id, registro, inventarioRegistro);
+		const saved = await upsertContLedgerByUser(user.id, registroToSave, inventarioRegistroToSave);
 		res.status(200).json({
 			message: "Registro contable guardado",
 			updatedAt: saved.updatedAt,

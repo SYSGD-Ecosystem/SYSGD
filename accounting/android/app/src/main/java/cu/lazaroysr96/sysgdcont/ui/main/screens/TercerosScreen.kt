@@ -563,7 +563,7 @@ private fun TerceroCard(
                         actionIcon = Icons.Default.ContentCopy,
                         actionDescription = "Copiar tarjeta",
                         onAction = { copyToClipboard(context, "Tarjeta", tercero.numeroTarjeta) },
-                        onCopy = { copyToClipboard(context, "Tarjeta", tercero.numeroTarjeta) }
+                        onCopy = null
                     )
                     ContactLine(
                         icon = Icons.Default.Sell,
@@ -571,7 +571,7 @@ private fun TerceroCard(
                         actionIcon = Icons.Default.ContentCopy,
                         actionDescription = "Copiar wallet",
                         onAction = { copyToClipboard(context, "Wallet", tercero.direccionCrypto) },
-                        onCopy = { copyToClipboard(context, "Wallet", tercero.direccionCrypto) }
+                        onCopy = null
                     )
 
                     if (tercero.direccion.isNotBlank()) {
@@ -646,7 +646,7 @@ private fun ContactLine(
     actionIcon: ImageVector,
     actionDescription: String,
     onAction: () -> Unit,
-    onCopy: () -> Unit
+    onCopy: (() -> Unit)? = null
 ) {
     if (value.isBlank()) return
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -655,8 +655,10 @@ private fun ContactLine(
         IconButton(onClick = onAction) {
             Icon(actionIcon, contentDescription = actionDescription)
         }
-        IconButton(onClick = onCopy) {
-            Icon(Icons.Default.ContentCopy, contentDescription = "Copiar")
+        onCopy?.let {
+            IconButton(onClick = it) {
+                Icon(Icons.Default.ContentCopy, contentDescription = "Copiar")
+            }
         }
     }
 }

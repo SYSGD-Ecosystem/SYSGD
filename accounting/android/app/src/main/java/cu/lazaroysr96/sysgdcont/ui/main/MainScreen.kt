@@ -696,6 +696,8 @@ fun MainScreen(
                         hasLocalChanges = ledgerState.hasLocalChanges,
                         workspaces = ledgerState.workspaceProfiles,
                         currentWorkspaceId = ledgerState.currentWorkspaceId,
+                        cuentasIngreso = ledgerState.cuentasIngreso,
+                        cuentasGasto = ledgerState.cuentasGasto,
                         onSwitchWorkspace = ledgerViewModel::switchWorkspace,
                         onCreateWorkspace = ledgerViewModel::createWorkspace,
                         onOpenRegistro = {
@@ -726,6 +728,19 @@ fun MainScreen(
                         onOpenDocumentos = {
                             navController.navigate(DOCUMENTOS_ROUTE) {
                                 launchSingleTop = true
+                            }
+                        },
+                        onQuickRegisterOperation = { fecha, ingreso, ingresoCuentaId, gasto, gastoCuentaId, nota ->
+                            val month = cu.lazaroysr96.sysgdcont.data.repository.LedgerConstants.MONTHS
+                                .getOrElse(fecha.monthValue - 1) {
+                                    cu.lazaroysr96.sysgdcont.data.repository.LedgerConstants.MONTHS.first()
+                                }
+                            val dia = fecha.dayOfMonth
+                            ingreso?.takeIf { it > 0.0 }?.let {
+                                ledgerViewModel.addIngreso(month, dia, it, ingresoCuentaId.orEmpty(), nota)
+                            }
+                            gasto?.takeIf { it > 0.0 }?.let {
+                                ledgerViewModel.addGasto(month, dia, it, gastoCuentaId.orEmpty(), nota)
                             }
                         }
                     )
