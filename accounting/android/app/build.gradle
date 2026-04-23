@@ -3,6 +3,7 @@ plugins {
     id 'org.jetbrains.kotlin.android'
     id 'com.google.devtools.ksp'
     id 'com.google.dagger.hilt.android'
+    id 'org.jetbrains.kotlin.plugin.serialization'
 }
 
 android {
@@ -10,7 +11,7 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId "cu.lazaroysr96.sysgdcont"
+        applicationId "cu.lazaroysr96.sysgdcont.freemium"
         minSdk 24
         targetSdk 34
         versionCode 21
@@ -106,6 +107,12 @@ dependencies {
 
     // PDF Generation
     implementation 'com.itextpdf:itext7-core:7.2.5'
+
+    // Coil for image loading
+    implementation 'io.coil-kt:coil-compose:2.6.0'
+
+    // Kotlinx Serialization (para ProductoImagen)
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 
     // Room Database
     implementation 'androidx.room:room-runtime:2.6.1'

@@ -58,6 +58,10 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 import java.time.ZoneOffset
+import cu.lazaroysr96.sysgdcont.ui.components.toProductoImagen
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.layout.ContentScale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -2700,11 +2704,49 @@ private fun List<LineaVenta>.resumenProductosVenta(): String {
     return if (size > 2) "$resumen +${size - 2}" else resumen
 }
 
+// @Composable
+// private fun ProductCard(
+//     producto: ProductoVenta,
+//     onClick: () -> Unit
+// ) {
+//     Card(
+//         modifier = Modifier
+//             .fillMaxWidth()
+//             .clickable(onClick = onClick),
+//         colors = CardDefaults.cardColors(
+//             containerColor = MaterialTheme.colorScheme.surfaceVariant
+//         )
+//     ) {
+//         Column(
+//             modifier = Modifier
+//                 .fillMaxWidth()
+//                 .padding(12.dp),
+//             horizontalAlignment = Alignment.CenterHorizontally
+//         ) {
+//             Text(producto.emoji, fontSize = 32.sp)
+//             Spacer(modifier = Modifier.height(4.dp))
+//             Text(
+//                 producto.nombre,
+//                 style = MaterialTheme.typography.bodyMedium,
+//                 fontWeight = FontWeight.Medium,
+//                 maxLines = 1
+//             )
+//             Text(
+//                 "%.2f CUP / %s".format(producto.precio, producto.unidad),
+//                 style = MaterialTheme.typography.bodySmall,
+//                 color = MaterialTheme.colorScheme.onSurfaceVariant
+//             )
+//         }
+//     }
+// }
+
 @Composable
 private fun ProductCard(
     producto: ProductoVenta,
     onClick: () -> Unit
 ) {
+    val imagen = producto.emoji.toProductoImagen()
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -2719,14 +2761,57 @@ private fun ProductCard(
                 .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(producto.emoji, fontSize = 32.sp)
-            Spacer(modifier = Modifier.height(4.dp))
+
+            // ── IMAGEN ─────────────────────────────
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center
+            ) {
+                when (imagen.type) {
+
+                    "emoji" -> {
+                        Text(
+                            text = imagen.data.ifEmpty { "📦" },
+                            fontSize = 32.sp
+                        )
+                    }
+
+                    "foto", "url" -> {
+                        if (imagen.data.isNotBlank()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(imagen.data)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Text("📦", fontSize = 32.sp)
+                        }
+                    }
+
+                    else -> {
+                        Text("📦", fontSize = 32.sp)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // ── NOMBRE ─────────────────────────────
             Text(
                 producto.nombre,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1
             )
+
+            // ── PRECIO ─────────────────────────────
             Text(
                 "%.2f CUP / %s".format(producto.precio, producto.unidad),
                 style = MaterialTheme.typography.bodySmall,
@@ -2741,6 +2826,8 @@ private fun ProductCardCompra(
     producto: ProductoCompra,
     onClick: () -> Unit
 ) {
+    val imagen = producto.emoji.toProductoImagen()
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -2755,14 +2842,57 @@ private fun ProductCardCompra(
                 .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(producto.emoji, fontSize = 32.sp)
-            Spacer(modifier = Modifier.height(4.dp))
+
+            // ── IMAGEN ─────────────────────────────
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center
+            ) {
+                when (imagen.type) {
+
+                    "emoji" -> {
+                        Text(
+                            text = imagen.data.ifEmpty { "📦" },
+                            fontSize = 32.sp
+                        )
+                    }
+
+                    "foto", "url" -> {
+                        if (imagen.data.isNotBlank()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(imagen.data)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Text("📦", fontSize = 32.sp)
+                        }
+                    }
+
+                    else -> {
+                        Text("📦", fontSize = 32.sp)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // ── NOMBRE ─────────────────────────────
             Text(
                 producto.nombre,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1
             )
+
+            // ── PRECIO ─────────────────────────────
             Text(
                 "%.2f CUP / %s".format(producto.precio, producto.unidad),
                 style = MaterialTheme.typography.bodySmall,
@@ -2771,6 +2901,42 @@ private fun ProductCardCompra(
         }
     }
 }
+
+// @Composable
+// private fun ProductCardCompra(
+//     producto: ProductoCompra,
+//     onClick: () -> Unit
+// ) {
+//     Card(
+//         modifier = Modifier
+//             .fillMaxWidth()
+//             .clickable(onClick = onClick),
+//         colors = CardDefaults.cardColors(
+//             containerColor = MaterialTheme.colorScheme.surfaceVariant
+//         )
+//     ) {
+//         Column(
+//             modifier = Modifier
+//                 .fillMaxWidth()
+//                 .padding(12.dp),
+//             horizontalAlignment = Alignment.CenterHorizontally
+//         ) {
+//             Text(producto.emoji, fontSize = 32.sp)
+//             Spacer(modifier = Modifier.height(4.dp))
+//             Text(
+//                 producto.nombre,
+//                 style = MaterialTheme.typography.bodyMedium,
+//                 fontWeight = FontWeight.Medium,
+//                 maxLines = 1
+//             )
+//             Text(
+//                 "%.2f CUP / %s".format(producto.precio, producto.unidad),
+//                 style = MaterialTheme.typography.bodySmall,
+//                 color = MaterialTheme.colorScheme.onSurfaceVariant
+//             )
+//         }
+//     }
+// }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

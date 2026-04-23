@@ -561,7 +561,8 @@ private fun WorkspaceOverviewCard(
 ) {
     Card(
         shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        // colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -572,11 +573,26 @@ private fun WorkspaceOverviewCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                 Text(
-                    text = "Negocio activo",
+                    text = "Panel principal",
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    // color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
                 )
+
+                Button(onClick = onManage) {
+                    Icon(
+                        imageVector = Icons.Default.AccountTree,
+                        contentDescription = null,
+                        // tint = MaterialTheme.colorScheme.primary
+                    )
+                Text("Cambiar")
+            }
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = currentWorkspaceName,
@@ -587,12 +603,12 @@ private fun WorkspaceOverviewCard(
                 Text(
                     text = "$totalWorkspaces espacio(s) de trabajo configurado(s)",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    //color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            TextButton(onClick = onManage) {
-                Text("Cambiar")
-            }
+            // TextButton(onClick = onManage) {
+            //     Text("Cambiar")
+            // }
         }
     }
 }
