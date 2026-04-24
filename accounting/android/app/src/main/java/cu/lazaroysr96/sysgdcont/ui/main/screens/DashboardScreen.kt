@@ -132,20 +132,20 @@ fun DashboardScreen(
             onClick = onOpenRegistro,
         ),
         DashboardShortcut(
-            title = "Nomencladores",
-            subtitle = "CNAE y cuentas contables",
-            icon = Icons.Default.AccountTree,
-            iconTint = shortcutTones[1].second,
-            iconBackground = shortcutTones[1].first,
-            onClick = onOpenNomencladores,
-        ),
-        DashboardShortcut(
             title = "Punto de venta",
             subtitle = "Ventas y compras",
             icon = Icons.Default.Inventory2,
             iconTint = shortcutTones[2].second,
             iconBackground = shortcutTones[2].first,
             onClick = onOpenVentas,
+        ),
+        DashboardShortcut(
+            title = "Nomencladores",
+            subtitle = "CNAE y cuentas contables",
+            icon = Icons.Default.AccountTree,
+            iconTint = shortcutTones[1].second,
+            iconBackground = shortcutTones[1].first,
+            onClick = onOpenNomencladores,
         ),
         DashboardShortcut(
             title = "Catálogos",

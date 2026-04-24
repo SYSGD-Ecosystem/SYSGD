@@ -60,8 +60,7 @@ fun ProductoFormDialog(
             if (imagenInicial.type == "emoji") imagenInicial.data else "📦"
         )
     }
-    var extraEmojis      by remember { mutableStateOf(listOf<String>()) }
-    var customEmojiInput by remember { mutableStateOf("") }
+    var extraEmojis by remember { mutableStateOf(listOf<String>()) }
 
     // Ahora es String (ruta de archivo interno) en lugar de Uri
     var fotoPath by remember {
@@ -126,16 +125,10 @@ fun ProductoFormDialog(
                         ImagenTab.EMOJI -> ProductoEmojiPanel(
                             selected            = selectedEmoji,
                             extras              = extraEmojis,
-                            customInput         = customEmojiInput,
-                            onCustomInputChange = { customEmojiInput = it },
                             onSelect            = { selectedEmoji = it },
-                            onAddCustom         = {
-                                val v = customEmojiInput.trim()
-                                if (v.isNotEmpty()) {
-                                    extraEmojis   = extraEmojis + v
-                                    selectedEmoji = v
-                                    customEmojiInput = ""
-                                }
+                            onAddCustom         = { emoji ->
+                                extraEmojis   = extraEmojis + emoji
+                                selectedEmoji = emoji
                             }
                         )
                         ImagenTab.FOTO -> ProductoFotoPanel(

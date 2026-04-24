@@ -77,7 +77,6 @@ fun AddProductoDialog(
     // Estado de imagen
     var selectedEmoji by remember { mutableStateOf("📦") }
     var extraEmojis by remember { mutableStateOf(listOf<String>()) }
-    var customEmojiInput by remember { mutableStateOf("") }
     var fotoUri by remember { mutableStateOf<Uri?>(null) }
     var urlInput by remember { mutableStateOf("") }
 
@@ -126,16 +125,10 @@ fun AddProductoDialog(
                         ImagenTab.EMOJI -> EmojiPanel(
                             selected = selectedEmoji,
                             extras = extraEmojis,
-                            customInput = customEmojiInput,
-                            onCustomInputChange = { customEmojiInput = it },
                             onSelect = { selectedEmoji = it },
-                            onAddCustom = {
-                                val v = customEmojiInput.trim()
-                                if (v.isNotEmpty()) {
-                                    extraEmojis = extraEmojis + v
-                                    selectedEmoji = v
-                                    customEmojiInput = ""
-                                }
+                            onAddCustom = { emoji ->
+                                extraEmojis = extraEmojis + emoji
+                                selectedEmoji = emoji
                             }
                         )
                         ImagenTab.FOTO -> FotoPanel(
@@ -211,95 +204,111 @@ private fun HeroSection(
     activeTab: ImagenTab,
     onTabChange: (ImagenTab) -> Unit
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(160.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-        contentAlignment = Alignment.Center
-    ) {
-        // Preview central
-        Box(
+    Column(modifier = Modifier.fillMaxWidth()) {
+
+        // ── Fila superior: label + selector de tabs ──────────────────────────
+        Row(
             modifier = Modifier
-                .size(100.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surface),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            when {
-                imagen.type == "emoji" -> {
+            Text(
+                text = "Imagen del producto",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            // Tab selector compacto
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
+                    .border(
+                        width = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                    .padding(3.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                ImagenTab.entries.forEach { tab ->
+                    val selected = tab == activeTab
+                    val label = when (tab) {
+                        ImagenTab.EMOJI -> "Emoji"
+                        ImagenTab.FOTO  -> "Foto"
+                        ImagenTab.URL   -> "URL"
+                    }
                     Text(
-                        text = imagen.data.ifEmpty { "📦" },
-                        fontSize = 56.sp,
-                        textAlign = TextAlign.Center
+                        text = label,
+                        fontSize = 11.sp,
+                        fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.Medium
+                                     else androidx.compose.ui.text.font.FontWeight.Normal,
+                        color = if (selected) MaterialTheme.colorScheme.onSurface
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(7.dp))
+                            .background(
+                                if (selected) MaterialTheme.colorScheme.surface
+                                else androidx.compose.ui.graphics.Color.Transparent
+                            )
+                            .clickable { onTabChange(tab) }
+                            .padding(horizontal = 9.dp, vertical = 4.dp)
                     )
-                }
-                imagen.type == "foto" && fotoUri != null -> {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(fotoUri)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-                imagen.type == "url" && imagen.data.isNotBlank() -> {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(imagen.data)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-                else -> {
-                    Text("📦", fontSize = 56.sp, textAlign = TextAlign.Center)
                 }
             }
         }
 
-        // Tabs en esquina superior derecha
-        Row(
+        // ── Preview de la imagen / emoji ─────────────────────────────────────
+        Box(
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(10.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
-                .border(
-                    width = 0.5.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant,
-                    shape = RoundedCornerShape(10.dp)
-                )
-                .padding(3.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                .fillMaxWidth()
+                .height(120.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+            contentAlignment = Alignment.Center
         ) {
-            ImagenTab.entries.forEach { tab ->
-                val selected = tab == activeTab
-                val label = when (tab) {
-                    ImagenTab.EMOJI -> "Emoji"
-                    ImagenTab.FOTO  -> "Foto"
-                    ImagenTab.URL   -> "URL"
-                }
-                Text(
-                    text = label,
-                    fontSize = 11.sp,
-                    fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.Medium
-                                 else androidx.compose.ui.text.font.FontWeight.Normal,
-                    color = if (selected) MaterialTheme.colorScheme.onSurface
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(7.dp))
-                        .background(
-                            if (selected) MaterialTheme.colorScheme.surfaceVariant
-                            else androidx.compose.ui.graphics.Color.Transparent
+            Box(
+                modifier = Modifier
+                    .size(90.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center
+            ) {
+                when {
+                    imagen.type == "emoji" -> {
+                        Text(
+                            text = imagen.data.ifEmpty { "📦" },
+                            fontSize = 52.sp,
+                            textAlign = TextAlign.Center
                         )
-                        .clickable { onTabChange(tab) }
-                        .padding(horizontal = 9.dp, vertical = 4.dp)
-                )
+                    }
+                    imagen.type == "foto" && fotoUri != null -> {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(fotoUri)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    imagen.type == "url" && imagen.data.isNotBlank() -> {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(imagen.data)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    else -> {
+                        Text("📦", fontSize = 52.sp, textAlign = TextAlign.Center)
+                    }
+                }
             }
         }
     }
@@ -311,18 +320,60 @@ private fun HeroSection(
 private fun EmojiPanel(
     selected: String,
     extras: List<String>,
-    customInput: String,
-    onCustomInputChange: (String) -> Unit,
     onSelect: (String) -> Unit,
-    onAddCustom: () -> Unit
+    onAddCustom: (String) -> Unit
 ) {
-    Column(
-        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+    // Estado local del diálogo de emoji personalizado
+    var showAddDialog by remember { mutableStateOf(false) }
+    var dialogInput by remember { mutableStateOf("") }
+
+    if (showAddDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showAddDialog = false
+                dialogInput = ""
+            },
+            title = { Text("Emoji personalizado") },
+            text = {
+                OutlinedTextField(
+                    value = dialogInput,
+                    onValueChange = { dialogInput = it },
+                    placeholder = { Text("Pega o escribe un emoji…") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val v = dialogInput.trim()
+                        if (v.isNotEmpty()) {
+                            onAddCustom(v)
+                        }
+                        showAddDialog = false
+                        dialogInput = ""
+                    }
+                ) { Text("Agregar") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showAddDialog = false
+                    dialogInput = ""
+                }) { Text("Cancelar") }
+            }
+        )
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        // Fila de emojis ocupa todo el espacio disponible menos el botón
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             items(DEFAULT_EMOJIS + extras) { emoji ->
                 Text(
@@ -340,25 +391,17 @@ private fun EmojiPanel(
             }
         }
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Spacer(Modifier.width(6.dp))
+
+        // Botón + fijo al final
+        OutlinedButton(
+            onClick = { showAddDialog = true },
+            modifier = Modifier
+                .height(40.dp)
+                .widthIn(min = 44.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp)
         ) {
-            OutlinedTextField(
-                value = customInput,
-                onValueChange = onCustomInputChange,
-                placeholder = { Text("Añadir emoji…", fontSize = 12.sp) },
-                singleLine = true,
-                textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
-                modifier = Modifier.weight(1f),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
-            )
-            OutlinedButton(
-                onClick = onAddCustom,
-                modifier = Modifier.height(48.dp)
-            ) {
-                Text("+", fontSize = 18.sp)
-            }
+            Text("+", fontSize = 16.sp)
         }
     }
 }
