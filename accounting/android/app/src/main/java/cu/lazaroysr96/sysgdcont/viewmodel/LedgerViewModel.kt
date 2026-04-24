@@ -163,6 +163,28 @@ class LedgerViewModel @Inject constructor(
         }
     }
 
+    fun registrarOperacionRapida(
+        month: String,
+        dia: Int,
+        ingreso: Double?,
+        ingresoCuentaId: String = "",
+        gasto: Double?,
+        gastoCuentaId: String = "",
+        nota: String = ""
+    ) {
+        viewModelScope.launch {
+            ledgerRepository.registrarOperacionRapida(
+                month = month,
+                dia = dia,
+                ingreso = ingreso,
+                ingresoCuentaId = ingresoCuentaId,
+                gasto = gasto,
+                gastoCuentaId = gastoCuentaId,
+                nota = nota
+            )
+        }
+    }
+
     fun editIngreso(month: String, oldDia: Int, newDia: Int, importe: Double, cuenta: String = "", nota: String = "") {
         viewModelScope.launch {
             ledgerRepository.updateIngreso(month, oldDia, newDia, importe, cuenta, nota)

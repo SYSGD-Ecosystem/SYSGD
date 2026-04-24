@@ -736,12 +736,15 @@ fun MainScreen(
                                     cu.lazaroysr96.sysgdcont.data.repository.LedgerConstants.MONTHS.first()
                                 }
                             val dia = fecha.dayOfMonth
-                            ingreso?.takeIf { it > 0.0 }?.let {
-                                ledgerViewModel.addIngreso(month, dia, it, ingresoCuentaId.orEmpty(), nota)
-                            }
-                            gasto?.takeIf { it > 0.0 }?.let {
-                                ledgerViewModel.addGasto(month, dia, it, gastoCuentaId.orEmpty(), nota)
-                            }
+                            ledgerViewModel.registrarOperacionRapida(
+                                month = month,
+                                dia = dia,
+                                ingreso = ingreso,
+                                ingresoCuentaId = ingresoCuentaId.orEmpty(),
+                                gasto = gasto,
+                                gastoCuentaId = gastoCuentaId.orEmpty(),
+                                nota = nota
+                            )
                         }
                     )
                 }

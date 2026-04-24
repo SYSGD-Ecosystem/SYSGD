@@ -1593,6 +1593,63 @@ constructor(
         addEntry("gastos", month, dia, importe, cuenta, nota)
     }
 
+    suspend fun registrarOperacionRapida(
+            month: String,
+            dia: Int,
+            ingreso: Double?,
+            ingresoCuentaId: String = "",
+            gasto: Double?,
+            gastoCuentaId: String = "",
+            nota: String = ""
+    ) {
+        val ingresoNormalizado = ingreso?.takeIf { it > 0.0 }
+        val gastoNormalizado = gasto?.takeIf { it > 0.0 }
+        if (ingresoNormalizado == null && gastoNormalizado == null) return
+
+        val current = getRegistro()
+        val ingresos = current.ingresos.toMutableMap()
+        val gastos = current.gastos.toMutableMap()
+
+        ingresoNormalizado?.let {
+            val monthEntries = ingresos[month]?.toMutableList() ?: mutableListOf()
+            val entryId = UUID.randomUUID().toString()
+            monthEntries.add(
+                    DayAmountRow(
+                            id = entryId,
+                            dia = dia.toString(),
+                            importe = String.format(Locale.US, "%.2f", it)
+                    )
+            )
+            ingresos[month] = monthEntries
+            saveEntryMetadata(entryId, month, "ingresos", ingresoCuentaId, nota)
+        }
+
+        gastoNormalizado?.let {
+            val monthEntries = gastos[month]?.toMutableList() ?: mutableListOf()
+            val entryId = UUID.randomUUID().toString()
+            monthEntries.add(
+                    DayAmountRow(
+                            id = entryId,
+                            dia = dia.toString(),
+                            importe = String.format(Locale.US, "%.2f", it)
+                    )
+            )
+            gastos[month] = monthEntries
+            saveEntryMetadata(entryId, month, "gastos", gastoCuentaId, nota)
+        }
+
+        saveRegistroAplicandoTributos(
+                current.copy(
+                        ingresos = ingresos.mapValues { (_, entries) ->
+                            entries.sortedBy { row -> row.dia.toIntOrNull() ?: 0 }
+                        },
+                        gastos = gastos.mapValues { (_, entries) ->
+                            entries.sortedBy { row -> row.dia.toIntOrNull() ?: 0 }
+                        }
+                )
+        )
+    }
+
     suspend fun deleteIngreso(month: String, dia: Int) {
         deleteEntry("ingresos", month, dia)
     }
