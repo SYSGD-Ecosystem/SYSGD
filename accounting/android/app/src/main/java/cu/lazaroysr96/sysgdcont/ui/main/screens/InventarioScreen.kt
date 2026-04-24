@@ -3265,6 +3265,7 @@ private fun ProductCatalogCompraSheet(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(productos) { producto ->
+                        val imagen = producto.emoji.toProductoImagen()
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -3276,7 +3277,46 @@ private fun ProductCatalogCompraSheet(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text(producto.emoji, fontSize = 24.sp)
+                                // Text(producto.emoji, fontSize = 24.sp)
+                                
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(MaterialTheme.colorScheme.surface),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    when (imagen.type) {
+
+                    "emoji" -> {
+                        Text(
+                            text = imagen.data.ifEmpty { "📦" },
+                            fontSize = 24.sp
+                        )
+                    }
+
+                    "foto", "url" -> {
+                        if (imagen.data.isNotBlank()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(imagen.data)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Text("📦", fontSize = 24.sp)
+                        }
+                    }
+
+                    else -> {
+                        Text("📦", fontSize = 24.sp)
+                    }
+                }
+                                }
+
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column {
                                     Text(

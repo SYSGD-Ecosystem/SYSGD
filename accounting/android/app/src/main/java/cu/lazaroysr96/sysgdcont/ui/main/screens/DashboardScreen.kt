@@ -39,7 +39,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-// import androidx.compose.material3.ExposedDropdownMenu
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Icon
@@ -746,14 +747,7 @@ private fun DashboardHeroCard(
                             color = colorScheme.onPrimary.copy(alpha = 0.88f)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = formatMoney(neto),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = colorScheme.onPrimary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        AnimatedMoney(targetValue = neto)
                     }
                 }
 
@@ -895,6 +889,24 @@ private fun StatusPill(
             color = contentColor
         )
     }
+}
+
+@Composable
+fun AnimatedMoney(
+    targetValue: Double,
+    duration: Int = 800
+) {
+    val animatedValue by animateFloatAsState(
+        targetValue = targetValue.toFloat(),
+        animationSpec = tween(durationMillis = duration),
+        label = "money_animation"
+    )
+
+    Text(
+        text = "${String.format("%.2f", animatedValue)} CUP",
+        style = MaterialTheme.typography.headlineLarge,
+        fontWeight = FontWeight.Bold
+    )
 }
 
 private fun formatMoney(value: Double): String = "${String.format("%.2f", value)} CUP"
