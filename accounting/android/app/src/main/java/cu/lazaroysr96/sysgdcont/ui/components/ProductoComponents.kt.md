@@ -283,7 +283,7 @@ fun EditProductoDialog(
                     onTabChange = { activeTab = it }
                 )
 
-                HorizontalDivider()
+                Divider()
 
                 // ── PANEL SELECTOR ───────────────────────────────────────────
                 Box(
@@ -317,7 +317,7 @@ fun EditProductoDialog(
                     }
                 }
 
-                HorizontalDivider()
+                Divider()
 
                 // ── CAMPOS ───────────────────────────────────────────────────
                 Column(
