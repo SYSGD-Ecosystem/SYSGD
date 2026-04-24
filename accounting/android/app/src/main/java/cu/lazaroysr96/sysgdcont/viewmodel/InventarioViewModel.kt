@@ -561,6 +561,17 @@ class InventarioViewModel @Inject constructor(
         }
     }
 
+    fun actualizarPrecioProductoVenta(productoId: String, precio: Double) {
+        viewModelScope.launch {
+            try {
+                repo.actualizarPrecioProductoVenta(productoId, precio)
+                _uiState.update { it.copy(snackbarMessage = "Precio de venta actualizado") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al actualizar precio") }
+            }
+        }
+    }
+
     fun eliminarProductoCompra(id: String) {
         viewModelScope.launch {
             try {
@@ -568,6 +579,17 @@ class InventarioViewModel @Inject constructor(
                 _uiState.update { it.copy(snackbarMessage = "Insumo eliminado") }
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = "Error al eliminar") }
+            }
+        }
+    }
+
+    fun actualizarPrecioProductoCompra(productoId: String, precio: Double) {
+        viewModelScope.launch {
+            try {
+                repo.actualizarPrecioProductoCompra(productoId, precio)
+                _uiState.update { it.copy(snackbarMessage = "Precio de compra actualizado") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al actualizar precio") }
             }
         }
     }
@@ -657,6 +679,24 @@ class InventarioViewModel @Inject constructor(
                 currentCart.remove(producto)
             }
             state.copy(cartCompra = currentCart)
+        }
+    }
+
+    fun setCartCantidad(producto: ProductoVenta, cantidad: Double) {
+        if (cantidad <= 0.0) return
+        _uiState.update { state ->
+            val currentCart = state.cart.toMutableMap()
+            currentCart[producto] = cantidad
+            state.copy(cart = currentCart, showSaleSheet = true)
+        }
+    }
+
+    fun setCartCompraCantidad(producto: ProductoCompra, cantidad: Double) {
+        if (cantidad <= 0.0) return
+        _uiState.update { state ->
+            val currentCart = state.cartCompra.toMutableMap()
+            currentCart[producto] = cantidad
+            state.copy(cartCompra = currentCart, showPurchaseSheet = true)
         }
     }
 

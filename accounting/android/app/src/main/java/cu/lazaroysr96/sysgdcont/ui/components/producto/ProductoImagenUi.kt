@@ -14,7 +14,9 @@ package cu.lazaroysr96.sysgdcont.ui.components.producto
  *   - ProductoUrlPanel      → panel de URL externa
  */
 
+import android.content.Context
 import android.net.Uri
+import android.os.Environment
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -27,6 +29,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +46,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import java.io.File
+import java.io.FileOutputStream
+import java.util.UUID
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ProductoImagenAvatar
@@ -76,15 +84,23 @@ fun ProductoImagenAvatar(
                 fontSize  = (size.value * 0.55f).sp,
                 textAlign = TextAlign.Center
             )
-            "foto" -> AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(Uri.parse(imagen.data))
-                    .crossfade(true)
-                    .build(),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier     = Modifier.fillMaxSize()
-            )
+            "foto" -> {
+                val data = imagen.data
+                val imageData = when {
+                    data.startsWith("/") -> File(data)                     // Ruta interna
+                    data.startsWith("content://") -> Uri.parse(data) // Legacy URI
+                    else -> File(data)
+                }
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(imageData)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier     = Modifier.fillMaxSize()
+                )
+            }
             "url" -> AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(imagen.data)
@@ -267,15 +283,30 @@ fun ProductoEmojiPanel(
 
 /**
  * Zona de toque que abre el selector de imagen del sistema.
+ * Copia la imagen al almacenamiento interno para persistencia.
  *
- * @param onFotoSelected Devuelve el Uri seleccionado por el usuario.
+ * @param onFotoSelected Devuelve la ruta relativa (DesdeContext) del archivo copiado.
  */
 @Composable
-fun ProductoFotoPanel(onFotoSelected: (Uri) -> Unit) {
-    // El launcher se crea aquí para encapsular la lógica de ActivityResult
+fun ProductoFotoPanel(onFotoSelected: (String) -> Unit) {
+    val context = LocalContext.current
+    val copiedPath = remember { mutableStateOf<String?>(null) }
+
     val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri -> if (uri != null) onFotoSelected(uri) }
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            // Copiar al almacenamiento interno
+            val path = copiarImagenAStorageInterno(context, it)
+            path?.let { p ->
+                copiedPath.value = p
+                onFotoSelected(p)
+            }
+        }
+    }
+
+    // Preview de imagen ya seleccionada
+    val hayImagen = copiedPath.value != null
 
     Box(
         modifier = Modifier
@@ -287,22 +318,62 @@ fun ProductoFotoPanel(onFotoSelected: (Uri) -> Unit) {
                 color = MaterialTheme.colorScheme.outlineVariant,
                 shape = RoundedCornerShape(10.dp)
             )
-            .clickable { launcher.launch("image/*") }
+            .clickable { launcher.launch(arrayOf("image/*")) }
             .padding(vertical = 18.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                "Seleccionar imagen",
-                fontSize = 13.sp,
-                color    = MaterialTheme.colorScheme.onSurfaceVariant
+        if (hayImagen) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(File(copiedPath.value!!))
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
             )
-            Text(
-                "JPG · PNG · WEBP",
-                fontSize = 11.sp,
-                color    = MaterialTheme.colorScheme.outline
-            )
+        } else {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "Seleccionar imagen",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "JPG · PNG · WEBP",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
         }
+    }
+}
+
+private fun copiarImagenAStorageInterno(context: Context, uri: Uri): String? {
+    return try {
+        val input = context.contentResolver.openInputStream(uri) ?: return null
+        val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+        val ext = when {
+            mimeType.contains("png") -> "png"
+            mimeType.contains("webp") -> "webp"
+            else -> "jpg"
+        }
+        val fileName = "img_${UUID.randomUUID()}.$ext"
+        val imagesDir = File(context.filesDir, "productos_imagenes")
+        if (!imagesDir.exists()) imagesDir.mkdirs()
+        val outFile = File(imagesDir, fileName)
+
+        FileOutputStream(outFile).use { output ->
+            input.copyTo(output)
+        }
+        input.close()
+
+        outFile.absolutePath
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
     }
 }
 

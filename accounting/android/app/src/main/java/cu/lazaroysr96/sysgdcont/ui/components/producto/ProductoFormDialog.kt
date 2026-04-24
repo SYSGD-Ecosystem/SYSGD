@@ -63,9 +63,10 @@ fun ProductoFormDialog(
     var extraEmojis      by remember { mutableStateOf(listOf<String>()) }
     var customEmojiInput by remember { mutableStateOf("") }
 
-    var fotoUri by remember {
-        mutableStateOf<Uri?>(
-            if (imagenInicial.type == "foto") Uri.parse(imagenInicial.data) else null
+    // Ahora es String (ruta de archivo interno) en lugar de Uri
+    var fotoPath by remember {
+        mutableStateOf<String?>(
+            if (imagenInicial.type == "foto") imagenInicial.data else null
         )
     }
     var urlInput by remember {
@@ -75,7 +76,7 @@ fun ProductoFormDialog(
     // ── Imagen calculada (derivada del tab activo) ────────────────────────────
     val imagenActual: ProductoImagen = when (activeTab) {
         ImagenTab.EMOJI -> ProductoImagen("emoji", selectedEmoji)
-        ImagenTab.FOTO  -> ProductoImagen("foto",  fotoUri?.toString() ?: "")
+        ImagenTab.FOTO  -> ProductoImagen("foto",  fotoPath ?: "")
         ImagenTab.URL   -> ProductoImagen("url",   urlInput)
     }
 
@@ -108,7 +109,7 @@ fun ProductoFormDialog(
                 // Hero — preview + tabs
                 ProductoHeroSection(
                     imagen      = imagenActual,
-                    fotoUri     = fotoUri,
+                    fotoUri     = fotoPath?.let { Uri.parse(it) },  // Solo para preview, pasar Uri
                     activeTab   = activeTab,
                     onTabChange = { activeTab = it }
                 )
@@ -138,7 +139,7 @@ fun ProductoFormDialog(
                             }
                         )
                         ImagenTab.FOTO -> ProductoFotoPanel(
-                            onFotoSelected = { fotoUri = it }
+                            onFotoSelected = { fotoPath = it }
                         )
                         ImagenTab.URL  -> ProductoUrlPanel(
                             value         = urlInput,

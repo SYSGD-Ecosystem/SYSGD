@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -117,6 +118,7 @@ fun CatalogoItemRow(
     rawEmoji: String,
     nombre: String,
     subtitulo: String,
+    onEditarPrecio: () -> Unit,
     onEliminar: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -142,8 +144,17 @@ fun CatalogoItemRow(
                 Text(subtitulo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        IconButton(onClick = onEliminar) {
-            Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onEditarPrecio) {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "Editar precio",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            IconButton(onClick = onEliminar) {
+                Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error)
+            }
         }
     }
 }

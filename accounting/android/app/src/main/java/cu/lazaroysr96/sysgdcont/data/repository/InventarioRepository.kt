@@ -220,6 +220,23 @@ class InventarioRepository @Inject constructor(
         markLocalModified()
     }
 
+    suspend fun actualizarPrecioProductoVenta(
+        productoId: String,
+        precio: Double
+    ) {
+        val almacen = ensureDefaultAlmacen()
+        val catalogo = catalogoVentaDao.getByProductoId(productoId, almacen.id)
+            ?: throw IllegalStateException("El producto no está en el catálogo de ventas")
+
+        catalogoVentaDao.insert(
+            catalogo.copy(
+                precioReferencia = precio,
+                activo = true
+            )
+        )
+        markLocalModified()
+    }
+
     fun getVentasDelDia(fecha: String = hoy()): Flow<List<Venta>> =
         ventaDao.getVentasDelDia(fecha)
 
@@ -337,6 +354,23 @@ class InventarioRepository @Inject constructor(
 
     suspend fun eliminarProductoCompra(catalogoId: String) {
         catalogoCompraDao.deactivateById(catalogoId)
+        markLocalModified()
+    }
+
+    suspend fun actualizarPrecioProductoCompra(
+        productoId: String,
+        precio: Double
+    ) {
+        val almacen = ensureDefaultAlmacen()
+        val catalogo = catalogoCompraDao.getByProductoId(productoId, almacen.id)
+            ?: throw IllegalStateException("El producto no está en el catálogo de compras")
+
+        catalogoCompraDao.insert(
+            catalogo.copy(
+                precioReferencia = precio,
+                activo = true
+            )
+        )
         markLocalModified()
     }
 

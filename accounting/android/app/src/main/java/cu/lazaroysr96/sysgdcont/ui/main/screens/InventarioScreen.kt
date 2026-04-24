@@ -128,26 +128,44 @@ fun InventarioScreen(
             productosBase = uiState.productosBase,
             productos     = uiState.productos,
             onAdd         = viewModel::agregarProductoExistenteAVentas,
+            onEditPrice   = viewModel::actualizarPrecioProductoVenta,
             onCreateNewProduct = viewModel::agregarProductoBase,
             onEliminar    = viewModel::eliminarProducto,
             onDismiss     = { viewModel.showCatalog(false) }
         )
     }
     if (uiState.showSaleSheet) {
-        CartSheet(uiState.cart, viewModel.cartTotal, viewModel::addToCart, viewModel::removeFromCart, viewModel::registrarVenta) { viewModel.showSaleSheet(false) }
+        CartSheet(
+            cart = uiState.cart,
+            total = viewModel.cartTotal,
+            onAdd = viewModel::addToCart,
+            onRemove = viewModel::removeFromCart,
+            onEditQuantity = viewModel::setCartCantidad,
+            onRegistrar = viewModel::registrarVenta,
+            onDismiss = { viewModel.showSaleSheet(false) }
+        )
     }
     if (uiState.showCatalogCompra) {
         ProductCatalogCompraSheet(
             productosBase = uiState.productosBase,
             productos     = uiState.productosCompra,
             onAdd         = viewModel::agregarProductoExistenteACompras,
+            onEditPrice   = viewModel::actualizarPrecioProductoCompra,
             onCreateNewProduct = viewModel::agregarProductoBase,
             onEliminar    = viewModel::eliminarProductoCompra,
             onDismiss     = { viewModel.showCatalogCompra(false) }
         )
     }
     if (uiState.showPurchaseSheet) {
-        PurchaseCartSheet(uiState.cartCompra, viewModel.cartCompraTotal, viewModel::addToCartCompra, viewModel::removeFromCartCompra, viewModel::registrarCompra) { viewModel.showPurchaseSheet(false) }
+        PurchaseCartSheet(
+            cart = uiState.cartCompra,
+            total = viewModel.cartCompraTotal,
+            onAdd = viewModel::addToCartCompra,
+            onRemove = viewModel::removeFromCartCompra,
+            onEditQuantity = viewModel::setCartCompraCantidad,
+            onRegistrar = viewModel::registrarCompra,
+            onDismiss = { viewModel.showPurchaseSheet(false) }
+        )
     }
     if (facturaState.showDialog && facturaState.venta != null) {
         FacturaDialog(
@@ -169,7 +187,6 @@ private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingVa
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
     val esHoy = uiState.fechaTrabajo == LocalDate.now()
-    var productoSeleccionado by remember { mutableStateOf<ProductoVenta?>(null) }
 
     Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
         Text("Punto de Venta", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
@@ -200,20 +217,11 @@ private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingVa
                         rawEmoji  = producto.emoji,
                         nombre    = producto.nombre,
                         subtitulo = "%.2f CUP / %s".format(producto.precio, producto.unidad),
-                        onClick   = { productoSeleccionado = producto }
+                        onClick   = { viewModel.addToCart(producto) }
                     )
                 }
             }
         }
-    }
-
-    productoSeleccionado?.let { producto ->
-        CantidadOperacionDialog(
-            nombreProducto = producto.nombre, unidad = producto.unidad,
-            precioUnitario = producto.precio, titulo = "Cantidad a vender",
-            onDismiss = { productoSeleccionado = null },
-            onConfirm = { cantidad -> viewModel.addToCart(producto, cantidad); productoSeleccionado = null }
-        )
     }
 }
 
@@ -226,7 +234,6 @@ private fun PuntoCompraContent(viewModel: InventarioViewModel, padding: PaddingV
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
     val esHoy = uiState.fechaTrabajo == LocalDate.now()
-    var productoSeleccionado by remember { mutableStateOf<ProductoCompra?>(null) }
 
     Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
         Text("Registro de Compras", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
@@ -257,21 +264,13 @@ private fun PuntoCompraContent(viewModel: InventarioViewModel, padding: PaddingV
                         rawEmoji  = producto.emoji,
                         nombre    = producto.nombre,
                         subtitulo = "%.2f CUP / %s".format(producto.precio, producto.unidad),
-                        onClick   = { productoSeleccionado = producto }
+                        onClick   = { viewModel.addToCartCompra(producto) }
                     )
                 }
             }
         }
     }
 
-    productoSeleccionado?.let { producto ->
-        CantidadOperacionDialog(
-            nombreProducto = producto.nombre, unidad = producto.unidad,
-            precioUnitario = producto.precio, titulo = "Cantidad a comprar",
-            onDismiss = { productoSeleccionado = null },
-            onConfirm = { cantidad -> viewModel.addToCartCompra(producto, cantidad); productoSeleccionado = null }
-        )
-    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -300,11 +299,13 @@ private fun ProductCatalogSheet(
     productosBase: List<Producto>,
     productos: List<ProductoVenta>,
     onAdd: (String, Double) -> Unit,
+    onEditPrice: (String, Double) -> Unit,
     onCreateNewProduct: (String, String, String) -> Unit,
     onEliminar: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
+    var productoEditandoPrecio by remember { mutableStateOf<ProductoVenta?>(null) }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp).navigationBarsPadding()) {
@@ -324,6 +325,7 @@ private fun ProductCatalogSheet(
                             rawEmoji   = producto.emoji,
                             nombre     = producto.nombre,
                             subtitulo  = "%.2f CUP".format(producto.precio),
+                            onEditarPrecio = { productoEditandoPrecio = producto },
                             onEliminar = { onEliminar(producto.catalogoId) }
                         )
                     }
@@ -343,6 +345,22 @@ private fun ProductCatalogSheet(
             onDismiss  = { showAddDialog = false }
         )
     }
+
+    productoEditandoPrecio?.let { producto ->
+        ProductPriceDialog(
+            title = "Editar precio de venta",
+            nombre = producto.nombre,
+            emoji = producto.emoji,
+            unidad = producto.unidad,
+            initialPrice = producto.precio,
+            confirmLabel = "Guardar",
+            onDismiss = { productoEditandoPrecio = null },
+            onConfirm = { precio ->
+                onEditPrice(producto.id, precio)
+                productoEditandoPrecio = null
+            }
+        )
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -355,11 +373,13 @@ private fun ProductCatalogCompraSheet(
     productosBase: List<Producto>,
     productos: List<ProductoCompra>,
     onAdd: (String, Double) -> Unit,
+    onEditPrice: (String, Double) -> Unit,
     onCreateNewProduct: (String, String, String) -> Unit,
     onEliminar: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
+    var productoEditandoPrecio by remember { mutableStateOf<ProductoCompra?>(null) }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp).navigationBarsPadding()) {
@@ -379,6 +399,7 @@ private fun ProductCatalogCompraSheet(
                             rawEmoji   = producto.emoji,
                             nombre     = producto.nombre,
                             subtitulo  = "%.2f CUP".format(producto.precio),
+                            onEditarPrecio = { productoEditandoPrecio = producto },
                             onEliminar = { onEliminar(producto.catalogoId) }
                         )
                     }
@@ -396,6 +417,22 @@ private fun ProductCatalogCompraSheet(
             onAdd      = onAdd,
             onCreateNewProduct = onCreateNewProduct,
             onDismiss  = { showAddDialog = false }
+        )
+    }
+
+    productoEditandoPrecio?.let { producto ->
+        ProductPriceDialog(
+            title = "Editar precio de compra",
+            nombre = producto.nombre,
+            emoji = producto.emoji,
+            unidad = producto.unidad,
+            initialPrice = producto.precio,
+            confirmLabel = "Guardar",
+            onDismiss = { productoEditandoPrecio = null },
+            onConfirm = { precio ->
+                onEditPrice(producto.id, precio)
+                productoEditandoPrecio = null
+            }
         )
     }
 }
@@ -467,8 +504,9 @@ private fun ProductSheet(
             nombre   = item.nombre,
             emoji    = item.emoji,
             unidad   = item.unidad,
+            confirmLabel = "Agregar",
             onDismiss = { selectedItem = null },
-            onAdd    = { precio ->
+            onConfirm = { precio ->
                 onAdd(item.id, precio)
                 selectedItem = null
                 onDismiss()
@@ -500,10 +538,16 @@ private fun ProductPriceDialog(
     nombre: String,
     emoji: String,
     unidad: String,
+    initialPrice: Double = 0.0,
+    confirmLabel: String = "Agregar",
     onDismiss: () -> Unit,
-    onAdd: (Double) -> Unit
+    onConfirm: (Double) -> Unit
 ) {
-    var precio by remember { mutableStateOf("") }
+    var precio by remember(initialPrice) {
+        mutableStateOf(
+            if (initialPrice > 0.0) "%.2f".format(initialPrice) else ""
+        )
+    }
     val puedeAgregar = (precio.toDoubleOrNull() ?: 0.0) > 0.0
 
     AlertDialog(
@@ -522,10 +566,27 @@ private fun ProductPriceDialog(
                         }
                     }
                 }
-                OutlinedTextField(value = precio, onValueChange = { precio = it }, label = { Text("Precio (CUP)") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
+                OutlinedTextField(
+                    value = precio,
+                    onValueChange = { precio = it.replace(',', '.') },
+                    label = { Text("Precio (CUP)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true
+                )
             }
         },
-        confirmButton = { TextButton(onClick = { onAdd(precio.toDouble()); onDismiss() }, enabled = puedeAgregar) { Text("Agregar") } },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onConfirm(precio.toDouble())
+                    onDismiss()
+                },
+                enabled = puedeAgregar
+            ) {
+                Text(confirmLabel)
+            }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
     )
 }
@@ -615,9 +676,9 @@ private fun ItemInventarioRow(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun CantidadOperacionDialog(nombreProducto: String, unidad: String, precioUnitario: Double, titulo: String, onDismiss: () -> Unit, onConfirm: (Double) -> Unit) {
+private fun CantidadOperacionDialog(nombreProducto: String, unidad: String, precioUnitario: Double, titulo: String, initialCantidad: Double? = null, onDismiss: () -> Unit, onConfirm: (Double) -> Unit) {
     val permiteFraccion = permiteFraccion(unidad)
-    var cantidadInput by remember(nombreProducto, unidad) { mutableStateOf(if (permiteFraccion) "1.0" else "1") }
+    var cantidadInput by remember(nombreProducto, unidad, initialCantidad) { mutableStateOf(initialCantidad?.let { formatCantidad(it, permiteFraccion) } ?: if (permiteFraccion) "1.0" else "1") }
     val cantidad = parseCantidad(cantidadInput, permiteFraccion)
     val subtotal = (cantidad ?: 0.0) * precioUnitario
     AlertDialog(
@@ -844,11 +905,184 @@ private fun HistorialContent(viewModel: InventarioViewModel, facturaViewModel: F
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CartSheet(cart: Map<ProductoVenta, Double>, total: Double, onAdd: (ProductoVenta) -> Unit, onRemove: (ProductoVenta) -> Unit, onRegistrar: () -> Unit, onDismiss: () -> Unit) { ModalBottomSheet(onDismissRequest = onDismiss) { Column(modifier = Modifier.fillMaxWidth().padding(16.dp).navigationBarsPadding()) { Text("Carrito de venta", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); Divider(modifier = Modifier.padding(vertical = 8.dp)); if (cart.isEmpty()) Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) { Text("El carrito está vacío") } else { LazyColumn(modifier = Modifier.heightIn(max = 300.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { items(cart.entries.toList()) { (producto, cantidad) -> Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column(modifier = Modifier.weight(1f)) { Text(producto.nombre, fontWeight = FontWeight.Medium); Text("%.2f CUP x %s".format(producto.precio, formatCantidad(cantidad, permiteFraccion(producto.unidad))), style = MaterialTheme.typography.bodySmall) }; Row(verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = { onRemove(producto) }) { Icon(Icons.Default.Remove, null) }; Text(formatCantidad(cantidad, permiteFraccion(producto.unidad)), modifier = Modifier.padding(horizontal = 8.dp)); IconButton(onClick = { onAdd(producto) }) { Icon(Icons.Default.Add, null) } } } } }; Divider(modifier = Modifier.padding(vertical = 8.dp)); Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Total", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("%.2f CUP".format(total), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) }; Spacer(Modifier.height(16.dp)); Button(onClick = onRegistrar, modifier = Modifier.fillMaxWidth(), enabled = cart.isNotEmpty()) { Icon(Icons.Default.Check, null); Spacer(Modifier.width(8.dp)); Text("Registrar venta") } } } } }
+private fun CartSheet(
+    cart: Map<ProductoVenta, Double>,
+    total: Double,
+    onAdd: (ProductoVenta) -> Unit,
+    onRemove: (ProductoVenta) -> Unit,
+    onEditQuantity: (ProductoVenta, Double) -> Unit,
+    onRegistrar: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var productoEditandoCantidad by remember { mutableStateOf<ProductoVenta?>(null) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp).navigationBarsPadding()) {
+            Text("Carrito de venta", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+            if (cart.isEmpty()) {
+                Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                    Text("El carrito está vacío")
+                }
+            } else {
+                LazyColumn(modifier = Modifier.heightIn(max = 300.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(cart.entries.toList()) { (producto, cantidad) ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(producto.nombre, fontWeight = FontWeight.Medium)
+                                Text(
+                                    "%.2f CUP x %s".format(producto.precio, formatCantidad(cantidad, permiteFraccion(producto.unidad))),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(onClick = { productoEditandoCantidad = producto }) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Editar cantidad")
+                                }
+                                IconButton(onClick = { onRemove(producto) }) {
+                                    Icon(Icons.Default.Remove, null)
+                                }
+                                Text(
+                                    formatCantidad(cantidad, permiteFraccion(producto.unidad)),
+                                    modifier = Modifier.padding(horizontal = 8.dp)
+                                )
+                                IconButton(onClick = { onAdd(producto) }) {
+                                    Icon(Icons.Default.Add, null)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Total", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("%.2f CUP".format(total), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                }
+                Spacer(Modifier.height(16.dp))
+                Button(onClick = onRegistrar, modifier = Modifier.fillMaxWidth(), enabled = cart.isNotEmpty()) {
+                    Icon(Icons.Default.Check, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Registrar venta")
+                }
+            }
+        }
+    }
+
+    productoEditandoCantidad?.let { producto ->
+        val cantidadActual = cart[producto]
+        if (cantidadActual != null) {
+            CantidadOperacionDialog(
+                nombreProducto = producto.nombre,
+                unidad = producto.unidad,
+                precioUnitario = producto.precio,
+                titulo = "Editar cantidad de venta",
+                initialCantidad = cantidadActual,
+                onDismiss = { productoEditandoCantidad = null },
+                onConfirm = { cantidad ->
+                    onEditQuantity(producto, cantidad)
+                    productoEditandoCantidad = null
+                }
+            )
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PurchaseCartSheet(cart: Map<ProductoCompra, Double>, total: Double, onAdd: (ProductoCompra) -> Unit, onRemove: (ProductoCompra) -> Unit, onRegistrar: () -> Unit, onDismiss: () -> Unit) { ModalBottomSheet(onDismissRequest = onDismiss) { Column(modifier = Modifier.fillMaxWidth().padding(16.dp).navigationBarsPadding()) { Text("Carrito de compra", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); Divider(modifier = Modifier.padding(vertical = 8.dp)); if (cart.isEmpty()) Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) { Text("El carrito está vacío") } else { LazyColumn(modifier = Modifier.heightIn(max = 300.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { items(cart.entries.toList()) { (producto, cantidad) -> Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column(modifier = Modifier.weight(1f)) { Text(producto.nombre, fontWeight = FontWeight.Medium); Text("%.2f CUP x %s".format(producto.precio, formatCantidad(cantidad, permiteFraccion(producto.unidad))), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }; Row(verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = { onRemove(producto) }) { Icon(Icons.Default.Remove, null) }; Text(formatCantidad(cantidad, permiteFraccion(producto.unidad)), modifier = Modifier.padding(horizontal = 8.dp)); IconButton(onClick = { onAdd(producto) }) { Icon(Icons.Default.Add, null) } } } } }; Divider(modifier = Modifier.padding(vertical = 8.dp)); Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Total", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("%.2f CUP".format(total), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary) }; Spacer(Modifier.height(16.dp)); Button(onClick = onRegistrar, modifier = Modifier.fillMaxWidth(), enabled = cart.isNotEmpty(), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)) { Icon(Icons.Default.Check, null); Spacer(Modifier.width(8.dp)); Text("Registrar compra") } } } } }
+private fun PurchaseCartSheet(
+    cart: Map<ProductoCompra, Double>,
+    total: Double,
+    onAdd: (ProductoCompra) -> Unit,
+    onRemove: (ProductoCompra) -> Unit,
+    onEditQuantity: (ProductoCompra, Double) -> Unit,
+    onRegistrar: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var productoEditandoCantidad by remember { mutableStateOf<ProductoCompra?>(null) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp).navigationBarsPadding()) {
+            Text("Carrito de compra", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+            if (cart.isEmpty()) {
+                Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                    Text("El carrito está vacío")
+                }
+            } else {
+                LazyColumn(modifier = Modifier.heightIn(max = 300.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(cart.entries.toList()) { (producto, cantidad) ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(producto.nombre, fontWeight = FontWeight.Medium)
+                                Text(
+                                    "%.2f CUP x %s".format(producto.precio, formatCantidad(cantidad, permiteFraccion(producto.unidad))),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(onClick = { productoEditandoCantidad = producto }) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Editar cantidad")
+                                }
+                                IconButton(onClick = { onRemove(producto) }) {
+                                    Icon(Icons.Default.Remove, null)
+                                }
+                                Text(
+                                    formatCantidad(cantidad, permiteFraccion(producto.unidad)),
+                                    modifier = Modifier.padding(horizontal = 8.dp)
+                                )
+                                IconButton(onClick = { onAdd(producto) }) {
+                                    Icon(Icons.Default.Add, null)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Total", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("%.2f CUP".format(total), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                }
+                Spacer(Modifier.height(16.dp))
+                Button(onClick = onRegistrar, modifier = Modifier.fillMaxWidth(), enabled = cart.isNotEmpty(), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)) {
+                    Icon(Icons.Default.Check, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Registrar compra")
+                }
+            }
+        }
+    }
+
+    productoEditandoCantidad?.let { producto ->
+        val cantidadActual = cart[producto]
+        if (cantidadActual != null) {
+            CantidadOperacionDialog(
+                nombreProducto = producto.nombre,
+                unidad = producto.unidad,
+                precioUnitario = producto.precio,
+                titulo = "Editar cantidad de compra",
+                initialCantidad = cantidadActual,
+                onDismiss = { productoEditandoCantidad = null },
+                onConfirm = { cantidad ->
+                    onEditQuantity(producto, cantidad)
+                    productoEditandoCantidad = null
+                }
+            )
+        }
+    }
+}
 
 @Composable
 private fun MasContent(viewModel: InventarioViewModel, padding: PaddingValues) {
