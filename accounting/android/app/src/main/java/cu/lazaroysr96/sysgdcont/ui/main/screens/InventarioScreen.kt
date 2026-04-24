@@ -124,9 +124,10 @@ fun InventarioScreen(
     }
 
     if (uiState.showCatalog) {
+        val productosCatalogoVenta = uiState.productos.filter { it.almacenId == uiState.selectedVentaAlmacenId }
         ProductCatalogSheet(
             productosBase = uiState.productosBase,
-            productos     = uiState.productos,
+            productos     = productosCatalogoVenta,
             onAdd         = viewModel::agregarProductoExistenteAVentas,
             onEditPrice   = viewModel::actualizarPrecioProductoVenta,
             onCreateNewProduct = viewModel::agregarProductoBase,
@@ -146,9 +147,10 @@ fun InventarioScreen(
         )
     }
     if (uiState.showCatalogCompra) {
+        val productosCatalogoCompra = uiState.productosCompra.filter { it.almacenDestinoId == uiState.selectedCompraAlmacenId }
         ProductCatalogCompraSheet(
             productosBase = uiState.productosBase,
-            productos     = uiState.productosCompra,
+            productos     = productosCatalogoCompra,
             onAdd         = viewModel::agregarProductoExistenteACompras,
             onEditPrice   = viewModel::actualizarPrecioProductoCompra,
             onCreateNewProduct = viewModel::agregarProductoBase,
@@ -187,10 +189,20 @@ private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingVa
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
     val esHoy = uiState.fechaTrabajo == LocalDate.now()
+    val productosFiltrados = remember(uiState.productos, uiState.selectedVentaAlmacenId) {
+        uiState.productos.filter { it.almacenId == uiState.selectedVentaAlmacenId }
+    }
 
     Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
         Text("Punto de Venta", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
+        WarehouseSelectorCard(
+            label = "Almacén de salida",
+            almacenes = uiState.almacenes,
+            selectedId = uiState.selectedVentaAlmacenId,
+            onSelected = viewModel::seleccionarAlmacenVenta
+        )
+        Spacer(Modifier.height(12.dp))
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
             Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -207,11 +219,11 @@ private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingVa
         Text("Productos disponibles", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
 
-        if (uiState.productos.isEmpty()) {
+        if (productosFiltrados.isEmpty()) {
             EmptyProductosBox(modifier = Modifier.fillMaxWidth().weight(1f))
         } else {
             LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(uiState.productos) { producto ->
+                items(productosFiltrados) { producto ->
                     // ✅ ProductCard eliminado → ProductGridCard genérico
                     ProductGridCard(
                         rawEmoji  = producto.emoji,
@@ -234,10 +246,20 @@ private fun PuntoCompraContent(viewModel: InventarioViewModel, padding: PaddingV
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
     val esHoy = uiState.fechaTrabajo == LocalDate.now()
+    val productosFiltrados = remember(uiState.productosCompra, uiState.selectedCompraAlmacenId) {
+        uiState.productosCompra.filter { it.almacenDestinoId == uiState.selectedCompraAlmacenId }
+    }
 
     Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
         Text("Registro de Compras", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
+        WarehouseSelectorCard(
+            label = "Almacén de entrada",
+            almacenes = uiState.almacenes,
+            selectedId = uiState.selectedCompraAlmacenId,
+            onSelected = viewModel::seleccionarAlmacenCompra
+        )
+        Spacer(Modifier.height(12.dp))
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
             Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -254,11 +276,11 @@ private fun PuntoCompraContent(viewModel: InventarioViewModel, padding: PaddingV
         Text("Insumos disponibles", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
 
-        if (uiState.productosCompra.isEmpty()) {
+        if (productosFiltrados.isEmpty()) {
             EmptyProductosBox(modifier = Modifier.fillMaxWidth().weight(1f), label = "No hay insumos")
         } else {
             LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(uiState.productosCompra) { producto ->
+                items(productosFiltrados) { producto ->
                     // ✅ ProductCardCompra eliminado → ProductGridCard genérico
                     ProductGridCard(
                         rawEmoji  = producto.emoji,
@@ -603,6 +625,7 @@ private fun ItemInventarioRow(
     color: androidx.compose.ui.graphics.Color,
     onAjustarStock: () -> Unit,
     onMover: (() -> Unit)?,
+    onTransfer: (() -> Unit)?,
     onArchive: () -> Unit,
     bloqueadoPorVenta: Boolean
 ) {
@@ -651,6 +674,11 @@ private fun ItemInventarioRow(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = onAjustarStock, modifier = Modifier.height(32.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)) {
                         Icon(Icons.Default.Edit, null, modifier = Modifier.size(14.dp)); Spacer(Modifier.width(4.dp)); Text("Ajustar stock", style = MaterialTheme.typography.labelSmall)
+                    }
+                    if (onTransfer != null) {
+                        OutlinedButton(onClick = onTransfer, modifier = Modifier.height(32.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)) {
+                            Icon(Icons.Default.SwapHoriz, null, modifier = Modifier.size(14.dp)); Spacer(Modifier.width(4.dp)); Text("Transferir", style = MaterialTheme.typography.labelSmall)
+                        }
                     }
                     if (onMover != null) {
                         OutlinedButton(onClick = onMover, modifier = Modifier.height(32.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)) {
@@ -718,30 +746,135 @@ private fun DiaTrabajoSelector(fechaTrabajo: LocalDate, onFechaChange: (LocalDat
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WarehouseSelectorCard(
+    label: String,
+    almacenes: List<Almacen>,
+    selectedId: String,
+    onSelected: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val seleccionado = almacenes.firstOrNull { it.id == selectedId } ?: almacenes.firstOrNull()
+
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+        OutlinedTextField(
+            value = seleccionado?.nombre ?: "Almacén principal",
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            leadingIcon = { Icon(Icons.Default.Inventory2, null) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor()
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            almacenes.forEach { almacen ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            if (almacen.principal) "${almacen.nombre} • Principal" else almacen.nombre
+                        )
+                    },
+                    onClick = {
+                        onSelected(almacen.id)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun InventarioContent(viewModel: InventarioViewModel, padding: PaddingValues) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val itemsInventario = remember(uiState.itemsInventarioCompra, uiState.itemsInventarioVenta) {
         (uiState.itemsInventarioCompra + uiState.itemsInventarioVenta).distinctBy { it.id }.sortedByDescending { it.ultimaActualizacion }
     }
+    val itemsFiltrados = remember(itemsInventario, uiState.selectedInventarioAlmacenId) {
+        itemsInventario.filter { it.almacenId == uiState.selectedInventarioAlmacenId }
+    }
+    val movimientosFiltrados = remember(uiState.movimientosInventario, uiState.selectedInventarioAlmacenId) {
+        uiState.movimientosInventario.filter {
+            it.almacenOrigenId == uiState.selectedInventarioAlmacenId ||
+                it.almacenDestinoId == uiState.selectedInventarioAlmacenId
+        }.take(10)
+    }
     Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Inventario", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        WarehouseSelectorCard(
+            label = "Almacén activo",
+            almacenes = uiState.almacenes,
+            selectedId = uiState.selectedInventarioAlmacenId,
+            onSelected = viewModel::seleccionarAlmacenInventario
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilledTonalButton(onClick = { viewModel.showWarehouseDialog(true) }) {
+                Icon(Icons.Default.Add, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Nuevo almacén")
+            }
+            OutlinedButton(
+                onClick = {
+                    uiState.almacenes.firstOrNull { it.id == uiState.selectedInventarioAlmacenId }?.let {
+                        viewModel.showWarehouseDialog(true, it)
+                    }
+                }
+            ) {
+                Icon(Icons.Default.Edit, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Renombrar")
+            }
+        }
         AlmacenSection(
-            titulo = "Almacén principal", icono = Icons.Default.Inventory2, color = MaterialTheme.colorScheme.primary,
-            items = itemsInventario, productosBase = uiState.productosBase, productos = uiState.productosCompra, productosVenta = uiState.productos,
+            titulo = uiState.almacenes.firstOrNull { it.id == uiState.selectedInventarioAlmacenId }?.nombre ?: "Almacén principal", icono = Icons.Default.Inventory2, color = MaterialTheme.colorScheme.primary,
+            items = itemsFiltrados, productosBase = uiState.productosBase, productos = uiState.productosCompra, productosVenta = uiState.productos,
             onAjustarStock = { viewModel.showAjusteStockDialog(it) },
-            onMover = { item -> if (uiState.productos.none { it.id == item.productoId }) viewModel.showMoverDialog(item) },
+            onMover = { item -> if (uiState.productos.none { it.id == item.productoId && it.almacenId == item.almacenId }) viewModel.showMoverDialog(item) },
+            onTransfer = if (uiState.almacenes.size > 1) viewModel::showTransferDialog else null,
             onGenerarInforme = viewModel::generarInformeInventarioPdf,
             onArchive = { item, nombre -> viewModel.showArchiveDialog(item, nombre) }
         )
+        if (movimientosFiltrados.isNotEmpty()) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Movimientos recientes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    movimientosFiltrados.forEach { movimiento ->
+                        val texto = when (movimiento.tipoMovimiento) {
+                            TipoMovimientoInventario.TRANSFERENCIA -> "Transferencia ${formatCantidad(movimiento.cantidad)}"
+                            TipoMovimientoInventario.COMPRA -> "Compra ${formatCantidad(movimiento.cantidad)}"
+                            TipoMovimientoInventario.VENTA -> "Venta ${formatCantidad(movimiento.cantidad)}"
+                            else -> "Ajuste de stock"
+                        }
+                        Text(
+                            "$texto • ${movimiento.fecha} ${movimiento.hora}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
     }
     if (uiState.showAjusteStockDialog && uiState.itemAjustando != null) AjusteStockDialog(item = uiState.itemAjustando!!, productosCompra = uiState.productosCompra, vinculadosIniciales = uiState.vinculadosItemAjustando, onDismiss = { viewModel.showAjusteStockDialog(null) }, onConfirm = { cantidad, modo, vinculados, ratios -> viewModel.ajustarStockManual(uiState.itemAjustando!!.id, cantidad, modo, vinculados, ratios) })
     if (uiState.showMoverDialog && uiState.itemMoviendo != null) MoverProductoDialog(item = uiState.itemMoviendo!!, productosCompra = uiState.productosCompra, onDismiss = { viewModel.showMoverDialog(null) }, onConfirm = { viewModel.ponerProductoEnVenta(productoId = uiState.itemMoviendo!!.productoId, precioVenta = it) })
-    if (uiState.showArchiveDialog && uiState.itemArchivando != null) ArchiveInventoryItemDialog(nombreProducto = uiState.nombreItemArchivando, stockDisponible = uiState.itemArchivando!!.stockDisponible, modoStock = uiState.itemArchivando!!.modoStock, bloqueadoPorVenta = uiState.productos.any { it.id == uiState.itemArchivando!!.productoId }, onDismiss = { viewModel.showArchiveDialog(null, "") }, onConfirm = { viewModel.archivarItemInventario(it) })
+    if (uiState.showTransferDialog && uiState.itemTransfiriendo != null) TransferStockDialog(
+        item = uiState.itemTransfiriendo!!,
+        almacenes = uiState.almacenes.filter { it.id != uiState.itemTransfiriendo!!.almacenId },
+        productosBase = uiState.productosBase,
+        onDismiss = { viewModel.showTransferDialog(null) },
+        onConfirm = viewModel::transferirStock
+    )
+    if (uiState.showWarehouseDialog) WarehouseEditorDialog(
+        almacen = uiState.almacenEditando,
+        onDismiss = { viewModel.showWarehouseDialog(false) },
+        onConfirm = { nombre -> viewModel.guardarAlmacen(nombre, uiState.almacenEditando?.id) }
+    )
+    if (uiState.showArchiveDialog && uiState.itemArchivando != null) ArchiveInventoryItemDialog(nombreProducto = uiState.nombreItemArchivando, stockDisponible = uiState.itemArchivando!!.stockDisponible, modoStock = uiState.itemArchivando!!.modoStock, bloqueadoPorVenta = uiState.productos.any { it.id == uiState.itemArchivando!!.productoId && it.almacenId == uiState.itemArchivando!!.almacenId }, onDismiss = { viewModel.showArchiveDialog(null, "") }, onConfirm = { viewModel.archivarItemInventario(it) })
 }
 
 @Composable
-private fun AlmacenSection(titulo: String, icono: androidx.compose.ui.graphics.vector.ImageVector, color: androidx.compose.ui.graphics.Color, items: List<ItemInventario>, productosBase: List<Producto>, productos: List<ProductoCompra>, productosVenta: List<ProductoVenta>, onAjustarStock: (ItemInventario) -> Unit, onMover: ((ItemInventario) -> Unit)?, onGenerarInforme: () -> Unit, onArchive: (ItemInventario, String) -> Unit) {
+private fun AlmacenSection(titulo: String, icono: androidx.compose.ui.graphics.vector.ImageVector, color: androidx.compose.ui.graphics.Color, items: List<ItemInventario>, productosBase: List<Producto>, productos: List<ProductoCompra>, productosVenta: List<ProductoVenta>, onAjustarStock: (ItemInventario) -> Unit, onMover: ((ItemInventario) -> Unit)?, onTransfer: ((ItemInventario) -> Unit)?, onGenerarInforme: () -> Unit, onArchive: (ItemInventario, String) -> Unit) {
     var expanded by remember { mutableStateOf(true) }
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -761,12 +894,12 @@ private fun AlmacenSection(titulo: String, icono: androidx.compose.ui.graphics.v
                     } else {
                         Divider(modifier = Modifier.padding(bottom = 8.dp))
                         items.forEach { item ->
-                            val productoVenta = productosVenta.find { it.id == item.productoId }
-                            val productoCompra = productos.find { it.id == item.productoId }
+                            val productoVenta = productosVenta.find { it.id == item.productoId && it.almacenId == item.almacenId }
+                            val productoCompra = productos.find { it.id == item.productoId && it.almacenDestinoId == item.almacenId }
                             val productoBase = productosBase.find { it.id == item.productoId }
                             val nombreProducto = productoBase?.nombre ?: productoVenta?.nombre ?: productoCompra?.nombre ?: item.productoId
                             val emojiProducto  = productoBase?.emoji  ?: productoVenta?.emoji  ?: productoCompra?.emoji  ?: "📦"
-                            ItemInventarioRow(item = item, nombre = nombreProducto, emoji = emojiProducto, color = color, onAjustarStock = { onAjustarStock(item) }, onMover = onMover?.takeIf { productoVenta == null }?.let { { it(item) } }, onArchive = { onArchive(item, nombreProducto) }, bloqueadoPorVenta = productoVenta != null)
+                            ItemInventarioRow(item = item, nombre = nombreProducto, emoji = emojiProducto, color = color, onAjustarStock = { onAjustarStock(item) }, onMover = onMover?.takeIf { productoVenta == null }?.let { { it(item) } }, onTransfer = onTransfer?.let { { it(item) } }, onArchive = { onArchive(item, nombreProducto) }, bloqueadoPorVenta = productoVenta != null)
                             Divider(modifier = Modifier.padding(vertical = 4.dp))
                         }
                     }
@@ -852,6 +985,103 @@ private fun MoverProductoDialog(item: ItemInventario, productosCompra: List<Prod
             if (ganancia != null && margenComercial != null) { Divider(); Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Ganancia:", style = MaterialTheme.typography.bodySmall); Text("${"%.2f".format(ganancia)} CUP", style = MaterialTheme.typography.bodySmall, color = if (ganancia >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error, fontWeight = FontWeight.SemiBold) }; Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Margen comercial:", style = MaterialTheme.typography.bodySmall); Text("${"%.1f".format(margenComercial)}%", style = MaterialTheme.typography.bodySmall, color = if (margenComercial >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error, fontWeight = FontWeight.SemiBold) } }
         }
     }, confirmButton = { TextButton(onClick = { onConfirm(precioVenta!!) }, enabled = (precioVenta ?: 0.0) > 0.0) { Text("Publicar") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TransferStockDialog(
+    item: ItemInventario,
+    almacenes: List<Almacen>,
+    productosBase: List<Producto>,
+    onDismiss: () -> Unit,
+    onConfirm: (String, Double, String) -> Unit
+) {
+    var destinoId by remember(almacenes) { mutableStateOf(almacenes.firstOrNull()?.id.orEmpty()) }
+    var cantidadInput by remember { mutableStateOf("") }
+    var nota by remember { mutableStateOf("") }
+    var expanded by remember { mutableStateOf(false) }
+    val cantidad = cantidadInput.replace(',', '.').toDoubleOrNull()
+    val producto = productosBase.firstOrNull { it.id == item.productoId }
+    val almacenDestino = almacenes.firstOrNull { it.id == destinoId }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Transferir stock") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(producto?.nombre ?: "Producto", fontWeight = FontWeight.SemiBold)
+                Text("Disponible: ${formatCantidad(item.stockDisponible)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+                    OutlinedTextField(
+                        value = almacenDestino?.nombre ?: "Seleccionar destino",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Almacén destino") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        almacenes.forEach { almacen ->
+                            DropdownMenuItem(text = { Text(almacen.nombre) }, onClick = {
+                                destinoId = almacen.id
+                                expanded = false
+                            })
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = cantidadInput,
+                    onValueChange = { cantidadInput = it },
+                    label = { Text("Cantidad a mover") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = nota,
+                    onValueChange = { nota = it },
+                    label = { Text("Nota") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(destinoId, cantidad ?: 0.0, nota) },
+                enabled = destinoId.isNotBlank() && (cantidad ?: 0.0) > 0.0
+            ) { Text("Transferir") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
+}
+
+@Composable
+private fun WarehouseEditorDialog(
+    almacen: Almacen?,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var nombre by remember(almacen?.id) { mutableStateOf(almacen?.nombre.orEmpty()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (almacen == null) "Nuevo almacén" else "Editar almacén") },
+        text = {
+            OutlinedTextField(
+                value = nombre,
+                onValueChange = { nombre = it },
+                label = { Text("Nombre") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(nombre) }, enabled = nombre.isNotBlank()) {
+                Text(if (almacen == null) "Crear" else "Guardar")
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
 }
 
 @Composable

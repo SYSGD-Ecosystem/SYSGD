@@ -10,9 +10,11 @@ import cu.lazaroysr96.sysgdcont.data.model.Compra
 import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
 import cu.lazaroysr96.sysgdcont.data.model.InventarioVinculoEdicion
+import cu.lazaroysr96.sysgdcont.data.model.Almacen
 import cu.lazaroysr96.sysgdcont.data.model.CuentaContable
 import cu.lazaroysr96.sysgdcont.data.model.TipoProductoInv
 import cu.lazaroysr96.sysgdcont.data.model.ModoStock
+import cu.lazaroysr96.sysgdcont.data.model.MovimientoInventario
 import cu.lazaroysr96.sysgdcont.data.model.PosIntegrationConfig
 import cu.lazaroysr96.sysgdcont.data.model.Producto
 import cu.lazaroysr96.sysgdcont.data.repository.ConfiguracionFacturacion
@@ -65,9 +67,18 @@ data class InventarioUiState(
     val itemsInventarioCompra: List<ItemInventario> = emptyList(),
     val itemsInventarioVenta: List<ItemInventario> = emptyList(),
     val itemsInventarioArchivados: List<ItemInventario> = emptyList(),
+    val almacenes: List<Almacen> = emptyList(),
+    val selectedVentaAlmacenId: String = Almacen.DEFAULT_ID,
+    val selectedCompraAlmacenId: String = Almacen.DEFAULT_ID,
+    val selectedInventarioAlmacenId: String = Almacen.DEFAULT_ID,
+    val movimientosInventario: List<MovimientoInventario> = emptyList(),
     // UI inventario
     val showMoverDialog: Boolean = false,
     val itemMoviendo: ItemInventario? = null,
+    val showTransferDialog: Boolean = false,
+    val itemTransfiriendo: ItemInventario? = null,
+    val showWarehouseDialog: Boolean = false,
+    val almacenEditando: Almacen? = null,
     val showAjusteStockDialog: Boolean = false,
     val itemAjustando: ItemInventario? = null,
     val vinculadosItemAjustando: List<InventarioVinculoEdicion> = emptyList(),
@@ -119,6 +130,27 @@ class InventarioViewModel @Inject constructor(
         viewModelScope.launch {
             repo.getProductosCompra().collect { productos ->
                 _uiState.update { it.copy(productosCompra = productos) }
+            }
+        }
+        viewModelScope.launch {
+            repo.getAlmacenes().collect { almacenes ->
+                val principalId = almacenes.firstOrNull { it.principal }?.id ?: Almacen.DEFAULT_ID
+                _uiState.update { state ->
+                    fun validar(id: String): String =
+                        almacenes.firstOrNull { it.id == id }?.id ?: principalId
+
+                    state.copy(
+                        almacenes = almacenes,
+                        selectedVentaAlmacenId = validar(state.selectedVentaAlmacenId),
+                        selectedCompraAlmacenId = validar(state.selectedCompraAlmacenId),
+                        selectedInventarioAlmacenId = validar(state.selectedInventarioAlmacenId)
+                    )
+                }
+            }
+        }
+        viewModelScope.launch {
+            repo.getMovimientosInventario().collect { movimientos ->
+                _uiState.update { it.copy(movimientosInventario = movimientos) }
             }
         }
 
@@ -176,6 +208,57 @@ class InventarioViewModel @Inject constructor(
 
     fun showMoverDialog(item: ItemInventario?) {
         _uiState.update { it.copy(showMoverDialog = item != null, itemMoviendo = item) }
+    }
+
+    fun showTransferDialog(item: ItemInventario?) {
+        _uiState.update { it.copy(showTransferDialog = item != null, itemTransfiriendo = item) }
+    }
+
+    fun showWarehouseDialog(show: Boolean, almacen: Almacen? = null) {
+        _uiState.update { it.copy(showWarehouseDialog = show, almacenEditando = almacen) }
+    }
+
+    fun seleccionarAlmacenVenta(almacenId: String) {
+        _uiState.update { it.copy(selectedVentaAlmacenId = almacenId, cart = emptyMap(), showSaleSheet = false) }
+    }
+
+    fun seleccionarAlmacenCompra(almacenId: String) {
+        _uiState.update { it.copy(selectedCompraAlmacenId = almacenId, cartCompra = emptyMap(), showPurchaseSheet = false) }
+    }
+
+    fun seleccionarAlmacenInventario(almacenId: String) {
+        _uiState.update { it.copy(selectedInventarioAlmacenId = almacenId) }
+    }
+
+    fun guardarAlmacen(nombre: String, almacenId: String? = null) {
+        viewModelScope.launch {
+            try {
+                if (almacenId == null) {
+                    val creado = repo.crearAlmacen(nombre)
+                    _uiState.update {
+                        it.copy(
+                            selectedVentaAlmacenId = creado.id,
+                            selectedCompraAlmacenId = creado.id,
+                            selectedInventarioAlmacenId = creado.id,
+                            showWarehouseDialog = false,
+                            almacenEditando = null,
+                            snackbarMessage = "Almacén creado"
+                        )
+                    }
+                } else {
+                    repo.editarAlmacen(almacenId, nombre)
+                    _uiState.update {
+                        it.copy(
+                            showWarehouseDialog = false,
+                            almacenEditando = null,
+                            snackbarMessage = "Almacén actualizado"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "No se pudo guardar el almacén") }
+            }
+        }
     }
 
     fun showAjusteStockDialog(item: ItemInventario?) {
@@ -249,7 +332,7 @@ class InventarioViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             try {
-                repo.ponerProductoEnVenta(productoId, precioVenta)
+                repo.ponerProductoEnVenta(productoId, precioVenta, _uiState.value.selectedInventarioAlmacenId)
                 _uiState.update {
                     it.copy(
                         snackbarMessage = "Producto agregado al catalogo de ventas",
@@ -487,7 +570,7 @@ class InventarioViewModel @Inject constructor(
     fun agregarProducto(nombre: String, precio: Double, emoji: String, unidad: String) {
         viewModelScope.launch {
             try {
-                repo.agregarProducto(nombre, precio, emoji, unidad)
+                repo.agregarProducto(nombre, precio, emoji, unidad, _uiState.value.selectedVentaAlmacenId)
                 _uiState.update { it.copy(snackbarMessage = "Producto agregado", showAddProductDialog = false) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = "Error al agregar producto") }
@@ -498,7 +581,7 @@ class InventarioViewModel @Inject constructor(
     fun agregarProductoExistenteAVentas(productoId: String, precio: Double) {
         viewModelScope.launch {
             try {
-                repo.agregarProductoExistenteAVentas(productoId, precio)
+                repo.agregarProductoExistenteAVentas(productoId, precio, _uiState.value.selectedVentaAlmacenId)
                 _uiState.update { it.copy(snackbarMessage = "Producto agregado al catalogo de ventas") }
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al agregar producto") }
@@ -509,7 +592,7 @@ class InventarioViewModel @Inject constructor(
     fun agregarProductoCompra(nombre: String, precio: Double, emoji: String, unidad: String) {
         viewModelScope.launch {
             try {
-                repo.agregarProductoCompra(nombre, precio, emoji, unidad)
+                repo.agregarProductoCompra(nombre, precio, emoji, unidad, _uiState.value.selectedCompraAlmacenId)
                 _uiState.update { it.copy(snackbarMessage = "Insumo agregado", showAddProductCompraDialog = false) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = "Error al agregar insumo") }
@@ -520,7 +603,7 @@ class InventarioViewModel @Inject constructor(
     fun agregarProductoExistenteACompras(productoId: String, precio: Double) {
         viewModelScope.launch {
             try {
-                repo.agregarProductoExistenteACompras(productoId, precio)
+                repo.agregarProductoExistenteACompras(productoId, precio, _uiState.value.selectedCompraAlmacenId)
                 _uiState.update { it.copy(snackbarMessage = "Producto agregado al catalogo de compras") }
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al agregar insumo") }
@@ -564,7 +647,7 @@ class InventarioViewModel @Inject constructor(
     fun actualizarPrecioProductoVenta(productoId: String, precio: Double) {
         viewModelScope.launch {
             try {
-                repo.actualizarPrecioProductoVenta(productoId, precio)
+                repo.actualizarPrecioProductoVenta(productoId, precio, _uiState.value.selectedVentaAlmacenId)
                 _uiState.update { it.copy(snackbarMessage = "Precio de venta actualizado") }
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al actualizar precio") }
@@ -586,7 +669,7 @@ class InventarioViewModel @Inject constructor(
     fun actualizarPrecioProductoCompra(productoId: String, precio: Double) {
         viewModelScope.launch {
             try {
-                repo.actualizarPrecioProductoCompra(productoId, precio)
+                repo.actualizarPrecioProductoCompra(productoId, precio, _uiState.value.selectedCompraAlmacenId)
                 _uiState.update { it.copy(snackbarMessage = "Precio de compra actualizado") }
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al actualizar precio") }
@@ -630,6 +713,30 @@ class InventarioViewModel @Inject constructor(
                 _uiState.update { it.copy(snackbarMessage = "Producto restaurado en inventario") }
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = e.message ?: "No se pudo restaurar") }
+            }
+        }
+    }
+
+    fun transferirStock(almacenDestinoId: String, cantidad: Double, nota: String) {
+        val item = _uiState.value.itemTransfiriendo ?: return
+        viewModelScope.launch {
+            try {
+                repo.transferirStock(
+                    productoId = item.productoId,
+                    almacenOrigenId = item.almacenId,
+                    almacenDestinoId = almacenDestinoId,
+                    cantidad = cantidad,
+                    nota = nota
+                )
+                _uiState.update {
+                    it.copy(
+                        showTransferDialog = false,
+                        itemTransfiriendo = null,
+                        snackbarMessage = "Transferencia registrada"
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "No se pudo transferir el stock") }
             }
         }
     }

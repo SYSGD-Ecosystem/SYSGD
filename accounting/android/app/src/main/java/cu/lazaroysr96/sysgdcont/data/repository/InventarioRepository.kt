@@ -13,6 +13,7 @@ import cu.lazaroysr96.sysgdcont.data.dao.CatalogoVentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.CompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
 import cu.lazaroysr96.sysgdcont.data.dao.InventarioVinculoDao
+import cu.lazaroysr96.sysgdcont.data.dao.MovimientoInventarioDao
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
 import cu.lazaroysr96.sysgdcont.data.dao.VentaDao
 import cu.lazaroysr96.sysgdcont.data.AppDatabase
@@ -31,12 +32,15 @@ import cu.lazaroysr96.sysgdcont.data.model.InventarioVinculoRegistro
 import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.data.model.LineaVenta
 import cu.lazaroysr96.sysgdcont.data.model.ModoStock
+import cu.lazaroysr96.sysgdcont.data.model.MovimientoInventario
+import cu.lazaroysr96.sysgdcont.data.model.MovimientoInventarioRegistro
 import cu.lazaroysr96.sysgdcont.data.model.OperacionInventario
 import cu.lazaroysr96.sysgdcont.data.model.Producto
 import cu.lazaroysr96.sysgdcont.data.model.ProductoCompra
 import cu.lazaroysr96.sysgdcont.data.model.ProductoInventario
 import cu.lazaroysr96.sysgdcont.data.model.ProductoVenta
 import cu.lazaroysr96.sysgdcont.data.model.StockRegistro
+import cu.lazaroysr96.sysgdcont.data.model.TipoMovimientoInventario
 import cu.lazaroysr96.sysgdcont.data.model.TipoProductoInv
 import cu.lazaroysr96.sysgdcont.data.model.Venta
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -63,6 +67,7 @@ class InventarioRepository @Inject constructor(
     private val compraDao: CompraDao,
     private val itemInventarioDao: ItemInventarioDao,
     private val inventarioVinculoDao: InventarioVinculoDao,
+    private val movimientoInventarioDao: MovimientoInventarioDao,
     private val almacenDao: AlmacenDao,
 ) {
     companion object {
@@ -81,6 +86,49 @@ class InventarioRepository @Inject constructor(
         )
         almacenDao.insert(almacen)
         return almacen
+    }
+
+    private suspend fun requireAlmacenActivo(almacenId: String): Almacen {
+        val almacen = almacenDao.getById(almacenId)
+        require(almacen?.activo == true) { "El almacén seleccionado no está disponible" }
+        return almacen!!
+    }
+
+    private fun horaActual(): String = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
+
+    private suspend fun registrarMovimiento(
+        tipoMovimiento: String,
+        productoId: String,
+        cantidad: Double,
+        fecha: String,
+        hora: String = horaActual(),
+        almacenOrigenId: String? = null,
+        almacenDestinoId: String? = null,
+        stockOrigenAntes: Double? = null,
+        stockOrigenDespues: Double? = null,
+        stockDestinoAntes: Double? = null,
+        stockDestinoDespues: Double? = null,
+        referenciaId: String = "",
+        nota: String = ""
+    ) {
+        movimientoInventarioDao.insert(
+            MovimientoInventario(
+                id = UUID.randomUUID().toString(),
+                tipoMovimiento = tipoMovimiento,
+                fecha = fecha,
+                hora = hora,
+                productoId = productoId,
+                cantidad = cantidad,
+                almacenOrigenId = almacenOrigenId,
+                almacenDestinoId = almacenDestinoId,
+                stockOrigenAntes = stockOrigenAntes,
+                stockOrigenDespues = stockOrigenDespues,
+                stockDestinoAntes = stockDestinoAntes,
+                stockDestinoDespues = stockDestinoDespues,
+                referenciaId = referenciaId,
+                nota = nota
+            )
+        )
     }
 
     private suspend fun crearProductoBase(
@@ -163,6 +211,32 @@ class InventarioRepository @Inject constructor(
 
     fun getProductosBase(): Flow<List<Producto>> = productoDao.observeAll()
 
+    fun getAlmacenes(): Flow<List<Almacen>> = almacenDao.getAllActivos()
+
+    fun getMovimientosInventario(): Flow<List<MovimientoInventario>> = movimientoInventarioDao.observeAll()
+
+    suspend fun crearAlmacen(nombre: String): Almacen {
+        val nombreLimpio = nombre.trim()
+        require(nombreLimpio.isNotBlank()) { "Escribe un nombre para el almacén" }
+        val almacen = Almacen(
+            id = "almacen_${UUID.randomUUID().toString().replace("-", "").take(12)}",
+            nombre = nombreLimpio,
+            principal = false,
+            activo = true
+        )
+        almacenDao.insert(almacen)
+        markLocalModified()
+        return almacen
+    }
+
+    suspend fun editarAlmacen(id: String, nombre: String) {
+        requireAlmacenActivo(id)
+        val nombreLimpio = nombre.trim()
+        require(nombreLimpio.isNotBlank()) { "Escribe un nombre para el almacén" }
+        almacenDao.updateNombre(id, nombreLimpio)
+        markLocalModified()
+    }
+
     suspend fun agregarProductoBase(
         nombre: String,
         emoji: String,
@@ -194,9 +268,10 @@ class InventarioRepository @Inject constructor(
         nombre: String,
         precio: Double,
         emoji: String,
-        unidad: String
+        unidad: String,
+        almacenId: String? = null
     ) {
-        val almacen = ensureDefaultAlmacen()
+        val almacen = almacenId?.let { requireAlmacenActivo(it) } ?: ensureDefaultAlmacen()
         val producto = crearProductoBase(nombre, emoji, unidad)
         upsertCatalogoVenta(producto.id, precio, almacen.id)
         ensureItemInventario(producto.id, TipoProductoInv.VENTA, almacen.id)
@@ -205,9 +280,10 @@ class InventarioRepository @Inject constructor(
 
     suspend fun agregarProductoExistenteAVentas(
         productoId: String,
-        precio: Double
+        precio: Double,
+        almacenId: String? = null
     ) {
-        val almacen = ensureDefaultAlmacen()
+        val almacen = almacenId?.let { requireAlmacenActivo(it) } ?: ensureDefaultAlmacen()
         val producto = productoDao.getById(productoId)
             ?: throw IllegalStateException("No existe el producto seleccionado")
         upsertCatalogoVenta(producto.id, precio, almacen.id)
@@ -222,9 +298,10 @@ class InventarioRepository @Inject constructor(
 
     suspend fun actualizarPrecioProductoVenta(
         productoId: String,
-        precio: Double
+        precio: Double,
+        almacenId: String? = null
     ) {
-        val almacen = ensureDefaultAlmacen()
+        val almacen = almacenId?.let { requireAlmacenActivo(it) } ?: ensureDefaultAlmacen()
         val catalogo = catalogoVentaDao.getByProductoId(productoId, almacen.id)
             ?: throw IllegalStateException("El producto no está en el catálogo de ventas")
 
@@ -277,6 +354,10 @@ class InventarioRepository @Inject constructor(
 
     suspend fun registrarVenta(lineasCarrito: Map<ProductoVenta, Double>, fechaTrabajo: String = hoy()) {
         require(lineasCarrito.isNotEmpty())
+        val almacenes = lineasCarrito.keys.map { it.almacenId }.distinct()
+        require(almacenes.size == 1) { "La venta debe salir de un solo almacén" }
+        val almacenOrigen = requireAlmacenActivo(almacenes.first()).id
+        val hora = horaActual()
 
         for ((producto, cantidad) in lineasCarrito) {
             val itemInventario = ensureItemInventario(producto.id, TipoProductoInv.VENTA, producto.almacenId)
@@ -287,9 +368,7 @@ class InventarioRepository @Inject constructor(
         }
 
         val ventaId = UUID.randomUUID().toString()
-        val hora = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
         val total = lineasCarrito.entries.sumOf { (p, qty) -> p.precio * qty }
-        val almacenOrigen = lineasCarrito.keys.firstOrNull()?.almacenId ?: Almacen.DEFAULT_ID
 
         val venta = Venta(
             id = ventaId,
@@ -310,11 +389,28 @@ class InventarioRepository @Inject constructor(
             )
         }
 
-        ventaDao.insertVentaCompleta(venta, lineas)
+        appDatabase.withTransaction {
+            ventaDao.insertVentaCompleta(venta, lineas)
 
-        for ((producto, cantidad) in lineasCarrito) {
-            val itemInventario = ensureItemInventario(producto.id, TipoProductoInv.VENTA, producto.almacenId)
-            descontarSegunModo(itemInventario, cantidad, fechaTrabajo)
+            for ((producto, cantidad) in lineasCarrito) {
+                val itemInventario = ensureItemInventario(producto.id, TipoProductoInv.VENTA, producto.almacenId)
+                val stockAntes = calcularStockDisponible(itemInventario).takeIf { it.isFinite() }
+                descontarSegunModo(itemInventario, cantidad, fechaTrabajo)
+                val stockDespues = calcularStockDisponible(
+                    itemInventarioDao.getById(itemInventario.id) ?: itemInventario
+                ).takeIf { it.isFinite() }
+                registrarMovimiento(
+                    tipoMovimiento = TipoMovimientoInventario.VENTA,
+                    productoId = producto.id,
+                    cantidad = cantidad,
+                    fecha = fechaTrabajo,
+                    hora = hora,
+                    almacenOrigenId = almacenOrigen,
+                    stockOrigenAntes = stockAntes,
+                    stockOrigenDespues = stockDespues,
+                    referenciaId = ventaId
+                )
+            }
         }
 
         markLocalModified()
@@ -333,9 +429,10 @@ class InventarioRepository @Inject constructor(
         nombre: String,
         precio: Double,
         emoji: String,
-        unidad: String
+        unidad: String,
+        almacenId: String? = null
     ) {
-        val almacen = ensureDefaultAlmacen()
+        val almacen = almacenId?.let { requireAlmacenActivo(it) } ?: ensureDefaultAlmacen()
         val producto = crearProductoBase(nombre, emoji, unidad)
         upsertCatalogoCompra(producto.id, precio, almacen.id)
         markLocalModified()
@@ -343,9 +440,10 @@ class InventarioRepository @Inject constructor(
 
     suspend fun agregarProductoExistenteACompras(
         productoId: String,
-        precio: Double
+        precio: Double,
+        almacenId: String? = null
     ) {
-        val almacen = ensureDefaultAlmacen()
+        val almacen = almacenId?.let { requireAlmacenActivo(it) } ?: ensureDefaultAlmacen()
         val producto = productoDao.getById(productoId)
             ?: throw IllegalStateException("No existe el producto seleccionado")
         upsertCatalogoCompra(producto.id, precio, almacen.id)
@@ -359,9 +457,10 @@ class InventarioRepository @Inject constructor(
 
     suspend fun actualizarPrecioProductoCompra(
         productoId: String,
-        precio: Double
+        precio: Double,
+        almacenId: String? = null
     ) {
-        val almacen = ensureDefaultAlmacen()
+        val almacen = almacenId?.let { requireAlmacenActivo(it) } ?: ensureDefaultAlmacen()
         val catalogo = catalogoCompraDao.getByProductoId(productoId, almacen.id)
             ?: throw IllegalStateException("El producto no está en el catálogo de compras")
 
@@ -414,11 +513,13 @@ class InventarioRepository @Inject constructor(
 
     suspend fun registrarCompra(lineasCarrito: Map<ProductoCompra, Double>, fechaTrabajo: String = hoy()) {
         require(lineasCarrito.isNotEmpty())
+        val almacenes = lineasCarrito.keys.map { it.almacenDestinoId }.distinct()
+        require(almacenes.size == 1) { "La compra debe entrar a un solo almacén" }
+        val almacenDestino = requireAlmacenActivo(almacenes.first()).id
 
         val compraId = UUID.randomUUID().toString()
-        val hora = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
+        val hora = horaActual()
         val total = lineasCarrito.entries.sumOf { (p, qty) -> p.precio * qty }
-        val almacenDestino = lineasCarrito.keys.firstOrNull()?.almacenDestinoId ?: ensureDefaultAlmacen().id
 
         val compra = Compra(
             id = compraId,
@@ -439,14 +540,29 @@ class InventarioRepository @Inject constructor(
             )
         }
 
-        compraDao.insertCompraCompleta(compra, lineas)
+        appDatabase.withTransaction {
+            compraDao.insertCompraCompleta(compra, lineas)
 
-        for ((producto, cantidad) in lineasCarrito) {
-            val itemInventario = ensureItemInventario(producto.id, TipoProductoInv.COMPRA, producto.almacenDestinoId)
-            if (itemInventario.archivado) {
-                itemInventarioDao.restoreById(itemInventario.id, fechaTrabajo)
+            for ((producto, cantidad) in lineasCarrito) {
+                val itemInventario = ensureItemInventario(producto.id, TipoProductoInv.COMPRA, producto.almacenDestinoId)
+                if (itemInventario.archivado) {
+                    itemInventarioDao.restoreById(itemInventario.id, fechaTrabajo)
+                }
+                val stockAntes = itemInventario.stockDisponible
+                itemInventarioDao.sumarStock(producto.id, producto.almacenDestinoId, cantidad, fechaTrabajo)
+                val stockDespues = (itemInventarioDao.getById(itemInventario.id) ?: itemInventario).stockDisponible
+                registrarMovimiento(
+                    tipoMovimiento = TipoMovimientoInventario.COMPRA,
+                    productoId = producto.id,
+                    cantidad = cantidad,
+                    fecha = fechaTrabajo,
+                    hora = hora,
+                    almacenDestinoId = almacenDestino,
+                    stockDestinoAntes = stockAntes,
+                    stockDestinoDespues = stockDespues,
+                    referenciaId = compraId
+                )
             }
-            itemInventarioDao.sumarStock(producto.id, producto.almacenDestinoId, cantidad, fechaTrabajo)
         }
 
         markLocalModified()
@@ -470,6 +586,7 @@ class InventarioRepository @Inject constructor(
         val compras = compraDao.getAll()
         val lineasCompra = compraDao.getAllLineas()
         val vinculos = stock.flatMap { item -> obtenerVinculos(item) }
+        val movimientos = movimientoInventarioDao.observeAll().first()
 
         val productosRegistro = productos.map { p ->
             ProductoInventario(
@@ -586,6 +703,24 @@ class InventarioRepository @Inject constructor(
                     cantidad = it.cantidad
                 )
             },
+            movimientos = movimientos.map {
+                MovimientoInventarioRegistro(
+                    id = it.id,
+                    tipoMovimiento = it.tipoMovimiento,
+                    fecha = it.fecha,
+                    hora = it.hora,
+                    productoId = it.productoId,
+                    cantidad = it.cantidad,
+                    almacenOrigenId = it.almacenOrigenId,
+                    almacenDestinoId = it.almacenDestinoId,
+                    stockOrigenAntes = it.stockOrigenAntes,
+                    stockOrigenDespues = it.stockOrigenDespues,
+                    stockDestinoAntes = it.stockDestinoAntes,
+                    stockDestinoDespues = it.stockDestinoDespues,
+                    referenciaId = it.referenciaId,
+                    nota = it.nota
+                )
+            },
             operaciones = operacionesVenta + operacionesCompra,
             productosVenta = productosVentaLegacy,
             productosCompra = productosCompraLegacy
@@ -598,6 +733,7 @@ class InventarioRepository @Inject constructor(
             ventaDao.deleteAllVentas()
             compraDao.deleteAllLineas()
             compraDao.deleteAllCompras()
+            movimientoInventarioDao.deleteAll()
             inventarioVinculoDao.deleteAll()
             itemInventarioDao.deleteAll()
             catalogoVentaDao.deleteAll()
@@ -893,6 +1029,33 @@ class InventarioRepository @Inject constructor(
                     }
                 )
             }
+
+            val movimientos = inventario.movimientos
+                .filter { it.productoId in productosExistentes }
+                .filter { it.almacenOrigenId == null || it.almacenOrigenId in almacenesIds }
+                .filter { it.almacenDestinoId == null || it.almacenDestinoId in almacenesIds }
+            if (movimientos.isNotEmpty()) {
+                movimientoInventarioDao.insertAll(
+                    movimientos.map {
+                        MovimientoInventario(
+                            id = it.id.ifBlank { UUID.randomUUID().toString() },
+                            tipoMovimiento = it.tipoMovimiento.ifBlank { TipoMovimientoInventario.AJUSTE },
+                            fecha = it.fecha.ifBlank { LocalDate.now().toString() },
+                            hora = it.hora.ifBlank { "00:00" },
+                            productoId = it.productoId,
+                            cantidad = it.cantidad,
+                            almacenOrigenId = it.almacenOrigenId,
+                            almacenDestinoId = it.almacenDestinoId,
+                            stockOrigenAntes = it.stockOrigenAntes,
+                            stockOrigenDespues = it.stockOrigenDespues,
+                            stockDestinoAntes = it.stockDestinoAntes,
+                            stockDestinoDespues = it.stockDestinoDespues,
+                            referenciaId = it.referenciaId,
+                            nota = it.nota
+                        )
+                    }
+                )
+            }
         }
 
         clearLocalModified()
@@ -1006,16 +1169,98 @@ class InventarioRepository @Inject constructor(
     }
 
     suspend fun ajustarStock(id: String, cantidad: Double) {
-        itemInventarioDao.actualizarStockYModo(id, cantidad, ModoStock.MANUAL.name, LocalDate.now().toString())
-        inventarioVinculoDao.deleteByItemInventarioId(id)
+        val item = itemInventarioDao.getById(id)
+            ?: throw IllegalStateException("No existe el item de inventario")
+        val fecha = LocalDate.now().toString()
+        appDatabase.withTransaction {
+            itemInventarioDao.actualizarStockYModo(id, cantidad, ModoStock.MANUAL.name, fecha)
+            inventarioVinculoDao.deleteByItemInventarioId(id)
+            registrarMovimiento(
+                tipoMovimiento = TipoMovimientoInventario.AJUSTE,
+                productoId = item.productoId,
+                cantidad = kotlin.math.abs(cantidad - item.stockDisponible),
+                fecha = fecha,
+                almacenDestinoId = item.almacenId,
+                stockDestinoAntes = item.stockDisponible,
+                stockDestinoDespues = cantidad,
+                referenciaId = id,
+                nota = "Ajuste manual de stock"
+            )
+        }
+        markLocalModified()
+    }
+
+    suspend fun transferirStock(
+        productoId: String,
+        almacenOrigenId: String,
+        almacenDestinoId: String,
+        cantidad: Double,
+        nota: String = ""
+    ) {
+        require(cantidad > 0.0) { "La cantidad a transferir debe ser mayor que cero" }
+        require(almacenOrigenId != almacenDestinoId) { "Selecciona almacenes diferentes" }
+        requireAlmacenActivo(almacenOrigenId)
+        requireAlmacenActivo(almacenDestinoId)
+
+        val itemOrigen = itemInventarioDao.getByProductoId(productoId, almacenOrigenId)
+            ?: throw IllegalStateException("No existe inventario de origen para este producto")
+        val modoOrigen = runCatching { ModoStock.valueOf(itemOrigen.modoStock) }.getOrElse { ModoStock.ILIMITADO }
+        require(modoOrigen == ModoStock.MANUAL) {
+            "Solo se pueden transferir productos con stock manual"
+        }
+        require(itemOrigen.stockDisponible >= cantidad) {
+            "Stock insuficiente en el almacén origen"
+        }
+
+        val fecha = hoy()
+        val hora = horaActual()
+        appDatabase.withTransaction {
+            val itemDestinoExistente = itemInventarioDao.getByProductoId(productoId, almacenDestinoId)
+            val itemDestino = itemDestinoExistente ?: ItemInventario(
+                id = "stock_${almacenDestinoId}_$productoId",
+                productoId = productoId,
+                almacenId = almacenDestinoId,
+                tipoProducto = itemOrigen.tipoProducto,
+                stockDisponible = 0.0,
+                modoStock = ModoStock.MANUAL.name,
+                ultimaActualizacion = fecha,
+                visibleEnVentas = itemOrigen.visibleEnVentas
+            ).also { itemInventarioDao.insert(it) }
+
+            val stockOrigenAntes = itemOrigen.stockDisponible
+            val stockDestinoAntes = itemDestino.stockDisponible
+            itemInventarioDao.descontarStockPorId(itemOrigen.id, cantidad, fecha)
+            if (itemDestino.archivado) {
+                itemInventarioDao.restoreById(itemDestino.id, fecha)
+            }
+            itemInventarioDao.sumarStock(productoId, almacenDestinoId, cantidad, fecha)
+            val stockOrigenDespues = (itemInventarioDao.getById(itemOrigen.id) ?: itemOrigen).stockDisponible
+            val stockDestinoDespues = (itemInventarioDao.getById(itemDestino.id) ?: itemDestino).stockDisponible
+
+            registrarMovimiento(
+                tipoMovimiento = TipoMovimientoInventario.TRANSFERENCIA,
+                productoId = productoId,
+                cantidad = cantidad,
+                fecha = fecha,
+                hora = hora,
+                almacenOrigenId = almacenOrigenId,
+                almacenDestinoId = almacenDestinoId,
+                stockOrigenAntes = stockOrigenAntes,
+                stockOrigenDespues = stockOrigenDespues,
+                stockDestinoAntes = stockDestinoAntes,
+                stockDestinoDespues = stockDestinoDespues,
+                nota = nota.trim()
+            )
+        }
         markLocalModified()
     }
 
     suspend fun ponerProductoEnVenta(
         productoId: String,
-        precioVenta: Double
+        precioVenta: Double,
+        almacenId: String? = null
     ) {
-        val almacen = ensureDefaultAlmacen()
+        val almacen = almacenId?.let { requireAlmacenActivo(it) } ?: ensureDefaultAlmacen()
         productoDao.getById(productoId)
             ?: throw IllegalStateException("No existe el producto a publicar en ventas")
         upsertCatalogoVenta(productoId, precioVenta, almacen.id)

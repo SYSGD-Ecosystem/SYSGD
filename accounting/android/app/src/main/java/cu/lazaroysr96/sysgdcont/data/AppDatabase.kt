@@ -13,6 +13,7 @@ import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
 import cu.lazaroysr96.sysgdcont.data.dao.InventarioVinculoDao
 import cu.lazaroysr96.sysgdcont.data.dao.IngresoGastoCuentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.IngresoGastoNotaDao
+import cu.lazaroysr96.sysgdcont.data.dao.MovimientoInventarioDao
 import cu.lazaroysr96.sysgdcont.data.dao.AlmacenDao
 import cu.lazaroysr96.sysgdcont.data.dao.PosIntegrationConfigDao
 import cu.lazaroysr96.sysgdcont.data.dao.TributoConfigDao
@@ -29,6 +30,7 @@ import cu.lazaroysr96.sysgdcont.data.model.Compra
 import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
 import cu.lazaroysr96.sysgdcont.data.model.InventarioVinculo
+import cu.lazaroysr96.sysgdcont.data.model.MovimientoInventario
 import cu.lazaroysr96.sysgdcont.data.model.CuentaContable
 import cu.lazaroysr96.sysgdcont.data.model.CuentasContablesPorDefecto
 import cu.lazaroysr96.sysgdcont.data.model.IngresoGastoCuenta
@@ -704,6 +706,36 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
     }
 }
 
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+        database.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `movimientos_inventario` (
+                `id` TEXT NOT NULL,
+                `tipoMovimiento` TEXT NOT NULL,
+                `fecha` TEXT NOT NULL,
+                `hora` TEXT NOT NULL,
+                `productoId` TEXT NOT NULL,
+                `cantidad` REAL NOT NULL,
+                `almacenOrigenId` TEXT,
+                `almacenDestinoId` TEXT,
+                `stockOrigenAntes` REAL,
+                `stockOrigenDespues` REAL,
+                `stockDestinoAntes` REAL,
+                `stockDestinoDespues` REAL,
+                `referenciaId` TEXT NOT NULL DEFAULT '',
+                `nota` TEXT NOT NULL DEFAULT '',
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent()
+        )
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_movimientos_inventario_productoId` ON `movimientos_inventario` (`productoId`)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_movimientos_inventario_almacenOrigenId` ON `movimientos_inventario` (`almacenOrigenId`)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_movimientos_inventario_almacenDestinoId` ON `movimientos_inventario` (`almacenDestinoId`)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_movimientos_inventario_fecha` ON `movimientos_inventario` (`fecha`)")
+    }
+}
+
 @Database(
     entities = [
         Producto::class,
@@ -716,6 +748,7 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
         LineaCompra::class,
         ItemInventario::class,
         InventarioVinculo::class,
+        MovimientoInventario::class,
         CuentaContable::class,
         IngresoGastoCuenta::class,
         IngresoGastoNota::class,
@@ -728,7 +761,7 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
         TerceroCuenta::class,
         TerceroMovimiento::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -739,6 +772,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun compraDao(): CompraDao
     abstract fun itemInventarioDao(): ItemInventarioDao
     abstract fun inventarioVinculoDao(): InventarioVinculoDao
+    abstract fun movimientoInventarioDao(): MovimientoInventarioDao
     abstract fun cuentaContableDao(): CuentaContableDao
     abstract fun ingresoGastoCuentaDao(): IngresoGastoCuentaDao
     abstract fun ingresoGastoNotaDao(): IngresoGastoNotaDao

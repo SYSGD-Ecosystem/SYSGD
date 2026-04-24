@@ -2864,6 +2864,17 @@ constructor(
                         }
                         .getOrDefault(default)
 
+        fun safeNullableDouble(block: () -> Any?): Double? =
+                runCatching {
+                            when (val value = block()) {
+                                null -> null
+                                is Number -> value.toDouble()
+                                is String -> value.replace(',', '.').toDoubleOrNull()
+                                else -> null
+                            }
+                        }
+                        .getOrNull()
+
         fun safeBoolean(block: () -> Any?, default: Boolean = false): Boolean =
                 runCatching {
                             when (val value = block()) {
@@ -2936,6 +2947,31 @@ constructor(
                                     ratiosConversion = safeString({ stock.ratiosConversion }, "[]"),
                                     ultimaActualizacion = safeString({ stock.ultimaActualizacion }),
                                     visibleEnVentas = safeBoolean({ stock.visibleEnVentas })
+                            )
+                        },
+                movimientos =
+                        source.movimientos.map { movimiento ->
+                            MovimientoInventarioRegistro(
+                                    id = fallbackId(safeString({ movimiento.id })),
+                                    tipoMovimiento = safeString({ movimiento.tipoMovimiento }),
+                                    fecha = safeString({ movimiento.fecha }),
+                                    hora = safeString({ movimiento.hora }),
+                                    productoId = fallbackId(safeString({ movimiento.productoId })),
+                                    cantidad = safeDouble({ movimiento.cantidad }),
+                                    almacenOrigenId =
+                                            runCatching { movimiento.almacenOrigenId?.trim() }
+                                                    .getOrNull()
+                                                    ?.takeIf { it.isNotBlank() },
+                                    almacenDestinoId =
+                                            runCatching { movimiento.almacenDestinoId?.trim() }
+                                                    .getOrNull()
+                                                    ?.takeIf { it.isNotBlank() },
+                                    stockOrigenAntes = safeNullableDouble { movimiento.stockOrigenAntes },
+                                    stockOrigenDespues = safeNullableDouble { movimiento.stockOrigenDespues },
+                                    stockDestinoAntes = safeNullableDouble { movimiento.stockDestinoAntes },
+                                    stockDestinoDespues = safeNullableDouble { movimiento.stockDestinoDespues },
+                                    referenciaId = safeString({ movimiento.referenciaId }),
+                                    nota = safeString({ movimiento.nota })
                             )
                         },
                 operaciones =

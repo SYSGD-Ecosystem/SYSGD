@@ -55,6 +55,7 @@ data class InventarioRegistro(
     val almacenes: List<AlmacenRegistro> = emptyList(),
     val stock: List<StockRegistro> = emptyList(),
     val vinculos: List<InventarioVinculoRegistro> = emptyList(),
+    val movimientos: List<MovimientoInventarioRegistro> = emptyList(),
     val operaciones: List<OperacionInventario> = emptyList(),
     val productosVenta: List<ProductoInventario> = emptyList(),
     val productosCompra: List<ProductoInventario> = emptyList()
@@ -74,6 +75,23 @@ data class CatalogoCompraRegistro(
     val precioReferencia: Double,
     val almacenDestinoId: String = Almacen.DEFAULT_ID,
     val activo: Boolean = true
+)
+
+data class MovimientoInventarioRegistro(
+    val id: String,
+    val tipoMovimiento: String,
+    val fecha: String,
+    val hora: String,
+    val productoId: String,
+    val cantidad: Double,
+    val almacenOrigenId: String? = null,
+    val almacenDestinoId: String? = null,
+    val stockOrigenAntes: Double? = null,
+    val stockOrigenDespues: Double? = null,
+    val stockDestinoAntes: Double? = null,
+    val stockDestinoDespues: Double? = null,
+    val referenciaId: String = "",
+    val nota: String = ""
 )
 
 @Entity(tableName = "productos")
@@ -260,4 +278,32 @@ data class CompraConLineas(
     val lineas: List<LineaCompra>
 ) {
     val totalCalculado: Double get() = lineas.sumOf { it.subtotal }
+}
+
+@Entity(
+    tableName = "movimientos_inventario",
+    indices = [Index("productoId"), Index("almacenOrigenId"), Index("almacenDestinoId"), Index("fecha")]
+)
+data class MovimientoInventario(
+    @PrimaryKey val id: String,
+    val tipoMovimiento: String,
+    val fecha: String,
+    val hora: String,
+    val productoId: String,
+    val cantidad: Double,
+    val almacenOrigenId: String? = null,
+    val almacenDestinoId: String? = null,
+    val stockOrigenAntes: Double? = null,
+    val stockOrigenDespues: Double? = null,
+    val stockDestinoAntes: Double? = null,
+    val stockDestinoDespues: Double? = null,
+    val referenciaId: String = "",
+    val nota: String = ""
+)
+
+object TipoMovimientoInventario {
+    const val COMPRA = "COMPRA"
+    const val VENTA = "VENTA"
+    const val AJUSTE = "AJUSTE"
+    const val TRANSFERENCIA = "TRANSFERENCIA"
 }

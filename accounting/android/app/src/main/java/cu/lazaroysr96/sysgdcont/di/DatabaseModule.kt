@@ -11,6 +11,7 @@ import cu.lazaroysr96.sysgdcont.data.MIGRATION_5_6
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_6_7
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_7_8
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_8_9
+import cu.lazaroysr96.sysgdcont.data.MIGRATION_9_10
 import cu.lazaroysr96.sysgdcont.data.dao.CatalogoCompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.CatalogoVentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
@@ -18,6 +19,7 @@ import cu.lazaroysr96.sysgdcont.data.dao.VentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.CompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
 import cu.lazaroysr96.sysgdcont.data.dao.InventarioVinculoDao
+import cu.lazaroysr96.sysgdcont.data.dao.MovimientoInventarioDao
 import cu.lazaroysr96.sysgdcont.data.dao.AlmacenDao
 import cu.lazaroysr96.sysgdcont.data.dao.TarjetaDao
 import cu.lazaroysr96.sysgdcont.data.dao.TercerosDao
@@ -48,7 +50,8 @@ object DatabaseModule {
                 MIGRATION_5_6,
                 MIGRATION_6_7,
                 MIGRATION_7_8,
-                MIGRATION_8_9
+                MIGRATION_8_9,
+                MIGRATION_9_10
             )
             .build()
     }
@@ -94,6 +97,12 @@ object DatabaseModule {
     @Singleton
     fun provideInventarioVinculoDao(database: AppDatabase): InventarioVinculoDao {
         return database.inventarioVinculoDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideMovimientoInventarioDao(database: AppDatabase): MovimientoInventarioDao {
+        return database.movimientoInventarioDao()
     }
 
     @Provides

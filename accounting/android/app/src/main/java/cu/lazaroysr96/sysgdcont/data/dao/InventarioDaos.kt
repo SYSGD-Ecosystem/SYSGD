@@ -14,6 +14,7 @@ import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
 import cu.lazaroysr96.sysgdcont.data.model.InventarioVinculo
 import kotlinx.coroutines.flow.Flow
+import cu.lazaroysr96.sysgdcont.data.model.MovimientoInventario
 
 @Dao
 interface ProductoDao {
@@ -333,6 +334,9 @@ interface AlmacenDao {
     @Query("SELECT * FROM almacenes WHERE activo = 1 ORDER BY principal DESC, nombre ASC")
     fun getAllActivos(): Flow<List<Almacen>>
 
+    @Query("SELECT * FROM almacenes WHERE id = :id LIMIT 1")
+    suspend fun getById(id: String): Almacen?
+
     @Query("SELECT * FROM almacenes WHERE principal = 1 LIMIT 1")
     suspend fun getPrincipal(): Almacen?
 
@@ -342,6 +346,27 @@ interface AlmacenDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(almacenes: List<Almacen>)
 
+    @Query("UPDATE almacenes SET nombre = :nombre WHERE id = :id")
+    suspend fun updateNombre(id: String, nombre: String)
+
+    @Query("UPDATE almacenes SET activo = 0 WHERE id = :id")
+    suspend fun deactivate(id: String)
+
     @Query("DELETE FROM almacenes")
+    suspend fun deleteAll()
+}
+
+@Dao
+interface MovimientoInventarioDao {
+    @Query("SELECT * FROM movimientos_inventario ORDER BY fecha DESC, hora DESC")
+    fun observeAll(): Flow<List<MovimientoInventario>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(movimiento: MovimientoInventario)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(movimientos: List<MovimientoInventario>)
+
+    @Query("DELETE FROM movimientos_inventario")
     suspend fun deleteAll()
 }
