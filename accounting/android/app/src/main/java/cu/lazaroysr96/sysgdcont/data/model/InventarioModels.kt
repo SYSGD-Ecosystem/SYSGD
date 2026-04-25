@@ -9,6 +9,7 @@ data class ProductoInventario(
     val id: String,
     val nombre: String,
     val unidad: String,
+    val descripcion: String = "",
     val emoji: String = "📦",
     val precio: Double = 0.0,
     val tipo: String = ""
@@ -52,6 +53,7 @@ data class InventarioRegistro(
     val productos: List<ProductoInventario> = emptyList(),
     val catalogoVentas: List<CatalogoVentaRegistro> = emptyList(),
     val catalogoCompras: List<CatalogoCompraRegistro> = emptyList(),
+    val historialPrecios: List<PrecioProductoRegistro> = emptyList(),
     val almacenes: List<AlmacenRegistro> = emptyList(),
     val stock: List<StockRegistro> = emptyList(),
     val vinculos: List<InventarioVinculoRegistro> = emptyList(),
@@ -100,6 +102,7 @@ data class Producto(
     val nombre: String,
     val emoji: String = "📦",
     val unidad: String = "und",
+    val descripcion: String = "",
     val activo: Boolean = true
 )
 
@@ -110,6 +113,7 @@ data class ProductoVenta(
     val precio: Double,
     val emoji: String = "📦",
     val unidad: String = "und",
+    val descripcion: String = "",
     val almacenId: String = Almacen.DEFAULT_ID
 )
 
@@ -120,6 +124,7 @@ data class ProductoCompra(
     val precio: Double,
     val emoji: String = "📦",
     val unidad: String = "und",
+    val descripcion: String = "",
     val activo: Boolean = true,
     val almacenDestinoId: String = Almacen.DEFAULT_ID
 )

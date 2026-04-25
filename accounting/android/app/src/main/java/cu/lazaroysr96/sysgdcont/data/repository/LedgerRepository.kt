@@ -2885,6 +2885,18 @@ constructor(
                         }
                         .getOrDefault(default)
 
+        fun safeLong(block: () -> Any?, default: Long = 0L): Long =
+                runCatching {
+                            when (val value = block()) {
+                                null -> default
+                                is Long -> value
+                                is Number -> value.toLong()
+                                is String -> value.toLongOrNull() ?: default
+                                else -> default
+                            }
+                        }
+                        .getOrDefault(default)
+
         return InventarioRegistro(
                 productos =
                         source.productos.map { producto ->
@@ -2892,6 +2904,7 @@ constructor(
                                     id = fallbackId(safeString({ producto.id })),
                                     nombre = safeString({ producto.nombre }, "Producto"),
                                     unidad = safeString({ producto.unidad }, "und"),
+                                    descripcion = safeString({ producto.descripcion }),
                                     emoji = safeString({ producto.emoji }, "📦"),
                                     precio = safeDouble({ producto.precio }),
                                     tipo = safeString({ producto.tipo })
@@ -2920,6 +2933,21 @@ constructor(
                                                     Almacen.DEFAULT_ID
                                             ),
                                     activo = safeBoolean({ catalogo.activo }, true)
+                            )
+                        },
+                historialPrecios =
+                        source.historialPrecios.map { precio ->
+                            PrecioProductoRegistro(
+                                    id = fallbackId(safeString({ precio.id })),
+                                    productoId = fallbackId(safeString({ precio.productoId })),
+                                    tipoPrecio = safeString({ precio.tipoPrecio }),
+                                    precio = safeDouble({ precio.precio }),
+                                    moneda = safeString({ precio.moneda }, "CUP"),
+                                    fechaDesde = safeString({ precio.fechaDesde }),
+                                    fechaHasta = runCatching { precio.fechaHasta?.trim() }.getOrNull()?.takeIf { it.isNotBlank() },
+                                    activo = safeBoolean({ precio.activo }, true),
+                                    createdAt = safeLong({ precio.createdAt }),
+                                    almacenId = safeString({ precio.almacenId }, Almacen.DEFAULT_ID)
                             )
                         },
                 almacenes =
@@ -3000,6 +3028,7 @@ constructor(
                                     id = fallbackId(safeString({ producto.id })),
                                     nombre = safeString({ producto.nombre }, "Producto"),
                                     unidad = safeString({ producto.unidad }, "und"),
+                                    descripcion = safeString({ producto.descripcion }),
                                     emoji = safeString({ producto.emoji }, "📦"),
                                     precio = safeDouble({ producto.precio }),
                                     tipo = safeString({ producto.tipo }, "venta")
@@ -3011,6 +3040,7 @@ constructor(
                                     id = fallbackId(safeString({ producto.id })),
                                     nombre = safeString({ producto.nombre }, "Producto"),
                                     unidad = safeString({ producto.unidad }, "und"),
+                                    descripcion = safeString({ producto.descripcion }),
                                     emoji = safeString({ producto.emoji }, "📦"),
                                     precio = safeDouble({ producto.precio }),
                                     tipo = safeString({ producto.tipo }, "compra")

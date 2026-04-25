@@ -21,6 +21,7 @@ import cu.lazaroysr96.sysgdcont.data.model.ModoStock
 import cu.lazaroysr96.sysgdcont.data.model.MovimientoInventario
 import cu.lazaroysr96.sysgdcont.data.model.PosIntegrationConfig
 import cu.lazaroysr96.sysgdcont.data.model.Producto
+import cu.lazaroysr96.sysgdcont.data.model.PrecioProductoDetalle
 import cu.lazaroysr96.sysgdcont.data.repository.ConfiguracionFacturacion
 import cu.lazaroysr96.sysgdcont.data.repository.FacturaRepository
 import cu.lazaroysr96.sysgdcont.data.repository.InventarioRepository
@@ -621,10 +622,10 @@ class InventarioViewModel @Inject constructor(
         return "${mesNombre.replaceFirstChar { it.uppercase() }} ${mes.year}"
     }
 
-    fun agregarProducto(nombre: String, precio: Double, emoji: String, unidad: String) {
+    fun agregarProducto(nombre: String, precio: Double, emoji: String, unidad: String, descripcion: String = "") {
         viewModelScope.launch {
             try {
-                repo.agregarProducto(nombre, precio, emoji, unidad, _uiState.value.selectedVentaAlmacenId)
+                repo.agregarProducto(nombre, precio, emoji, unidad, descripcion, _uiState.value.selectedVentaAlmacenId)
                 _uiState.update { it.copy(snackbarMessage = "Producto agregado", showAddProductDialog = false) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = "Error al agregar producto") }
@@ -643,10 +644,10 @@ class InventarioViewModel @Inject constructor(
         }
     }
 
-    fun agregarProductoCompra(nombre: String, precio: Double, emoji: String, unidad: String) {
+    fun agregarProductoCompra(nombre: String, precio: Double, emoji: String, unidad: String, descripcion: String = "") {
         viewModelScope.launch {
             try {
-                repo.agregarProductoCompra(nombre, precio, emoji, unidad, _uiState.value.selectedCompraAlmacenId)
+                repo.agregarProductoCompra(nombre, precio, emoji, unidad, descripcion, _uiState.value.selectedCompraAlmacenId)
                 _uiState.update { it.copy(snackbarMessage = "Insumo agregado", showAddProductCompraDialog = false) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = "Error al agregar insumo") }
@@ -665,10 +666,10 @@ class InventarioViewModel @Inject constructor(
         }
     }
 
-    fun agregarProductoBase(nombre: String, emoji: String, unidad: String) {
+    fun agregarProductoBase(nombre: String, emoji: String, unidad: String, descripcion: String) {
         viewModelScope.launch {
             try {
-                repo.agregarProductoBase(nombre, emoji, unidad)
+                repo.agregarProductoBase(nombre, emoji, unidad, descripcion)
                 _uiState.update { it.copy(snackbarMessage = "Producto agregado") }
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = "Error al agregar producto") }
@@ -676,16 +677,19 @@ class InventarioViewModel @Inject constructor(
         }
     }
 
-    fun actualizarProductoBase(id: String, nombre: String, emoji: String, unidad: String) {
+    fun actualizarProductoBase(id: String, nombre: String, emoji: String, unidad: String, descripcion: String) {
         viewModelScope.launch {
             try {
-                repo.actualizarProductoBase(id, nombre, emoji, unidad)
+                repo.actualizarProductoBase(id, nombre, emoji, unidad, descripcion)
                 _uiState.update { it.copy(snackbarMessage = "Producto actualizado") }
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al actualizar producto") }
             }
         }
     }
+
+    suspend fun obtenerHistorialPreciosProducto(productoId: String): List<PrecioProductoDetalle> =
+        repo.getHistorialPreciosProducto(productoId)
 
     fun eliminarProducto(id: String) {
         viewModelScope.launch {

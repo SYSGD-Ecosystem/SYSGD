@@ -12,9 +12,11 @@ import cu.lazaroysr96.sysgdcont.data.MIGRATION_6_7
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_7_8
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_8_9
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_9_10
+import cu.lazaroysr96.sysgdcont.data.MIGRATION_10_11
 import cu.lazaroysr96.sysgdcont.data.dao.CatalogoCompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.CatalogoVentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
+import cu.lazaroysr96.sysgdcont.data.dao.PrecioProductoDao
 import cu.lazaroysr96.sysgdcont.data.dao.VentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.CompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
@@ -51,7 +53,8 @@ object DatabaseModule {
                 MIGRATION_6_7,
                 MIGRATION_7_8,
                 MIGRATION_8_9,
-                MIGRATION_9_10
+                MIGRATION_9_10,
+                MIGRATION_10_11
             )
             .build()
     }
@@ -72,6 +75,12 @@ object DatabaseModule {
     @Singleton
     fun provideCatalogoCompraDao(database: AppDatabase): CatalogoCompraDao {
         return database.catalogoCompraDao()
+    }
+
+    @Provides
+    @Singleton
+    fun providePrecioProductoDao(database: AppDatabase): PrecioProductoDao {
+        return database.precioProductoDao()
     }
 
     @Provides

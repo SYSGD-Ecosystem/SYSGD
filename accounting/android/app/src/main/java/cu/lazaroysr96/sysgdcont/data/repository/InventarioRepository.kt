@@ -14,6 +14,7 @@ import cu.lazaroysr96.sysgdcont.data.dao.CompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
 import cu.lazaroysr96.sysgdcont.data.dao.InventarioVinculoDao
 import cu.lazaroysr96.sysgdcont.data.dao.MovimientoInventarioDao
+import cu.lazaroysr96.sysgdcont.data.dao.PrecioProductoDao
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
 import cu.lazaroysr96.sysgdcont.data.dao.VentaDao
 import cu.lazaroysr96.sysgdcont.data.AppDatabase
@@ -35,12 +36,16 @@ import cu.lazaroysr96.sysgdcont.data.model.ModoStock
 import cu.lazaroysr96.sysgdcont.data.model.MovimientoInventario
 import cu.lazaroysr96.sysgdcont.data.model.MovimientoInventarioRegistro
 import cu.lazaroysr96.sysgdcont.data.model.OperacionInventario
+import cu.lazaroysr96.sysgdcont.data.model.PrecioProducto
+import cu.lazaroysr96.sysgdcont.data.model.PrecioProductoDetalle
+import cu.lazaroysr96.sysgdcont.data.model.PrecioProductoRegistro
 import cu.lazaroysr96.sysgdcont.data.model.Producto
 import cu.lazaroysr96.sysgdcont.data.model.ProductoCompra
 import cu.lazaroysr96.sysgdcont.data.model.ProductoInventario
 import cu.lazaroysr96.sysgdcont.data.model.ProductoVenta
 import cu.lazaroysr96.sysgdcont.data.model.StockRegistro
 import cu.lazaroysr96.sysgdcont.data.model.TipoMovimientoInventario
+import cu.lazaroysr96.sysgdcont.data.model.TipoPrecio
 import cu.lazaroysr96.sysgdcont.data.model.TipoProductoInv
 import cu.lazaroysr96.sysgdcont.data.model.Venta
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -68,6 +73,7 @@ class InventarioRepository @Inject constructor(
     private val itemInventarioDao: ItemInventarioDao,
     private val inventarioVinculoDao: InventarioVinculoDao,
     private val movimientoInventarioDao: MovimientoInventarioDao,
+    private val precioProductoDao: PrecioProductoDao,
     private val almacenDao: AlmacenDao,
 ) {
     companion object {
@@ -134,17 +140,45 @@ class InventarioRepository @Inject constructor(
     private suspend fun crearProductoBase(
         nombre: String,
         emoji: String,
-        unidad: String
+        unidad: String,
+        descripcion: String = ""
     ): Producto {
         val producto = Producto(
             id = UUID.randomUUID().toString(),
             nombre = nombre.trim(),
             emoji = emoji,
             unidad = unidad,
+            descripcion = descripcion.trim(),
             activo = true
         )
         productoDao.insert(producto)
         return producto
+    }
+
+    private suspend fun registrarHistoricoPrecio(
+        productoId: String,
+        tipoPrecio: String,
+        precio: Double,
+        almacenId: String,
+        fecha: String = hoy()
+    ) {
+        val actual = precioProductoDao.getActivo(productoId, tipoPrecio, almacenId)
+        if (actual != null && actual.precio == precio) return
+
+        precioProductoDao.cerrarActivos(productoId, tipoPrecio, almacenId, fecha)
+        precioProductoDao.insert(
+            PrecioProducto(
+                id = UUID.randomUUID().toString(),
+                productoId = productoId,
+                tipoPrecio = tipoPrecio,
+                precio = precio,
+                fechaDesde = fecha,
+                fechaHasta = null,
+                activo = true,
+                createdAt = System.currentTimeMillis(),
+                almacenId = almacenId
+            )
+        )
     }
 
     private suspend fun upsertCatalogoVenta(
@@ -240,9 +274,10 @@ class InventarioRepository @Inject constructor(
     suspend fun agregarProductoBase(
         nombre: String,
         emoji: String,
-        unidad: String
+        unidad: String,
+        descripcion: String
     ) {
-        crearProductoBase(nombre, emoji, unidad)
+        crearProductoBase(nombre, emoji, unidad, descripcion)
         markLocalModified()
     }
 
@@ -250,7 +285,8 @@ class InventarioRepository @Inject constructor(
         id: String,
         nombre: String,
         emoji: String,
-        unidad: String
+        unidad: String,
+        descripcion: String
     ) {
         val existente = productoDao.getById(id)
             ?: throw IllegalStateException("No existe el producto")
@@ -258,7 +294,8 @@ class InventarioRepository @Inject constructor(
         val actualizado = existente.copy(
             nombre = nombre.trim(),
             emoji = emoji,
-            unidad = unidad
+            unidad = unidad,
+            descripcion = descripcion.trim()
         )
         productoDao.update(actualizado)
         markLocalModified()
@@ -269,12 +306,16 @@ class InventarioRepository @Inject constructor(
         precio: Double,
         emoji: String,
         unidad: String,
+        descripcion: String = "",
         almacenId: String? = null
     ) {
         val almacen = almacenId?.let { requireAlmacenActivo(it) } ?: ensureDefaultAlmacen()
-        val producto = crearProductoBase(nombre, emoji, unidad)
-        upsertCatalogoVenta(producto.id, precio, almacen.id)
-        ensureItemInventario(producto.id, TipoProductoInv.VENTA, almacen.id)
+        appDatabase.withTransaction {
+            val producto = crearProductoBase(nombre, emoji, unidad, descripcion)
+            upsertCatalogoVenta(producto.id, precio, almacen.id)
+            registrarHistoricoPrecio(producto.id, TipoPrecio.VENTA, precio, almacen.id)
+            ensureItemInventario(producto.id, TipoProductoInv.VENTA, almacen.id)
+        }
         markLocalModified()
     }
 
@@ -284,10 +325,13 @@ class InventarioRepository @Inject constructor(
         almacenId: String? = null
     ) {
         val almacen = almacenId?.let { requireAlmacenActivo(it) } ?: ensureDefaultAlmacen()
-        val producto = productoDao.getById(productoId)
-            ?: throw IllegalStateException("No existe el producto seleccionado")
-        upsertCatalogoVenta(producto.id, precio, almacen.id)
-        ensureItemInventario(producto.id, TipoProductoInv.VENTA, almacen.id)
+        appDatabase.withTransaction {
+            val producto = productoDao.getById(productoId)
+                ?: throw IllegalStateException("No existe el producto seleccionado")
+            upsertCatalogoVenta(producto.id, precio, almacen.id)
+            registrarHistoricoPrecio(producto.id, TipoPrecio.VENTA, precio, almacen.id)
+            ensureItemInventario(producto.id, TipoProductoInv.VENTA, almacen.id)
+        }
         markLocalModified()
     }
 
@@ -302,15 +346,18 @@ class InventarioRepository @Inject constructor(
         almacenId: String? = null
     ) {
         val almacen = almacenId?.let { requireAlmacenActivo(it) } ?: ensureDefaultAlmacen()
-        val catalogo = catalogoVentaDao.getByProductoId(productoId, almacen.id)
-            ?: throw IllegalStateException("El producto no está en el catálogo de ventas")
+        appDatabase.withTransaction {
+            val catalogo = catalogoVentaDao.getByProductoId(productoId, almacen.id)
+                ?: throw IllegalStateException("El producto no está en el catálogo de ventas")
 
-        catalogoVentaDao.insert(
-            catalogo.copy(
-                precioReferencia = precio,
-                activo = true
+            catalogoVentaDao.insert(
+                catalogo.copy(
+                    precioReferencia = precio,
+                    activo = true
+                )
             )
-        )
+            registrarHistoricoPrecio(productoId, TipoPrecio.VENTA, precio, almacen.id)
+        }
         markLocalModified()
     }
 
@@ -436,11 +483,15 @@ class InventarioRepository @Inject constructor(
         precio: Double,
         emoji: String,
         unidad: String,
+        descripcion: String = "",
         almacenId: String? = null
     ) {
         val almacen = almacenId?.let { requireAlmacenActivo(it) } ?: ensureDefaultAlmacen()
-        val producto = crearProductoBase(nombre, emoji, unidad)
-        upsertCatalogoCompra(producto.id, precio, almacen.id)
+        appDatabase.withTransaction {
+            val producto = crearProductoBase(nombre, emoji, unidad, descripcion)
+            upsertCatalogoCompra(producto.id, precio, almacen.id)
+            registrarHistoricoPrecio(producto.id, TipoPrecio.COMPRA, precio, almacen.id)
+        }
         markLocalModified()
     }
 
@@ -450,9 +501,12 @@ class InventarioRepository @Inject constructor(
         almacenId: String? = null
     ) {
         val almacen = almacenId?.let { requireAlmacenActivo(it) } ?: ensureDefaultAlmacen()
-        val producto = productoDao.getById(productoId)
-            ?: throw IllegalStateException("No existe el producto seleccionado")
-        upsertCatalogoCompra(producto.id, precio, almacen.id)
+        appDatabase.withTransaction {
+            val producto = productoDao.getById(productoId)
+                ?: throw IllegalStateException("No existe el producto seleccionado")
+            upsertCatalogoCompra(producto.id, precio, almacen.id)
+            registrarHistoricoPrecio(producto.id, TipoPrecio.COMPRA, precio, almacen.id)
+        }
         markLocalModified()
     }
 
@@ -467,17 +521,23 @@ class InventarioRepository @Inject constructor(
         almacenId: String? = null
     ) {
         val almacen = almacenId?.let { requireAlmacenActivo(it) } ?: ensureDefaultAlmacen()
-        val catalogo = catalogoCompraDao.getByProductoId(productoId, almacen.id)
-            ?: throw IllegalStateException("El producto no está en el catálogo de compras")
+        appDatabase.withTransaction {
+            val catalogo = catalogoCompraDao.getByProductoId(productoId, almacen.id)
+                ?: throw IllegalStateException("El producto no está en el catálogo de compras")
 
-        catalogoCompraDao.insert(
-            catalogo.copy(
-                precioReferencia = precio,
-                activo = true
+            catalogoCompraDao.insert(
+                catalogo.copy(
+                    precioReferencia = precio,
+                    activo = true
+                )
             )
-        )
+            registrarHistoricoPrecio(productoId, TipoPrecio.COMPRA, precio, almacen.id)
+        }
         markLocalModified()
     }
+
+    suspend fun getHistorialPreciosProducto(productoId: String): List<PrecioProductoDetalle> =
+        precioProductoDao.getHistorialByProducto(productoId)
 
     fun getComprasDelDia(fecha: String = hoy()): Flow<List<Compra>> =
         compraDao.getComprasDelDia(fecha)
@@ -599,12 +659,14 @@ class InventarioRepository @Inject constructor(
         val lineasCompra = compraDao.getAllLineas()
         val vinculos = stock.flatMap { item -> obtenerVinculos(item) }
         val movimientos = movimientoInventarioDao.observeAll().first()
+        val historialPrecios = precioProductoDao.getAll()
 
         val productosRegistro = productos.map { p ->
             ProductoInventario(
                 id = p.id,
                 nombre = p.nombre,
                 unidad = p.unidad,
+                descripcion = p.descripcion,
                 emoji = p.emoji
             )
         }
@@ -615,6 +677,7 @@ class InventarioRepository @Inject constructor(
                 id = producto.id,
                 nombre = producto.nombre,
                 unidad = producto.unidad,
+                descripcion = producto.descripcion,
                 emoji = producto.emoji,
                 precio = catalogo.precioReferencia,
                 tipo = "venta"
@@ -627,6 +690,7 @@ class InventarioRepository @Inject constructor(
                 id = producto.id,
                 nombre = producto.nombre,
                 unidad = producto.unidad,
+                descripcion = producto.descripcion,
                 emoji = producto.emoji,
                 precio = catalogo.precioReferencia,
                 tipo = "compra"
@@ -693,6 +757,20 @@ class InventarioRepository @Inject constructor(
                     activo = it.activo
                 )
             },
+            historialPrecios = historialPrecios.map {
+                PrecioProductoRegistro(
+                    id = it.id,
+                    productoId = it.productoId,
+                    tipoPrecio = it.tipoPrecio,
+                    precio = it.precio,
+                    moneda = it.moneda,
+                    fechaDesde = it.fechaDesde,
+                    fechaHasta = it.fechaHasta,
+                    activo = it.activo,
+                    createdAt = it.createdAt,
+                    almacenId = it.almacenId
+                )
+            },
             almacenes = almacenes.map { AlmacenRegistro(it.id, it.nombre, it.principal) },
             stock = stock.map {
                 StockRegistro(
@@ -750,6 +828,7 @@ class InventarioRepository @Inject constructor(
             itemInventarioDao.deleteAll()
             catalogoVentaDao.deleteAll()
             catalogoCompraDao.deleteAll()
+            precioProductoDao.deleteAll()
             productoDao.deleteAll()
             almacenDao.deleteAll()
 
@@ -796,6 +875,7 @@ class InventarioRepository @Inject constructor(
                     nombre = p.nombre,
                     emoji = p.emoji,
                     unidad = p.unidad,
+                    descripcion = p.descripcion,
                     activo = true
                 )
             }
@@ -847,6 +927,28 @@ class InventarioRepository @Inject constructor(
                 }
             }.filter { it.productoId in productosIds && it.almacenDestinoId in almacenesIds }
             catalogoCompraDao.insertAll(catalogoCompras)
+
+            val historialPrecios = inventario.historialPrecios.mapNotNull {
+                if (it.productoId !in productosIds || it.almacenId !in almacenesIds) {
+                    null
+                } else {
+                    PrecioProducto(
+                        id = it.id,
+                        productoId = it.productoId,
+                        tipoPrecio = it.tipoPrecio,
+                        precio = it.precio,
+                        moneda = it.moneda,
+                        fechaDesde = it.fechaDesde,
+                        fechaHasta = it.fechaHasta,
+                        activo = it.activo,
+                        createdAt = it.createdAt,
+                        almacenId = it.almacenId
+                    )
+                }
+            }
+            if (historialPrecios.isNotEmpty()) {
+                precioProductoDao.insertAll(historialPrecios)
+            }
 
             val stockFuente = inventario.stock.ifEmpty {
                 val productosVentaIds = inventario.productosVenta.map { it.id }.toSet()

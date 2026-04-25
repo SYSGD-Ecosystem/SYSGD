@@ -15,6 +15,7 @@ import cu.lazaroysr96.sysgdcont.data.dao.IngresoGastoCuentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.IngresoGastoNotaDao
 import cu.lazaroysr96.sysgdcont.data.dao.MovimientoInventarioDao
 import cu.lazaroysr96.sysgdcont.data.dao.AlmacenDao
+import cu.lazaroysr96.sysgdcont.data.dao.PrecioProductoDao
 import cu.lazaroysr96.sysgdcont.data.dao.PosIntegrationConfigDao
 import cu.lazaroysr96.sysgdcont.data.dao.TributoConfigDao
 import cu.lazaroysr96.sysgdcont.data.dao.TributoCuentaBaseDao
@@ -37,6 +38,7 @@ import cu.lazaroysr96.sysgdcont.data.model.IngresoGastoCuenta
 import cu.lazaroysr96.sysgdcont.data.model.IngresoGastoNota
 import cu.lazaroysr96.sysgdcont.data.model.NaturalezaCuenta
 import cu.lazaroysr96.sysgdcont.data.model.PosIntegrationConfig
+import cu.lazaroysr96.sysgdcont.data.model.PrecioProducto
 import cu.lazaroysr96.sysgdcont.data.model.Tarjeta
 import cu.lazaroysr96.sysgdcont.data.model.Tercero
 import cu.lazaroysr96.sysgdcont.data.model.TerceroCuenta
@@ -736,11 +738,81 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
     }
 }
 
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+        database.execSQL(
+            "ALTER TABLE productos ADD COLUMN descripcion TEXT NOT NULL DEFAULT ''"
+        )
+        database.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `precios_producto` (
+                `id` TEXT NOT NULL,
+                `productoId` TEXT NOT NULL,
+                `tipoPrecio` TEXT NOT NULL,
+                `precio` REAL NOT NULL,
+                `moneda` TEXT NOT NULL DEFAULT 'CUP',
+                `fechaDesde` TEXT NOT NULL,
+                `fechaHasta` TEXT,
+                `activo` INTEGER NOT NULL DEFAULT 1,
+                `createdAt` INTEGER NOT NULL,
+                `almacenId` TEXT NOT NULL DEFAULT 'almacen_principal',
+                PRIMARY KEY(`id`),
+                FOREIGN KEY (`productoId`) REFERENCES `productos`(`id`) ON DELETE CASCADE,
+                FOREIGN KEY (`almacenId`) REFERENCES `almacenes`(`id`) ON DELETE RESTRICT
+            )
+            """.trimIndent()
+        )
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_precios_producto_productoId` ON `precios_producto` (`productoId`)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_precios_producto_almacenId` ON `precios_producto` (`almacenId`)")
+        database.execSQL(
+            """
+            INSERT INTO precios_producto (
+                id, productoId, tipoPrecio, precio, moneda, fechaDesde, fechaHasta, activo, createdAt, almacenId
+            )
+            SELECT
+                'hist_venta_' || id,
+                productoId,
+                'VENTA',
+                precioReferencia,
+                'CUP',
+                date('now'),
+                NULL,
+                CASE WHEN activo = 1 THEN 1 ELSE 0 END,
+                CAST(strftime('%s','now') AS INTEGER) * 1000,
+                almacenId
+            FROM catalogo_ventas
+            """
+                .trimIndent()
+        )
+        database.execSQL(
+            """
+            INSERT INTO precios_producto (
+                id, productoId, tipoPrecio, precio, moneda, fechaDesde, fechaHasta, activo, createdAt, almacenId
+            )
+            SELECT
+                'hist_compra_' || id,
+                productoId,
+                'COMPRA',
+                precioReferencia,
+                'CUP',
+                date('now'),
+                NULL,
+                CASE WHEN activo = 1 THEN 1 ELSE 0 END,
+                CAST(strftime('%s','now') AS INTEGER) * 1000,
+                almacenDestinoId
+            FROM catalogo_compras
+            """
+                .trimIndent()
+        )
+    }
+}
+
 @Database(
     entities = [
         Producto::class,
         CatalogoVenta::class,
         CatalogoCompra::class,
+        PrecioProducto::class,
         Almacen::class,
         Venta::class,
         LineaVenta::class,
@@ -761,7 +833,7 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
         TerceroCuenta::class,
         TerceroMovimiento::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -773,6 +845,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun itemInventarioDao(): ItemInventarioDao
     abstract fun inventarioVinculoDao(): InventarioVinculoDao
     abstract fun movimientoInventarioDao(): MovimientoInventarioDao
+    abstract fun precioProductoDao(): PrecioProductoDao
     abstract fun cuentaContableDao(): CuentaContableDao
     abstract fun ingresoGastoCuentaDao(): IngresoGastoCuentaDao
     abstract fun ingresoGastoNotaDao(): IngresoGastoNotaDao

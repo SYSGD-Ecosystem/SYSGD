@@ -14,22 +14,28 @@ package cu.lazaroysr96.sysgdcont.ui.main.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cu.lazaroysr96.sysgdcont.data.model.CuentaContable
 import cu.lazaroysr96.sysgdcont.data.model.NaturalezaCuenta
+import cu.lazaroysr96.sysgdcont.data.model.PrecioProductoDetalle
+import cu.lazaroysr96.sysgdcont.data.model.TipoPrecio
 import cu.lazaroysr96.sysgdcont.data.model.TipoCuenta
 import cu.lazaroysr96.sysgdcont.data.model.Producto
 import cu.lazaroysr96.sysgdcont.viewmodel.InventarioViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
+import cu.lazaroysr96.sysgdcont.ui.components.producto.ChevronTrailing
 import cu.lazaroysr96.sysgdcont.ui.components.producto.ProductoFormDialog
 import cu.lazaroysr96.sysgdcont.ui.components.producto.ProductoItem
 
@@ -77,9 +83,10 @@ fun CatalogosScreen(
                 onAddCuenta      = ledgerViewModel::crearCuentaContable
             )
             1 -> ProductosTab(
-                productos     = productosState.productosBase,
-                onAddProduct  = inventarioViewModel::agregarProductoBase,
-                onEditProduct = inventarioViewModel::actualizarProductoBase
+                productos        = productosState.productosBase,
+                onAddProduct     = inventarioViewModel::agregarProductoBase,
+                onEditProduct    = inventarioViewModel::actualizarProductoBase,
+                loadPriceHistory = inventarioViewModel::obtenerHistorialPreciosProducto
             )
         }
     }
@@ -92,16 +99,22 @@ fun CatalogosScreen(
 @Composable
 private fun ProductosTab(
     productos: List<Producto>,
-    onAddProduct:  (nombre: String, imagenJson: String, unidad: String) -> Unit,
-    onEditProduct: (id: String, nombre: String, imagenJson: String, unidad: String) -> Unit
+    onAddProduct:  (nombre: String, imagenJson: String, unidad: String, descripcion: String) -> Unit,
+    onEditProduct: (id: String, nombre: String, imagenJson: String, unidad: String, descripcion: String) -> Unit,
+    loadPriceHistory: suspend (String) -> List<PrecioProductoDetalle>
 ) {
+    var productoDetalle by remember { mutableStateOf<Producto?>(null) }
     var productoEditando by remember { mutableStateOf<Producto?>(null) }
     var showAddDialog    by remember { mutableStateOf(false) }
     var searchQuery      by remember { mutableStateOf("") }
 
     val filteredProducts = remember(productos, searchQuery) {
         if (searchQuery.isBlank()) productos
-        else productos.filter { it.nombre.contains(searchQuery, ignoreCase = true) }
+        else productos.filter {
+            it.nombre.contains(searchQuery, ignoreCase = true) ||
+                it.unidad.contains(searchQuery, ignoreCase = true) ||
+                it.descripcion.contains(searchQuery, ignoreCase = true)
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -149,7 +162,8 @@ private fun ProductosTab(
                     // ← ProductoItem genérico, sin trailing = icono editar por defecto
                     ProductoItem(
                         producto = producto,
-                        onClick  = { productoEditando = producto }
+                        onClick  = { productoDetalle = producto },
+                        trailing = { ChevronTrailing() }
                     )
                 }
             }
@@ -160,9 +174,21 @@ private fun ProductosTab(
     if (showAddDialog) {
         ProductoFormDialog(
             onDismiss = { showAddDialog = false },
-            onConfirm = { nombre, imagenJson, unidad ->
-                onAddProduct(nombre, imagenJson, unidad)
+            onConfirm = { nombre, imagenJson, unidad, descripcion ->
+                onAddProduct(nombre, imagenJson, unidad, descripcion)
                 showAddDialog = false
+            }
+        )
+    }
+
+    productoDetalle?.let { producto ->
+        ProductoDetalleDialog(
+            producto = producto,
+            loadPriceHistory = loadPriceHistory,
+            onDismiss = { productoDetalle = null },
+            onEdit = {
+                productoDetalle = null
+                productoEditando = producto
             }
         )
     }
@@ -172,11 +198,122 @@ private fun ProductosTab(
         ProductoFormDialog(
             producto  = p,
             onDismiss = { productoEditando = null },
-            onConfirm = { nombre, imagenJson, unidad ->
-                onEditProduct(p.id, nombre, imagenJson, unidad)
+            onConfirm = { nombre, imagenJson, unidad, descripcion ->
+                onEditProduct(p.id, nombre, imagenJson, unidad, descripcion)
                 productoEditando = null
             }
         )
+    }
+}
+
+@Composable
+private fun ProductoDetalleDialog(
+    producto: Producto,
+    loadPriceHistory: suspend (String) -> List<PrecioProductoDetalle>,
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit
+) {
+    val historial by produceState<List<PrecioProductoDetalle>>(initialValue = emptyList(), key1 = producto.id) {
+        value = runCatching { loadPriceHistory(producto.id) }.getOrDefault(emptyList())
+    }
+    val preciosVenta = remember(historial) { historial.filter { it.tipoPrecio == TipoPrecio.VENTA && it.activo } }
+    val preciosCompra = remember(historial) { historial.filter { it.tipoPrecio == TipoPrecio.COMPRA && it.activo } }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(producto.nombre) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ProductoDetalleDato("Unidad", producto.unidad)
+                if (producto.descripcion.isNotBlank()) {
+                    ProductoDetalleDato("Descripcion", producto.descripcion)
+                }
+                ProductoPrecioVigenteBlock("Precio de venta vigente", preciosVenta)
+                ProductoPrecioVigenteBlock("Precio de compra vigente", preciosCompra)
+                Divider()
+                Text("Historial de precios", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                if (historial.isEmpty()) {
+                    Text(
+                        "Todavia no hay cambios de precio registrados para este producto.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    historial.forEach { item ->
+                        ElevatedCard(
+                            colors = CardDefaults.elevatedCardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    "${TipoPrecio.label(item.tipoPrecio)} • ${item.almacenNombre ?: "Almacen"}",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    "${"%.2f".format(item.precio)} ${item.moneda}",
+                                    style = MaterialTheme.typography.titleSmall
+                                )
+                                Text(
+                                    if (item.activo) "Vigente desde ${item.fechaDesde}" else "${item.fechaDesde} → ${item.fechaHasta ?: "sin cierre"}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onEdit) { Text("Editar") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cerrar") }
+        }
+    )
+}
+
+@Composable
+private fun ProductoDetalleDato(label: String, valor: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(valor, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@Composable
+private fun ProductoPrecioVigenteBlock(
+    titulo: String,
+    precios: List<PrecioProductoDetalle>
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(titulo, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+        if (precios.isEmpty()) {
+            Text(
+                "Sin precio vigente",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            precios.forEach { item ->
+                Text(
+                    "${item.almacenNombre ?: "Almacen"}: ${"%.2f".format(item.precio)} ${item.moneda}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
     }
 }
 

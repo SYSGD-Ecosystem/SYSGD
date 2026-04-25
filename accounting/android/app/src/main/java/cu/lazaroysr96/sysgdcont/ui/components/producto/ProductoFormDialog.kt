@@ -9,14 +9,14 @@ package cu.lazaroysr96.sysgdcont.ui.components.producto
  * Uso — Agregar:
  *   ProductoFormDialog(
  *       onDismiss = { ... },
- *       onConfirm = { nombre, imagenJson, unidad -> ... }
+ *       onConfirm = { nombre, imagenJson, unidad, descripcion -> ... }
  *   )
  *
  * Uso — Editar (pasar el producto existente):
  *   ProductoFormDialog(
  *       producto  = productoEditando,
  *       onDismiss = { ... },
- *       onConfirm = { nombre, imagenJson, unidad -> ... }
+ *       onConfirm = { nombre, imagenJson, unidad, descripcion -> ... }
  *   )
  *
  * [onConfirm] siempre devuelve imagenJson listo para guardar en BD.
@@ -41,7 +41,7 @@ import cu.lazaroysr96.sysgdcont.data.model.Producto
 @Composable
 fun ProductoFormDialog(
     onDismiss: () -> Unit,
-    onConfirm: (nombre: String, imagenJson: String, unidad: String) -> Unit,
+    onConfirm: (nombre: String, imagenJson: String, unidad: String, descripcion: String) -> Unit,
     // Null → modo Agregar, non-null → modo Editar
     producto: Producto? = null
 ) {
@@ -50,25 +50,26 @@ fun ProductoFormDialog(
         producto?.emoji.toProductoImagen()
     }
 
-    var nombre by remember { mutableStateOf(producto?.nombre ?: "") }
-    var unidad by remember { mutableStateOf(producto?.unidad ?: "und") }
+    var nombre by remember(producto?.id) { mutableStateOf(producto?.nombre ?: "") }
+    var unidad by remember(producto?.id) { mutableStateOf(producto?.unidad ?: "und") }
+    var descripcion by remember(producto?.id) { mutableStateOf(producto?.descripcion ?: "") }
 
-    var activeTab by remember { mutableStateOf(imagenInicial.toTab()) }
+    var activeTab by remember(producto?.id) { mutableStateOf(imagenInicial.toTab()) }
 
-    var selectedEmoji by remember {
+    var selectedEmoji by remember(producto?.id) {
         mutableStateOf(
             if (imagenInicial.type == "emoji") imagenInicial.data else "📦"
         )
     }
-    var extraEmojis by remember { mutableStateOf(listOf<String>()) }
+    var extraEmojis by remember(producto?.id) { mutableStateOf(listOf<String>()) }
 
     // Ahora es String (ruta de archivo interno) en lugar de Uri
-    var fotoPath by remember {
+    var fotoPath by remember(producto?.id) {
         mutableStateOf<String?>(
             if (imagenInicial.type == "foto") imagenInicial.data else null
         )
     }
-    var urlInput by remember {
+    var urlInput by remember(producto?.id) {
         mutableStateOf(if (imagenInicial.type == "url") imagenInicial.data else "")
     }
 
@@ -164,6 +165,17 @@ fun ProductoFormDialog(
                         label         = { Text("Unidad") },
                         placeholder   = { Text("und, kg, lt…") },
                         singleLine    = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        modifier      = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = descripcion,
+                        onValueChange = { descripcion = it },
+                        label = { Text("Descripcion") },
+                        placeholder = { Text("Detalles, uso, marca o presentacion") },
+                        minLines = 3,
+                        maxLines = 5,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         modifier      = Modifier.fillMaxWidth()
                     )
@@ -183,7 +195,8 @@ fun ProductoFormDialog(
                                 onConfirm(
                                     nombre.trim(),
                                     imagenActual.toJson(),
-                                    unidad.trim()
+                                    unidad.trim(),
+                                    descripcion.trim()
                                 )
                             },
                             enabled = nombre.isNotBlank()
@@ -203,12 +216,12 @@ fun ProductoFormDialog(
 @Composable
 fun AddProductoDialog(
     onDismiss: () -> Unit,
-    onConfirm: (nombre: String, imagenJson: String, unidad: String) -> Unit
+    onConfirm: (nombre: String, imagenJson: String, unidad: String, descripcion: String) -> Unit
 ) = ProductoFormDialog(onDismiss = onDismiss, onConfirm = onConfirm)
 
 @Composable
 fun EditProductoDialog(
     producto: Producto,
     onDismiss: () -> Unit,
-    onConfirm: (nombre: String, imagenJson: String, unidad: String) -> Unit
+    onConfirm: (nombre: String, imagenJson: String, unidad: String, descripcion: String) -> Unit
 ) = ProductoFormDialog(producto = producto, onDismiss = onDismiss, onConfirm = onConfirm)

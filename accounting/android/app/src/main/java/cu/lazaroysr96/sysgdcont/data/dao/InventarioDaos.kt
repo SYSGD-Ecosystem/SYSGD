@@ -13,6 +13,8 @@ import cu.lazaroysr96.sysgdcont.data.model.Compra
 import cu.lazaroysr96.sysgdcont.data.model.LineaCompra
 import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
 import cu.lazaroysr96.sysgdcont.data.model.InventarioVinculo
+import cu.lazaroysr96.sysgdcont.data.model.PrecioProducto
+import cu.lazaroysr96.sysgdcont.data.model.PrecioProductoDetalle
 import kotlinx.coroutines.flow.Flow
 import cu.lazaroysr96.sysgdcont.data.model.MovimientoInventario
 
@@ -62,6 +64,7 @@ interface CatalogoVentaDao {
             cv.precioReferencia AS precio,
             p.emoji AS emoji,
             p.unidad AS unidad,
+            p.descripcion AS descripcion,
             cv.almacenId AS almacenId
         FROM catalogo_ventas cv
         INNER JOIN productos p ON p.id = cv.productoId
@@ -99,6 +102,7 @@ interface CatalogoCompraDao {
             cc.precioReferencia AS precio,
             p.emoji AS emoji,
             p.unidad AS unidad,
+            p.descripcion AS descripcion,
             p.activo AS activo,
             cc.almacenDestinoId AS almacenDestinoId
         FROM catalogo_compras cc
@@ -247,6 +251,61 @@ interface CompraDao {
 
     @Query("DELETE FROM compras")
     suspend fun deleteAllCompras()
+}
+
+@Dao
+interface PrecioProductoDao {
+    @Query("""
+        SELECT
+            pp.id AS id,
+            pp.productoId AS productoId,
+            pp.tipoPrecio AS tipoPrecio,
+            pp.precio AS precio,
+            pp.moneda AS moneda,
+            pp.fechaDesde AS fechaDesde,
+            pp.fechaHasta AS fechaHasta,
+            pp.activo AS activo,
+            pp.createdAt AS createdAt,
+            pp.almacenId AS almacenId,
+            a.nombre AS almacenNombre
+        FROM precios_producto pp
+        LEFT JOIN almacenes a ON a.id = pp.almacenId
+        WHERE pp.productoId = :productoId
+        ORDER BY pp.createdAt DESC
+    """)
+    suspend fun getHistorialByProducto(productoId: String): List<PrecioProductoDetalle>
+
+    @Query("""
+        SELECT * FROM precios_producto
+        WHERE productoId = :productoId
+          AND tipoPrecio = :tipoPrecio
+          AND almacenId = :almacenId
+          AND activo = 1
+        LIMIT 1
+    """)
+    suspend fun getActivo(productoId: String, tipoPrecio: String, almacenId: String): PrecioProducto?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(precio: PrecioProducto)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(precios: List<PrecioProducto>)
+
+    @Query("""
+        UPDATE precios_producto
+        SET activo = 0, fechaHasta = :fechaHasta
+        WHERE productoId = :productoId
+          AND tipoPrecio = :tipoPrecio
+          AND almacenId = :almacenId
+          AND activo = 1
+    """)
+    suspend fun cerrarActivos(productoId: String, tipoPrecio: String, almacenId: String, fechaHasta: String)
+
+    @Query("SELECT * FROM precios_producto")
+    suspend fun getAll(): List<PrecioProducto>
+
+    @Query("DELETE FROM precios_producto")
+    suspend fun deleteAll()
 }
 
 

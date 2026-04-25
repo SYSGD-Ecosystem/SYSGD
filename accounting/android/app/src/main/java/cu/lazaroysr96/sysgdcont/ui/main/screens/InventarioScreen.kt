@@ -362,7 +362,7 @@ private fun ProductCatalogSheet(
     productos: List<ProductoVenta>,
     onAdd: (String, Double) -> Unit,
     onEditPrice: (String, Double) -> Unit,
-    onCreateNewProduct: (String, String, String) -> Unit,
+    onCreateNewProduct: (String, String, String, String) -> Unit,
     onEliminar: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -436,7 +436,7 @@ private fun ProductCatalogCompraSheet(
     productos: List<ProductoCompra>,
     onAdd: (String, Double) -> Unit,
     onEditPrice: (String, Double) -> Unit,
-    onCreateNewProduct: (String, String, String) -> Unit,
+    onCreateNewProduct: (String, String, String, String) -> Unit,
     onEliminar: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -512,7 +512,7 @@ private fun ProductSheet(
     productos: List<Producto>,
     productosEnCatalogoIds: Set<String>,
     onAdd: (String, Double) -> Unit,
-    onCreateNewProduct: (String, String, String) -> Unit,
+    onCreateNewProduct: (String, String, String, String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var showCreateDialog      by remember { mutableStateOf(false) }
@@ -523,7 +523,12 @@ private fun ProductSheet(
     val productosDisponibles = remember(productos, productosEnCatalogoIds, search) {
         productos
             .filter { it.activo && it.id !in productosEnCatalogoIds }
-            .filter { search.isBlank() || it.nombre.contains(search, ignoreCase = true) || it.unidad.contains(search, ignoreCase = true) }
+            .filter {
+                search.isBlank() ||
+                    it.nombre.contains(search, ignoreCase = true) ||
+                    it.unidad.contains(search, ignoreCase = true) ||
+                    it.descripcion.contains(search, ignoreCase = true)
+            }
             .sortedBy { it.nombre.lowercase(Locale.getDefault()) }
             .map { it.toBaseItem() }          // ← convierte a ProductoBaseItem
     }
@@ -580,8 +585,8 @@ private fun ProductSheet(
     if (showCreateDialog) {
         ProductoFormDialog(
             onDismiss = { showCreateDialog = false },
-            onConfirm = { nombre, imagenJson, unidad ->
-                onCreateNewProduct(nombre, imagenJson, unidad)
+            onConfirm = { nombre, imagenJson, unidad, descripcion ->
+                onCreateNewProduct(nombre, imagenJson, unidad, descripcion)
                 showCreateDialog = false
                 search = nombre
                 pendingCreatedProduct = nombre to unidad
