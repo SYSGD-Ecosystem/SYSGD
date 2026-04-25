@@ -20,6 +20,10 @@ data class FacturaUiState(
     val showDialog: Boolean = false,
     val venta: Venta? = null,
     val lineasVenta: List<LineaVenta> = emptyList(),
+    val datosClientePrefill: DatosClienteFactura? = null,
+    val formaPagoPrefill: FormaPago = FormaPago.EFECTIVO,
+    val idTransaccionPrefill: String? = null,
+    val notaPrefill: String = "",
     val snackbarMessage: String? = null,
     val pdfPath: String? = null,
     val pdfIntent: Intent? = null
@@ -33,12 +37,39 @@ class FacturaViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(FacturaUiState())
     val uiState: StateFlow<FacturaUiState> = _uiState.asStateFlow()
 
-    fun showFacturaDialog(venta: Venta, lineas: List<LineaVenta>) {
-        _uiState.update { it.copy(showDialog = true, venta = venta, lineasVenta = lineas) }
+    fun showFacturaDialog(
+        venta: Venta,
+        lineas: List<LineaVenta>,
+        datosClientePrefill: DatosClienteFactura? = null,
+        formaPagoPrefill: FormaPago = FormaPago.EFECTIVO,
+        idTransaccionPrefill: String? = null,
+        notaPrefill: String = ""
+    ) {
+        _uiState.update {
+            it.copy(
+                showDialog = true,
+                venta = venta,
+                lineasVenta = lineas,
+                datosClientePrefill = datosClientePrefill,
+                formaPagoPrefill = formaPagoPrefill,
+                idTransaccionPrefill = idTransaccionPrefill,
+                notaPrefill = notaPrefill
+            )
+        }
     }
 
     fun hideDialog() {
-        _uiState.update { it.copy(showDialog = false, pdfPath = null, pdfIntent = null) }
+        _uiState.update {
+            it.copy(
+                showDialog = false,
+                pdfPath = null,
+                pdfIntent = null,
+                datosClientePrefill = null,
+                idTransaccionPrefill = null,
+                notaPrefill = "",
+                formaPagoPrefill = FormaPago.EFECTIVO
+            )
+        }
     }
 
     fun generarFactura(

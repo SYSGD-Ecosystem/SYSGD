@@ -148,6 +148,48 @@ class TercerosRepository @Inject constructor(
         return cuenta
     }
 
+    suspend fun crearCuentaDesdeOperacion(
+        terceroId: String,
+        tipoCuenta: String,
+        categoria: String,
+        concepto: String,
+        montoOriginal: Double,
+        origenTipo: String,
+        origenId: String,
+        fechaVencimiento: String = "",
+        moneda: String = "CUP",
+        descripcion: String = "",
+        nota: String = ""
+    ): TerceroCuenta {
+        require(terceroId.isNotBlank()) { "Selecciona un tercero" }
+        require(concepto.isNotBlank()) { "El concepto es obligatorio" }
+        require(montoOriginal > 0) { "El monto debe ser mayor que cero" }
+
+        val now = nowIso()
+        val cuenta = TerceroCuenta(
+            id = UUID.randomUUID().toString(),
+            terceroId = terceroId,
+            tipoCuenta = tipoCuenta,
+            categoria = categoria,
+            concepto = concepto.trim(),
+            descripcion = descripcion.trim(),
+            montoOriginal = montoOriginal,
+            montoPendiente = montoOriginal,
+            fechaCreacion = LocalDate.now().toString(),
+            fechaVencimiento = fechaVencimiento.trim(),
+            estado = computeEstadoInicial(tipoCuenta, fechaVencimiento),
+            moneda = moneda.ifBlank { "CUP" }.trim().uppercase(),
+            origenTipo = origenTipo.trim(),
+            origenId = origenId.trim(),
+            nota = nota.trim(),
+            createdAt = now,
+            updatedAt = now
+        )
+        tercerosDao.insertCuenta(cuenta)
+        markLocalModified()
+        return cuenta
+    }
+
     suspend fun actualizarTercero(
         terceroId: String,
         nombre: String,

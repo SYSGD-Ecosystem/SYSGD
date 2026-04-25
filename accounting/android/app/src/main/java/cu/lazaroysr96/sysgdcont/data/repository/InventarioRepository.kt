@@ -352,7 +352,11 @@ class InventarioRepository @Inject constructor(
         return dias.size to total
     }
 
-    suspend fun registrarVenta(lineasCarrito: Map<ProductoVenta, Double>, fechaTrabajo: String = hoy()) {
+    suspend fun registrarVenta(
+        lineasCarrito: Map<ProductoVenta, Double>,
+        fechaTrabajo: String = hoy(),
+        notaMovimiento: String = ""
+    ): Pair<Venta, List<LineaVenta>> {
         require(lineasCarrito.isNotEmpty())
         val almacenes = lineasCarrito.keys.map { it.almacenId }.distinct()
         require(almacenes.size == 1) { "La venta debe salir de un solo almacén" }
@@ -408,12 +412,14 @@ class InventarioRepository @Inject constructor(
                     almacenOrigenId = almacenOrigen,
                     stockOrigenAntes = stockAntes,
                     stockOrigenDespues = stockDespues,
-                    referenciaId = ventaId
+                    referenciaId = ventaId,
+                    nota = notaMovimiento
                 )
             }
         }
 
         markLocalModified()
+        return venta to lineas
     }
 
     suspend fun anularVenta(ventaId: String) {
@@ -511,7 +517,11 @@ class InventarioRepository @Inject constructor(
         return dias.size to total
     }
 
-    suspend fun registrarCompra(lineasCarrito: Map<ProductoCompra, Double>, fechaTrabajo: String = hoy()) {
+    suspend fun registrarCompra(
+        lineasCarrito: Map<ProductoCompra, Double>,
+        fechaTrabajo: String = hoy(),
+        notaMovimiento: String = ""
+    ): Pair<Compra, List<LineaCompra>> {
         require(lineasCarrito.isNotEmpty())
         val almacenes = lineasCarrito.keys.map { it.almacenDestinoId }.distinct()
         require(almacenes.size == 1) { "La compra debe entrar a un solo almacén" }
@@ -560,12 +570,14 @@ class InventarioRepository @Inject constructor(
                     almacenDestinoId = almacenDestino,
                     stockDestinoAntes = stockAntes,
                     stockDestinoDespues = stockDespues,
-                    referenciaId = compraId
+                    referenciaId = compraId,
+                    nota = notaMovimiento
                 )
             }
         }
 
         markLocalModified()
+        return compra to lineas
     }
 
     suspend fun anularCompra(compraId: String) {

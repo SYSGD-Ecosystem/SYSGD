@@ -35,6 +35,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cu.lazaroysr96.sysgdcont.data.model.*
 import cu.lazaroysr96.sysgdcont.viewmodel.InventarioViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.FacturaViewModel
+import cu.lazaroysr96.sysgdcont.viewmodel.CompraCheckoutOptions
+import cu.lazaroysr96.sysgdcont.viewmodel.EstadoCobroOperacion
+import cu.lazaroysr96.sysgdcont.viewmodel.VentaCheckoutOptions
+import cu.lazaroysr96.sysgdcont.viewmodel.OperacionDetalleResumen
 // ─── Nuevos imports de componentes unificados ─────────────────────────────────
 import cu.lazaroysr96.sysgdcont.ui.components.producto.CatalogoItemRow
 import cu.lazaroysr96.sysgdcont.ui.components.producto.InventarioItemAvatar
@@ -79,6 +83,20 @@ fun InventarioScreen(
     }
     LaunchedEffect(facturaState.pdfIntent) {
         facturaState.pdfIntent?.let { runCatching { context.startActivity(it) }; facturaViewModel.clearPdfIntent() }
+    }
+    LaunchedEffect(uiState.ventaPendienteFactura, uiState.lineasVentaPendienteFactura) {
+        val venta = uiState.ventaPendienteFactura
+        if (venta != null && uiState.lineasVentaPendienteFactura.isNotEmpty()) {
+            facturaViewModel.showFacturaDialog(
+                venta = venta,
+                lineas = uiState.lineasVentaPendienteFactura,
+                datosClientePrefill = uiState.datosFacturaPrefill,
+                formaPagoPrefill = uiState.formaPagoFacturaPrefill,
+                idTransaccionPrefill = uiState.idTransaccionFacturaPrefill,
+                notaPrefill = uiState.notaFacturaPrefill
+            )
+            viewModel.clearVentaPendienteFactura()
+        }
     }
     LaunchedEffect(canUseProFeatures, uiState.currentTab) {
         if (!canUseProFeatures && uiState.currentTab == 3) viewModel.setCurrentTab(0)
@@ -143,6 +161,7 @@ fun InventarioScreen(
             onRemove = viewModel::removeFromCart,
             onEditQuantity = viewModel::setCartCantidad,
             onRegistrar = viewModel::registrarVenta,
+            onFacturar = { viewModel.showVentaCheckoutDialog(true) },
             onDismiss = { viewModel.showSaleSheet(false) }
         )
     }
@@ -166,12 +185,33 @@ fun InventarioScreen(
             onRemove = viewModel::removeFromCartCompra,
             onEditQuantity = viewModel::setCartCompraCantidad,
             onRegistrar = viewModel::registrarCompra,
+            onFacturar = { viewModel.showCompraCheckoutDialog(true) },
             onDismiss = { viewModel.showPurchaseSheet(false) }
+        )
+    }
+    if (uiState.showVentaCheckoutDialog) {
+        VentaCheckoutDialog(
+            total = viewModel.cartTotal,
+            terceros = uiState.terceros,
+            onDismiss = { viewModel.showVentaCheckoutDialog(false) },
+            onConfirm = viewModel::registrarVentaConDetalles
+        )
+    }
+    if (uiState.showCompraCheckoutDialog) {
+        CompraCheckoutDialog(
+            total = viewModel.cartCompraTotal,
+            terceros = uiState.terceros,
+            onDismiss = { viewModel.showCompraCheckoutDialog(false) },
+            onConfirm = viewModel::registrarCompraConDetalles
         )
     }
     if (facturaState.showDialog && facturaState.venta != null) {
         FacturaDialog(
             lineas    = facturaState.lineasVenta,
+            datosClientePrefill = facturaState.datosClientePrefill,
+            formaPagoPrefill = facturaState.formaPagoPrefill,
+            idTransaccionPrefill = facturaState.idTransaccionPrefill,
+            notaPrefill = facturaState.notaPrefill,
             onDismiss = { facturaViewModel.hideDialog() },
             onConfirm = { nombre, ci, correo, direccion, telefono, formaPago, transaccion, nota, firmaClienteUri ->
                 facturaViewModel.generarFactura(nombre, ci, correo, direccion, telefono, formaPago, transaccion, nota, firmaClienteUri)
@@ -680,19 +720,26 @@ private fun ItemInventarioRow(
                             Icon(Icons.Default.SwapHoriz, null, modifier = Modifier.size(14.dp)); Spacer(Modifier.width(4.dp)); Text("Transferir", style = MaterialTheme.typography.labelSmall)
                         }
                     }
+                }
+                Spacer(Modifier.height(4.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (onMover != null) {
                         OutlinedButton(onClick = onMover, modifier = Modifier.height(32.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)) {
                             Icon(Icons.Default.SwapHoriz, null, modifier = Modifier.size(14.dp)); Spacer(Modifier.width(4.dp)); Text("Poner a la venta", style = MaterialTheme.typography.labelSmall)
                         }
                     }
-                }
-                Spacer(Modifier.height(4.dp))
-                if (bloqueadoPorVenta) {
-                    Text("Para archivar, quita primero el producto del catálogo de ventas.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else {
-                    OutlinedButton(onClick = onArchive, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)) {
+
+                    if (!bloqueadoPorVenta) {
+                    OutlinedButton(onClick = onArchive, modifier = Modifier.height(32.dp), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)) {
                         Icon(Icons.Default.Delete, null, modifier = Modifier.size(14.dp)); Spacer(Modifier.width(4.dp)); Text("Archivar", style = MaterialTheme.typography.labelSmall)
                     }
+                } 
+                }
+
+                if (bloqueadoPorVenta) {
+                    Spacer(Modifier.height(4.dp))
+                    Text("Para archivar, quita primero el producto del catálogo de ventas.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -812,7 +859,7 @@ private fun InventarioContent(viewModel: InventarioViewModel, padding: PaddingVa
             FilledTonalButton(onClick = { viewModel.showWarehouseDialog(true) }) {
                 Icon(Icons.Default.Add, null)
                 Spacer(Modifier.width(6.dp))
-                Text("Nuevo almacén")
+                Text("Nuevo almacén", fontSize = 12.sp)
             }
             OutlinedButton(
                 onClick = {
@@ -823,7 +870,7 @@ private fun InventarioContent(viewModel: InventarioViewModel, padding: PaddingVa
             ) {
                 Icon(Icons.Default.Edit, null)
                 Spacer(Modifier.width(6.dp))
-                Text("Renombrar")
+                Text("Renombrar", fontSize = 12.sp)
             }
         }
         AlmacenSection(
@@ -978,7 +1025,11 @@ private fun MoverProductoDialog(item: ItemInventario, productosCompra: List<Prod
     val margenComercial = if (precioVenta != null && precioVenta > 0 && precioCosto > 0) ((precioVenta - precioCosto) / precioVenta) * 100 else null
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Poner producto a la venta") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
-            Text("${productoCompra?.emoji ?: "📦"} ${productoCompra?.nombre ?: "Producto"}", style = MaterialTheme.typography.titleMedium)
+            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                InventarioItemAvatar(rawEmoji = productoCompra?.emoji ?: "")
+            Text("${productoCompra?.nombre ?: "Producto"}", style = MaterialTheme.typography.titleMedium)
+            }
+            
             Text("Se agregará al catálogo de ventas usando el mismo inventario del almacén actual.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Precio de costo:", style = MaterialTheme.typography.bodyMedium); Text("${"%.2f".format(precioCosto)} CUP", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold) }
             OutlinedTextField(value = precioVentaInput, onValueChange = { precioVentaInput = it.replace(',', '.') }, label = { Text("Precio de venta (CUP)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -1111,8 +1162,8 @@ private fun HistorialContent(viewModel: InventarioViewModel, facturaViewModel: F
                 fechas.forEach { fecha ->
                     val ventas = uiState.ventasDelMes[fecha].orEmpty()
                     val compras = uiState.comprasDelMes[fecha].orEmpty()
-                    if (ventas.isNotEmpty()) item(key = "ventas-$fecha") { DiaVentasCard(fecha, ventas, { viewModel.anularVenta(it) }, { venta, lineas -> facturaViewModel.showFacturaDialog(venta, lineas) }, canGenerateInvoices) }
-                    if (compras.isNotEmpty()) item(key = "compras-$fecha") { DiaComprasCard(fecha, compras) { viewModel.anularCompra(it) } }
+                    if (ventas.isNotEmpty()) item(key = "ventas-$fecha") { DiaVentasCard(fecha, ventas, viewModel::getDetalleOperacion, { viewModel.anularVenta(it) }, { venta, lineas -> facturaViewModel.showFacturaDialog(venta, lineas) }, canGenerateInvoices) }
+                    if (compras.isNotEmpty()) item(key = "compras-$fecha") { DiaComprasCard(fecha, compras, viewModel::getDetalleOperacion) { viewModel.anularCompra(it) } }
                 }
             }
         }
@@ -1121,15 +1172,37 @@ private fun HistorialContent(viewModel: InventarioViewModel, facturaViewModel: F
 
 @Composable private fun ResumenItem(modifier: Modifier = Modifier, value: String, label: String, valueColor: androidx.compose.ui.graphics.Color) { Surface(modifier = modifier, shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)) { Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp, horizontal = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = valueColor); Text(label, style = MaterialTheme.typography.bodySmall) } } }
 
-@Composable private fun DiaVentasCard(fecha: String, ventas: List<Pair<Venta, List<LineaVenta>>>, onAnular: (String) -> Unit, onGenerarFactura: (Venta, List<LineaVenta>) -> Unit, canGenerateInvoices: Boolean) { var expanded by remember { mutableStateOf(false) }; val totalDia = ventas.sumOf { it.first.total }; val fechaLocal = LocalDate.parse(fecha); val nombreDia = fechaLocal.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("es", "ES")); Card(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }) { Column(modifier = Modifier.padding(16.dp)) { Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column { Text("$nombreDia ${fechaLocal.dayOfMonth}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("${ventas.size} venta${if (ventas.size != 1) "s" else ""}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Row(verticalAlignment = Alignment.CenterVertically) { Text("%.2f CUP".format(totalDia), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(8.dp)); Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null) } }; AnimatedVisibility(visible = expanded, enter = expandVertically(), exit = shrinkVertically()) { Column(modifier = Modifier.padding(top = 12.dp)) { Divider(); ventas.forEach { (venta, lineas) -> VentaItem(fecha, venta, lineas, { onAnular(venta.id) }, { onGenerarFactura(venta, lineas) }, canGenerateInvoices) } } } } } }
+@Composable private fun DiaVentasCard(fecha: String, ventas: List<Pair<Venta, List<LineaVenta>>>, getDetalle: (String) -> OperacionDetalleResumen?, onAnular: (String) -> Unit, onGenerarFactura: (Venta, List<LineaVenta>) -> Unit, canGenerateInvoices: Boolean) { var expanded by remember { mutableStateOf(false) }; val totalDia = ventas.sumOf { it.first.total }; val fechaLocal = LocalDate.parse(fecha); val nombreDia = fechaLocal.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("es", "ES")); Card(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }) { Column(modifier = Modifier.padding(16.dp)) { Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column { Text("$nombreDia ${fechaLocal.dayOfMonth}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("${ventas.size} venta${if (ventas.size != 1) "s" else ""}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Row(verticalAlignment = Alignment.CenterVertically) { Text("%.2f CUP".format(totalDia), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(8.dp)); Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null) } }; AnimatedVisibility(visible = expanded, enter = expandVertically(), exit = shrinkVertically()) { Column(modifier = Modifier.padding(top = 12.dp)) { Divider(); ventas.forEach { (venta, lineas) -> VentaItem(fecha, venta, lineas, getDetalle(venta.id), { onAnular(venta.id) }, { onGenerarFactura(venta, lineas) }, canGenerateInvoices) } } } } } }
 
-@Composable private fun DiaComprasCard(fecha: String, compras: List<Pair<Compra, List<LineaCompra>>>, onAnular: (String) -> Unit) { var expanded by remember { mutableStateOf(false) }; val totalDia = compras.sumOf { it.first.total }; val fechaLocal = LocalDate.parse(fecha); val nombreDia = fechaLocal.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("es", "ES")); Card(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }) { Column(modifier = Modifier.padding(16.dp)) { Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column { Text("$nombreDia ${fechaLocal.dayOfMonth}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("${compras.size} compra${if (compras.size != 1) "s" else ""}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Row(verticalAlignment = Alignment.CenterVertically) { Text("%.2f CUP".format(totalDia), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary); Spacer(Modifier.width(8.dp)); Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null) } }; AnimatedVisibility(visible = expanded, enter = expandVertically(), exit = shrinkVertically()) { Column(modifier = Modifier.padding(top = 12.dp)) { Divider(); compras.forEach { (compra, lineas) -> CompraItem(fecha, compra, lineas) { onAnular(compra.id) } } } } } } }
+@Composable private fun DiaComprasCard(fecha: String, compras: List<Pair<Compra, List<LineaCompra>>>, getDetalle: (String) -> OperacionDetalleResumen?, onAnular: (String) -> Unit) { var expanded by remember { mutableStateOf(false) }; val totalDia = compras.sumOf { it.first.total }; val fechaLocal = LocalDate.parse(fecha); val nombreDia = fechaLocal.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("es", "ES")); Card(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }) { Column(modifier = Modifier.padding(16.dp)) { Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column { Text("$nombreDia ${fechaLocal.dayOfMonth}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("${compras.size} compra${if (compras.size != 1) "s" else ""}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Row(verticalAlignment = Alignment.CenterVertically) { Text("%.2f CUP".format(totalDia), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary); Spacer(Modifier.width(8.dp)); Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null) } }; AnimatedVisibility(visible = expanded, enter = expandVertically(), exit = shrinkVertically()) { Column(modifier = Modifier.padding(top = 12.dp)) { Divider(); compras.forEach { (compra, lineas) -> CompraItem(fecha, compra, lineas, getDetalle(compra.id)) { onAnular(compra.id) } } } } } } }
 
-@Composable private fun VentaItem(fecha: String, venta: Venta, lineas: List<LineaVenta>, onAnular: () -> Unit, onGenerarFactura: () -> Unit, canGenerateInvoices: Boolean) { var expanded by remember { mutableStateOf(false) }; var showAnularDialog by remember { mutableStateOf(false) }; Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) { Row(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }, horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column(modifier = Modifier.weight(1f)) { Text(lineas.resumenProductosVenta(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1); Spacer(Modifier.height(4.dp)); Text(formatFechaHoraOperacion(fecha, venta.hora), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Row(verticalAlignment = Alignment.CenterVertically) { Text("$ %.2f CUP".format(venta.total), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold); Spacer(Modifier.width(8.dp)); Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null) } }; AnimatedVisibility(visible = expanded, enter = expandVertically(), exit = shrinkVertically()) { Column(modifier = Modifier.padding(top = 8.dp)) { lineas.forEachIndexed { index, linea -> LineaDetalleFactura(linea.nombreProducto, linea.cantidad, linea.precioUnitario, linea.subtotal); if (index < lineas.lastIndex) Divider(modifier = Modifier.padding(vertical = 6.dp)) }; Spacer(Modifier.height(8.dp)); Text("Importe total: $ %.2f CUP".format(venta.total), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary); Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { TextButton(onClick = onGenerarFactura, enabled = canGenerateInvoices) { Icon(Icons.Default.Receipt, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text("Factura") }; TextButton(onClick = { showAnularDialog = true }) { Text("Anular", color = MaterialTheme.colorScheme.error) } } } } }; if (showAnularDialog) AlertDialog(onDismissRequest = { showAnularDialog = false }, title = { Text("Anular venta") }, text = { Text("Esta operación se anulará del historial. ¿Deseas continuar?") }, confirmButton = { TextButton(onClick = { onAnular(); showAnularDialog = false }) { Text("Sí, anular", color = MaterialTheme.colorScheme.error) } }, dismissButton = { TextButton(onClick = { showAnularDialog = false }) { Text("Cancelar") } }) }
+@Composable private fun VentaItem(fecha: String, venta: Venta, lineas: List<LineaVenta>, detalle: OperacionDetalleResumen?, onAnular: () -> Unit, onGenerarFactura: () -> Unit, canGenerateInvoices: Boolean) { var expanded by remember { mutableStateOf(false) }; var showAnularDialog by remember { mutableStateOf(false) }; Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) { Row(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }, horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column(modifier = Modifier.weight(1f)) { Text(lineas.resumenProductosVenta(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1); Spacer(Modifier.height(4.dp)); Text(formatFechaHoraOperacion(fecha, venta.hora), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Row(verticalAlignment = Alignment.CenterVertically) { Text("$ %.2f CUP".format(venta.total), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold); Spacer(Modifier.width(8.dp)); Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null) } }; AnimatedVisibility(visible = expanded, enter = expandVertically(), exit = shrinkVertically()) { Column(modifier = Modifier.padding(top = 8.dp)) { lineas.forEachIndexed { index, linea -> LineaDetalleFactura(linea.nombreProducto, linea.cantidad, linea.precioUnitario, linea.subtotal); if (index < lineas.lastIndex) Divider(modifier = Modifier.padding(vertical = 6.dp)) }; detalle?.let { DetalleOperacionCard(it) }; Spacer(Modifier.height(8.dp)); Text("Importe total: $ %.2f CUP".format(venta.total), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary); Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { TextButton(onClick = onGenerarFactura, enabled = canGenerateInvoices) { Icon(Icons.Default.Receipt, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text("Factura") }; TextButton(onClick = { showAnularDialog = true }) { Text("Anular", color = MaterialTheme.colorScheme.error) } } } } }; if (showAnularDialog) AlertDialog(onDismissRequest = { showAnularDialog = false }, title = { Text("Anular venta") }, text = { Text("Esta operación se anulará del historial. ¿Deseas continuar?") }, confirmButton = { TextButton(onClick = { onAnular(); showAnularDialog = false }) { Text("Sí, anular", color = MaterialTheme.colorScheme.error) } }, dismissButton = { TextButton(onClick = { showAnularDialog = false }) { Text("Cancelar") } }) }
 
-@Composable private fun CompraItem(fecha: String, compra: Compra, lineas: List<LineaCompra>, onAnular: () -> Unit) { var expanded by remember { mutableStateOf(false) }; var showAnularDialog by remember { mutableStateOf(false) }; Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) { Row(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }, horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column(modifier = Modifier.weight(1f)) { Text(lineas.resumenProductosCompra(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1); Spacer(Modifier.height(4.dp)); Text(formatFechaHoraOperacion(fecha, compra.hora), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Row(verticalAlignment = Alignment.CenterVertically) { Text("$ %.2f CUP".format(compra.total), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold); Spacer(Modifier.width(8.dp)); Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null) } }; AnimatedVisibility(visible = expanded, enter = expandVertically(), exit = shrinkVertically()) { Column(modifier = Modifier.padding(top = 8.dp)) { lineas.forEachIndexed { index, linea -> LineaDetalleFactura(linea.nombreProducto, linea.cantidad, linea.precioUnitario, linea.subtotal); if (index < lineas.lastIndex) Divider(modifier = Modifier.padding(vertical = 6.dp)) }; Spacer(Modifier.height(8.dp)); Text("Importe total: $ %.2f CUP".format(compra.total), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary); TextButton(onClick = { showAnularDialog = true }, modifier = Modifier.align(Alignment.End)) { Text("Anular", color = MaterialTheme.colorScheme.error) } } } }; if (showAnularDialog) AlertDialog(onDismissRequest = { showAnularDialog = false }, title = { Text("Anular compra") }, text = { Text("Esta operación se anulará del historial. ¿Deseas continuar?") }, confirmButton = { TextButton(onClick = { onAnular(); showAnularDialog = false }) { Text("Sí, anular", color = MaterialTheme.colorScheme.error) } }, dismissButton = { TextButton(onClick = { showAnularDialog = false }) { Text("Cancelar") } }) }
+@Composable private fun CompraItem(fecha: String, compra: Compra, lineas: List<LineaCompra>, detalle: OperacionDetalleResumen?, onAnular: () -> Unit) { var expanded by remember { mutableStateOf(false) }; var showAnularDialog by remember { mutableStateOf(false) }; Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) { Row(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }, horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column(modifier = Modifier.weight(1f)) { Text(lineas.resumenProductosCompra(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 1); Spacer(Modifier.height(4.dp)); Text(formatFechaHoraOperacion(fecha, compra.hora), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Row(verticalAlignment = Alignment.CenterVertically) { Text("$ %.2f CUP".format(compra.total), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold); Spacer(Modifier.width(8.dp)); Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null) } }; AnimatedVisibility(visible = expanded, enter = expandVertically(), exit = shrinkVertically()) { Column(modifier = Modifier.padding(top = 8.dp)) { lineas.forEachIndexed { index, linea -> LineaDetalleFactura(linea.nombreProducto, linea.cantidad, linea.precioUnitario, linea.subtotal); if (index < lineas.lastIndex) Divider(modifier = Modifier.padding(vertical = 6.dp)) }; detalle?.let { DetalleOperacionCard(it) }; Spacer(Modifier.height(8.dp)); Text("Importe total: $ %.2f CUP".format(compra.total), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary); TextButton(onClick = { showAnularDialog = true }, modifier = Modifier.align(Alignment.End)) { Text("Anular", color = MaterialTheme.colorScheme.error) } } } }; if (showAnularDialog) AlertDialog(onDismissRequest = { showAnularDialog = false }, title = { Text("Anular compra") }, text = { Text("Esta operación se anulará del historial. ¿Deseas continuar?") }, confirmButton = { TextButton(onClick = { onAnular(); showAnularDialog = false }) { Text("Sí, anular", color = MaterialTheme.colorScheme.error) } }, dismissButton = { TextButton(onClick = { showAnularDialog = false }) { Text("Cancelar") } }) }
 
 @Composable private fun LineaDetalleFactura(nombre: String, cantidad: Double, precioUnitario: Double, subtotal: Double) { Column(modifier = Modifier.fillMaxWidth()) { Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) { Text(nombre, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f)); Spacer(Modifier.width(8.dp)); Text("${formatCantidad(cantidad)}x%.2f".format(precioUnitario), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold) }; Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text("Subtotal", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant); Text("%.2f CUP".format(subtotal), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant) } } }
+
+@Composable
+private fun DetalleOperacionCard(detalle: OperacionDetalleResumen) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text("Detalle de facturación", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        detalle.terceroNombre?.let { Text("Tercero: $it", style = MaterialTheme.typography.bodySmall) }
+        detalle.estadoPago?.let { Text("Estado: $it", style = MaterialTheme.typography.bodySmall) }
+        detalle.formaPago?.let { Text("Forma de pago: $it", style = MaterialTheme.typography.bodySmall) }
+        detalle.idTransaccion?.let { Text("Transacción: $it", style = MaterialTheme.typography.bodySmall) }
+        if (detalle.facturaEmitida) Text("Factura emitida", style = MaterialTheme.typography.bodySmall)
+        if (detalle.facturaProveedor) Text("Factura del proveedor registrada", style = MaterialTheme.typography.bodySmall)
+        if (detalle.documentoAdjunto) Text("Documento adjunto", style = MaterialTheme.typography.bodySmall)
+        detalle.nota?.let { Text("Nota: $it", style = MaterialTheme.typography.bodySmall) }
+    }
+}
 
 @Composable private fun DocumentoAdjuntoField(titulo: String, descripcion: String, valor: String?, onSeleccionar: () -> Unit, onLimpiar: () -> Unit) { Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), tonalElevation = 1.dp, color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)) { Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(titulo, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold); Text(descripcion, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant); Text(valor?.let(::resumenDocumentoAdjunto) ?: "No seleccionado", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant); Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { OutlinedButton(onClick = onSeleccionar) { Icon(Icons.Default.AttachFile, null); Spacer(Modifier.width(8.dp)); Text(if (valor == null) "Seleccionar" else "Cambiar") }; if (valor != null) TextButton(onClick = onLimpiar) { Icon(Icons.Default.Close, null); Spacer(Modifier.width(4.dp)); Text("Quitar") } } } } }
 
@@ -1142,6 +1215,7 @@ private fun CartSheet(
     onRemove: (ProductoVenta) -> Unit,
     onEditQuantity: (ProductoVenta, Double) -> Unit,
     onRegistrar: () -> Unit,
+    onFacturar: () -> Unit,
     onDismiss: () -> Unit
 ) {
     var productoEditandoCantidad by remember { mutableStateOf<ProductoVenta?>(null) }
@@ -1195,10 +1269,15 @@ private fun CartSheet(
                     Text("%.2f CUP".format(total), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
                 Spacer(Modifier.height(16.dp))
-                Button(onClick = onRegistrar, modifier = Modifier.fillMaxWidth(), enabled = cart.isNotEmpty()) {
-                    Icon(Icons.Default.Check, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Registrar venta")
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onFacturar, enabled = cart.isNotEmpty(), modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.Default.ReceiptLong, contentDescription = "Facturar venta")
+                    }
+                    Button(onClick = onRegistrar, modifier = Modifier.weight(1f), enabled = cart.isNotEmpty()) {
+                        Icon(Icons.Default.Check, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Registrar venta")
+                    }
                 }
             }
         }
@@ -1232,6 +1311,7 @@ private fun PurchaseCartSheet(
     onRemove: (ProductoCompra) -> Unit,
     onEditQuantity: (ProductoCompra, Double) -> Unit,
     onRegistrar: () -> Unit,
+    onFacturar: () -> Unit,
     onDismiss: () -> Unit
 ) {
     var productoEditandoCantidad by remember { mutableStateOf<ProductoCompra?>(null) }
@@ -1286,10 +1366,15 @@ private fun PurchaseCartSheet(
                     Text("%.2f CUP".format(total), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
                 }
                 Spacer(Modifier.height(16.dp))
-                Button(onClick = onRegistrar, modifier = Modifier.fillMaxWidth(), enabled = cart.isNotEmpty(), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)) {
-                    Icon(Icons.Default.Check, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Registrar compra")
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onFacturar, enabled = cart.isNotEmpty(), modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.Default.ReceiptLong, contentDescription = "Facturar compra")
+                    }
+                    Button(onClick = onRegistrar, modifier = Modifier.weight(1f), enabled = cart.isNotEmpty(), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)) {
+                        Icon(Icons.Default.Check, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Registrar compra")
+                    }
                 }
             }
         }
@@ -1312,6 +1397,240 @@ private fun PurchaseCartSheet(
             )
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VentaCheckoutDialog(
+    total: Double,
+    terceros: List<TerceroListItem>,
+    onDismiss: () -> Unit,
+    onConfirm: (VentaCheckoutOptions) -> Unit
+) {
+    val context = LocalContext.current
+    var emitirFactura by remember { mutableStateOf(true) }
+    var estadoCobro by remember { mutableStateOf(EstadoCobroOperacion.INMEDIATO) }
+    var formaPago by remember { mutableStateOf(FormaPago.EFECTIVO) }
+    var idTransaccion by remember { mutableStateOf("") }
+    var nota by remember { mutableStateOf("") }
+    var documentoUri by remember { mutableStateOf<String?>(null) }
+    var pagoExpanded by remember { mutableStateOf(false) }
+    var cobroExpanded by remember { mutableStateOf(false) }
+    var terceroExpanded by remember { mutableStateOf(false) }
+    var terceroId by remember { mutableStateOf<String?>(null) }
+    val documentoPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { tomarPermisoLecturaPersistente(context, it) }
+        documentoUri = uri?.toString()
+    }
+    val clientes = remember(terceros) { terceros.filter { RolTercero.CLIENTE in it.rolesList } }
+    val terceroSeleccionado = clientes.firstOrNull { it.id == terceroId }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Facturar venta") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text("Total: %.2f CUP".format(total), fontWeight = FontWeight.Bold)
+                ExposedDropdownMenuBox(expanded = terceroExpanded, onExpandedChange = { terceroExpanded = it }) {
+                    OutlinedTextField(
+                        value = terceroSeleccionado?.nombre.orEmpty(),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Cliente") },
+                        placeholder = { Text("Opcional si cobra al momento") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(terceroExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(expanded = terceroExpanded, onDismissRequest = { terceroExpanded = false }) {
+                        clientes.forEach { tercero ->
+                            DropdownMenuItem(text = { Text(tercero.nombre) }, onClick = {
+                                terceroId = tercero.id
+                                terceroExpanded = false
+                            })
+                        }
+                    }
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Emitir factura ahora")
+                    Switch(checked = emitirFactura, onCheckedChange = { emitirFactura = it })
+                }
+                ExposedDropdownMenuBox(expanded = cobroExpanded, onExpandedChange = { cobroExpanded = it }) {
+                    OutlinedTextField(
+                        value = if (estadoCobro == EstadoCobroOperacion.INMEDIATO) "Cobrada al momento" else "Pendiente de cobro",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Estado del cobro") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(cobroExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(expanded = cobroExpanded, onDismissRequest = { cobroExpanded = false }) {
+                        DropdownMenuItem(text = { Text("Cobrada al momento") }, onClick = {
+                            estadoCobro = EstadoCobroOperacion.INMEDIATO
+                            cobroExpanded = false
+                        })
+                        DropdownMenuItem(text = { Text("Pendiente de cobro") }, onClick = {
+                            estadoCobro = EstadoCobroOperacion.PENDIENTE
+                            cobroExpanded = false
+                        })
+                    }
+                }
+                ExposedDropdownMenuBox(expanded = pagoExpanded, onExpandedChange = { pagoExpanded = it }) {
+                    OutlinedTextField(
+                        value = if (formaPago == FormaPago.EFECTIVO) "Efectivo" else "Tarjeta",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Forma de pago") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(pagoExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(expanded = pagoExpanded, onDismissRequest = { pagoExpanded = false }) {
+                        DropdownMenuItem(text = { Text("Efectivo") }, onClick = {
+                            formaPago = FormaPago.EFECTIVO
+                            pagoExpanded = false
+                        })
+                        DropdownMenuItem(text = { Text("Tarjeta") }, onClick = {
+                            formaPago = FormaPago.TARJETA
+                            pagoExpanded = false
+                        })
+                    }
+                }
+                if (formaPago == FormaPago.TARJETA) {
+                    OutlinedTextField(
+                        value = idTransaccion,
+                        onValueChange = { idTransaccion = it },
+                        label = { Text("ID de transacción") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+                DocumentoAdjuntoField("Documento o evidencia", "Puedes adjuntar una foto o comprobante de la operación.", documentoUri, { documentoPicker.launch(arrayOf("image/*", "application/pdf")) }) { documentoUri = null }
+                OutlinedTextField(
+                    value = nota,
+                    onValueChange = { nota = it },
+                    label = { Text("Nota interna") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2,
+                    maxLines = 4
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onConfirm(
+                    VentaCheckoutOptions(
+                        emitirFactura = emitirFactura,
+                        estadoCobro = estadoCobro,
+                        formaPago = formaPago,
+                        idTransaccion = idTransaccion,
+                        nota = nota,
+                        documentoUri = documentoUri,
+                        terceroId = terceroId
+                    )
+                )
+            }, enabled = estadoCobro == EstadoCobroOperacion.INMEDIATO || !terceroId.isNullOrBlank()) { Text("Continuar") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CompraCheckoutDialog(
+    total: Double,
+    terceros: List<TerceroListItem>,
+    onDismiss: () -> Unit,
+    onConfirm: (CompraCheckoutOptions) -> Unit
+) {
+    val context = LocalContext.current
+    var registrarFacturaProveedor by remember { mutableStateOf(false) }
+    var estadoPago by remember { mutableStateOf(EstadoCobroOperacion.INMEDIATO) }
+    var nota by remember { mutableStateOf("") }
+    var documentoUri by remember { mutableStateOf<String?>(null) }
+    var pagoExpanded by remember { mutableStateOf(false) }
+    var terceroExpanded by remember { mutableStateOf(false) }
+    var terceroId by remember { mutableStateOf<String?>(null) }
+    val documentoPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { tomarPermisoLecturaPersistente(context, it) }
+        documentoUri = uri?.toString()
+    }
+    val proveedores = remember(terceros) { terceros.filter { RolTercero.PROVEEDOR in it.rolesList } }
+    val terceroSeleccionado = proveedores.firstOrNull { it.id == terceroId }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Facturar compra") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text("Total: %.2f CUP".format(total), fontWeight = FontWeight.Bold)
+                ExposedDropdownMenuBox(expanded = terceroExpanded, onExpandedChange = { terceroExpanded = it }) {
+                    OutlinedTextField(
+                        value = terceroSeleccionado?.nombre.orEmpty(),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Proveedor") },
+                        placeholder = { Text("Opcional si paga al momento") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(terceroExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(expanded = terceroExpanded, onDismissRequest = { terceroExpanded = false }) {
+                        proveedores.forEach { tercero ->
+                            DropdownMenuItem(text = { Text(tercero.nombre) }, onClick = {
+                                terceroId = tercero.id
+                                terceroExpanded = false
+                            })
+                        }
+                    }
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Registrar factura del proveedor")
+                    Switch(checked = registrarFacturaProveedor, onCheckedChange = { registrarFacturaProveedor = it })
+                }
+                ExposedDropdownMenuBox(expanded = pagoExpanded, onExpandedChange = { pagoExpanded = it }) {
+                    OutlinedTextField(
+                        value = if (estadoPago == EstadoCobroOperacion.INMEDIATO) "Pagada al momento" else "Pendiente de pago",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Estado del pago") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(pagoExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    ExposedDropdownMenu(expanded = pagoExpanded, onDismissRequest = { pagoExpanded = false }) {
+                        DropdownMenuItem(text = { Text("Pagada al momento") }, onClick = {
+                            estadoPago = EstadoCobroOperacion.INMEDIATO
+                            pagoExpanded = false
+                        })
+                        DropdownMenuItem(text = { Text("Pendiente de pago") }, onClick = {
+                            estadoPago = EstadoCobroOperacion.PENDIENTE
+                            pagoExpanded = false
+                        })
+                    }
+                }
+                DocumentoAdjuntoField("Factura o documento", "Adjunta una foto, factura o comprobante recibido.", documentoUri, { documentoPicker.launch(arrayOf("image/*", "application/pdf")) }) { documentoUri = null }
+                OutlinedTextField(
+                    value = nota,
+                    onValueChange = { nota = it },
+                    label = { Text("Nota interna") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2,
+                    maxLines = 4
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onConfirm(
+                    CompraCheckoutOptions(
+                        registrarFacturaProveedor = registrarFacturaProveedor,
+                        estadoPago = estadoPago,
+                        nota = nota,
+                        documentoUri = documentoUri,
+                        terceroId = terceroId
+                    )
+                )
+            }, enabled = estadoPago == EstadoCobroOperacion.INMEDIATO || !terceroId.isNullOrBlank()) { Text("Continuar") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
 }
 
 @Composable
@@ -1351,7 +1670,7 @@ private fun DateField(label: String, fecha: LocalDate, onFechaChange: (LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FacturaDialog(lineas: List<LineaVenta>, onDismiss: () -> Unit, onConfirm: (String, String, String, String, String, FormaPago, String?, String, String?) -> Unit) { val context = LocalContext.current; var nombre by remember { mutableStateOf("") }; var ci by remember { mutableStateOf("") }; var correo by remember { mutableStateOf("") }; var direccion by remember { mutableStateOf("") }; var telefono by remember { mutableStateOf("") }; var formaPago by remember { mutableStateOf(FormaPago.EFECTIVO) }; var idTransaccion by remember { mutableStateOf("") }; var nota by remember { mutableStateOf("") }; var firmaClienteUri by remember { mutableStateOf<String?>(null) }; var formaPagoExpanded by remember { mutableStateOf(false) }; val firmaClientePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { tomarPermisoLecturaPersistente(context, it) }; firmaClienteUri = uri?.toString() }; AlertDialog(onDismissRequest = onDismiss, title = { Text("Generar Factura") }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.verticalScroll(rememberScrollState())) { OutlinedTextField(nombre, { nombre = it }, label = { Text("Nombre del cliente") }, singleLine = true, modifier = Modifier.fillMaxWidth()); OutlinedTextField(ci, { ci = it }, label = { Text("No. de Carnet de Identidad") }, singleLine = true, modifier = Modifier.fillMaxWidth()); OutlinedTextField(correo, { correo = it }, label = { Text("Correo electrónico") }, singleLine = true, modifier = Modifier.fillMaxWidth()); OutlinedTextField(direccion, { direccion = it }, label = { Text("Dirección") }, modifier = Modifier.fillMaxWidth()); OutlinedTextField(telefono, { telefono = it }, label = { Text("Teléfono") }, singleLine = true, modifier = Modifier.fillMaxWidth()); ExposedDropdownMenuBox(expanded = formaPagoExpanded, onExpandedChange = { formaPagoExpanded = it }) { OutlinedTextField(value = if (formaPago == FormaPago.EFECTIVO) "Efectivo" else "Tarjeta", onValueChange = {}, readOnly = true, label = { Text("Forma de pago") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(formaPagoExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor()); ExposedDropdownMenu(expanded = formaPagoExpanded, onDismissRequest = { formaPagoExpanded = false }) { DropdownMenuItem(text = { Text("Efectivo") }, onClick = { formaPago = FormaPago.EFECTIVO; formaPagoExpanded = false }); DropdownMenuItem(text = { Text("Tarjeta") }, onClick = { formaPago = FormaPago.TARJETA; formaPagoExpanded = false }) } }; if (formaPago == FormaPago.TARJETA) OutlinedTextField(idTransaccion, { idTransaccion = it }, label = { Text("ID de transacción") }, singleLine = true, modifier = Modifier.fillMaxWidth()); DocumentoAdjuntoField("Firma del cliente", "Opcional. Si no se agrega, se deja el espacio para firmar.", firmaClienteUri, { firmaClientePicker.launch(arrayOf("image/*")) }) { firmaClienteUri = null }; OutlinedTextField(nota, { nota = it }, label = { Text("Nota en la factura") }, modifier = Modifier.fillMaxWidth(), minLines = 3, maxLines = 5); if (lineas.isNotEmpty()) Text("Productos: ${lineas.size}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }, confirmButton = { TextButton(onClick = { onConfirm(nombre.trim(), ci.trim(), correo.trim(), direccion.trim(), telefono.trim(), formaPago, idTransaccion.trim().ifBlank { null }, nota.trim(), firmaClienteUri) }, enabled = nombre.isNotBlank() && ci.isNotBlank()) { Text("Generar") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }) }
+private fun FacturaDialog(lineas: List<LineaVenta>, datosClientePrefill: cu.lazaroysr96.sysgdcont.data.repository.DatosClienteFactura?, formaPagoPrefill: FormaPago, idTransaccionPrefill: String?, notaPrefill: String, onDismiss: () -> Unit, onConfirm: (String, String, String, String, String, FormaPago, String?, String, String?) -> Unit) { val context = LocalContext.current; var nombre by remember(datosClientePrefill) { mutableStateOf(datosClientePrefill?.nombre.orEmpty()) }; var ci by remember(datosClientePrefill) { mutableStateOf(datosClientePrefill?.ci.orEmpty()) }; var correo by remember(datosClientePrefill) { mutableStateOf(datosClientePrefill?.correo.orEmpty()) }; var direccion by remember(datosClientePrefill) { mutableStateOf(datosClientePrefill?.direccion.orEmpty()) }; var telefono by remember(datosClientePrefill) { mutableStateOf(datosClientePrefill?.telefono.orEmpty()) }; var formaPago by remember(formaPagoPrefill) { mutableStateOf(formaPagoPrefill) }; var idTransaccion by remember(idTransaccionPrefill) { mutableStateOf(idTransaccionPrefill.orEmpty()) }; var nota by remember(notaPrefill) { mutableStateOf(notaPrefill) }; var firmaClienteUri by remember { mutableStateOf<String?>(null) }; var formaPagoExpanded by remember { mutableStateOf(false) }; val firmaClientePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { tomarPermisoLecturaPersistente(context, it) }; firmaClienteUri = uri?.toString() }; AlertDialog(onDismissRequest = onDismiss, title = { Text("Generar Factura") }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.verticalScroll(rememberScrollState())) { OutlinedTextField(nombre, { nombre = it }, label = { Text("Nombre del cliente") }, singleLine = true, modifier = Modifier.fillMaxWidth()); OutlinedTextField(ci, { ci = it }, label = { Text("NIT") }, singleLine = true, modifier = Modifier.fillMaxWidth()); OutlinedTextField(correo, { correo = it }, label = { Text("Correo electrónico") }, singleLine = true, modifier = Modifier.fillMaxWidth()); OutlinedTextField(direccion, { direccion = it }, label = { Text("Dirección") }, modifier = Modifier.fillMaxWidth()); OutlinedTextField(telefono, { telefono = it }, label = { Text("Teléfono") }, singleLine = true, modifier = Modifier.fillMaxWidth()); ExposedDropdownMenuBox(expanded = formaPagoExpanded, onExpandedChange = { formaPagoExpanded = it }) { OutlinedTextField(value = if (formaPago == FormaPago.EFECTIVO) "Efectivo" else "Tarjeta", onValueChange = {}, readOnly = true, label = { Text("Forma de pago") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(formaPagoExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor()); ExposedDropdownMenu(expanded = formaPagoExpanded, onDismissRequest = { formaPagoExpanded = false }) { DropdownMenuItem(text = { Text("Efectivo") }, onClick = { formaPago = FormaPago.EFECTIVO; formaPagoExpanded = false }); DropdownMenuItem(text = { Text("Tarjeta") }, onClick = { formaPago = FormaPago.TARJETA; formaPagoExpanded = false }) } }; if (formaPago == FormaPago.TARJETA) OutlinedTextField(idTransaccion, { idTransaccion = it }, label = { Text("ID de transacción") }, singleLine = true, modifier = Modifier.fillMaxWidth()); DocumentoAdjuntoField("Firma del cliente", "Opcional. Si no se agrega, se deja el espacio para firmar.", firmaClienteUri, { firmaClientePicker.launch(arrayOf("image/*")) }) { firmaClienteUri = null }; OutlinedTextField(nota, { nota = it }, label = { Text("Nota en la factura") }, modifier = Modifier.fillMaxWidth(), minLines = 3, maxLines = 5); if (lineas.isNotEmpty()) Text("Productos: ${lineas.size}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }, confirmButton = { TextButton(onClick = { onConfirm(nombre.trim(), ci.trim(), correo.trim(), direccion.trim(), telefono.trim(), formaPago, idTransaccion.trim().ifBlank { null }, nota.trim(), firmaClienteUri) }, enabled = nombre.isNotBlank() && ci.isNotBlank()) { Text("Generar") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }) }
 
 // ─── Helpers privados ─────────────────────────────────────────────────────────
 private fun permiteFraccion(unidad: String) = unidad.trim().lowercase(Locale.ROOT) in setOf("kg", "g", "libra", "litro", "ml")

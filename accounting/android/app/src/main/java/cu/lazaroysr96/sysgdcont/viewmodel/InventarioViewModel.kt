@@ -12,6 +12,10 @@ import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
 import cu.lazaroysr96.sysgdcont.data.model.InventarioVinculoEdicion
 import cu.lazaroysr96.sysgdcont.data.model.Almacen
 import cu.lazaroysr96.sysgdcont.data.model.CuentaContable
+import cu.lazaroysr96.sysgdcont.data.model.FormaPago
+import cu.lazaroysr96.sysgdcont.data.model.RolTercero
+import cu.lazaroysr96.sysgdcont.data.model.TerceroListItem
+import cu.lazaroysr96.sysgdcont.data.model.TipoCuentaTercero
 import cu.lazaroysr96.sysgdcont.data.model.TipoProductoInv
 import cu.lazaroysr96.sysgdcont.data.model.ModoStock
 import cu.lazaroysr96.sysgdcont.data.model.MovimientoInventario
@@ -21,11 +25,14 @@ import cu.lazaroysr96.sysgdcont.data.repository.ConfiguracionFacturacion
 import cu.lazaroysr96.sysgdcont.data.repository.FacturaRepository
 import cu.lazaroysr96.sysgdcont.data.repository.InventarioRepository
 import cu.lazaroysr96.sysgdcont.data.repository.LedgerRepository
+import cu.lazaroysr96.sysgdcont.data.repository.DatosClienteFactura
+import cu.lazaroysr96.sysgdcont.data.repository.TercerosRepository
 // import cu.lazaroysr96.sysgdcont.data.dao.ItemInventarioDao
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
+import org.json.JSONObject
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -47,6 +54,8 @@ data class InventarioUiState(
     val snackbarMessage: String? = null,
     val showSaleSheet: Boolean = false,
     val showPurchaseSheet: Boolean = false,
+    val showVentaCheckoutDialog: Boolean = false,
+    val showCompraCheckoutDialog: Boolean = false,
     val showCatalog: Boolean = false,
     val showCatalogCompra: Boolean = false,
     val showAddProductDialog: Boolean = false,
@@ -72,6 +81,13 @@ data class InventarioUiState(
     val selectedCompraAlmacenId: String = Almacen.DEFAULT_ID,
     val selectedInventarioAlmacenId: String = Almacen.DEFAULT_ID,
     val movimientosInventario: List<MovimientoInventario> = emptyList(),
+    val terceros: List<TerceroListItem> = emptyList(),
+    val ventaPendienteFactura: Venta? = null,
+    val lineasVentaPendienteFactura: List<LineaVenta> = emptyList(),
+    val datosFacturaPrefill: DatosClienteFactura? = null,
+    val formaPagoFacturaPrefill: FormaPago = FormaPago.EFECTIVO,
+    val idTransaccionFacturaPrefill: String? = null,
+    val notaFacturaPrefill: String = "",
     // UI inventario
     val showMoverDialog: Boolean = false,
     val itemMoviendo: ItemInventario? = null,
@@ -99,11 +115,44 @@ data class InventarioUiState(
     val posIntegrationConfig: PosIntegrationConfig = PosIntegrationConfig()
 )
 
+enum class EstadoCobroOperacion { INMEDIATO, PENDIENTE }
+
+data class VentaCheckoutOptions(
+    val emitirFactura: Boolean = true,
+    val estadoCobro: EstadoCobroOperacion = EstadoCobroOperacion.INMEDIATO,
+    val formaPago: FormaPago = FormaPago.EFECTIVO,
+    val idTransaccion: String = "",
+    val nota: String = "",
+    val documentoUri: String? = null,
+    val terceroId: String? = null
+)
+
+data class CompraCheckoutOptions(
+    val registrarFacturaProveedor: Boolean = false,
+    val estadoPago: EstadoCobroOperacion = EstadoCobroOperacion.INMEDIATO,
+    val nota: String = "",
+    val documentoUri: String? = null,
+    val terceroId: String? = null
+)
+
+data class OperacionDetalleResumen(
+    val terceroNombre: String? = null,
+    val terceroId: String? = null,
+    val estadoPago: String? = null,
+    val formaPago: String? = null,
+    val idTransaccion: String? = null,
+    val nota: String? = null,
+    val documentoAdjunto: Boolean = false,
+    val facturaEmitida: Boolean = false,
+    val facturaProveedor: Boolean = false
+)
+
 @HiltViewModel
 class InventarioViewModel @Inject constructor(
     private val repo: InventarioRepository,
     private val facturaRepository: FacturaRepository,
-    private val ledgerRepository: LedgerRepository
+    private val ledgerRepository: LedgerRepository,
+    private val tercerosRepository: TercerosRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(InventarioUiState())
@@ -151,6 +200,11 @@ class InventarioViewModel @Inject constructor(
         viewModelScope.launch {
             repo.getMovimientosInventario().collect { movimientos ->
                 _uiState.update { it.copy(movimientosInventario = movimientos) }
+            }
+        }
+        viewModelScope.launch {
+            tercerosRepository.observeTerceros().collect { terceros ->
+                _uiState.update { it.copy(terceros = terceros) }
             }
         }
 
@@ -841,6 +895,75 @@ class InventarioViewModel @Inject constructor(
         }
     }
 
+    fun registrarVentaConDetalles(options: VentaCheckoutOptions) {
+        viewModelScope.launch {
+            val cart = _uiState.value.cart
+            if (cart.isEmpty()) return@launch
+
+            try {
+                val tercero = _uiState.value.terceros.firstOrNull { it.id == options.terceroId }
+                if (options.estadoCobro == EstadoCobroOperacion.PENDIENTE && tercero == null) {
+                    throw IllegalStateException("Debes seleccionar un cliente si la venta queda pendiente")
+                }
+                val fecha = _uiState.value.fechaTrabajo.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                val totalOperacion = cart.entries.sumOf { (producto, cantidad) -> producto.precio * cantidad }
+                val notaOperacion = encodeOperacionDetalle(
+                    terceroNombre = tercero?.nombre,
+                    terceroId = tercero?.id,
+                    estadoPago = if (options.estadoCobro == EstadoCobroOperacion.INMEDIATO) "COBRADA" else "PENDIENTE",
+                    formaPago = if (options.formaPago == FormaPago.EFECTIVO) "EFECTIVO" else "TARJETA",
+                    idTransaccion = options.idTransaccion.trim().ifBlank { null },
+                    nota = options.nota.trim().ifBlank { null },
+                    documentoAdjunto = options.documentoUri != null,
+                    facturaEmitida = options.emitirFactura
+                )
+                val (venta, lineas) = repo.registrarVenta(cart, fecha, notaOperacion)
+                if (options.estadoCobro == EstadoCobroOperacion.PENDIENTE && tercero != null) {
+                    tercerosRepository.crearCuentaDesdeOperacion(
+                        terceroId = tercero.id,
+                        tipoCuenta = TipoCuentaTercero.PRESTAMO,
+                        categoria = RolTercero.CLIENTE,
+                        concepto = "Venta pendiente de cobro",
+                        montoOriginal = totalOperacion,
+                        origenTipo = "VENTA",
+                        origenId = venta.id,
+                        descripcion = "Venta registrada desde el punto de venta",
+                        nota = options.nota
+                    )
+                }
+                ledgerRepository.registrarIngresoDesdePuntoVenta(
+                    fechaIso = fecha,
+                    total = totalOperacion
+                )
+                _uiState.update {
+                    it.copy(
+                        cart = emptyMap(),
+                        showSaleSheet = false,
+                        showVentaCheckoutDialog = false,
+                        snackbarMessage = "Venta registrada con detalles",
+                        ventaPendienteFactura = venta.takeIf { options.emitirFactura },
+                        lineasVentaPendienteFactura = lineas.takeIf { options.emitirFactura }.orEmpty(),
+                        datosFacturaPrefill = tercero?.let { terceroSeleccionado ->
+                            DatosClienteFactura(
+                                nombre = terceroSeleccionado.nombre,
+                                ci = terceroSeleccionado.identificadorFiscal,
+                                correo = terceroSeleccionado.correo,
+                                direccion = terceroSeleccionado.direccion,
+                                telefono = terceroSeleccionado.telefono
+                            )
+                        },
+                        formaPagoFacturaPrefill = options.formaPago,
+                        idTransaccionFacturaPrefill = options.idTransaccion.trim().ifBlank { null },
+                        notaFacturaPrefill = options.nota.trim()
+                    )
+                }
+                cargarVentasDelMes(_uiState.value.mesActual)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al registrar venta") }
+            }
+        }
+    }
+
     fun registrarCompra() {
         viewModelScope.launch {
             val cart = _uiState.value.cartCompra
@@ -863,6 +986,59 @@ class InventarioViewModel @Inject constructor(
                 cargarComprasDelMes(_uiState.value.mesActual)
             } catch (e: Exception) {
                 _uiState.update { it.copy(snackbarMessage = "Error al registrar compra") }
+            }
+        }
+    }
+
+    fun registrarCompraConDetalles(options: CompraCheckoutOptions) {
+        viewModelScope.launch {
+            val cart = _uiState.value.cartCompra
+            if (cart.isEmpty()) return@launch
+
+            try {
+                val tercero = _uiState.value.terceros.firstOrNull { it.id == options.terceroId }
+                if (options.estadoPago == EstadoCobroOperacion.PENDIENTE && tercero == null) {
+                    throw IllegalStateException("Debes seleccionar un proveedor si la compra queda pendiente")
+                }
+                val fecha = _uiState.value.fechaTrabajo.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                val totalOperacion = cart.entries.sumOf { (producto, cantidad) -> producto.precio * cantidad }
+                val notaOperacion = encodeOperacionDetalle(
+                    terceroNombre = tercero?.nombre,
+                    terceroId = tercero?.id,
+                    estadoPago = if (options.estadoPago == EstadoCobroOperacion.INMEDIATO) "PAGADA" else "PENDIENTE",
+                    nota = options.nota.trim().ifBlank { null },
+                    documentoAdjunto = options.documentoUri != null,
+                    facturaProveedor = options.registrarFacturaProveedor
+                )
+                val (compra, _) = repo.registrarCompra(cart, fecha, notaOperacion)
+                if (options.estadoPago == EstadoCobroOperacion.PENDIENTE && tercero != null) {
+                    tercerosRepository.crearCuentaDesdeOperacion(
+                        terceroId = tercero.id,
+                        tipoCuenta = TipoCuentaTercero.DEUDA,
+                        categoria = RolTercero.PROVEEDOR,
+                        concepto = "Compra pendiente de pago",
+                        montoOriginal = totalOperacion,
+                        origenTipo = "COMPRA",
+                        origenId = compra.id,
+                        descripcion = "Compra registrada desde el punto de venta",
+                        nota = options.nota
+                    )
+                }
+                ledgerRepository.registrarGastoDesdePuntoVenta(
+                    fechaIso = fecha,
+                    total = totalOperacion
+                )
+                _uiState.update {
+                    it.copy(
+                        cartCompra = emptyMap(),
+                        showPurchaseSheet = false,
+                        showCompraCheckoutDialog = false,
+                        snackbarMessage = "Compra registrada con detalles"
+                    )
+                }
+                cargarComprasDelMes(_uiState.value.mesActual)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al registrar compra") }
             }
         }
     }
@@ -907,6 +1083,14 @@ class InventarioViewModel @Inject constructor(
         _uiState.update { it.copy(showPurchaseSheet = show) }
     }
 
+    fun showVentaCheckoutDialog(show: Boolean) {
+        _uiState.update { it.copy(showVentaCheckoutDialog = show) }
+    }
+
+    fun showCompraCheckoutDialog(show: Boolean) {
+        _uiState.update { it.copy(showCompraCheckoutDialog = show) }
+    }
+
     fun showCatalog(show: Boolean) {
         _uiState.update { it.copy(showCatalog = show) }
     }
@@ -925,6 +1109,66 @@ class InventarioViewModel @Inject constructor(
 
     fun clearSnackbar() {
         _uiState.update { it.copy(snackbarMessage = null) }
+    }
+
+    fun clearVentaPendienteFactura() {
+        _uiState.update {
+            it.copy(
+                ventaPendienteFactura = null,
+                lineasVentaPendienteFactura = emptyList(),
+                datosFacturaPrefill = null,
+                formaPagoFacturaPrefill = FormaPago.EFECTIVO,
+                idTransaccionFacturaPrefill = null,
+                notaFacturaPrefill = ""
+            )
+        }
+    }
+
+    fun getDetalleOperacion(referenciaId: String): OperacionDetalleResumen? {
+        val raw = _uiState.value.movimientosInventario.firstOrNull { it.referenciaId == referenciaId }?.nota
+        return decodeOperacionDetalle(raw)
+    }
+
+    private fun encodeOperacionDetalle(
+        terceroNombre: String? = null,
+        terceroId: String? = null,
+        estadoPago: String? = null,
+        formaPago: String? = null,
+        idTransaccion: String? = null,
+        nota: String? = null,
+        documentoAdjunto: Boolean = false,
+        facturaEmitida: Boolean = false,
+        facturaProveedor: Boolean = false
+    ): String {
+        val json = JSONObject()
+        terceroNombre?.takeIf { it.isNotBlank() }?.let { json.put("terceroNombre", it) }
+        terceroId?.takeIf { it.isNotBlank() }?.let { json.put("terceroId", it) }
+        estadoPago?.takeIf { it.isNotBlank() }?.let { json.put("estadoPago", it) }
+        formaPago?.takeIf { it.isNotBlank() }?.let { json.put("formaPago", it) }
+        idTransaccion?.takeIf { it.isNotBlank() }?.let { json.put("idTransaccion", it) }
+        nota?.takeIf { it.isNotBlank() }?.let { json.put("nota", it) }
+        if (documentoAdjunto) json.put("documentoAdjunto", true)
+        if (facturaEmitida) json.put("facturaEmitida", true)
+        if (facturaProveedor) json.put("facturaProveedor", true)
+        return if (json.length() == 0) "" else "detalle_operacion::${json}"
+    }
+
+    private fun decodeOperacionDetalle(raw: String?): OperacionDetalleResumen? {
+        if (raw.isNullOrBlank() || !raw.startsWith("detalle_operacion::")) return null
+        return runCatching {
+            val json = JSONObject(raw.removePrefix("detalle_operacion::"))
+            OperacionDetalleResumen(
+                terceroNombre = json.optString("terceroNombre").ifBlank { null },
+                terceroId = json.optString("terceroId").ifBlank { null },
+                estadoPago = json.optString("estadoPago").ifBlank { null },
+                formaPago = json.optString("formaPago").ifBlank { null },
+                idTransaccion = json.optString("idTransaccion").ifBlank { null },
+                nota = json.optString("nota").ifBlank { null },
+                documentoAdjunto = json.optBoolean("documentoAdjunto", false),
+                facturaEmitida = json.optBoolean("facturaEmitida", false),
+                facturaProveedor = json.optBoolean("facturaProveedor", false)
+            )
+        }.getOrNull()
     }
 
     val cartTotal: Double
