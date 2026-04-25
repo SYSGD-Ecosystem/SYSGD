@@ -29,6 +29,9 @@ import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.AlertDialog
@@ -49,10 +52,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,6 +90,12 @@ private data class DashboardShortcut(
     val onClick: () -> Unit,
 )
 
+private enum class DashboardTab {
+    GENERAL,
+    MODULOS,
+    CUENTA
+}
+
 @Composable
 fun DashboardScreen(
     generales: GeneralesData,
@@ -109,10 +122,19 @@ fun DashboardScreen(
         gastoCuentaId: String?,
         nota: String
     ) -> Unit,
+        userName: String,
+    userEmail: String,
+    availableCredits: Int?,
+    currentTier: String,
+    hasActiveLicense: Boolean,
+    onNavigateToLicenses: () -> Unit,
+    onNavigateToSecurity: () -> Unit,
+    onContactWhatsApp: () -> Unit,
 ) {
     var showWorkspaceDialog by remember { mutableStateOf(false) }
     var showQuickActions by remember { mutableStateOf(false) }
     var showOperationDialog by remember { mutableStateOf(false) }
+    var selectedTab by rememberSaveable { mutableStateOf(DashboardTab.GENERAL) }
     val colorScheme = MaterialTheme.colorScheme
     val isDarkTheme = colorScheme.background.luminance() < 0.5f
     val shortcutTones = listOf(
@@ -180,9 +202,37 @@ fun DashboardScreen(
     val gastos = report?.totalGastos ?: 0.0
     val neto = report?.baseImponible ?: 0.0
 
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = selectedTab == DashboardTab.GENERAL,
+                    onClick = { selectedTab = DashboardTab.GENERAL },
+                    icon = { Icon(Icons.Default.Home, contentDescription = null) },
+                    label = { Text("General") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == DashboardTab.MODULOS,
+                    onClick = { selectedTab = DashboardTab.MODULOS },
+                    icon = { Icon(Icons.Default.Apps, contentDescription = null) },
+                    label = { Text("Módulos") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == DashboardTab.CUENTA,
+                    onClick = { selectedTab = DashboardTab.CUENTA },
+                    icon = { Icon(Icons.Default.AccountCircle, contentDescription = null) },
+                    label = { Text("Cuenta") }
+                )
+            }
+        }
+    ) { padding ->
+        when (selectedTab) {
+            DashboardTab.GENERAL -> {
+
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .padding(padding) 
             .background(colorScheme.background)
     ) {
         Column(
@@ -206,27 +256,6 @@ fun DashboardScreen(
                     .padding(horizontal = 20.dp, vertical = 20.dp)
             ) {
                 Column {
-                    // Text(
-                    //     text = "Panel principal",
-                    //     style = MaterialTheme.typography.labelLarge,
-                    //     color = colorScheme.onPrimary.copy(alpha = 0.88f)
-                    // )
-                    // Spacer(modifier = Modifier.height(6.dp))
-                    // Text(
-                    //     text = nombreContribuyente,
-                    //     style = MaterialTheme.typography.headlineMedium,
-                    //     fontWeight = FontWeight.Bold,
-                    //     color = colorScheme.onPrimary,
-                    //     maxLines = 2,
-                    //     overflow = TextOverflow.Ellipsis
-                    // )
-                    // Spacer(modifier = Modifier.height(6.dp))
-                    // Text(
-                    //     text = "Visión rápida del año $anio y acceso a todas las herramientas.",
-                    //     style = MaterialTheme.typography.bodyMedium,
-                    //     color = colorScheme.onPrimary.copy(alpha = 0.92f)
-                    // )
-
                     WorkspaceOverviewCard(
                     currentWorkspaceName = currentWorkspace?.nombre ?: "Negocio principal",
                     totalWorkspaces = workspaces.size,
@@ -246,42 +275,7 @@ fun DashboardScreen(
                 }
             }
 
-            Column(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // WorkspaceOverviewCard(
-                //     currentWorkspaceName = currentWorkspace?.nombre ?: "Negocio principal",
-                //     totalWorkspaces = workspaces.size,
-                //     onManage = { showWorkspaceDialog = true }
-                // )
-
-                Text(
-                    text = "Accesos rápidos",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = colorScheme.onBackground
-                )
-
-                shortcuts.chunked(2).forEach { rowItems ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        rowItems.forEach { item ->
-                            DashboardShortcutCard(
-                                shortcut = item,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        if (rowItems.size == 1) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(96.dp))
-            }
+            
         }
 
         Column(
@@ -321,6 +315,58 @@ fun DashboardScreen(
             }
         }
     }
+}
+
+DashboardTab.MODULOS -> {
+        Column(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Accesos rápidos",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = colorScheme.onBackground
+                )
+
+                shortcuts.chunked(2).forEach { rowItems ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        rowItems.forEach { item ->
+                            DashboardShortcutCard(
+                                shortcut = item,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        if (rowItems.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(96.dp))
+            }
+    }
+    
+        DashboardTab.CUENTA -> {
+    UserProfileTab(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(padding),
+        userName = userName,
+        userEmail = userEmail,
+        availableCredits = availableCredits,
+        currentTier = currentTier,
+        hasActiveLicense = hasActiveLicense,
+        onNavigateToLicenses = onNavigateToLicenses,
+        onNavigateToSecurity = onNavigateToSecurity,
+        onContactWhatsApp = onContactWhatsApp,
+    )
+}
+        }
+}
 
     if (showWorkspaceDialog) {
         WorkspaceSwitcherDialog(
@@ -859,6 +905,205 @@ private fun DashboardShortcutCard(
                     overflow = TextOverflow.Ellipsis
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun UserProfileTab(
+    modifier: Modifier = Modifier,
+    userName: String,
+    userEmail: String,
+    availableCredits: Int?,
+    currentTier: String,
+    hasActiveLicense: Boolean,
+    onNavigateToLicenses: () -> Unit,
+    onNavigateToSecurity: () -> Unit,
+    onContactWhatsApp: () -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+
+    Column(
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Avatar + nombre
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = colorScheme.primaryContainer),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .background(colorScheme.primary, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = userName.firstOrNull()?.uppercaseChar()?.toString() ?: "U",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.onPrimary
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = userName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = userEmail,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    // Reutiliza el badge de tier que ya existe en MainScreen
+                    val badgeBg = when (currentTier) {
+                        "vip" -> colorScheme.tertiaryContainer
+                        "pro" -> colorScheme.secondaryContainer
+                        else -> colorScheme.surfaceVariant
+                    }
+                    val badgeFg = when (currentTier) {
+                        "vip" -> colorScheme.onTertiaryContainer
+                        "pro" -> colorScheme.onSecondaryContainer
+                        else -> colorScheme.onSurfaceVariant
+                    }
+                    Box(
+                        modifier = Modifier
+                            .background(badgeBg, CircleShape)
+                            .padding(horizontal = 10.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = currentTier.uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = badgeFg
+                        )
+                    }
+                }
+            }
+        }
+
+        // Créditos
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = colorScheme.secondaryContainer),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        "Créditos disponibles",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colorScheme.onSecondaryContainer.copy(alpha = 0.75f)
+                    )
+                    Text(
+                        text = availableCredits?.toString() ?: "--",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.onSecondaryContainer
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.AccountCircle,
+                    contentDescription = null,
+                    tint = colorScheme.onSecondaryContainer.copy(alpha = 0.5f),
+                    modifier = Modifier.size(40.dp)
+                )
+            }
+        }
+
+        // Estado de licencia
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Licencia",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        if (hasActiveLicense) "Plan ${currentTier.uppercase()} activo"
+                        else "Sin licencia activa",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                TextButton(onClick = onNavigateToLicenses) {
+                    Text(if (hasActiveLicense) "Ver licencia" else "Comprar")
+                }
+            }
+        }
+
+        // Acciones de cuenta
+        Text(
+            "Configuración",
+            style = MaterialTheme.typography.titleSmall,
+            color = colorScheme.onSurfaceVariant
+        )
+
+        AccountActionRow(
+            label = "Seguridad y cuenta",
+            icon = Icons.Default.AccountCircle, // usa el que prefieras
+            onClick = onNavigateToSecurity
+        )
+        AccountActionRow(
+            label = "Contactar soporte",
+            icon = Icons.Default.People,
+            onClick = onContactWhatsApp
+        )
+
+        Spacer(modifier = Modifier.height(80.dp))
+    }
+}
+
+@Composable
+private fun AccountActionRow(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         }
     }
 }

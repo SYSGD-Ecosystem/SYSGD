@@ -299,7 +299,7 @@ class FacturaRepository @Inject constructor(
         document.add(Paragraph("Operaciones: ${operaciones.size}").setFontSize(10f))
         document.add(Paragraph("\n"))
 
-        val table = Table(UnitValue.createPercentArray(floatArrayOf(20f, 13f, 37f, 10f, 10f, 10f)))
+        val table = Table(UnitValue.createPercentArray(floatArrayOf(15f, 10f, 45f, 10f, 10f, 10f)))
             .useAllAvailableWidth()
         listOf("Fecha", "Hora", "Producto", "Cant.", "Precio", "Importe").forEach { titulo ->
             table.addHeaderCell(Cell().add(Paragraph(titulo).setBold()))
@@ -352,7 +352,7 @@ class FacturaRepository @Inject constructor(
         document.add(Paragraph("Operaciones: ${operaciones.size}").setFontSize(10f))
         document.add(Paragraph("\n"))
 
-        val table = Table(UnitValue.createPercentArray(floatArrayOf(20f, 13f, 37f, 10f, 10f, 10f)))
+        val table = Table(UnitValue.createPercentArray(floatArrayOf(15f, 10f, 45f, 10f, 10f, 10f)))
             .useAllAvailableWidth()
         listOf("Fecha", "Hora", "Insumo", "Cant.", "Precio", "Importe").forEach { titulo ->
             table.addHeaderCell(Cell().add(Paragraph(titulo).setBold()))
@@ -407,9 +407,9 @@ class FacturaRepository @Inject constructor(
         document.add(Paragraph("Productos activos en almacén: ${items.size}").setFontSize(10f))
         document.add(Paragraph("\n"))
 
-        val table = Table(UnitValue.createPercentArray(floatArrayOf(14f, 30f, 13f, 16f, 12f, 15f)))
+        val table = Table(UnitValue.createPercentArray(floatArrayOf(10f, 34f, 17f, 16f, 12f, 10f)))
             .useAllAvailableWidth()
-        listOf("Código", "Producto", "Almacén", "Modo", "Unidad", "Disponibilidad").forEach { titulo ->
+        listOf("Código", "Producto", "Almacén", "Modo", "Unidad", "Stock").forEach { titulo ->
             table.addHeaderCell(Cell().add(Paragraph(titulo).setBold()))
         }
 

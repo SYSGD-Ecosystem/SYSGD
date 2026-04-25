@@ -357,7 +357,7 @@ fun ProductoFotoPanel(onFotoSelected: (String) -> Unit) {
     }
 
     // Preview de imagen ya seleccionada
-    val hayImagen = copiedPath.value != null
+    // val hayImagen = copiedPath.value != null
 
     Box(
         modifier = Modifier
@@ -373,19 +373,19 @@ fun ProductoFotoPanel(onFotoSelected: (String) -> Unit) {
             .padding(vertical = 18.dp),
         contentAlignment = Alignment.Center
     ) {
-        if (hayImagen) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(File(copiedPath.value!!))
-                    .crossfade(true)
-                    .build(),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp)
-            )
-        } else {
+        // if (hayImagen) {
+        //     AsyncImage(
+        //         model = ImageRequest.Builder(LocalContext.current)
+        //             .data(File(copiedPath.value!!))
+        //             .crossfade(true)
+        //             .build(),
+        //         contentDescription = null,
+        //         contentScale = ContentScale.Crop,
+        //         modifier = Modifier
+        //             .fillMaxWidth()
+        //             .height(80.dp)
+        //     )
+        // } else {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     "Seleccionar imagen",
@@ -398,7 +398,7 @@ fun ProductoFotoPanel(onFotoSelected: (String) -> Unit) {
                     color = MaterialTheme.colorScheme.outline
                 )
             }
-        }
+        /* }*/
     }
 }
 

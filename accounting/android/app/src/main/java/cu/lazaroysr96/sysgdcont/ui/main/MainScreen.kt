@@ -394,41 +394,7 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Divider()
-                            Text(
-                                "Guías y apoyo",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                            )
-                            
-                            NavigationDrawerItem(
-                                    label = { Text("Ayuda (llenado)") },
-                                    selected = currentRoute == HELP_ROUTE,
-                                    icon = {
-                                        Icon(Icons.Default.Help, contentDescription = null)
-                                    },
-                                    onClick = {
-                                        navController.navigate(HELP_ROUTE) {
-                                            launchSingleTop = true
-                                        }
-                                        drawerScope.launch { drawerState.close() }
-                                    }
-                            )
-                            NavigationDrawerItem(
-                                    label = { Text("Recursos útiles") },
-                                    selected = currentRoute == RESOURCES_ROUTE,
-                                    icon = {
-                                        Icon(Icons.Default.Search, contentDescription = null)
-                                    },
-                                    onClick = {
-                                        navController.navigate(RESOURCES_ROUTE) {
-                                            launchSingleTop = true
-                                        }
-                                        drawerScope.launch { drawerState.close() }
-                                    }
-                            )
+
                             Spacer(modifier = Modifier.height(8.dp))
                             Divider()
                             Text(
@@ -481,6 +447,8 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
+
+                          
 
                             Spacer(modifier = Modifier.height(8.dp))
                             Divider()
@@ -561,6 +529,42 @@ fun MainScreen(
                                     icon = { Icon(Icons.Default.Info, contentDescription = null) },
                                     onClick = {
                                         navController.navigate(ABOUT_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Divider()
+                            Text(
+                                "Guías y apoyo",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                            
+                            NavigationDrawerItem(
+                                    label = { Text("Ayuda (llenado)") },
+                                    selected = currentRoute == HELP_ROUTE,
+                                    icon = {
+                                        Icon(Icons.Default.Help, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        navController.navigate(HELP_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+                            NavigationDrawerItem(
+                                    label = { Text("Recursos útiles") },
+                                    selected = currentRoute == RESOURCES_ROUTE,
+                                    icon = {
+                                        Icon(Icons.Default.Search, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        navController.navigate(RESOURCES_ROUTE) {
                                             launchSingleTop = true
                                         }
                                         drawerScope.launch { drawerState.close() }
@@ -745,7 +749,22 @@ fun MainScreen(
                                 gastoCuentaId = gastoCuentaId.orEmpty(),
                                 nota = nota
                             )
-                        }
+                        },
+                                userName = authState.currentUser?.name ?: "Usuario",
+        userEmail = authState.currentUser?.email ?: "",
+        availableCredits = authState.availableCredits,
+        currentTier = currentTier,
+        hasActiveLicense = hasActiveLicense,
+        onNavigateToLicenses = {
+            planPurchaseViewModel.loadData(force = true)
+            navController.navigate(LICENSES_ROUTE) { launchSingleTop = true }
+        },
+        onNavigateToSecurity = {
+            navController.navigate(SECURITY_ROUTE) { launchSingleTop = true }
+        },
+        onContactWhatsApp = {
+            openWhatsAppContact(context, "Hola, necesito ayuda con Gestor Contable TCP.")
+        },
                     )
                 }
                 composable(MainTab.Generales.route) { GeneralesScreen(ledgerViewModel) }
