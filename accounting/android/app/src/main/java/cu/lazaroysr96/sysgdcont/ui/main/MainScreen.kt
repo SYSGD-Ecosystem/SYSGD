@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,29 +30,33 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Help
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Widgets
-import androidx.compose.material.icons.filled.Inventory2
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.foundation.clickable
+// import androidx.compose.material.icons.filled.ArrowBack
+// import androidx.compose.material.icons.filled.BarChart
+// import androidx.compose.material.icons.filled.CloudOff
+// import androidx.compose.material.icons.filled.CreditCard
+// import androidx.compose.material.icons.filled.Description
+// import androidx.compose.material.icons.filled.Help
+// import androidx.compose.material.icons.filled.Info
+// import androidx.compose.material.icons.filled.Widgets
+// import androidx.compose.material.icons.filled.Inventory2
+// import androidx.compose.material.icons.filled.List
+// import androidx.compose.material.icons.filled.Logout
+// import androidx.compose.material.icons.filled.Menu
+// import androidx.compose.material.icons.filled.MenuBook
+// import androidx.compose.material.icons.filled.People
+// import androidx.compose.material.icons.filled.Refresh
+// import androidx.compose.material.icons.filled.Search
+// import androidx.compose.material.icons.filled.Security
+// import androidx.compose.material.icons.filled.Sync
+// import androidx.compose.material.icons.filled.Visibility
+// import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerValue
@@ -64,9 +69,12 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -81,7 +89,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -1211,107 +1224,193 @@ private fun AboutScreen(
 ) {
     val context = LocalContext.current
     val appVersion = remember { getAppVersionName(context) }
+    val colorScheme = MaterialTheme.colorScheme
 
     Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        Box(
-                modifier =
-                        Modifier.fillMaxWidth()
-                                .background(
-                                        color =
-                                                MaterialTheme.colorScheme.surfaceVariant.copy(
-                                                        alpha = 0.35f
-                                                ),
-                                        shape = RoundedCornerShape(16.dp)
-                                )
-                                .padding(16.dp)
+
+        // ── Hero: identidad de la app ─────────────────────────────
+        Card(
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(
+            Row(
+                modifier = Modifier.padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(68.dp)
+                        .background(colorScheme.primaryContainer, RoundedCornerShape(20.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
                         painter = painterResource(id = R.drawable.ic_launcher),
                         contentDescription = "Icono de la app",
-                        modifier = Modifier.size(56.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(text = "Gestor Contable TCP", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                            text = "Versión $appVersion",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                            text = "Desarrollador",
-                            style = MaterialTheme.typography.labelMedium,
-                    )
-                    Text(
-                            text = "Licenciado en Contabilidad y Finanzas",
-                            style = MaterialTheme.typography.bodySmall
-                    )
-                    Text(
-                            text = "Lázaro Yunier Salazar Rodríguez",
-                            style = MaterialTheme.typography.bodySmall
+                        modifier = Modifier.size(48.dp)
                     )
                 }
-            }
-        }
-
-        TextButton(onClick = onContactWhatsApp) { Text("Contactar por WhatsApp") }
-
-        TextButton(onClick = { onOpenUrl("https://whatsapp.com/channel/0029Va7WYUfHVvTenVDVnj3W") }) { Text("Sigue nuestro canal en WhatsApp") }
-
-
-        Divider()
-
-        Text(text = "Plataforma SYSGD Ecosystem", style = MaterialTheme.typography.titleMedium)
-        Text(
-                text = "Conoce más servicios y accesos oficiales de SYSGD:",
-                style = MaterialTheme.typography.bodyMedium
-        )
-        TextButton(onClick = { onOpenUrl("https://www.ecosysgd.com") }) {
-            Text("Web institucional: www.ecosysgd.com")
-        }
-        TextButton(onClick = { onOpenUrl("https://cont.ecosysgd.com") }) {
-            Text("Versión web de esta app: cont.ecosysgd.com")
-        }
-        TextButton(onClick = { onOpenUrl("https://work.ecosysgd.com/terms") }) {
-            Text("Términos y condiciones")
-        }
-        TextButton(onClick = { onOpenUrl("https://work.ecosysgd.com/privacy") }) {
-            Text("Política de privacidad")
-        }
-
-        Divider()
-
-        Text(text = "Opciones avanzadas", style = MaterialTheme.typography.titleMedium)
-        if (!canUseExperimentalFeatures) {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Funciones experimentales bloqueadas", style = MaterialTheme.typography.bodyLarge)
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        "En la edición freemium esta sección requiere un plan VIP. Tu nivel actual es ${currentTier.uppercase()}.",
+                        text = "Gestor Contable TCP",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.onSurface
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = colorScheme.secondaryContainer,
+                        modifier = Modifier.padding(top = 2.dp)
+                    ) {
+                        Text(
+                            text = "v$appVersion",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colorScheme.onSecondaryContainer,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Lázaro Yunier Salazar Rodríguez",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Licenciado en Contabilidad y Finanzas",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = colorScheme.onSurfaceVariant
                     )
                 }
             }
         }
-        Card(modifier = Modifier.fillMaxWidth()) {
+
+        // ── Contacto ──────────────────────────────────────────────
+        AboutSectionCard(
+            icon = Icons.Default.ContactSupport,
+            iconBackground = colorScheme.tertiaryContainer,
+            iconTint = colorScheme.onTertiaryContainer,
+            title = "Contacto y comunidad",
+        ) {
+            AboutLinkItem(
+                icon = Icons.Default.Chat,
+                label = "Soporte por WhatsApp",
+                sublabel = "Consultas, reportes y ayuda directa",
+                onClick = onContactWhatsApp
+            )
+            Divider(color = colorScheme.outlineVariant.copy(alpha = 0.5f))
+            AboutLinkItem(
+                icon = Icons.Default.Campaign,
+                label = "Canal oficial en WhatsApp",
+                sublabel = "Novedades, actualizaciones y anuncios",
+                onClick = { onOpenUrl("https://whatsapp.com/channel/0029Va7WYUfHVvTenVDVnj3W") }
+            )
+        }
+
+        // ── Plataforma SYSGD ──────────────────────────────────────
+        AboutSectionCard(
+            icon = Icons.Default.Language,
+            iconBackground = colorScheme.primaryContainer,
+            iconTint = colorScheme.onPrimaryContainer,
+            title = "Plataforma SYSGD Ecosystem",
+        ) {
+            AboutLinkItem(
+                icon = Icons.Default.Public,
+                label = "Web institucional",
+                sublabel = "www.ecosysgd.com",
+                onClick = { onOpenUrl("https://www.ecosysgd.com") }
+            )
+            Divider(color = colorScheme.outlineVariant.copy(alpha = 0.5f))
+            AboutLinkItem(
+                icon = Icons.Default.OpenInBrowser,
+                label = "Versión web de esta app",
+                sublabel = "cont.ecosysgd.com",
+                onClick = { onOpenUrl("https://cont.ecosysgd.com") }
+            )
+            Divider(color = colorScheme.outlineVariant.copy(alpha = 0.5f))
+            AboutLinkItem(
+                icon = Icons.Default.Gavel,
+                label = "Términos y condiciones",
+                sublabel = "work.ecosysgd.com/terms",
+                onClick = { onOpenUrl("https://work.ecosysgd.com/terms") }
+            )
+            Divider(color = colorScheme.outlineVariant.copy(alpha = 0.5f))
+            AboutLinkItem(
+                icon = Icons.Default.Shield,
+                label = "Política de privacidad",
+                sublabel = "work.ecosysgd.com/privacy",
+                onClick = { onOpenUrl("https://work.ecosysgd.com/privacy") }
+            )
+        }
+
+        // ── Opciones avanzadas ────────────────────────────────────
+        AboutSectionCard(
+            icon = Icons.Default.Science,
+            iconBackground = if (canUseExperimentalFeatures)
+                colorScheme.secondaryContainer
+            else
+                colorScheme.surfaceVariant,
+            iconTint = if (canUseExperimentalFeatures)
+                colorScheme.onSecondaryContainer
+            else
+                colorScheme.onSurfaceVariant,
+            title = "Opciones avanzadas",
+        ) {
+            if (!canUseExperimentalFeatures) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = colorScheme.errorContainer.copy(alpha = 0.45f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = colorScheme.onErrorContainer,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Requiere plan VIP. Tu nivel actual es ${currentTier.uppercase()}.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Activar funciones experimentales", style = MaterialTheme.typography.bodyLarge)
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        "Permite probar herramientas en desarrollo como el PDF offline.",
+                        text = "Funciones experimentales",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (canUseExperimentalFeatures)
+                            colorScheme.onSurface
+                        else
+                            colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Herramientas en desarrollo como el PDF offline",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = colorScheme.onSurfaceVariant
                     )
                 }
                 Switch(
@@ -1321,6 +1420,101 @@ private fun AboutScreen(
                 )
             }
         }
+    }
+}
+
+// ── Componentes auxiliares ────────────────────────────────────────────────────
+
+@Composable
+private fun AboutSectionCard(
+    icon: ImageVector,
+    iconBackground: Color,
+    iconTint: Color,
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(iconBackground, RoundedCornerShape(14.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorScheme.onSurface
+                )
+            }
+            content()
+        }
+    }
+}
+
+@Composable
+private fun AboutLinkItem(
+    icon: ImageVector,
+    label: String,
+    sublabel: String,
+    onClick: () -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp, horizontal = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = colorScheme.primary,
+            modifier = Modifier.size(20.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = colorScheme.onSurface
+            )
+            Text(
+                text = sublabel,
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.onSurfaceVariant
+            )
+        }
+        Icon(
+            Icons.Default.ChevronRight,
+            contentDescription = null,
+            tint = colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp)
+        )
     }
 }
 
@@ -1475,84 +1669,254 @@ private fun UsefulResourcesScreen(onOpenUrl: (String) -> Unit) {
 
 @Composable
 private fun BackupJsonScreen(
-        isLoading: Boolean,
-        currentUser: cu.lazaroysr96.sysgdcont.data.model.AuthUser?,
-        onExportClick: () -> Unit,
-        onImportClick: () -> Unit,
-        onExportAccessKeyClick: () -> Unit,
-        canCreateAccessKey: Boolean,
-        currentTier: String,
+    isLoading: Boolean,
+    currentUser: cu.lazaroysr96.sysgdcont.data.model.AuthUser?,
+    onExportClick: () -> Unit,
+    onImportClick: () -> Unit,
+    onExportAccessKeyClick: () -> Unit,
+    canCreateAccessKey: Boolean,
+    currentTier: String,
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        Text(
-                text = "Backup y restauración JSON",
-                style = MaterialTheme.typography.titleMedium
-        )
-        Text(
-                text =
-                        "Exporta tu registro a un archivo JSON para respaldo, o importa un JSON para restaurar/migrar datos desde otro sistema compatible.",
-                style = MaterialTheme.typography.bodySmall
-        )
-        TextButton(onClick = onExportClick, enabled = !isLoading) {
-            Text(if (isLoading) "Procesando..." else "Exportar backup JSON")
-        }
-        TextButton(onClick = onImportClick, enabled = !isLoading) {
-            Text(if (isLoading) "Procesando..." else "Importar backup JSON")
-        }
-        Divider()
-        Text(
-                text =
-                        "Nota: al importar, los datos locales se reemplazan por los del archivo seleccionado.",
-                style = MaterialTheme.typography.bodySmall
-        )
-
-        Divider()
-
-        Text(
-                text = "Llave de acceso (sin conexión)",
-                style = MaterialTheme.typography.titleMedium
-        )
-        Text(
-                text = "Crea una copia de seguridad de tu sesión para poder iniciar sin internet. Si desinstalas la app y la reinstalas, podrás restaurar tu sesión usando esta llave.",
-                style = MaterialTheme.typography.bodySmall
-        )
-
-        if (currentUser != null) {
+        // ── Header ───────────────────────────────────────────────
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                    text = "Usuario: ${currentUser.name}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
+                text = "Seguridad y respaldo",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.onBackground
             )
             Text(
-                    text = "Email: ${currentUser.email}",
-                    style = MaterialTheme.typography.bodySmall
+                text = "Gestiona tus copias de seguridad y acceso sin conexión",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colorScheme.onSurfaceVariant
             )
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
-
-        TextButton(onClick = onExportAccessKeyClick, enabled = !isLoading && canCreateAccessKey) {
-            Text(if (isLoading) "Procesando..." else "Crear llave de acceso")
+        // ── Sección: Backup JSON ──────────────────────────────────
+        BackupSectionCard(
+            icon = Icons.Default.CloudUpload,
+            iconTint = colorScheme.onPrimaryContainer,
+            iconBackground = colorScheme.primaryContainer,
+            title = "Exportar / Importar JSON",
+            description = "Exporta tu registro contable como archivo JSON para respaldo externo, o importa uno para migrar datos desde otro dispositivo compatible.",
+            warning = "Al importar, los datos locales actuales serán reemplazados por los del archivo seleccionado.",
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onExportClick,
+                    enabled = !isLoading,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        Icons.Default.FileDownload,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(if (isLoading) "Procesando…" else "Exportar")
+                }
+                Button(
+                    onClick = onImportClick,
+                    enabled = !isLoading,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        Icons.Default.FileUpload,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(if (isLoading) "Procesando…" else "Importar")
+                }
+            }
         }
 
-        if (!canCreateAccessKey) {
+        // ── Sección: Llave de acceso ──────────────────────────────
+        BackupSectionCard(
+            icon = Icons.Default.VpnKey,
+            iconTint = colorScheme.onSecondaryContainer,
+            iconBackground = colorScheme.secondaryContainer,
+            title = "Llave de acceso sin conexión",
+            description = "Crea una copia cifrada de tu sesión para iniciar sin internet. Si reinstalás la app, podrás restaurar tu sesión usando esta llave.",
+            warning = "La llave se protegerá con una contraseña que tú defines. Guárdala en un lugar seguro.",
+        ) {
+            // Info del usuario activo
+            if (currentUser != null) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = colorScheme.surfaceVariant,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.AccountCircle,
+                            contentDescription = null,
+                            tint = colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Column {
+                            Text(
+                                text = currentUser.name,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = colorScheme.onSurface
+                            )
+                            Text(
+                                text = currentUser.email,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+            }
+
+            // Botón + aviso de plan
+            Button(
+                onClick = onExportAccessKeyClick,
+                enabled = !isLoading && canCreateAccessKey,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorScheme.secondary,
+                    contentColor = colorScheme.onSecondary,
+                    disabledContainerColor = colorScheme.surfaceVariant,
+                    disabledContentColor = colorScheme.onSurfaceVariant
+                )
+            ) {
+                Icon(
+                    if (isLoading) Icons.Default.HourglassTop else Icons.Default.Key,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(if (isLoading) "Procesando…" else "Crear llave de acceso")
+            }
+
+            if (!canCreateAccessKey) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = colorScheme.errorContainer.copy(alpha = 0.55f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = colorScheme.onErrorContainer,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Requiere plan Pro o VIP. Tu nivel actual es ${currentTier.uppercase()}.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── Componente auxiliar de sección ───────────────────────────────────────────
+
+@Composable
+private fun BackupSectionCard(
+    icon: ImageVector,
+    iconTint: Color,
+    iconBackground: Color,
+    title: String,
+    description: String,
+    warning: String? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // Icono + título
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(iconBackground, RoundedCornerShape(14.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorScheme.onSurface
+                )
+            }
+
             Text(
-                text = "En la edición freemium esta función requiere plan Pro o VIP. Tu nivel actual es ${currentTier.uppercase()}.",
+                text = description,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = colorScheme.onSurfaceVariant,
+                lineHeight = MaterialTheme.typography.bodySmall.lineHeight
             )
+
+            // Contenido inyectado (botones, campos, etc.)
+            content()
+
+            // Aviso al pie (opcional)
+            if (warning != null) {
+                Divider(color = colorScheme.outlineVariant)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = null,
+                        tint = colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(14.dp).padding(top = 1.dp)
+                    )
+                    Text(
+                        text = warning,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
-
-        Divider()
-
-        Text(
-                text = "Esta llave estará protegida con una contraseña que tú defines. Guárdala en un lugar seguro.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
     }
 }

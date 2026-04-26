@@ -39,6 +39,28 @@ import cu.lazaroysr96.sysgdcont.ui.components.producto.ChevronTrailing
 import cu.lazaroysr96.sysgdcont.ui.components.producto.ProductoFormDialog
 import cu.lazaroysr96.sysgdcont.ui.components.producto.ProductoItem
 
+import coil.compose.AsyncImage
+import androidx.compose.ui.graphics.Brush
+import java.io.File
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.clip
+
+// Shapes y layout
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Color
+
+// Dialog
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+
+// Imagen
+import androidx.compose.ui.res.painterResource
+
+// ProductoImagen — ajusta el paquete según donde esté definida en tu proyecto
+import cu.lazaroysr96.sysgdcont.ui.components.producto.toProductoImagen
+
 private data class CuentaTreeNode(
     val cuenta: CuentaContable,
     val children: List<CuentaTreeNode> = emptyList()
@@ -206,6 +228,88 @@ private fun ProductosTab(
     }
 }
 
+// @Composable
+// private fun ProductoDetalleDialog(
+//     producto: Producto,
+//     loadPriceHistory: suspend (String) -> List<PrecioProductoDetalle>,
+//     onDismiss: () -> Unit,
+//     onEdit: () -> Unit
+// ) {
+//     val historial by produceState<List<PrecioProductoDetalle>>(initialValue = emptyList(), key1 = producto.id) {
+//         value = runCatching { loadPriceHistory(producto.id) }.getOrDefault(emptyList())
+//     }
+//     val preciosVenta = remember(historial) { historial.filter { it.tipoPrecio == TipoPrecio.VENTA && it.activo } }
+//     val preciosCompra = remember(historial) { historial.filter { it.tipoPrecio == TipoPrecio.COMPRA && it.activo } }
+
+//     AlertDialog(
+//         onDismissRequest = onDismiss,
+//         title = { Text(producto.nombre) },
+//         text = {
+//             Column(
+//                 modifier = Modifier
+//                     .fillMaxWidth()
+//                     .verticalScroll(rememberScrollState()),
+//                 verticalArrangement = Arrangement.spacedBy(12.dp)
+//             ) {
+//                 ProductoDetalleDato("Unidad", producto.unidad)
+//                 if (producto.descripcion.isNotBlank()) {
+//                     ProductoDetalleDato("Descripcion", producto.descripcion)
+//                 }
+//                 ProductoPrecioVigenteBlock("Precio de venta vigente", preciosVenta)
+//                 ProductoPrecioVigenteBlock("Precio de compra vigente", preciosCompra)
+//                 Divider()
+//                 Text("Historial de precios", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+//                 if (historial.isEmpty()) {
+//                     Text(
+//                         "Todavia no hay cambios de precio registrados para este producto.",
+//                         style = MaterialTheme.typography.bodyMedium,
+//                         color = MaterialTheme.colorScheme.onSurfaceVariant
+//                     )
+//                 } else {
+//                     historial.forEach { item ->
+//                         ElevatedCard(
+//                             colors = CardDefaults.elevatedCardColors(
+//                                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+//                             )
+//                         ) {
+//                             Column(
+//                                 modifier = Modifier
+//                                     .fillMaxWidth()
+//                                     .padding(12.dp),
+//                                 verticalArrangement = Arrangement.spacedBy(4.dp)
+//                             ) {
+//                                 Text(
+//                                     "${TipoPrecio.label(item.tipoPrecio)} • ${item.almacenNombre ?: "Almacen"}",
+//                                     style = MaterialTheme.typography.labelLarge,
+//                                     fontWeight = FontWeight.SemiBold
+//                                 )
+//                                 Text(
+//                                     "${"%.2f".format(item.precio)} ${item.moneda}",
+//                                     style = MaterialTheme.typography.titleSmall
+//                                 )
+//                                 Text(
+//                                     if (item.activo) "Vigente desde ${item.fechaDesde}" else "${item.fechaDesde} → ${item.fechaHasta ?: "sin cierre"}",
+//                                     style = MaterialTheme.typography.bodySmall,
+//                                     color = MaterialTheme.colorScheme.onSurfaceVariant
+//                                 )
+//                             }
+//                         }
+//                     }
+//                 }
+//             }
+//         },
+//         confirmButton = {
+//             Button(onClick = onEdit) { Text("Editar") }
+//         },
+//         dismissButton = {
+//             TextButton(onClick = onDismiss) { Text("Cerrar") }
+//         }
+//     )
+// }
+
+
+
+
 @Composable
 private fun ProductoDetalleDialog(
     producto: Producto,
@@ -213,77 +317,326 @@ private fun ProductoDetalleDialog(
     onDismiss: () -> Unit,
     onEdit: () -> Unit
 ) {
-    val historial by produceState<List<PrecioProductoDetalle>>(initialValue = emptyList(), key1 = producto.id) {
+    val historial by produceState<List<PrecioProductoDetalle>>(
+        initialValue = emptyList(),
+        key1 = producto.id
+    ) {
         value = runCatching { loadPriceHistory(producto.id) }.getOrDefault(emptyList())
     }
     val preciosVenta = remember(historial) { historial.filter { it.tipoPrecio == TipoPrecio.VENTA && it.activo } }
     val preciosCompra = remember(historial) { historial.filter { it.tipoPrecio == TipoPrecio.COMPRA && it.activo } }
+    val imagen = remember(producto.emoji) { producto.emoji.toProductoImagen() }
+    val colorScheme = MaterialTheme.colorScheme
 
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text(producto.nombre) },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                ProductoDetalleDato("Unidad", producto.unidad)
-                if (producto.descripcion.isNotBlank()) {
-                    ProductoDetalleDato("Descripcion", producto.descripcion)
-                }
-                ProductoPrecioVigenteBlock("Precio de venta vigente", preciosVenta)
-                ProductoPrecioVigenteBlock("Precio de compra vigente", preciosCompra)
-                Divider()
-                Text("Historial de precios", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                if (historial.isEmpty()) {
-                    Text(
-                        "Todavia no hay cambios de precio registrados para este producto.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    historial.forEach { item ->
-                        ElevatedCard(
-                            colors = CardDefaults.elevatedCardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(24.dp),
+            color = colorScheme.surface,
+            tonalElevation = 6.dp
+        ) {
+            Column {
+
+                // ── Hero ─────────────────────────────────────────────────────
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.linearGradient(
+                                listOf(
+                                    colorScheme.primaryContainer,
+                                    colorScheme.secondaryContainer
+                                )
                             )
+                        )
+                        .padding(24.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Imagen / emoji / url / foto
+                        Surface(
+                            modifier = Modifier.size(72.dp),
+                            shape = RoundedCornerShape(20.dp),
+                            color = colorScheme.surface.copy(alpha = 0.35f),
+                            tonalElevation = 0.dp
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            Box(contentAlignment = Alignment.Center) {
+                                when (imagen.type) {
+                                    "emoji" -> Text(
+                                        text = imagen.data.ifBlank { "📦" },
+                                        style = MaterialTheme.typography.displaySmall
+                                    )
+                                    "url" -> AsyncImage(
+                                        model = imagen.data,
+                                        contentDescription = producto.nombre,
+                                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp)),
+                                        contentScale = ContentScale.Crop,
+                                        error = painterResource(android.R.drawable.ic_menu_gallery)
+                                    )
+                                    "foto" -> AsyncImage(
+                                        model = File(imagen.data),
+                                        contentDescription = producto.nombre,
+                                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp)),
+                                        contentScale = ContentScale.Crop,
+                                        error = painterResource(android.R.drawable.ic_menu_gallery)
+                                    )
+                                    else -> Text("📦", style = MaterialTheme.typography.displaySmall)
+                                }
+                            }
+                        }
+
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = producto.nombre,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = colorScheme.onPrimaryContainer
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(999.dp),
+                                color = colorScheme.surface.copy(alpha = 0.40f)
                             ) {
                                 Text(
-                                    "${TipoPrecio.label(item.tipoPrecio)} • ${item.almacenNombre ?: "Almacen"}",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.SemiBold
+                                    text = producto.unidad,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                 )
+                            }
+                            if (producto.descripcion.isNotBlank()) {
                                 Text(
-                                    "${"%.2f".format(item.precio)} ${item.moneda}",
-                                    style = MaterialTheme.typography.titleSmall
-                                )
-                                Text(
-                                    if (item.activo) "Vigente desde ${item.fechaDesde}" else "${item.fechaDesde} → ${item.fechaHasta ?: "sin cierre"}",
+                                    text = producto.descripcion,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = colorScheme.onPrimaryContainer.copy(alpha = 0.80f),
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
                     }
                 }
+
+                // ── Cuerpo ────────────────────────────────────────────────────
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+
+                    // Precios vigentes
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        PrecioVigenteCard(
+                            titulo = "Venta",
+                            precios = preciosVenta,
+                            containerColor = colorScheme.primaryContainer,
+                            contentColor = colorScheme.onPrimaryContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                        PrecioVigenteCard(
+                            titulo = "Compra",
+                            precios = preciosCompra,
+                            containerColor = colorScheme.secondaryContainer,
+                            contentColor = colorScheme.onSecondaryContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    // Historial
+                    if (historial.isNotEmpty()) {
+                        Text(
+                            text = "Historial de precios",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colorScheme.onSurface
+                        )
+                        historial.forEach { item ->
+                            HistorialPrecioItem(item)
+                        }
+                    } else {
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Todavía no hay cambios de precio registrados.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        }
+                    }
+                }
+
+                // ── Botones ───────────────────────────────────────────────────
+                Divider(color = colorScheme.outlineVariant)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onDismiss) { Text("Cerrar") }
+                    Spacer(Modifier.width(8.dp))
+                    Button(onClick = onEdit) {
+                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Editar")
+                    }
+                }
             }
-        },
-        confirmButton = {
-            Button(onClick = onEdit) { Text("Editar") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cerrar") }
         }
-    )
+    }
 }
+
+// ── Auxiliares ────────────────────────────────────────────────────────────────
+
+@Composable
+private fun PrecioVigenteCard(
+    titulo: String,
+    precios: List<PrecioProductoDetalle>,
+    containerColor: Color,
+    contentColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = containerColor
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = titulo,
+                style = MaterialTheme.typography.labelMedium,
+                color = contentColor.copy(alpha = 0.75f)
+            )
+            if (precios.isEmpty()) {
+                Text(
+                    text = "Sin precio",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = contentColor.copy(alpha = 0.60f)
+                )
+            } else {
+                precios.forEach { item ->
+                    Text(
+                        text = "${"%.2f".format(item.precio)} ${item.moneda}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = contentColor
+                    )
+                    if (item.almacenNombre != null) {
+                        Text(
+                            text = item.almacenNombre,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = contentColor.copy(alpha = 0.70f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistorialPrecioItem(item: PrecioProductoDetalle) {
+    val colorScheme = MaterialTheme.colorScheme
+    val isVigente = item.activo
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = if (isVigente)
+            colorScheme.primaryContainer.copy(alpha = 0.35f)
+        else
+            colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = TipoPrecio.label(item.tipoPrecio),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorScheme.onSurface
+                    )
+                    Text(
+                        text = "·",
+                        color = colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = item.almacenNombre ?: "Almacén",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                }
+                Text(
+                    text = if (isVigente) "Vigente desde ${item.fechaDesde}"
+                           else "${item.fechaDesde} → ${item.fechaHasta ?: "sin cierre"}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "${"%.2f".format(item.precio)} ${item.moneda}",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = colorScheme.onSurface
+                )
+                if (isVigente) {
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = colorScheme.primary.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = "Activo",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 @Composable
 private fun ProductoDetalleDato(label: String, valor: String) {
