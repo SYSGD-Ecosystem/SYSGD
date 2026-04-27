@@ -1,0 +1,139 @@
+<main class="container">
+  <header class="header" *ngIf="sessionReady && currentUser">
+    <div>
+      <h1>Registro TCP: Ingresos y Gastos</h1>
+      <p class="subtitle">Sistema para control fiscal y pre-cálculo de Declaración Jurada en Cuba</p>
+    </div>
+    <div class="session-box">
+      <span class="badge" [class.offline]="!isOnline">{{ isOnline ? 'Conectado' : 'Offline' }}</span>
+      <select *ngIf="workspaces.length > 0" class="workspace-select" [value]="activeWorkspaceId" (change)="changeWorkspace($any($event.target).value)">
+        <option *ngFor="let ws of workspaces" [value]="ws.id">{{ ws.name }}</option>
+      </select>
+      <span class="user-pill">{{ currentUser.name }}</span>
+      <button type="button" class="logout-btn" (click)="logout()">Salir</button>
+    </div>
+  </header>
+
+  <app-auth-section
+    *ngIf="!currentUser"
+    [sessionReady]="sessionReady"
+    [authMode]="authMode"
+    [authLoading]="authLoading"
+    [authForm]="authForm"
+    [authError]="authError"
+    [offlineRecoveryAvailable]="offlineRecoveryAvailable"
+    (submitAuth)="submitAuth()"
+    (toggleAuthMode)="toggleAuthMode()"
+    (continueOffline)="continueOffline()"
+  />
+
+  <ng-container *ngIf="sessionReady && currentUser">
+    <section class="app-layout">
+      <aside class="sidebar card">
+        <h3>Gestión contable</h3>
+        <button [class.active]="activeTab === 'ledger'" (click)="activeTab = 'ledger'">Ingresos y gastos</button>
+        <button [class.active]="activeTab === 'inventario'" (click)="activeTab = 'inventario'">Gestión de compras y ventas</button>
+        <button [class.active]="activeTab === 'recursos'" (click)="activeTab = 'recursos'">Recursos</button>
+        <button [class.active]="activeTab === 'advanced'" (click)="activeTab = 'advanced'">Avanzadas</button>
+      </aside>
+
+      <div class="content-area">
+        <section class="card instructions-card" *ngIf="activeTab === 'ledger'">
+          <details>
+            <summary>Instrucciones de llenado y conservación del registro</summary>
+            <p class="subtitle">Objetivo: facilitar el registro de operaciones para la Declaración Jurada. Todos los importes se registran en CUP.</p>
+            <ul>
+              <li>El registro debe conservarse limpio, en buen estado y actualizado.</li>
+              <li>Puede llevarse en formato digital y debe conservarse por 5 años junto con sus comprobantes.</li>
+              <li>En ingresos/gastos se anota el día del mes y el importe del día correspondiente.</li>
+              <li>Si cobras o pagas en divisa, convierte a CUP según la tasa vigente del BCC.</li>
+              <li>No se permiten borrones: si hay error, usa el método E/ (error) y C/ (corrección).</li>
+              <li>Al cierre de cada mes, anula filas no usadas y totaliza el mes.</li>
+              <li>En tributos, registra mensualmente cada concepto pagado y su total por mes.</li>
+              <li>En la DJ, estos importes se deducen en las secciones y casillas correspondientes.</li>
+            </ul>
+          </details>
+        </section>
+
+        <app-generales-section
+          *ngIf="activeTab === 'ledger' && ledgerTab === 'generales'"
+          [generalesForm]="generalesForm"
+          [provinces]="provinces"
+          [fiscalMunicipios]="fiscalMunicipios"
+          [legalMunicipios]="legalMunicipios"
+          (saveGenerales)="saveGenerales()"
+        />
+
+        <app-movimientos-section
+          *ngIf="activeTab === 'ledger' && ledgerTab === 'movimientos'"
+          [movForm]="movForm"
+          [months]="months"
+          [selectedMonth]="selectedMonth"
+          [registro]="registro"
+          [selectedMonthIngresosTotal]="selectedMonthIngresosTotal"
+          [selectedMonthGastosTotal]="selectedMonthGastosTotal"
+          [trackByDayAmount]="trackByDayAmount"
+          (saveMovement)="saveMovement()"
+        />
+
+        <app-tributos-section
+          *ngIf="activeTab === 'ledger' && ledgerTab === 'tributos'"
+          [tributoForm]="tributoForm"
+          [months]="months"
+          [tributosRows]="registro.tributos"
+          (autoCalculate)="autoCalculateTributos()"
+          (saveTributos)="saveTributos()"
+        />
+
+        <app-resumen-section
+          *ngIf="activeTab === 'ledger' && ledgerTab === 'resumen'"
+          [report]="report"
+          [threshold]="threshold"
+          [alerts]="alerts"
+          [djPreview]="djPreview"
+          [pdfLoading]="pdfLoading"
+          [backupMessage]="backupMessage"
+          (downloadPdf)="downloadPdf()"
+          (exportJson)="exportRegistroJson()"
+          (importJson)="importRegistroJson($event)"
+        />
+
+        <app-inventario-section
+          *ngIf="activeTab === 'inventario'"
+          [registro]="registro"
+          (registroChange)="onInventarioChange($event)"
+        />
+
+        <app-resources-section *ngIf="activeTab === 'recursos'" />
+
+        <app-advanced-section
+          *ngIf="activeTab === 'advanced'"
+          [registro]="registro"
+          (restoreFromJson)="restoreFromJsonText($event)"
+          (importFile)="importRegistroJson($event)"
+          (pushRawJson)="pushRawJsonToServer($event)"
+        />
+
+        <div class="bottom-tabs card" *ngIf="activeTab === 'ledger'">
+          <button [class.active]="ledgerTab === 'generales'" (click)="ledgerTab = 'generales'">Generales</button>
+          <button [class.active]="ledgerTab === 'movimientos'" (click)="ledgerTab = 'movimientos'">Ingresos/Gastos</button>
+          <button [class.active]="ledgerTab === 'tributos'" (click)="ledgerTab = 'tributos'">Tributos</button>
+          <button [class.active]="ledgerTab === 'resumen'" (click)="ledgerTab = 'resumen'">Resumen</button>
+        </div>
+
+        </div>
+    </section>
+  </ng-container>
+
+  <section class="promo-banner promo-banner-bottom" *ngIf="showPromoBanner">
+    <p class="promo-tag">Nuevo en Apklis</p>
+    <div>
+      <h2>Gestor Contable TCP ya está disponible por 50 CUP</h2>
+      <p>Descarga la app SYSGD Cont para llevar tu registro fiscal desde Android, incluso cuando no tengas conexión.</p>
+    </div>
+    <a href="https://apklis.cu/application/cu.lazaroysr96.sysgdcont" target="_blank" rel="noopener noreferrer">
+      Ver en Apklis
+    </a>
+    <button type="button" class="promo-close-btn" (click)="showPromoBanner = false">Cerrar</button>
+  </section>
+</main>

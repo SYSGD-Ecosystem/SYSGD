@@ -1,0 +1,35 @@
+<section class="card summary">
+  <h2>Resumen fiscal {{ report.year }}</h2>
+  <div class="actions full summary-actions">
+    <button type="button" (click)="downloadPdf.emit()" [disabled]="pdfLoading">
+      {{ pdfLoading ? 'Generando PDF...' : 'Descargar PDF (servidor)' }}
+    </button>
+    <button type="button" class="secondary-btn" (click)="exportJson.emit()">Exportar JSON</button>
+    <label class="secondary-btn import-json-btn">
+      Importar JSON
+      <input type="file" accept="application/json,.json" (change)="onImportSelected($event)" />
+    </label>
+  </div>
+  <p class="backup-message" *ngIf="backupMessage">{{ backupMessage }}</p>
+  <div class="grid">
+    <div><strong>Ingresos:</strong> {{ report.totalIngresos | currency:'CUP':'symbol':'1.2-2' }}</div>
+    <div><strong>Gastos:</strong> {{ report.totalGastos | currency:'CUP':'symbol':'1.2-2' }}</div>
+    <div><strong>Tributos:</strong> {{ report.totalTributos | currency:'CUP':'symbol':'1.2-2' }}</div>
+    <div><strong>Otros deducibles:</strong> {{ report.totalOtrosDeducibles | currency:'CUP':'symbol':'1.2-2' }}</div>
+    <div><strong>Base imponible:</strong> {{ report.baseImponible | currency:'CUP':'symbol':'1.2-2' }}</div>
+    <div><strong>Impuesto estimado:</strong> {{ report.impuestoEstimado | currency:'CUP':'symbol':'1.2-2' }}</div>
+    <div><strong>Umbral 500,000:</strong>
+      <span [class.warn]="report.totalIngresos > threshold" [class.ok]="report.totalIngresos <= threshold">
+        {{ report.totalIngresos <= threshold ? 'Dentro de régimen simplificado' : 'Supera umbral simplificado' }}
+      </span>
+    </div>
+  </div>
+
+  <h3>Alertas inteligentes</h3>
+  <ul class="alerts">
+    <li *ngFor="let a of alerts" [class.warn]="a.level === 'warning'" [class.ok]="a.level === 'ok'">{{ a.message }}</li>
+  </ul>
+
+  <h3>Pre-llenado Declaración Jurada</h3>
+  <pre class="dj">{{ djPreview }}</pre>
+</section>

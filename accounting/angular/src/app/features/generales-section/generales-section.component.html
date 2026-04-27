@@ -1,0 +1,39 @@
+<section class="card">
+  <h2>Datos Generales del Contribuyente</h2>
+  <form [formGroup]="generalesForm" (ngSubmit)="saveGenerales.emit()" class="form-grid">
+    <label>Nombre completo <input type="text" formControlName="nombre" /></label>
+    <label>Año fiscal <input type="number" formControlName="anio" /></label>
+    <label>NIT <input type="text" formControlName="nit" /></label>
+    <label>Código de actividad <input type="text" formControlName="codigo" /></label>
+    <label class="full">Actividad económica <input type="text" formControlName="actividad" /></label>
+    <label class="full subtitle2">Domicilio fiscal</label>
+    <label class="full">Calle / número <input type="text" formControlName="fiscalCalle" /></label>
+    <label>Provincia
+      <select formControlName="fiscalProvincia">
+        <option value="">Seleccione provincia</option>
+        <option *ngFor="let prov of provinces" [value]="prov">{{ prov }}</option>
+      </select>
+    </label>
+    <label>Municipio
+      <select formControlName="fiscalMunicipio">
+        <option value="">Seleccione municipio</option>
+        <option *ngFor="let mun of fiscalMunicipios" [value]="mun">{{ mun }}</option>
+      </select>
+    </label>
+    <label class="full subtitle2">Domicilio legal</label>
+    <label class="full">Calle / número <input type="text" formControlName="legalCalle" /></label>
+    <label>Provincia
+      <select formControlName="legalProvincia">
+        <option value="">Seleccione provincia</option>
+        <option *ngFor="let prov of provinces" [value]="prov">{{ prov }}</option>
+      </select>
+    </label>
+    <label>Municipio
+      <select formControlName="legalMunicipio">
+        <option value="">Seleccione municipio</option>
+        <option *ngFor="let mun of legalMunicipios" [value]="mun">{{ mun }}</option>
+      </select>
+    </label>
+    <div class="actions full"><button type="submit" [disabled]="generalesForm.invalid">Guardar generales</button></div>
+  </form>
+</section>

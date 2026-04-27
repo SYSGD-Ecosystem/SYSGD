@@ -1,0 +1,57 @@
+<section class="card">
+  <h2>Opciones Avanzadas</h2>
+
+  <div class="advanced-section">
+    <div class="restore-section">
+      <h3>Restaurar datos desde JSON</h3>
+      <p class="subtitle">Pega el contenido JSON de un respaldo anterior para restaurar tus datos.</p>
+
+      <textarea
+        [(ngModel)]="jsonInput"
+        placeholder='{"generales":{"nombre":"...","anio":2026,...},...}'
+        rows="10"
+        class="json-textarea"
+      ></textarea>
+
+      <div class="actions">
+        <button type="button" class="primary-btn" (click)="restoreFromTextarea()">
+          Restaurar desde texto
+        </button>
+        <button type="button" class="secondary-btn" (click)="clearJsonInput()">
+          Limpiar
+        </button>
+        <label class="file-btn">
+          Importar archivo JSON
+          <input type="file" accept=".json" (change)="onFileSelected($event)" hidden />
+        </label>
+        <button type="button" class="danger-btn" (click)="pushRawJsonToServer()">
+          Enviar texto en bruto
+        </button>
+      </div>
+
+      <p *ngIf="message" class="message" [class.error]="isError">{{ message }}</p>
+    </div>
+
+    <div class="debug-section">
+      <h3>Información del registro</h3>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="label">Año:</span>
+          <span class="value">{{ registro.generales.anio ?? 'No definido' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Nombre:</span>
+          <span class="value">{{ registro.generales.nombre ?? 'No definido' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">NIT:</span>
+          <span class="value">{{ registro.generales.nit ?? 'No definido' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Actividad:</span>
+          <span class="value">{{ registro.generales.actividad ?? 'No definido' }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

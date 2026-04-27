@@ -1,0 +1,684 @@
+import { pool } from "./db";
+
+export async function initDatabase() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name TEXT,
+      email TEXT,
+      password TEXT,
+      privileges TEXT DEFAULT 'user',
+      is_public BOOLEAN DEFAULT false,
+      user_data JSONB,
+      status TEXT DEFAULT 'active',
+      email_verified BOOLEAN NOT NULL DEFAULT false,
+      email_verified_at TIMESTAMP,
+      two_factor_enabled BOOLEAN NOT NULL DEFAULT false,
+      failed_login_attempts INTEGER NOT NULL DEFAULT 0,
+      lockout_until TIMESTAMP,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;
+  `);
+
+  await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMP;
+  `);
+
+  await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN NOT NULL DEFAULT false;
+  `);
+
+  await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER NOT NULL DEFAULT 0;
+  `);
+
+  await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS lockout_until TIMESTAMP;
+  `);
+
+  await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS registration_source TEXT NOT NULL DEFAULT 'unknown';
+  `);
+
+  await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS registration_meta JSONB NOT NULL DEFAULT '{}'::jsonb;
+  `);
+
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email);
+
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_users_registration_source ON users(registration_source);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users_logins (
+      id SERIAL PRIMARY KEY,
+      user_id UUID REFERENCES users(id),
+      login_time TIMESTAMP DEFAULT NOW(),
+      ip_address TEXT,
+      user_agent TEXT,
+      login_source TEXT NOT NULL DEFAULT 'unknown',
+      metadata JSONB NOT NULL DEFAULT '{}'::jsonb
+    );
+  `);
+
+  await pool.query(`
+    ALTER TABLE users_logins
+    ADD COLUMN IF NOT EXISTS login_source TEXT NOT NULL DEFAULT 'unknown';
+  `);
+
+  await pool.query(`
+    ALTER TABLE users_logins
+    ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb;
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_users_logins_login_time ON users_logins(login_time DESC);
+    CREATE INDEX IF NOT EXISTS idx_users_logins_source_time ON users_logins(login_source, login_time DESC);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS admin_login_2fa_codes (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      code_hash TEXT NOT NULL,
+      expires_at TIMESTAMP NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      used BOOLEAN NOT NULL DEFAULT false,
+      used_at TIMESTAMP,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_admin_login_2fa_user_created
+    ON admin_login_2fa_codes(user_id, created_at DESC);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS email_verification_tokens (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID,
+      token TEXT NOT NULL UNIQUE,
+      type TEXT NOT NULL,
+      used BOOLEAN NOT NULL DEFAULT false,
+      used_at TIMESTAMP,
+      expires_at TIMESTAMP NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_lookup
+    ON email_verification_tokens (token, type, used);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user_type
+    ON email_verification_tokens (user_id, type, created_at DESC);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS email_notifications (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID,
+      recipient_email TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      type TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      error_message TEXT,
+      sent_at TIMESTAMP,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_email_notifications_user_created
+    ON email_notifications (user_id, created_at DESC);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS cont_ledger_records (
+      user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      registro JSONB NOT NULL DEFAULT '{}'::jsonb,
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    ALTER TABLE cont_ledger_records
+    ADD COLUMN IF NOT EXISTS inventario_registro JSONB;
+  `);
+
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS accounting_documents (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      document_type TEXT NOT NULL DEFAULT 'tcp_income_expense',
+      payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_accounting_documents_user_id ON accounting_documents(user_id);
+    CREATE INDEX IF NOT EXISTS idx_accounting_documents_created_at ON accounting_documents(created_at DESC);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS crypto_payment_fulfillments (
+      order_id TEXT PRIMARY KEY,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      product_id TEXT NOT NULL,
+      fulfilled_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_crypto_payment_fulfillments_user_id ON crypto_payment_fulfillments(user_id);
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS updates (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      category TEXT NOT NULL,
+      youtube_url TEXT,
+      publish_date DATE NOT NULL,
+      created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_updates_publish_date_desc ON updates(publish_date DESC);
+    CREATE INDEX IF NOT EXISTS idx_updates_created_at_desc ON updates(created_at DESC);
+  `);
+
+  await pool.query(`
+-- ==============================
+-- User Tokens
+-- ==============================
+CREATE TABLE IF NOT EXISTS user_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_type TEXT NOT NULL CHECK (token_type IN ('github', 'gemini', 'replicate', 'openrouter')),
+  encrypted_token BYTEA NOT NULL,
+  iv BYTEA NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(user_id, token_type)
+);
+
+-- Índice para búsquedas rápidas
+CREATE INDEX IF NOT EXISTS idx_user_tokens_user_id ON user_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_tokens_type ON user_tokens(token_type);
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.table_constraints
+    WHERE constraint_name = 'user_tokens_token_type_check'
+      AND table_name = 'user_tokens'
+  ) THEN
+    ALTER TABLE user_tokens DROP CONSTRAINT user_tokens_token_type_check;
+  END IF;
+
+  ALTER TABLE user_tokens
+  ADD CONSTRAINT user_tokens_token_type_check
+  CHECK (token_type IN ('github', 'gemini', 'replicate', 'openrouter'));
+END $$;
+    
+-- ==============================
+-- Project Members View
+-- ==============================
+CREATE OR REPLACE VIEW project_member_counts AS
+SELECT 
+    ra.resource_id AS project_id,
+    COUNT(DISTINCT ra.user_id) AS member_count
+FROM 
+    resource_access ra
+WHERE 
+    ra.resource_type = 'project'
+    AND ra.role != 'pending'
+GROUP BY 
+    ra.resource_id;
+
+`)
+
+  await pool.query(`
+  CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+  CREATE TABLE IF NOT EXISTS document_management_file (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id),
+    code TEXT NOT NULL,                         -- Código funcional visible para el usuario
+    company TEXT NOT NULL,                      -- Nombre de la Empresa
+    name TEXT NOT NULL,                         -- Nombre del expediente
+
+
+    classification_chart JSONB DEFAULT '[]',    -- Cuadro de clasificación documental
+    retention_schedule JSONB DEFAULT '[]',      -- Tabla de retención documental
+    entry_register JSONB DEFAULT '[]',          -- Registro de entrada
+    exit_register JSONB DEFAULT '[]',           -- Registro de salida
+    loan_register JSONB DEFAULT '[]',           -- Registro de préstamos
+    transfer_list JSONB DEFAULT '[]',           -- Relación de entrega de transferencias documentales
+    topographic_register JSONB DEFAULT '[]',    -- Registro topográfico
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS projects (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name TEXT NOT NULL,
+      description TEXT,
+      created_by UUID REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT NOW(),
+      status TEXT DEFAULT 'activo',
+      visibility TEXT DEFAULT 'privado'
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS projects_config (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      project_id UUID REFERENCES projects(id),
+      created_by UUID REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT NOW(),
+      task_config JSONB DEFAULT '{
+        "types": [
+          {"name": "Tarea", "color": "#3B82F6"},
+          {"name": "Idea", "color": "#10B981"},
+          {"name": "Nota", "color": "#6B7280"}
+        ],
+        "priorities": [
+          {"name": "Alta", "level": 3, "color": "#EF4444"},
+          {"name": "Media", "level": 2, "color": "#F59E0B"},
+          {"name": "Baja", "level": 1, "color": "#10B981"}
+        ],
+        "states": [
+          {"name": "Pendiente", "requires_context": false, "color": "#6B7280"},
+          {"name": "En Progreso", "requires_context": false, "color": "#3B82F6"},
+          {"name": "Requiere Video", "requires_context": true, "color": "#EF4444"},
+          {"name": "Completado", "requires_context": false, "color": "#10B981"}
+        ]
+      }'
+    );
+  `);
+
+  await pool.query(`
+  CREATE TABLE IF NOT EXISTS tasks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMP DEFAULT NOW(),
+    type TEXT,
+    priority TEXT,
+    title TEXT,
+    description TEXT,
+    created_by UUID REFERENCES users(id),
+    status TEXT DEFAULT 'active',
+    project_id UUID REFERENCES projects(id),
+    project_task_number INTEGER NOT NULL,
+    UNIQUE (project_id, project_task_number)
+  );
+`);
+
+	await pool.query(`
+  CREATE TABLE IF NOT EXISTS time_entries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    project_id UUID REFERENCES projects(id) ON DELETE SET NULL,
+    task_id UUID REFERENCES tasks(id) ON DELETE SET NULL,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP,
+    duration_seconds INTEGER,
+    status TEXT NOT NULL CHECK (status IN ('running', 'paused', 'completed')),
+    description TEXT,
+    last_started_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+  );
+`);
+
+	await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_time_entries_user_id ON time_entries(user_id);
+  CREATE INDEX IF NOT EXISTS idx_time_entries_status ON time_entries(status);
+  CREATE INDEX IF NOT EXISTS idx_time_entries_task_id ON time_entries(task_id);
+  CREATE INDEX IF NOT EXISTS idx_time_entries_project_id ON time_entries(project_id);
+`);
+
+  await pool.query(`
+  CREATE TABLE IF NOT EXISTS task_assignees (
+    task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id),
+    PRIMARY KEY (task_id, user_id)
+  );
+`);
+
+  await pool.query(`
+CREATE TABLE IF NOT EXISTS invitations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  receiver_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  resource_type TEXT CHECK (resource_type IN ('project', 'archive')),
+  resource_id UUID NOT NULL,
+  role TEXT DEFAULT 'viewer',
+  status TEXT DEFAULT 'pending',
+  receiver_email TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+`);
+
+  await pool.query(`
+CREATE TABLE IF NOT EXISTS resource_access (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  resource_type TEXT CHECK (resource_type IN ('project', 'archive')),
+  resource_id UUID NOT NULL,
+  role TEXT DEFAULT 'viewer',
+  UNIQUE(user_id, resource_type, resource_id)
+);
+`);
+
+  await pool.query(`
+  CREATE TABLE IF NOT EXISTS ideas (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title TEXT NOT NULL,
+    description TEXT,
+    category TEXT,
+    status TEXT DEFAULT 'pending',
+    priority TEXT DEFAULT 'medium',
+    implementability TEXT DEFAULT 'medium',
+    impact TEXT DEFAULT 'medium',
+    votes INTEGER DEFAULT 0,
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    idea_number INTEGER NOT NULL,
+    UNIQUE(project_id, idea_number)
+  );
+`);
+
+  await pool.query(`
+  CREATE TABLE IF NOT EXISTS idea_votes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    idea_id UUID REFERENCES ideas(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    value INTEGER CHECK (value IN (1, -1)),
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(idea_id, user_id)
+  );
+`);
+
+  await pool.query(`
+  CREATE TABLE IF NOT EXISTS project_notes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    content TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+  );
+`);
+
+  await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_project_notes_project_user
+  ON project_notes(project_id, user_id);
+`);
+
+  // ==============================
+  // Chat module
+  // ==============================
+  await pool.query(`
+  CREATE TABLE IF NOT EXISTS conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  type TEXT CHECK (type IN ('private', 'group', 'channel', 'bot')) NOT NULL DEFAULT 'private',
+  title TEXT,
+  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+`);
+
+  await pool.query(`
+  CREATE TABLE IF NOT EXISTS conversation_members (
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  role TEXT DEFAULT 'member' CHECK (role IN ('admin', 'member', 'guest')),
+  joined_at TIMESTAMP DEFAULT NOW(),
+  PRIMARY KEY (conversation_id, user_id)
+);
+`);
+
+  await pool.query(`
+ CREATE TABLE IF NOT EXISTS messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+  sender_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  content TEXT,
+  attachment_type TEXT CHECK (attachment_type IN ('image','audio','video','file')),
+  attachment_url TEXT,
+  reply_to UUID REFERENCES messages(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+`);
+
+  await pool.query(`
+CREATE TABLE IF NOT EXISTS message_reads (
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  last_read_message_id UUID REFERENCES messages(id) ON DELETE SET NULL,
+  unread_count INTEGER DEFAULT 0,
+  PRIMARY KEY (conversation_id, user_id)
+);`);
+
+  await pool.query(`
+CREATE TABLE IF NOT EXISTS conversation_invitations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+  sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  receiver_email TEXT,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+`);
+
+  // ==============================
+  // Agents module
+  // ==============================
+  await pool.query(`
+CREATE TABLE IF NOT EXISTS agents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  url TEXT NOT NULL,
+  support TEXT[] NOT NULL DEFAULT '{}', -- Array de tipos soportados: 'text', 'image', 'audio', 'video'
+  description TEXT,
+  created_by UUID REFERENCES users(id) ON DELETE CASCADE,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+`);
+
+  await pool.query(`
+CREATE TABLE IF NOT EXISTS agent_conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+  agent_id UUID REFERENCES agents(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(conversation_id, agent_id)
+);
+`);
+
+  // Índices opcionales para optimización de consultas
+  await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
+`);
+  await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at DESC);
+`);
+  await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_message_reads_user_conversation ON message_reads(user_id, conversation_id);
+`);
+
+  await pool.query(`
+  CREATE TABLE IF NOT EXISTS github_project_config (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    owner TEXT NOT NULL,
+    repo TEXT NOT NULL,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(project_id)
+  );
+`);
+
+  await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_github_project_config_project_id
+  ON github_project_config(project_id);
+`);
+
+  await pool.query(`
+  CREATE TABLE IF NOT EXISTS github_project_user_token (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    token_encrypted BYTEA,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(project_id, user_id)
+  );
+`);
+
+  await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_github_project_user_token_project_user
+  ON github_project_user_token(project_id, user_id);
+`);
+
+  // ==============================
+  // Organization Chart (Organigrama)
+  // ==============================
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS organization_chart (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      file_id UUID NOT NULL UNIQUE,
+      data JSONB NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_organization_chart_file_id ON organization_chart(file_id);
+  `);
+
+// ==============================
+// Licencias para app de escritorio (sistema RSA)
+// ==============================
+
+// 1. Crear tablas base si no existen
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS licenses (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    email        TEXT NOT NULL,
+    license_key  TEXT NOT NULL UNIQUE,
+    machine_id   TEXT NOT NULL,
+    tier         TEXT NOT NULL CHECK (tier IN ('monthly', 'quarterly', 'annual')),
+    issued_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at   TIMESTAMPTZ NOT NULL,
+    UNIQUE (user_id, machine_id)
+  );
+`);
+
+await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_licenses_user     ON licenses(user_id);
+  CREATE INDEX IF NOT EXISTS idx_licenses_machine  ON licenses(machine_id);
+`);
+
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS license_request_codes (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    request_code TEXT NOT NULL UNIQUE,
+    machine_id   TEXT NOT NULL,
+    used         BOOLEAN NOT NULL DEFAULT false,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at   TIMESTAMPTZ NOT NULL
+  );
+`);
+
+await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_request_codes_user ON license_request_codes(user_id);
+  CREATE INDEX IF NOT EXISTS idx_request_codes_code ON license_request_codes(request_code);
+`);
+
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS manual_payment_orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    product_id TEXT NOT NULL,
+    plan_tier TEXT NOT NULL CHECK (plan_tier IN ('pro', 'vip')),
+    duration_months INTEGER NOT NULL CHECK (duration_months IN (1, 3, 12)),
+    expected_amount_cup NUMERIC(10, 2) NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('pending_review', 'provisional', 'approved', 'rejected', 'expired')),
+    payer_phone TEXT NOT NULL,
+    sms_message TEXT NOT NULL,
+    sms_transaction_id TEXT,
+    sms_amount_cup NUMERIC(10, 2),
+    sms_payment_date TIMESTAMPTZ,
+    confirmation_phone_acknowledged BOOLEAN NOT NULL DEFAULT false,
+    receiver_phone_shared BOOLEAN NOT NULL DEFAULT false,
+    receiver_card TEXT NOT NULL,
+    confirmation_phone TEXT NOT NULL,
+    grace_expires_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+`);
+
+await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_manual_payment_orders_user ON manual_payment_orders(user_id);
+`);
+
+await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_manual_payment_orders_status ON manual_payment_orders(status);
+`);
+
+await pool.query(`
+  ALTER TABLE manual_payment_orders
+  ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+`);
+
+await pool.query(`
+  ALTER TABLE manual_payment_orders
+  ADD COLUMN IF NOT EXISTS reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL;
+`);
+
+await pool.query(`
+  ALTER TABLE manual_payment_orders
+  ADD COLUMN IF NOT EXISTS review_notes TEXT;
+`);
+
+  console.log("✅ Tablas verificadas o creadas correctamente.");
+}

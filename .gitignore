@@ -158,3 +158,6 @@ www
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+server/assets/database.db-shm
+server/assets/database.db-wal
+.codex

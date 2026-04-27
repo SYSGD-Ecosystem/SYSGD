@@ -1,0 +1,79 @@
+<section class="card">
+  <h2>Tributos y otros gastos deducibles</h2>
+
+  <div class="tributos-form-wrap">
+    <form [formGroup]="tributoForm" (ngSubmit)="saveTributos.emit()" class="form-grid">
+      <label class="full">Mes
+        <select formControlName="mes">
+          <option *ngFor="let m of months" [value]="m">{{ m }}</option>
+        </select>
+      </label>
+      <label>Imp. Ventas/Servicios (011402) <input type="number" min="0" step="0.01" formControlName="ventas" /></label>
+      <label>Fuerza de trabajo (061032) <input type="number" min="0" step="0.01" formControlName="fuerza" /></label>
+      <label>Documentos/sellos (073012) <input type="number" min="0" step="0.01" formControlName="sellos" /></label>
+      <label>Anuncios (090012) <input type="number" min="0" step="0.01" formControlName="anuncios" /></label>
+      <label>CSS 20% (082013) <input type="number" min="0" step="0.01" formControlName="css20" /></label>
+      <label>CSS 14% (081013) <input type="number" min="0" step="0.01" formControlName="css14" /></label>
+      <label>Otros tributos <input type="number" min="0" step="0.01" formControlName="otros" /></label>
+      <label>Restauración <input type="number" min="0" step="0.01" formControlName="restauracion" /></label>
+      <label>Arrendamiento <input type="number" min="0" step="0.01" formControlName="arrendamiento" /></label>
+      <label>Exonerado <input type="number" min="0" step="0.01" formControlName="exonerado" /></label>
+      <label>Otros MFP <input type="number" min="0" step="0.01" formControlName="otrosMFP" /></label>
+      <label>Cuota mensual 5% (051012) <input type="number" min="0" step="0.01" formControlName="cuotaMensual" /></label>
+      <div class="actions full tributo-actions">
+        <button type="button" class="secondary-btn" (click)="autoCalculate.emit()">Autocalcular impuestos</button>
+        <button type="submit">Guardar tributos</button>
+      </div>
+    </form>
+  </div>
+
+  <details class="desktop-tributos-preview">
+    <summary>Vista previa de la planilla de tributos</summary>
+    <div class="table-wrapper" aria-label="Vista previa de tributos">
+      <table class="tributos-table">
+        <thead>
+          <tr>
+            <th rowspan="2">Mes</th>
+            <th colspan="8">Tributos pagados deducibles</th>
+            <th colspan="6">Otros gastos deducibles</th>
+          </tr>
+          <tr>
+            <th>Ventas</th>
+            <th>Fuerza</th>
+            <th>Sellos</th>
+            <th>Anuncios</th>
+            <th>CSS 20%</th>
+            <th>CSS 14%</th>
+            <th>Otros</th>
+            <th>Subtotal</th>
+            <th>Restauración</th>
+            <th>Arrendamiento</th>
+            <th>Exonerado</th>
+            <th>Otros MFP</th>
+            <th>Cuota 5%</th>
+            <th>Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let month of months; let i = index">
+            <td>{{ tributosRows[i].mes }}</td>
+            <td>{{ formatMoney(tributosRows[i].ventas) }}</td>
+            <td>{{ formatMoney(tributosRows[i].fuerza) }}</td>
+            <td>{{ formatMoney(tributosRows[i].sellos) }}</td>
+            <td>{{ formatMoney(tributosRows[i].anuncios) }}</td>
+            <td>{{ formatMoney(tributosRows[i].css20) }}</td>
+            <td>{{ formatMoney(tributosRows[i].css14) }}</td>
+            <td>{{ formatMoney(tributosRows[i].otros) }}</td>
+            <td class="subtotal">{{ tributosSubtotal(tributosRows[i]) }}</td>
+            <td>{{ formatMoney(tributosRows[i].restauracion) }}</td>
+            <td>{{ formatMoney(tributosRows[i].arrendamiento) }}</td>
+            <td>{{ formatMoney(tributosRows[i].exonerado) }}</td>
+            <td>{{ formatMoney(tributosRows[i].otrosMFP) }}</td>
+            <td>{{ formatMoney(tributosRows[i].cuotaMensual) }}</td>
+            <td class="subtotal">{{ otrosSubtotal(tributosRows[i]) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+</section>

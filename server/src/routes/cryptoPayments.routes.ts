@@ -1,0 +1,285 @@
+import { Router } from "express";
+import { pool } from "../db";
+import { isAuthenticated } from "../middlewares/auth-jwt";
+import { getCurrentUserData } from "../controllers/users";
+import { createCryptoPaymentService } from "../services/cryptoPayment.service";
+import { getBlockchainListener } from "../services/blockchainListener.service";
+import { fulfillOrderIfNeeded } from "../services/payment-fulfillment.service";
+import type { ProductId } from "../constants/plans";
+
+const router = Router();
+
+// Todas las rutas requieren autenticación
+router.use(isAuthenticated);
+
+// Determinar qué red usar según el entorno
+const NETWORK = process.env.CRYPTO_NETWORK || "sepolia";
+const cryptoService = createCryptoPaymentService(NETWORK as any);
+
+// ============================================
+// INFORMACIÓN GENERAL
+// ============================================
+
+/**
+ * Obtiene información de la red blockchain
+ */
+router.get("/network", async (req, res) => {
+  try {
+    const networkInfo = await cryptoService.getNetworkInfo();
+    res.json(networkInfo);
+  } catch (error) {
+    console.error("Error obteniendo info de red:", error);
+    res.status(500).json({ error: "Error al obtener información de la red" });
+  }
+});
+
+/**
+ * Obtiene el estado del servicio de blockchain
+ */
+router.get("/service/status", async (req, res) => {
+  try {
+    const listener = getBlockchainListener();
+    if (!listener) {
+      res.status(503).json({ error: "Servicio no inicializado" });
+      return;
+    }
+
+    const status = listener.getStatus();
+    res.json(status);
+  } catch (error) {
+    console.error("Error obteniendo estado del servicio:", error);
+    res.status(500).json({ error: "Error al obtener estado del servicio" });
+  }
+});
+
+/**
+ * Obtiene todos los productos/planes disponibles
+ */
+router.get("/products", async (req, res) => {
+  try {
+    const products = await cryptoService.getProducts();
+    res.json(products);
+  } catch (error) {
+    console.error("Error obteniendo productos:", error);
+    res.status(500).json({ error: "Error al obtener productos" });
+  }
+});
+
+/**
+ * Obtiene información de un producto específico
+ */
+router.get("/products/:productId", async (req, res) => {
+  const { productId } = req.params;
+
+  try {
+    const product = await cryptoService.getProduct(productId);
+    
+    if (!product) {
+      res.status(404).json({ error: "Producto no encontrado" });
+      return;
+    }
+
+    res.json(product);
+  } catch (error) {
+    console.error("Error obteniendo producto:", error);
+    res.status(500).json({ error: "Error al obtener producto" });
+  }
+});
+
+// ============================================
+// BALANCE Y WALLET
+// ============================================
+
+/**
+ * Obtiene el balance de USDT de una wallet
+ */
+router.get("/balance/:address", async (req, res) => {
+  const { address } = req.params;
+
+  try {
+    const balance = await cryptoService.getUSDTBalance(address);
+    res.json({ address, balance, currency: "USDT" });
+  } catch (error) {
+    console.error("Error obteniendo balance:", error);
+    res.status(500).json({ error: "Error al obtener balance" });
+  }
+});
+
+/**
+ * Verifica el allowance de una wallet
+ */
+router.get("/allowance/:address", async (req, res) => {
+  const { address } = req.params;
+
+  try {
+    const allowance = await cryptoService.checkAllowance(address);
+    res.json({ address, allowance, currency: "USDT" });
+  } catch (error) {
+    console.error("Error verificando allowance:", error);
+    res.status(500).json({ error: "Error al verificar allowance" });
+  }
+});
+
+/**
+ * Verifica el cooldown del faucet (solo testnet)
+ */
+router.get("/faucet/cooldown/:address", async (req, res) => {
+  const { address } = req.params;
+
+  if (NETWORK === "bsc" || NETWORK === "mainnet") {
+    res.status(400).json({ error: "Faucet solo disponible en testnet" });
+    return;
+  }
+
+  try {
+    const cooldown = await cryptoService.getFaucetCooldown(address);
+    res.json({ 
+      address, 
+      cooldownSeconds: cooldown,
+      canRequest: cooldown === 0
+    });
+  } catch (error) {
+    console.error("Error verificando cooldown:", error);
+    res.status(500).json({ error: "Error al verificar cooldown" });
+  }
+});
+
+// ============================================
+// ÓRDENES DE PAGO
+// ============================================
+
+/**
+ * Crea una nueva orden de pago
+ */
+router.post("/orders", async (req, res) => {
+  const user = getCurrentUserData(req);
+  const { productId, walletAddress } = req.body;
+
+  if (!productId || !walletAddress) {
+    res.status(400).json({ error: "Faltan campos requeridos" });
+    return;
+  }
+
+  try {
+    const order = await cryptoService.createOrder(productId as ProductId, user!.id, walletAddress);
+
+    // ✨ ACTIVAR POLLING TEMPORAL
+    const listener = getBlockchainListener();
+    if (listener) {
+      listener.activateTemporaryPolling();
+      console.log("🔄 Polling temporal activado para nueva orden");
+    }
+
+    res.status(201).json(order);
+  } catch (error: any) {
+    console.error("Error creando orden:", error);
+    res.status(400).json({ 
+      error: error.message || "Error al crear orden de pago" 
+    });
+  }
+});
+
+/**
+ * Obtiene información de una orden
+ */
+router.get("/orders/:orderId", async (req, res) => {
+  const user = getCurrentUserData(req);
+  const { orderId } = req.params;
+
+  try {
+    // Obtener de la BD
+    const { rows } = await pool.query(
+      "SELECT * FROM crypto_payment_orders WHERE order_id = $1 AND user_id = $2",
+      [orderId, user!.id]
+    );
+
+    if (rows.length === 0) {
+      res.status(404).json({ error: "Orden no encontrada" });
+      return;
+    }
+
+    const order = rows[0];
+
+    // Si está pendiente, verificar en blockchain
+    if (order.status === "pending" || order.status === "processing") {
+      const isProcessed = await cryptoService.verifyPayment(orderId);
+      
+      if (isProcessed) {
+        // Actualizar estado en BD
+        await pool.query(
+          "UPDATE crypto_payment_orders SET status = $1, completed_at = NOW() WHERE order_id = $2",
+          ["completed", orderId]
+        );
+        order.status = "completed";
+        order.completed_at = new Date();
+      }
+    }
+
+    if (order.status === "completed") {
+      await processCompletedPayment(order);
+    }
+
+    res.json(order);
+  } catch (error) {
+    console.error("Error obteniendo orden:", error);
+    res.status(500).json({ error: "Error al obtener orden" });
+  }
+});
+
+/**
+ * Lista todas las órdenes del usuario
+ */
+router.get("/orders", async (req, res) => {
+  const user = getCurrentUserData(req);
+  const limit = parseInt(req.query.limit as string) || 10;
+  const offset = parseInt(req.query.offset as string) || 0;
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM crypto_payment_orders 
+       WHERE user_id = $1 
+       ORDER BY created_at DESC 
+       LIMIT $2 OFFSET $3`,
+      [user!.id, limit, offset]
+    );
+
+    res.json(rows);
+  } catch (error) {
+    console.error("Error obteniendo órdenes:", error);
+    res.status(500).json({ error: "Error al obtener órdenes" });
+  }
+});
+
+// ============================================
+// FUNCIONES AUXILIARES
+// ============================================
+
+/**
+ * Procesa un pago completado y otorga créditos o actualiza plan
+ */
+async function processCompletedPayment(order: {
+  user_id: string;
+  product_id: string;
+  order_id: string;
+}) {
+  try {
+    const result = await fulfillOrderIfNeeded({
+      user_id: order.user_id,
+      product_id: order.product_id,
+      order_id: order.order_id,
+    });
+
+    if (result.reason === "already_fulfilled") {
+      console.log(`ℹ️ Orden ${order.order_id} ya estaba aplicada`);
+      return;
+    }
+
+    console.log(`✅ Orden ${order.order_id} aplicada correctamente`);
+  } catch (error) {
+    console.error("Error procesando pago completado:", error);
+    throw error;
+  }
+}
+
+
+export default router;

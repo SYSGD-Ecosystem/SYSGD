@@ -9,10 +9,55 @@ Nos enfocamos en crear herramientas con una **interfaz simple, moderna e intuiti
 
 ---
 
-## 🔧 Módulos Actuales
+## 📱 Aplicaciones del Ecosistema
+
+SYSGD cuenta con **dos aplicaciones de contabilidad** que comparten el mismo backend:
+
+### 🟢 sysgd-cont (Versión Gratuita)
+
+**Para**: Trabajadores por cuenta propia (TCP) individuales
+
+- App web Angular + App Android nativa
+- Un solo usuario con un solo registro TCP
+- Registro básico de ingresos y gastos
+- Enfoque: simplicidad y uso rápido desde móvil
+- Ideal para accountants que atienden a clientes TCP individuales
+
+**Ubicación**: `sysgd-cont/`
+
+---
+
+### 🔵 client/react-frontend (Ecosistema Principal - App de Pago)
+
+**Para**: Empresas, equipos y profesionales que necesitan gestión documental, proyectos y contabilidad.
+
+- Módulos: Gestión Documental, Gestión de Proyectos, Contabilidad TCP, Chats con IA, Agentes de IA
+- El módulo de contabilidad está orientado a agentes contables que gestionan múltiples clientes
+- Panel de control avanzado con múltiples registros TCP
+- Enfoque: productividad empresarial integral
+
+**Ubicación**: `client/react-frontend/`
+
+---
+
+### ⚙️ Backend Compartido
+
+Ambas aplicaciones comparten el mismo backend en `server/node-server/`.
+
+---
+
+## 🔧 Módulos del Ecosistema Principal (client/react-frontend)
 
 - 📁 Gestión Documental
 - 📋 Gestión de Proyectos
+- 📓 Contabilidad TCP (para agentes contables con múltiples clientes)
+- 💬 Chats con Agentes de IA
+- 🧠 Agentes de IA para asistencia
+
+## 🔧 App Gratuita (sysgd-cont)
+
+- 📱 App Angular + Android para TCP individuales
+- 📓 Registro básico de ingresos y gastos
 
 Próximamente: IA generativa, notificaciones, control de acceso por permisos, y más...
 

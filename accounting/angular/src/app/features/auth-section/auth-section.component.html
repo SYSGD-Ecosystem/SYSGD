@@ -1,0 +1,26 @@
+<section class="card auth-card" *ngIf="!sessionReady">
+  <h2>Conectando...</h2>
+  <p class="subtitle">Comprobando sesión y sincronización de datos.</p>
+</section>
+
+<section class="card auth-card" *ngIf="sessionReady">
+  <h2>{{ authMode === 'login' ? 'Iniciar sesión' : 'Crear cuenta' }}</h2>
+  <p class="subtitle">Tus datos se guardan localmente y se sincronizan con el servidor.</p>
+  <form [formGroup]="authForm" (ngSubmit)="submitAuth.emit()" class="form-grid">
+    <label *ngIf="authMode === 'register'">Nombre completo <input type="text" formControlName="name" /></label>
+    <label>Email <input type="email" formControlName="email" /></label>
+    <label>Contraseña <input type="password" formControlName="password" /></label>
+    <div class="actions full">
+      <button type="submit" [disabled]="authLoading || authForm.invalid">
+        {{ authLoading ? 'Procesando...' : authMode === 'login' ? 'Entrar' : 'Crear cuenta' }}
+      </button>
+      <button type="button" class="secondary-btn" [disabled]="authLoading" (click)="toggleAuthMode.emit()">
+        {{ authMode === 'login' ? 'No tengo cuenta' : 'Ya tengo cuenta' }}
+      </button>
+    </div>
+    <p class="full auth-error" *ngIf="authError">{{ authError }}</p>
+    <div class="actions full" *ngIf="offlineRecoveryAvailable">
+      <button type="button" class="secondary-btn" (click)="continueOffline.emit()">Continuar en modo offline</button>
+    </div>
+  </form>
+</section>

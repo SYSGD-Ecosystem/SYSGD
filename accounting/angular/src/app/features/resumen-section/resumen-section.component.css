@@ -1,0 +1,20 @@
+:host {
+  display: block;
+}
+
+.import-json-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.import-json-btn input {
+  display: none;
+}
+
+.backup-message {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #2563eb;
+}
