@@ -445,14 +445,14 @@ private fun ProductoDetalleDialog(
                             precios = preciosVenta,
                             containerColor = colorScheme.primaryContainer,
                             contentColor = colorScheme.onPrimaryContainer,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f).fillMaxHeight()
                         )
                         PrecioVigenteCard(
                             titulo = "Compra",
                             precios = preciosCompra,
                             containerColor = colorScheme.secondaryContainer,
                             contentColor = colorScheme.onSecondaryContainer,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f).fillMaxHeight()
                         )
                     }
 

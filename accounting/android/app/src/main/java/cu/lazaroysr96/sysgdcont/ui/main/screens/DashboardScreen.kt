@@ -4,16 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -80,6 +71,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+
 
 private data class DashboardShortcut(
     val title: String,
@@ -197,7 +189,7 @@ fun DashboardScreen(
 
     val nombreContribuyente = generales.nombre.takeIf { it.isNotBlank() } ?: "Contribuyente sin nombre"
     val currentWorkspace = workspaces.firstOrNull { it.id == currentWorkspaceId }
-    val anio = generales.anio
+    // val anio = generales.anio
     val ingresos = report?.totalIngresos ?: 0.0
     val gastos = report?.totalGastos ?: 0.0
     val neto = report?.baseImponible ?: 0.0
@@ -363,6 +355,7 @@ DashboardTab.MODULOS -> {
         onNavigateToLicenses = onNavigateToLicenses,
         onNavigateToSecurity = onNavigateToSecurity,
         onContactWhatsApp = onContactWhatsApp,
+        isDarkTheme = isDarkTheme,
     )
 }
         }
@@ -625,7 +618,7 @@ private fun WorkspaceOverviewCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                 Text(
-                    text = "Panel principal",
+                    text = "Negocio Activo",
                     style = MaterialTheme.typography.labelLarge,
                     // color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
@@ -635,8 +628,10 @@ private fun WorkspaceOverviewCard(
                     Icon(
                         imageVector = Icons.Default.AccountTree,
                         contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary
                         // tint = MaterialTheme.colorScheme.primary
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
                 Text("Cambiar")
             }
                 }
@@ -920,6 +915,7 @@ private fun UserProfileTab(
     onNavigateToLicenses: () -> Unit,
     onNavigateToSecurity: () -> Unit,
     onContactWhatsApp: () -> Unit,
+    isDarkTheme: Boolean,
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
@@ -945,7 +941,7 @@ private fun UserProfileTab(
                 Box(
                     modifier = Modifier
                         .size(64.dp)
-                        .background(colorScheme.primary, CircleShape),
+                       .background(colorScheme.primary, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(

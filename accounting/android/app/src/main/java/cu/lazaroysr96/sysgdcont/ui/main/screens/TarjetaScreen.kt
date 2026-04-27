@@ -530,7 +530,7 @@ private fun EscanearQRDialog(
     onDismiss: () -> Unit,
     onScanSuccess: (String) -> Unit
 ) {
-    val context = LocalContext.current
+    // val context = LocalContext.current
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
     var scannedValue by remember { mutableStateOf<String?>(null) }
 

@@ -795,7 +795,6 @@ fun MainScreen(
                         inventarioViewModel,
                         facturaViewModel,
                         canUseProFeatures,
-                        canGenerateInvoices = canUseProFeatures,
                     )
                 }
                 composable(NOMENCLATORS_ROUTE) { NomenclatorsScreen() }
