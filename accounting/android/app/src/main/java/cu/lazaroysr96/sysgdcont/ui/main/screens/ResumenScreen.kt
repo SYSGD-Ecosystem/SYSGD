@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import cu.lazaroysr96.sysgdcont.data.repository.LedgerConstants
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
 
 @Composable
