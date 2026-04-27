@@ -247,6 +247,10 @@ class InventarioRepository @Inject constructor(
 
     fun getAlmacenes(): Flow<List<Almacen>> = almacenDao.getAllActivos()
 
+    suspend fun ensureDefaultWarehouse() {
+        ensureDefaultAlmacen()
+    }
+
     fun getMovimientosInventario(): Flow<List<MovimientoInventario>> = movimientoInventarioDao.observeAll()
 
     suspend fun crearAlmacen(nombre: String): Almacen {

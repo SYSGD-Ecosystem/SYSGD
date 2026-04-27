@@ -100,11 +100,15 @@ fun DashboardScreen(
     cuentasGasto: List<CuentaContable>,
     onSwitchWorkspace: (String) -> Unit,
     onCreateWorkspace: (String) -> Unit,
+    canCreateWorkspace: Boolean,
+    workspaceLimitMessage: String?,
     onOpenRegistro: () -> Unit,
     onOpenVentas: () -> Unit,
     onOpenNomencladores: () -> Unit,
+    showNomencladoresShortcut: Boolean,
     onOpenCatalogos: () -> Unit,
     onOpenTerceros: () -> Unit,
+    showTercerosShortcut: Boolean,
     onOpenDocumentos: () -> Unit,
     onQuickRegisterOperation: (
         fecha: LocalDate,
@@ -185,7 +189,13 @@ fun DashboardScreen(
             iconBackground = shortcutTones[0].first,
             onClick = onOpenDocumentos,
         ),
-    )
+    ).filter { shortcut ->
+        when (shortcut.title) {
+            "Nomencladores" -> showNomencladoresShortcut
+            "Terceros" -> showTercerosShortcut
+            else -> true
+        }
+    }
 
     val nombreContribuyente = generales.nombre.takeIf { it.isNotBlank() } ?: "Contribuyente sin nombre"
     val currentWorkspace = workspaces.firstOrNull { it.id == currentWorkspaceId }
@@ -373,7 +383,9 @@ DashboardTab.MODULOS -> {
             onCreateWorkspace = { nombre ->
                 onCreateWorkspace(nombre)
                 showWorkspaceDialog = false
-            }
+            },
+            canCreateWorkspace = canCreateWorkspace,
+            workspaceLimitMessage = workspaceLimitMessage
         )
     }
 
@@ -661,7 +673,9 @@ private fun WorkspaceSwitcherDialog(
     currentWorkspaceId: String,
     onDismiss: () -> Unit,
     onSelectWorkspace: (String) -> Unit,
-    onCreateWorkspace: (String) -> Unit
+    onCreateWorkspace: (String) -> Unit,
+    canCreateWorkspace: Boolean,
+    workspaceLimitMessage: String?
 ) {
     var newWorkspaceName by remember { mutableStateOf("") }
 
@@ -722,19 +736,27 @@ private fun WorkspaceSwitcherDialog(
                     }
                 }
 
-                OutlinedTextField(
-                    value = newWorkspaceName,
-                    onValueChange = { newWorkspaceName = it },
-                    label = { Text("Nuevo negocio") },
-                    placeholder = { Text("Ej: Cafetería Centro") },
-                    singleLine = true
-                )
-                Button(
-                    onClick = { onCreateWorkspace(newWorkspaceName.trim()) },
-                    enabled = newWorkspaceName.trim().isNotBlank(),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Crear y abrir negocio")
+                if (canCreateWorkspace) {
+                    OutlinedTextField(
+                        value = newWorkspaceName,
+                        onValueChange = { newWorkspaceName = it },
+                        label = { Text("Nuevo negocio") },
+                        placeholder = { Text("Ej: Cafetería Centro") },
+                        singleLine = true
+                    )
+                    Button(
+                        onClick = { onCreateWorkspace(newWorkspaceName.trim()) },
+                        enabled = newWorkspaceName.trim().isNotBlank(),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Crear y abrir negocio")
+                    }
+                } else {
+                    Text(
+                        workspaceLimitMessage ?: "Tu plan actual no permite crear más espacios de trabajo.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         },

@@ -68,6 +68,7 @@ fun InventarioScreen(
     viewModel: InventarioViewModel,
     facturaViewModel: FacturaViewModel,
     canUseProFeatures: Boolean,
+    canUseAdvancedBilling: Boolean,
 ) {
     val uiState      by viewModel.uiState.collectAsStateWithLifecycle()
     val facturaState by facturaViewModel.uiState.collectAsStateWithLifecycle()
@@ -97,8 +98,9 @@ fun InventarioScreen(
             viewModel.clearVentaPendienteFactura()
         }
     }
-    LaunchedEffect(canUseProFeatures, uiState.currentTab) {
+    LaunchedEffect(canUseProFeatures, canUseAdvancedBilling, uiState.currentTab) {
         if (!canUseProFeatures && uiState.currentTab == 3) viewModel.setCurrentTab(0)
+        if (!canUseAdvancedBilling && uiState.currentTab == 4) viewModel.setCurrentTab(0)
     }
 
     Scaffold(
@@ -109,7 +111,7 @@ fun InventarioScreen(
                 NavigationBarItem(selected = uiState.currentTab == 1, onClick = { viewModel.setCurrentTab(1) }, icon = { Icon(Icons.Default.ShoppingCart, "Comprar") }, label = { Text("Compra") })
                 if (canUseProFeatures) NavigationBarItem(selected = uiState.currentTab == 3, onClick = { viewModel.setCurrentTab(3) }, icon = { Icon(Icons.Default.List, "Inventario") }, label = { Text("Almacén") })
                 NavigationBarItem(selected = uiState.currentTab == 2, onClick = { viewModel.setCurrentTab(2) }, icon = { Icon(Icons.Default.History, "Historial") }, label = { Text("Historial") })
-                NavigationBarItem(selected = uiState.currentTab == 4, onClick = { viewModel.setCurrentTab(4) }, icon = { Icon(Icons.Default.MoreHoriz, "Más") }, label = { Text("Más") })
+                if (canUseAdvancedBilling) NavigationBarItem(selected = uiState.currentTab == 4, onClick = { viewModel.setCurrentTab(4) }, icon = { Icon(Icons.Default.MoreHoriz, "Más") }, label = { Text("Más") })
             }
         },
         floatingActionButton = {
@@ -161,6 +163,7 @@ fun InventarioScreen(
             onEditQuantity = viewModel::setCartCantidad,
             onRegistrar = viewModel::registrarVenta,
             onFacturar = { viewModel.showVentaCheckoutDialog(true) },
+            canUseAdvancedBilling = canUseAdvancedBilling,
             onDismiss = { viewModel.showSaleSheet(false) }
         )
     }
@@ -185,6 +188,7 @@ fun InventarioScreen(
             onEditQuantity = viewModel::setCartCompraCantidad,
             onRegistrar = viewModel::registrarCompra,
             onFacturar = { viewModel.showCompraCheckoutDialog(true) },
+            canUseAdvancedBilling = canUseAdvancedBilling,
             onDismiss = { viewModel.showPurchaseSheet(false) }
         )
     }
@@ -192,6 +196,7 @@ fun InventarioScreen(
         VentaCheckoutDialog(
             total = viewModel.cartTotal,
             terceros = uiState.terceros,
+            canUseAdvancedBilling = canUseAdvancedBilling,
             onDismiss = { viewModel.showVentaCheckoutDialog(false) },
             onConfirm = viewModel::registrarVentaConDetalles
         )
@@ -200,6 +205,7 @@ fun InventarioScreen(
         CompraCheckoutDialog(
             total = viewModel.cartCompraTotal,
             terceros = uiState.terceros,
+            canUseAdvancedBilling = canUseAdvancedBilling,
             onDismiss = { viewModel.showCompraCheckoutDialog(false) },
             onConfirm = viewModel::registrarCompraConDetalles
         )
@@ -1220,6 +1226,7 @@ private fun CartSheet(
     onEditQuantity: (ProductoVenta, Double) -> Unit,
     onRegistrar: () -> Unit,
     onFacturar: () -> Unit,
+    canUseAdvancedBilling: Boolean,
     onDismiss: () -> Unit
 ) {
     var productoEditandoCantidad by remember { mutableStateOf<ProductoVenta?>(null) }
@@ -1274,7 +1281,7 @@ private fun CartSheet(
                 }
                 Spacer(Modifier.height(16.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onFacturar, enabled = cart.isNotEmpty(), modifier = Modifier.size(48.dp)) {
+                    IconButton(onClick = onFacturar, enabled = cart.isNotEmpty() && canUseAdvancedBilling, modifier = Modifier.size(48.dp)) {
                         Icon(Icons.Default.ReceiptLong, contentDescription = "Facturar venta")
                     }
                     Button(onClick = onRegistrar, modifier = Modifier.weight(1f), enabled = cart.isNotEmpty()) {
@@ -1282,6 +1289,13 @@ private fun CartSheet(
                         Spacer(Modifier.width(8.dp))
                         Text("Registrar venta")
                     }
+                }
+                if (!canUseAdvancedBilling) {
+                    Text(
+                        "La facturación avanzada de ventas requiere plan Pro.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
@@ -1316,6 +1330,7 @@ private fun PurchaseCartSheet(
     onEditQuantity: (ProductoCompra, Double) -> Unit,
     onRegistrar: () -> Unit,
     onFacturar: () -> Unit,
+    canUseAdvancedBilling: Boolean,
     onDismiss: () -> Unit
 ) {
     var productoEditandoCantidad by remember { mutableStateOf<ProductoCompra?>(null) }
@@ -1371,7 +1386,7 @@ private fun PurchaseCartSheet(
                 }
                 Spacer(Modifier.height(16.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onFacturar, enabled = cart.isNotEmpty(), modifier = Modifier.size(48.dp)) {
+                    IconButton(onClick = onFacturar, enabled = cart.isNotEmpty() && canUseAdvancedBilling, modifier = Modifier.size(48.dp)) {
                         Icon(Icons.Default.ReceiptLong, contentDescription = "Facturar compra")
                     }
                     Button(onClick = onRegistrar, modifier = Modifier.weight(1f), enabled = cart.isNotEmpty(), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)) {
@@ -1379,6 +1394,13 @@ private fun PurchaseCartSheet(
                         Spacer(Modifier.width(8.dp))
                         Text("Registrar compra")
                     }
+                }
+                if (!canUseAdvancedBilling) {
+                    Text(
+                        "La facturación avanzada de compras requiere plan Pro.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
@@ -1408,6 +1430,7 @@ private fun PurchaseCartSheet(
 private fun VentaCheckoutDialog(
     total: Double,
     terceros: List<TerceroListItem>,
+    canUseAdvancedBilling: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (VentaCheckoutOptions) -> Unit
 ) {
@@ -1435,47 +1458,51 @@ private fun VentaCheckoutDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text("Total: %.2f CUP".format(total), fontWeight = FontWeight.Bold)
-                ExposedDropdownMenuBox(expanded = terceroExpanded, onExpandedChange = { terceroExpanded = it }) {
-                    OutlinedTextField(
-                        value = terceroSeleccionado?.nombre.orEmpty(),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Cliente") },
-                        placeholder = { Text("Opcional si cobra al momento") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(terceroExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor()
-                    )
-                    ExposedDropdownMenu(expanded = terceroExpanded, onDismissRequest = { terceroExpanded = false }) {
-                        clientes.forEach { tercero ->
-                            DropdownMenuItem(text = { Text(tercero.nombre) }, onClick = {
-                                terceroId = tercero.id
-                                terceroExpanded = false
-                            })
+                if (canUseAdvancedBilling) {
+                    ExposedDropdownMenuBox(expanded = terceroExpanded, onExpandedChange = { terceroExpanded = it }) {
+                        OutlinedTextField(
+                            value = terceroSeleccionado?.nombre.orEmpty(),
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Cliente") },
+                            placeholder = { Text("Opcional si cobra al momento") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(terceroExpanded) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor()
+                        )
+                        ExposedDropdownMenu(expanded = terceroExpanded, onDismissRequest = { terceroExpanded = false }) {
+                            clientes.forEach { tercero ->
+                                DropdownMenuItem(text = { Text(tercero.nombre) }, onClick = {
+                                    terceroId = tercero.id
+                                    terceroExpanded = false
+                                })
+                            }
                         }
                     }
                 }
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Emitir factura ahora")
-                    Switch(checked = emitirFactura, onCheckedChange = { emitirFactura = it })
-                }
-                ExposedDropdownMenuBox(expanded = cobroExpanded, onExpandedChange = { cobroExpanded = it }) {
-                    OutlinedTextField(
-                        value = if (estadoCobro == EstadoCobroOperacion.INMEDIATO) "Cobrada al momento" else "Pendiente de cobro",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Estado del cobro") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(cobroExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor()
-                    )
-                    ExposedDropdownMenu(expanded = cobroExpanded, onDismissRequest = { cobroExpanded = false }) {
-                        DropdownMenuItem(text = { Text("Cobrada al momento") }, onClick = {
-                            estadoCobro = EstadoCobroOperacion.INMEDIATO
-                            cobroExpanded = false
-                        })
-                        DropdownMenuItem(text = { Text("Pendiente de cobro") }, onClick = {
-                            estadoCobro = EstadoCobroOperacion.PENDIENTE
-                            cobroExpanded = false
-                        })
+                if (canUseAdvancedBilling) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Emitir factura ahora")
+                        Switch(checked = emitirFactura, onCheckedChange = { emitirFactura = it })
+                    }
+                    ExposedDropdownMenuBox(expanded = cobroExpanded, onExpandedChange = { cobroExpanded = it }) {
+                        OutlinedTextField(
+                            value = if (estadoCobro == EstadoCobroOperacion.INMEDIATO) "Cobrada al momento" else "Pendiente de cobro",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Estado del cobro") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(cobroExpanded) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor()
+                        )
+                        ExposedDropdownMenu(expanded = cobroExpanded, onDismissRequest = { cobroExpanded = false }) {
+                            DropdownMenuItem(text = { Text("Cobrada al momento") }, onClick = {
+                                estadoCobro = EstadoCobroOperacion.INMEDIATO
+                                cobroExpanded = false
+                            })
+                            DropdownMenuItem(text = { Text("Pendiente de cobro") }, onClick = {
+                                estadoCobro = EstadoCobroOperacion.PENDIENTE
+                                cobroExpanded = false
+                            })
+                        }
                     }
                 }
                 ExposedDropdownMenuBox(expanded = pagoExpanded, onExpandedChange = { pagoExpanded = it }) {
@@ -1507,31 +1534,33 @@ private fun VentaCheckoutDialog(
                         singleLine = true
                     )
                 }
-                DocumentoAdjuntoField("Documento o evidencia", "Puedes adjuntar una foto o comprobante de la operación.", documentoUri, { documentoPicker.launch(arrayOf("image/*", "application/pdf")) }) { documentoUri = null }
-                OutlinedTextField(
-                    value = nota,
-                    onValueChange = { nota = it },
-                    label = { Text("Nota interna") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2,
-                    maxLines = 4
-                )
+                if (canUseAdvancedBilling) {
+                    DocumentoAdjuntoField("Documento o evidencia", "Puedes adjuntar una foto o comprobante de la operación.", documentoUri, { documentoPicker.launch(arrayOf("image/*", "application/pdf")) }) { documentoUri = null }
+                    OutlinedTextField(
+                        value = nota,
+                        onValueChange = { nota = it },
+                        label = { Text("Nota interna") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2,
+                        maxLines = 4
+                    )
+                }
             }
         },
         confirmButton = {
             TextButton(onClick = {
                 onConfirm(
                     VentaCheckoutOptions(
-                        emitirFactura = emitirFactura,
-                        estadoCobro = estadoCobro,
+                        emitirFactura = if (canUseAdvancedBilling) emitirFactura else false,
+                        estadoCobro = if (canUseAdvancedBilling) estadoCobro else EstadoCobroOperacion.INMEDIATO,
                         formaPago = formaPago,
                         idTransaccion = idTransaccion,
-                        nota = nota,
-                        documentoUri = documentoUri,
-                        terceroId = terceroId
+                        nota = if (canUseAdvancedBilling) nota else "",
+                        documentoUri = if (canUseAdvancedBilling) documentoUri else null,
+                        terceroId = if (canUseAdvancedBilling) terceroId else null
                     )
                 )
-            }, enabled = estadoCobro == EstadoCobroOperacion.INMEDIATO || !terceroId.isNullOrBlank()) { Text("Continuar") }
+            }, enabled = !canUseAdvancedBilling || estadoCobro == EstadoCobroOperacion.INMEDIATO || !terceroId.isNullOrBlank()) { Text("Continuar") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
     )
@@ -1542,6 +1571,7 @@ private fun VentaCheckoutDialog(
 private fun CompraCheckoutDialog(
     total: Double,
     terceros: List<TerceroListItem>,
+    canUseAdvancedBilling: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (CompraCheckoutOptions) -> Unit
 ) {
@@ -1566,72 +1596,78 @@ private fun CompraCheckoutDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text("Total: %.2f CUP".format(total), fontWeight = FontWeight.Bold)
-                ExposedDropdownMenuBox(expanded = terceroExpanded, onExpandedChange = { terceroExpanded = it }) {
-                    OutlinedTextField(
-                        value = terceroSeleccionado?.nombre.orEmpty(),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Proveedor") },
-                        placeholder = { Text("Opcional si paga al momento") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(terceroExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor()
-                    )
-                    ExposedDropdownMenu(expanded = terceroExpanded, onDismissRequest = { terceroExpanded = false }) {
-                        proveedores.forEach { tercero ->
-                            DropdownMenuItem(text = { Text(tercero.nombre) }, onClick = {
-                                terceroId = tercero.id
-                                terceroExpanded = false
+                if (canUseAdvancedBilling) {
+                    ExposedDropdownMenuBox(expanded = terceroExpanded, onExpandedChange = { terceroExpanded = it }) {
+                        OutlinedTextField(
+                            value = terceroSeleccionado?.nombre.orEmpty(),
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Proveedor") },
+                            placeholder = { Text("Opcional si paga al momento") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(terceroExpanded) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor()
+                        )
+                        ExposedDropdownMenu(expanded = terceroExpanded, onDismissRequest = { terceroExpanded = false }) {
+                            proveedores.forEach { tercero ->
+                                DropdownMenuItem(text = { Text(tercero.nombre) }, onClick = {
+                                    terceroId = tercero.id
+                                    terceroExpanded = false
+                                })
+                            }
+                        }
+                    }
+                }
+                if (canUseAdvancedBilling) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Registrar factura del proveedor")
+                        Switch(checked = registrarFacturaProveedor, onCheckedChange = { registrarFacturaProveedor = it })
+                    }
+                    ExposedDropdownMenuBox(expanded = pagoExpanded, onExpandedChange = { pagoExpanded = it }) {
+                        OutlinedTextField(
+                            value = if (estadoPago == EstadoCobroOperacion.INMEDIATO) "Pagada al momento" else "Pendiente de pago",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Estado del pago") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(pagoExpanded) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor()
+                        )
+                        ExposedDropdownMenu(expanded = pagoExpanded, onDismissRequest = { pagoExpanded = false }) {
+                            DropdownMenuItem(text = { Text("Pagada al momento") }, onClick = {
+                                estadoPago = EstadoCobroOperacion.INMEDIATO
+                                pagoExpanded = false
+                            })
+                            DropdownMenuItem(text = { Text("Pendiente de pago") }, onClick = {
+                                estadoPago = EstadoCobroOperacion.PENDIENTE
+                                pagoExpanded = false
                             })
                         }
                     }
                 }
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Registrar factura del proveedor")
-                    Switch(checked = registrarFacturaProveedor, onCheckedChange = { registrarFacturaProveedor = it })
-                }
-                ExposedDropdownMenuBox(expanded = pagoExpanded, onExpandedChange = { pagoExpanded = it }) {
+                if (canUseAdvancedBilling) {
+                    DocumentoAdjuntoField("Factura o documento", "Adjunta una foto, factura o comprobante recibido.", documentoUri, { documentoPicker.launch(arrayOf("image/*", "application/pdf")) }) { documentoUri = null }
                     OutlinedTextField(
-                        value = if (estadoPago == EstadoCobroOperacion.INMEDIATO) "Pagada al momento" else "Pendiente de pago",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Estado del pago") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(pagoExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                        value = nota,
+                        onValueChange = { nota = it },
+                        label = { Text("Nota interna") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2,
+                        maxLines = 4
                     )
-                    ExposedDropdownMenu(expanded = pagoExpanded, onDismissRequest = { pagoExpanded = false }) {
-                        DropdownMenuItem(text = { Text("Pagada al momento") }, onClick = {
-                            estadoPago = EstadoCobroOperacion.INMEDIATO
-                            pagoExpanded = false
-                        })
-                        DropdownMenuItem(text = { Text("Pendiente de pago") }, onClick = {
-                            estadoPago = EstadoCobroOperacion.PENDIENTE
-                            pagoExpanded = false
-                        })
-                    }
                 }
-                DocumentoAdjuntoField("Factura o documento", "Adjunta una foto, factura o comprobante recibido.", documentoUri, { documentoPicker.launch(arrayOf("image/*", "application/pdf")) }) { documentoUri = null }
-                OutlinedTextField(
-                    value = nota,
-                    onValueChange = { nota = it },
-                    label = { Text("Nota interna") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2,
-                    maxLines = 4
-                )
             }
         },
         confirmButton = {
             TextButton(onClick = {
                 onConfirm(
                     CompraCheckoutOptions(
-                        registrarFacturaProveedor = registrarFacturaProveedor,
-                        estadoPago = estadoPago,
-                        nota = nota,
-                        documentoUri = documentoUri,
-                        terceroId = terceroId
+                        registrarFacturaProveedor = if (canUseAdvancedBilling) registrarFacturaProveedor else false,
+                        estadoPago = if (canUseAdvancedBilling) estadoPago else EstadoCobroOperacion.INMEDIATO,
+                        nota = if (canUseAdvancedBilling) nota else "",
+                        documentoUri = if (canUseAdvancedBilling) documentoUri else null,
+                        terceroId = if (canUseAdvancedBilling) terceroId else null
                     )
                 )
-            }, enabled = estadoPago == EstadoCobroOperacion.INMEDIATO || !terceroId.isNullOrBlank()) { Text("Continuar") }
+            }, enabled = !canUseAdvancedBilling || estadoPago == EstadoCobroOperacion.INMEDIATO || !terceroId.isNullOrBlank()) { Text("Continuar") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
     )

@@ -169,6 +169,24 @@ private fun openExternalUrl(context: android.content.Context, url: String): Bool
     }
 }
 
+@Composable
+private fun FeatureUnavailableScreen(message: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Card {
+            Text(
+                text = message,
+                modifier = Modifier.padding(16.dp),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+    }
+}
+
 private fun getAppVersionName(context: android.content.Context): String {
     return try {
         val pkgInfo = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -208,6 +226,15 @@ fun MainScreen(
     val isFreemiumBuild = AppEdition.isFreemium
     val canUseProFeatures = !isFreemiumBuild || currentTier == "pro" || currentTier == "vip"
     val canUseVipFeatures = !isFreemiumBuild || currentTier == "vip"
+    val showNomenclatorsModule = !isFreemiumBuild
+    val canUseTercerosModule = !isFreemiumBuild || canUseProFeatures
+    val canCreateMultipleWorkspaces = !isFreemiumBuild || canUseProFeatures
+    val workspaceLimitMessage =
+        if (isFreemiumBuild && !canUseProFeatures) {
+            "El plan Free solo permite un espacio de trabajo. Actualiza a Pro para crear varios negocios."
+        } else {
+            null
+        }
     val licensesDrawerLabel = if (hasActiveLicense) "Ver licencia" else "Comprar licencia"
     val accountingRoutes = remember {
         listOf(
@@ -427,28 +454,32 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
-                            NavigationDrawerItem(
-                                    label = { Text("Nomencladores") },
-                                    selected = currentRoute == NOMENCLATORS_ROUTE,
-                                    icon = { Icon(Icons.Default.List, contentDescription = null) },
-                                    onClick = {
-                                        navController.navigate(NOMENCLATORS_ROUTE) {
-                                            launchSingleTop = true
+                            if (showNomenclatorsModule) {
+                                NavigationDrawerItem(
+                                        label = { Text("Nomencladores") },
+                                        selected = currentRoute == NOMENCLATORS_ROUTE,
+                                        icon = { Icon(Icons.Default.List, contentDescription = null) },
+                                        onClick = {
+                                            navController.navigate(NOMENCLATORS_ROUTE) {
+                                                launchSingleTop = true
+                                            }
+                                            drawerScope.launch { drawerState.close() }
                                         }
-                                        drawerScope.launch { drawerState.close() }
-                                    }
-                            )
-                            NavigationDrawerItem(
-                                    label = { Text("Terceros") },
-                                    selected = currentRoute == TERCEROS_ROUTE,
-                                    icon = { Icon(Icons.Default.People, contentDescription = null) },
-                                    onClick = {
-                                        navController.navigate(TERCEROS_ROUTE) {
-                                            launchSingleTop = true
+                                )
+                            }
+                            if (canUseTercerosModule) {
+                                NavigationDrawerItem(
+                                        label = { Text("Terceros") },
+                                        selected = currentRoute == TERCEROS_ROUTE,
+                                        icon = { Icon(Icons.Default.People, contentDescription = null) },
+                                        onClick = {
+                                            navController.navigate(TERCEROS_ROUTE) {
+                                                launchSingleTop = true
+                                            }
+                                            drawerScope.launch { drawerState.close() }
                                         }
-                                        drawerScope.launch { drawerState.close() }
-                                    }
-                            )
+                                )
+                            }
                             NavigationDrawerItem(
                                     label = { Text("Documentos") },
                                     selected = currentRoute == DOCUMENTOS_ROUTE,
@@ -717,6 +748,8 @@ fun MainScreen(
                         cuentasGasto = ledgerState.cuentasGasto,
                         onSwitchWorkspace = ledgerViewModel::switchWorkspace,
                         onCreateWorkspace = ledgerViewModel::createWorkspace,
+                        canCreateWorkspace = canCreateMultipleWorkspaces,
+                        workspaceLimitMessage = workspaceLimitMessage,
                         onOpenRegistro = {
                             navController.navigate(MainTab.Generales.route) {
                                 launchSingleTop = true
@@ -728,20 +761,26 @@ fun MainScreen(
                             }
                         },
                         onOpenNomencladores = {
-                            navController.navigate(NOMENCLATORS_ROUTE) {
-                                launchSingleTop = true
+                            if (showNomenclatorsModule) {
+                                navController.navigate(NOMENCLATORS_ROUTE) {
+                                    launchSingleTop = true
+                                }
                             }
                         },
+                        showNomencladoresShortcut = showNomenclatorsModule,
                         onOpenCatalogos = {
                             navController.navigate(CATALOGOS_ROUTE) {
                                 launchSingleTop = true
                             }
                         },
                         onOpenTerceros = {
-                            navController.navigate(TERCEROS_ROUTE) {
-                                launchSingleTop = true
+                            if (canUseTercerosModule) {
+                                navController.navigate(TERCEROS_ROUTE) {
+                                    launchSingleTop = true
+                                }
                             }
                         },
+                        showTercerosShortcut = canUseTercerosModule,
                         onOpenDocumentos = {
                             navController.navigate(DOCUMENTOS_ROUTE) {
                                 launchSingleTop = true
@@ -795,10 +834,23 @@ fun MainScreen(
                         inventarioViewModel,
                         facturaViewModel,
                         canUseProFeatures,
+                        canUseProFeatures,
                     )
                 }
-                composable(NOMENCLATORS_ROUTE) { NomenclatorsScreen() }
-                composable(TERCEROS_ROUTE) { TercerosScreen(tercerosViewModel, tarjetaViewModel) }
+                composable(NOMENCLATORS_ROUTE) {
+                    if (showNomenclatorsModule) {
+                        NomenclatorsScreen()
+                    } else {
+                        FeatureUnavailableScreen("Nomencladores no está disponible en la versión Freemium.")
+                    }
+                }
+                composable(TERCEROS_ROUTE) {
+                    if (canUseTercerosModule) {
+                        TercerosScreen(tercerosViewModel, tarjetaViewModel)
+                    } else {
+                        FeatureUnavailableScreen("Terceros requiere plan Pro en la app Freemium.")
+                    }
+                }
                 composable(DOCUMENTOS_ROUTE) { DocumentosScreen(documentosViewModel) }
                 composable(CATALOGOS_ROUTE) { 
                     CatalogosScreen(

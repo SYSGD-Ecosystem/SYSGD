@@ -166,6 +166,10 @@ class InventarioViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            repo.ensureDefaultWarehouse()
+        }
+
+        viewModelScope.launch {
             repo.getProductos().collect { productos ->
                 _uiState.update { it.copy(productos = productos) }
             }
@@ -184,6 +188,10 @@ class InventarioViewModel @Inject constructor(
         }
         viewModelScope.launch {
             repo.getAlmacenes().collect { almacenes ->
+                if (almacenes.isEmpty()) {
+                    repo.ensureDefaultWarehouse()
+                    return@collect
+                }
                 val principalId = almacenes.firstOrNull { it.principal }?.id ?: Almacen.DEFAULT_ID
                 _uiState.update { state ->
                     fun validar(id: String): String =
@@ -600,6 +608,9 @@ class InventarioViewModel @Inject constructor(
     }
 
     fun refreshAfterRestore() {
+        viewModelScope.launch {
+            repo.ensureDefaultWarehouse()
+        }
         val state = _uiState.value
         observarDiaTrabajo(state.fechaTrabajo)
         cargarVentasDelMes(state.mesActual)

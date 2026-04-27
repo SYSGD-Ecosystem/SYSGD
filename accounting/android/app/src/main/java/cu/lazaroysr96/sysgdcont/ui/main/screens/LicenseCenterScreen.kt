@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -70,30 +71,33 @@ fun LicenseCenterScreen(
     var receiverPhoneShared by rememberSaveable { mutableStateOf(false) }
 
     val products = uiState.catalog?.products.orEmpty()
+    val purchaseProducts = remember(products) {
+        products.filter { it.tier.equals("pro", ignoreCase = true) }.ifEmpty { products }
+    }
     val instructions = uiState.catalog?.instructions
     val currentPlan = uiState.currentPlan
     val activeTier = currentPlan?.tier ?: "free"
     val hasActiveLicense = currentPlan?.hasActivePlan == true && activeTier != "free"
-    val availableTiers = products.map { it.tier }.distinct()
+    val availableTiers = purchaseProducts.map { it.tier }.distinct()
     var selectedTier by rememberSaveable { mutableStateOf("") }
     var selectedDurationMonths by rememberSaveable { mutableStateOf(0) }
 
-    val tierProducts = products.filter { it.tier == selectedTier }
+    val tierProducts = purchaseProducts.filter { it.tier == selectedTier }
     val selectedProduct = tierProducts.firstOrNull { it.duration_months == selectedDurationMonths }
-        ?: products.firstOrNull { it.id == selectedProductId }
-        ?: products.firstOrNull()
+        ?: purchaseProducts.firstOrNull { it.id == selectedProductId }
+        ?: purchaseProducts.firstOrNull()
 
-    LaunchedEffect(products) {
-        if (products.isNotEmpty()) {
-            val fallback = products.first()
+    LaunchedEffect(purchaseProducts) {
+        if (purchaseProducts.isNotEmpty()) {
+            val fallback = purchaseProducts.first()
             if (selectedTier.isBlank() || availableTiers.none { it == selectedTier }) {
                 selectedTier = fallback.tier
             }
-            val validDurations = products.filter { it.tier == selectedTier }.map { it.duration_months }
+            val validDurations = purchaseProducts.filter { it.tier == selectedTier }.map { it.duration_months }
             if (selectedDurationMonths == 0 || validDurations.none { it == selectedDurationMonths }) {
-                selectedDurationMonths = products.first { it.tier == selectedTier }.duration_months
+                selectedDurationMonths = purchaseProducts.first { it.tier == selectedTier }.duration_months
             }
-            val resolvedProduct = products.firstOrNull {
+            val resolvedProduct = purchaseProducts.firstOrNull {
                 it.tier == selectedTier && it.duration_months == selectedDurationMonths
             } ?: fallback
             selectedProductId = resolvedProduct.id
@@ -118,7 +122,7 @@ fun LicenseCenterScreen(
     ) {
         Text("Licencias y planes", style = MaterialTheme.typography.titleMedium)
         Text(
-            "Aquí puedes comprar, renovar o revisar tu licencia Pro o VIP. Este flujo sigue siendo experimental para depuración, pero ya activa el plan a nivel de plataforma cuando la compra entra en modo provisional.",
+            "Aquí puedes comprar, renovar o revisar tu licencia Pro desde la app. El nivel VIP se mantiene para testers y otros escenarios de plataforma.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -215,28 +219,30 @@ fun LicenseCenterScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            SelectionSectionCard(
-                title = "Tipo de licencia",
-                subtitle = "Usa Pro para funciones premium y VIP para acceso experimental adicional."
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+            if (availableTiers.size > 1) {
+                SelectionSectionCard(
+                    title = "Tipo de licencia",
+                    subtitle = "Selecciona el plan disponible para esta app."
                 ) {
-                    availableTiers.forEach { tier ->
-                        SelectionPillCard(
-                            modifier = Modifier.weight(1f),
-                            title = formatTier(tier),
-                            subtitle = if (tier == "vip") "Todo Pro + extras" else "Plan premium base",
-                            selected = tier == selectedTier,
-                            onClick = {
-                                selectedTier = tier
-                                selectedDurationMonths = products.first { it.tier == tier }.duration_months
-                                selectedProductId = products.first {
-                                    it.tier == selectedTier && it.duration_months == selectedDurationMonths
-                                }.id
-                            }
-                        )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        availableTiers.forEach { tier ->
+                            SelectionPillCard(
+                                modifier = Modifier.weight(1f),
+                                title = formatTier(tier),
+                                subtitle = "Plan disponible",
+                                selected = tier == selectedTier,
+                                onClick = {
+                                    selectedTier = tier
+                                    selectedDurationMonths = purchaseProducts.first { it.tier == tier }.duration_months
+                                    selectedProductId = purchaseProducts.first {
+                                        it.tier == selectedTier && it.duration_months == selectedDurationMonths
+                                    }.id
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -467,7 +473,7 @@ private fun LicenseSummaryCard(
                 }
             } else {
                 Text(
-                    "No tienes una licencia activa en este momento. Puedes comprar una Pro o VIP desde esta misma pantalla.",
+                    "No tienes una licencia activa en este momento. Puedes comprar una licencia Pro desde esta misma pantalla.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
