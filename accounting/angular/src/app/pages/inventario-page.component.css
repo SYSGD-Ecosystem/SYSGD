@@ -1,0 +1,114 @@
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  color: #f8fafc;
+}
+
+.page-container h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+  color: #f8fafc;
+}
+
+.subtitle {
+  color: #94a3b8;
+  margin: 0 0 2rem;
+  font-size: 0.875rem;
+}
+
+.inventario-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.inventario-section {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.inventario-section.full-width {
+  grid-column: 1 / -1;
+}
+
+.inventario-section h3 {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  color: #60a5fa;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  font-size: 0.875rem;
+}
+
+.data-table th {
+  background: rgba(15, 23, 42, 0.5);
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.data-table tbody tr:hover {
+  background: rgba(96, 165, 250, 0.05);
+}
+
+.data-table td.amount {
+  text-align: right;
+  font-family: monospace;
+  color: #f8fafc;
+}
+
+.badge-venta {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  background: rgba(74, 222, 128, 0.1);
+  color: #4ade80;
+}
+
+.badge-compra {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  background: rgba(248, 113, 113, 0.1);
+  color: #f87171;
+}
+
+.empty-message {
+  color: #64748b;
+  font-size: 0.875rem;
+  text-align: center;
+  padding: 2rem;
+  margin: 0;
+}
+
+.read-only-notice {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 2rem;
+}
+
+.read-only-notice p {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.875rem;
+}

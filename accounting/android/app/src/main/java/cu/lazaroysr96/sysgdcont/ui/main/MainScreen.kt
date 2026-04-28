@@ -226,9 +226,6 @@ fun MainScreen(
     val isFreemiumBuild = AppEdition.isFreemium
     val canUseProFeatures = !isFreemiumBuild || currentTier == "pro" || currentTier == "vip"
     val canUseVipFeatures = !isFreemiumBuild || currentTier == "vip"
-    val showNomenclatorsModule = !isFreemiumBuild
-    val canUseTercerosModule = !isFreemiumBuild || canUseProFeatures
-    val canCreateMultipleWorkspaces = !isFreemiumBuild || canUseProFeatures
     val workspaceLimitMessage =
         if (isFreemiumBuild && !canUseProFeatures) {
             "El plan Free solo permite un espacio de trabajo. Actualiza a Pro para crear varios negocios."
@@ -288,7 +285,6 @@ fun MainScreen(
         }
     }
 
-    // val drawerWidthFraction = if (isLandscape) 0.5f else 0.8f
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         ModalNavigationDrawer(
@@ -454,7 +450,7 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
-                            if (showNomenclatorsModule) {
+                            if (canUseProFeatures) {
                                 NavigationDrawerItem(
                                         label = { Text("Nomencladores") },
                                         selected = currentRoute == NOMENCLATORS_ROUTE,
@@ -467,7 +463,7 @@ fun MainScreen(
                                         }
                                 )
                             }
-                            if (canUseTercerosModule) {
+                            if (canUseProFeatures) {
                                 NavigationDrawerItem(
                                         label = { Text("Terceros") },
                                         selected = currentRoute == TERCEROS_ROUTE,
@@ -748,7 +744,7 @@ fun MainScreen(
                         cuentasGasto = ledgerState.cuentasGasto,
                         onSwitchWorkspace = ledgerViewModel::switchWorkspace,
                         onCreateWorkspace = ledgerViewModel::createWorkspace,
-                        canCreateWorkspace = canCreateMultipleWorkspaces,
+                        canCreateWorkspace = canUseProFeatures,
                         workspaceLimitMessage = workspaceLimitMessage,
                         onOpenRegistro = {
                             navController.navigate(MainTab.Generales.route) {
@@ -761,26 +757,26 @@ fun MainScreen(
                             }
                         },
                         onOpenNomencladores = {
-                            if (showNomenclatorsModule) {
+                            if (canUseProFeatures) {
                                 navController.navigate(NOMENCLATORS_ROUTE) {
                                     launchSingleTop = true
                                 }
                             }
                         },
-                        showNomencladoresShortcut = showNomenclatorsModule,
+                        showNomencladoresShortcut = canUseProFeatures,
                         onOpenCatalogos = {
                             navController.navigate(CATALOGOS_ROUTE) {
                                 launchSingleTop = true
                             }
                         },
                         onOpenTerceros = {
-                            if (canUseTercerosModule) {
+                            if (canUseProFeatures) {
                                 navController.navigate(TERCEROS_ROUTE) {
                                     launchSingleTop = true
                                 }
                             }
                         },
-                        showTercerosShortcut = canUseTercerosModule,
+                        showTercerosShortcut = canUseProFeatures,
                         onOpenDocumentos = {
                             navController.navigate(DOCUMENTOS_ROUTE) {
                                 launchSingleTop = true
@@ -838,14 +834,14 @@ fun MainScreen(
                     )
                 }
                 composable(NOMENCLATORS_ROUTE) {
-                    if (showNomenclatorsModule) {
+                    if (canUseProFeatures) {
                         NomenclatorsScreen()
                     } else {
                         FeatureUnavailableScreen("Nomencladores no está disponible en la versión Freemium.")
                     }
                 }
                 composable(TERCEROS_ROUTE) {
-                    if (canUseTercerosModule) {
+                    if (canUseProFeatures) {
                         TercerosScreen(tercerosViewModel, tarjetaViewModel)
                     } else {
                         FeatureUnavailableScreen("Terceros requiere plan Pro en la app Freemium.")
@@ -866,7 +862,8 @@ fun MainScreen(
                         onRefresh = { planPurchaseViewModel.loadData(force = true) },
                         onSubmit = planPurchaseViewModel::submitOrder,
                         onDismissError = planPurchaseViewModel::clearError,
-                        onDismissInfo = planPurchaseViewModel::clearInfoMessage
+                        onDismissInfo = planPurchaseViewModel::clearInfoMessage,
+                        isProDistribution = !isFreemiumBuild
                     )
                 }
                 composable(ABOUT_ROUTE) {

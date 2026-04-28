@@ -3218,6 +3218,38 @@ constructor(
         }
     }
 
+    /**
+     * Genera un informe mensual de ingresos y gastos (Estado de Resultados)
+     * Estructura del informe:
+     * - Título: Informe Mensual - [Mes/Año]
+     * - Tabla INGRESOS: Fecha | Cuenta | Detalle (nota) | Importe
+     * - Total INGRESOS (verde)
+     * - Tabla GASTOS: Fecha | Cuenta | Detalle (nota) | Importe
+     * - Total GASTOS (rojo)
+     * - ESTADO DE RESULTADOS: Diferencia (Ingresos - Gastos)
+     */
+    suspend fun generateMonthlyReportPdf(month: String): Result<Intent> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val file = createMonthlyReportFile(month)
+                buildPdfIntent(file)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    private fun createMonthlyReportFile(month: String): File {
+        // TODO: Implementar generación de PDF con iTextPDF
+        // 1. Obtener registro actual
+        // 2. Filtrar ingresos y gastos del mes seleccionado
+        // 3. Obtener cuentas contables y notas para cada operación
+        // 4. Generar tabla con iTextPDF (colores: verde para ingresos, rojo para gastos)
+        // 5. Calcular totales y diferencia
+        val fileName = "Informe_Mensual_${month}_${System.currentTimeMillis()}.pdf"
+        return documentStorageRepository.createDocumentFile(DocumentCategory.DJ, fileName)
+    }
+
     private suspend fun processPdfResponse(response: Response<ResponseBody>): Result<Intent> {
         return withContext(Dispatchers.IO) {
             val body = response.body()

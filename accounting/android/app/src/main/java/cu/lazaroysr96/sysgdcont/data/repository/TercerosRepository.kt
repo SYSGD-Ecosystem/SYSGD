@@ -273,6 +273,48 @@ class TercerosRepository @Inject constructor(
         markLocalModified()
     }
 
+    suspend fun abonarCuenta(cuentaId: String, montoAbono: Double, nota: String = "") {
+        require(montoAbono > 0) { "El monto debe ser mayor que cero" }
+
+        val cuenta = tercerosDao.getCuentaById(cuentaId)
+            ?: throw IllegalStateException("La cuenta no existe")
+
+        require(cuenta.estado !in listOf(EstadoCuentaTercero.PAGADO, EstadoCuentaTercero.COBRADO, EstadoCuentaTercero.CANCELADO)) {
+            "La cuenta ya está saldada o cancelada"
+        }
+
+        val nuevoPendiente = (cuenta.montoPendiente - montoAbono).coerceAtLeast(0.0)
+        val nuevoEstado = if (nuevoPendiente <= 0.0) {
+            when (cuenta.tipoCuenta) {
+                TipoCuentaTercero.DEUDA -> EstadoCuentaTercero.PAGADO
+                TipoCuentaTercero.PRESTAMO -> EstadoCuentaTercero.COBRADO
+                else -> EstadoCuentaTercero.PAGADO
+            }
+        } else {
+            cuenta.estado
+        }
+
+        tercerosDao.updateCuentaSaldo(
+            cuentaId = cuentaId,
+            montoPendiente = nuevoPendiente,
+            estado = nuevoEstado,
+            updatedAt = nowIso()
+        )
+        markLocalModified()
+    }
+
+    suspend fun archivarCuenta(cuentaId: String) {
+        val cuenta = tercerosDao.getCuentaById(cuentaId)
+            ?: throw IllegalStateException("La cuenta no existe")
+        tercerosDao.updateCuentaSaldo(
+            cuentaId = cuentaId,
+            montoPendiente = cuenta.montoPendiente,
+            estado = EstadoCuentaTercero.CANCELADO,
+            updatedAt = nowIso()
+        )
+        markLocalModified()
+    }
+
     suspend fun toTercerosRegistro(): TercerosRegistro {
         return TercerosRegistro(
             terceros = tercerosDao.getAllTercerosIncluyendoArchivadosRaw(),

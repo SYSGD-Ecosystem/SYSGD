@@ -2,6 +2,7 @@ package cu.lazaroysr96.sysgdcont.ui.main.screens
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -1194,6 +1195,7 @@ private fun HistorialContent(viewModel: InventarioViewModel, facturaViewModel: F
 
 @Composable
 private fun DetalleOperacionCard(detalle: OperacionDetalleResumen) {
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1209,7 +1211,25 @@ private fun DetalleOperacionCard(detalle: OperacionDetalleResumen) {
         detalle.idTransaccion?.let { Text("Transacción: $it", style = MaterialTheme.typography.bodySmall) }
         if (detalle.facturaEmitida) Text("Factura emitida", style = MaterialTheme.typography.bodySmall)
         if (detalle.facturaProveedor) Text("Factura del proveedor registrada", style = MaterialTheme.typography.bodySmall)
-        if (detalle.documentoAdjunto) Text("Documento adjunto", style = MaterialTheme.typography.bodySmall)
+        if (detalle.documentoAdjunto.isNotBlank()) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Documento adjunto", style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = {
+                    try {
+                        val uri = Uri.parse(detalle.documentoAdjunto)
+                        val intent = Intent(Intent.ACTION_VIEW, uri)
+                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "No se pudo abrir el documento", Toast.LENGTH_SHORT).show()
+                    }
+                }) {
+                    Icon(Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Ver", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
         detalle.nota?.let { Text("Nota: $it", style = MaterialTheme.typography.bodySmall) }
     }
 }

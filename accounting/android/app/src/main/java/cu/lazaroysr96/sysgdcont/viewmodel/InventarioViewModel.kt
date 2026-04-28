@@ -143,7 +143,7 @@ data class OperacionDetalleResumen(
     val formaPago: String? = null,
     val idTransaccion: String? = null,
     val nota: String? = null,
-    val documentoAdjunto: Boolean = false,
+    val documentoAdjunto: String = "",
     val facturaEmitida: Boolean = false,
     val facturaProveedor: Boolean = false
 )
@@ -929,7 +929,7 @@ class InventarioViewModel @Inject constructor(
                     formaPago = if (options.formaPago == FormaPago.EFECTIVO) "EFECTIVO" else "TARJETA",
                     idTransaccion = options.idTransaccion.trim().ifBlank { null },
                     nota = options.nota.trim().ifBlank { null },
-                    documentoAdjunto = options.documentoUri != null,
+                    documentoAdjunto = options.documentoUri ?: "",
                     facturaEmitida = options.emitirFactura
                 )
                 val (venta, lineas) = repo.registrarVenta(cart, fecha, notaOperacion)
@@ -1022,7 +1022,7 @@ class InventarioViewModel @Inject constructor(
                     terceroId = tercero?.id,
                     estadoPago = if (options.estadoPago == EstadoCobroOperacion.INMEDIATO) "PAGADA" else "PENDIENTE",
                     nota = options.nota.trim().ifBlank { null },
-                    documentoAdjunto = options.documentoUri != null,
+                    documentoAdjunto = options.documentoUri ?: "",
                     facturaProveedor = options.registrarFacturaProveedor
                 )
                 val (compra, _) = repo.registrarCompra(cart, fecha, notaOperacion)
@@ -1151,7 +1151,7 @@ class InventarioViewModel @Inject constructor(
         formaPago: String? = null,
         idTransaccion: String? = null,
         nota: String? = null,
-        documentoAdjunto: Boolean = false,
+        documentoAdjunto: String = "",
         facturaEmitida: Boolean = false,
         facturaProveedor: Boolean = false
     ): String {
@@ -1162,7 +1162,7 @@ class InventarioViewModel @Inject constructor(
         formaPago?.takeIf { it.isNotBlank() }?.let { json.put("formaPago", it) }
         idTransaccion?.takeIf { it.isNotBlank() }?.let { json.put("idTransaccion", it) }
         nota?.takeIf { it.isNotBlank() }?.let { json.put("nota", it) }
-        if (documentoAdjunto) json.put("documentoAdjunto", true)
+        documentoAdjunto.takeIf { it.isNotBlank() }?.let { json.put("documentoAdjunto", it) }
         if (facturaEmitida) json.put("facturaEmitida", true)
         if (facturaProveedor) json.put("facturaProveedor", true)
         return if (json.length() == 0) "" else "detalle_operacion::${json}"
@@ -1179,7 +1179,7 @@ class InventarioViewModel @Inject constructor(
                 formaPago = json.optString("formaPago").ifBlank { null },
                 idTransaccion = json.optString("idTransaccion").ifBlank { null },
                 nota = json.optString("nota").ifBlank { null },
-                documentoAdjunto = json.optBoolean("documentoAdjunto", false),
+                documentoAdjunto = json.optString("documentoAdjunto", "").ifBlank { "" },
                 facturaEmitida = json.optBoolean("facturaEmitida", false),
                 facturaProveedor = json.optBoolean("facturaProveedor", false)
             )
