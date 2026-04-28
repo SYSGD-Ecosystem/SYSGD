@@ -3,6 +3,7 @@
   min-height: 100vh;
   background: #0f172a;
   color: #f8fafc;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 .portal-sidebar {
