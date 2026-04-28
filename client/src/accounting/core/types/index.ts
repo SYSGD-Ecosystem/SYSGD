@@ -40,5 +40,5 @@ export type TcpDocumentPayload = {
 
 export type AccountingDatabase = {
   activeWorkspaceId: string;
-  workspaces: []any;
+  workspaces: string;
 }
