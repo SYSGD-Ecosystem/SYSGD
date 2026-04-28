@@ -1,0 +1,68 @@
+<section class="page-container">
+  <h2>Mi Cuenta</h2>
+  <p class="subtitle">Gestiona tu información y datos</p>
+
+  <div class="account-grid">
+    <div class="account-card">
+      <h3>Información del Usuario</h3>
+      <div class="info-row">
+        <span class="label">Nombre:</span>
+        <span>{{ user?.name || 'No disponible' }}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Email:</span>
+        <span>{{ user?.email || 'No disponible' }}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">ID:</span>
+        <span class="mono">{{ user?.id || 'N/A' }}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Privilegios:</span>
+        <span class="badge">{{ user?.privileges || 'user' }}</span>
+      </div>
+    </div>
+
+    <div class="account-card">
+      <h3>Plan y Créditos</h3>
+      <div class="tier-display">
+        <div class="tier-badge" [class]="tier.toLowerCase()">{{ tier }}</div>
+        <div class="credits-info">
+          <span class="label">Créditos disponibles:</span>
+          <span class="credits-value">{{ creditos }}</span>
+        </div>
+      </div>
+      <p class="tier-description">
+        <ng-container *ngIf="tier === 'Gratuito'">
+          Plan gratuito - Funcionalidades básicas para TCP.
+        </ng-container>
+        <ng-container *ngIf="tier === 'Administrador'">
+          Acceso completo al sistema.
+        </ng-container>
+      </p>
+    </div>
+
+    <div class="account-card">
+      <h3>Datos y Respaldo</h3>
+      <p class="description">
+        Descarga todos tus datos desde el servidor en formato JSON.
+        Incluye registros, inventario, configuraciones y más.
+      </p>
+      <button
+        class="download-btn"
+        (click)="downloadAllData()"
+        [disabled]="isDownloading"
+      >
+        <span *ngIf="!isDownloading">📥 Descargar todos los datos</span>
+        <span *ngIf="isDownloading">Descargando...</span>
+      </button>
+      <p class="hint">Los datos se descargan del servidor, no del almacenamiento local.</p>
+    </div>
+
+    <div class="account-card danger-zone">
+      <h3>Zona de Peligro</h3>
+      <p class="description">Cerrar sesión en este dispositivo.</p>
+      <button class="logout-btn" (click)="logout()">Cerrar Sesión</button>
+    </div>
+  </div>
+</section>
