@@ -4,24 +4,35 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -54,17 +65,18 @@ fun LoginScreen(onLoginSuccess: () -> Unit, viewModel: AuthViewModel = hiltViewM
     var accessKeyPasswordVisible by remember { mutableStateOf(false) }
     var accessKeyPasswordError by remember { mutableStateOf<String?>(null) }
     var pendingAccessKeyUri by remember { mutableStateOf<Uri?>(null) }
+    var showAdvancedSection by remember { mutableStateOf(false) }
 
-    val selectAccessKeyLauncher =
-            rememberLauncherForActivityResult(contract = ActivityResultContracts.OpenDocument()) {
-                    uri ->
-                if (uri != null) {
-                    pendingAccessKeyUri = uri
-                    accessKeyPassword = ""
-                    accessKeyPasswordError = null
-                    showAccessKeyDialog = true
-                }
-            }
+    val selectAccessKeyLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            pendingAccessKeyUri = uri
+            accessKeyPassword = ""
+            accessKeyPasswordError = null
+            showAccessKeyDialog = true
+        }
+    }
 
     fun openWhatsAppSupport(message: String) {
         try {
@@ -74,9 +86,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit, viewModel: AuthViewModel = hiltViewM
     }
 
     LaunchedEffect(uiState.isAuthenticated) {
-        if (uiState.isAuthenticated) {
-            onLoginSuccess()
-        }
+        if (uiState.isAuthenticated) onLoginSuccess()
     }
 
     LaunchedEffect(uiState.registerCompleted) {
@@ -96,451 +106,505 @@ fun LoginScreen(onLoginSuccess: () -> Unit, viewModel: AuthViewModel = hiltViewM
 
     Scaffold(snackbarHost = { SnackbarHost(hostState = snackbarHostState) }) { padding ->
         Column(
-                modifier =
-                        Modifier.fillMaxSize()
-                                .padding(padding)
-                                .padding(24.dp)
-                                .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
+            // ── Header de marca ──────────────────────────────────────────
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .padding(horizontal = 24.dp, vertical = 28.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    // Monograma
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "GC",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = "Gestor Contable",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "SYSGD Ecosystem · TCP",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
 
-            Text(
-                    text = "GESTOR CONTABLE",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.primary
-            )
+                Spacer(Modifier.height(12.dp))
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                    text = "Registro de Ingresos y Gastos para TCP",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Text(
-                    text = "SYSGD Ecosystem\n© 2026",
+                Text(
+                    text = "Inicia sesión para sincronizar tus datos. Podrás usar la app sin conexión después.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
+                    lineHeight = MaterialTheme.typography.bodySmall.lineHeight
+                )
+            }
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                    text =
-                            "Inicia sesión para sincronizar tus datos. Luego podrás usar la app sin conexión.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            if (isRegisterMode) {
-                OutlinedTextField(
+            // ── Formulario ───────────────────────────────────────────────
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                if (isRegisterMode) {
+                    OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
                         label = { Text("Nombre completo") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                        keyboardActions =
-                                KeyboardActions(
-                                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                                )
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+                        keyboardActions = KeyboardActions(
+                            onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                        )
+                    )
+                }
 
-            OutlinedTextField(
+                OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Email") },
+                    label = { Text("Correo electrónico") },
                     singleLine = true,
-                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                     modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions =
-                            KeyboardOptions(
-                                    keyboardType = KeyboardType.Email,
-                                    imeAction = ImeAction.Next
-                            ),
-                    keyboardActions =
-                            KeyboardActions(
-                                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                            )
-            )
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Email,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                    )
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (uiState.requiresTwoFactor) {
-                OutlinedTextField(
+                if (uiState.requiresTwoFactor) {
+                    OutlinedTextField(
                         value = twoFactorCode,
                         onValueChange = {
                             twoFactorCode = it.filter { ch -> ch.isDigit() }.take(6)
                         },
-                        label = { Text("Código 2FA") },
+                        label = { Text("Código de verificación (2FA)") },
                         singleLine = true,
-                        leadingIcon = {
-                            Icon(Icons.Default.VerifiedUser, contentDescription = null)
-                        },
                         modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions =
-                                KeyboardOptions(
-                                        keyboardType = KeyboardType.Number,
-                                        imeAction = ImeAction.Done
-                                ),
-                        keyboardActions =
-                                KeyboardActions(
-                                        onDone = {
-                                            focusManager.clearFocus()
-                                            viewModel.verifyTwoFactorCode(twoFactorCode)
-                                        }
-                                )
-                )
-            } else {
-                OutlinedTextField(
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                focusManager.clearFocus()
+                                viewModel.verifyTwoFactorCode(twoFactorCode)
+                            }
+                        )
+                    )
+                } else {
+                    OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
                         label = { Text("Contraseña") },
                         singleLine = true,
-                        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                         trailingIcon = {
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(
-                                        if (passwordVisible) Icons.Default.VisibilityOff
-                                        else Icons.Default.Visibility,
-                                        contentDescription =
-                                                if (passwordVisible) "Ocultar" else "Mostrar"
+                                    if (passwordVisible) Icons.Default.VisibilityOff
+                                    else Icons.Default.Visibility,
+                                    contentDescription = if (passwordVisible) "Ocultar" else "Mostrar"
                                 )
                             }
                         },
-                        visualTransformation =
-                                if (passwordVisible) VisualTransformation.None
-                                else PasswordVisualTransformation(),
+                        visualTransformation = if (passwordVisible) VisualTransformation.None
+                                               else PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions =
-                                KeyboardOptions(
-                                        keyboardType = KeyboardType.Password,
-                                        imeAction = ImeAction.Done
-                                ),
-                        keyboardActions =
-                                KeyboardActions(
-                                        onDone = {
-                                            focusManager.clearFocus()
-                                            if (isRegisterMode) {
-                                                viewModel.register(name, email, password)
-                                            } else {
-                                                viewModel.login(email, password)
-                                            }
-                                        }
-                                )
-                )
-            }
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                focusManager.clearFocus()
+                                if (isRegisterMode) viewModel.register(name, email, password)
+                                else viewModel.login(email, password)
+                            }
+                        )
+                    )
+                }
 
-            if (uiState.error != null) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
+                // Error inline
+                if (uiState.error != null) {
+                    Text(
                         text = uiState.error!!,
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall
-                )
-            }
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
+                // Botón principal
+                Button(
                     onClick = {
-                        if (uiState.requiresTwoFactor) {
-                            viewModel.verifyTwoFactorCode(twoFactorCode)
-                        } else if (isRegisterMode) {
-                            if (termsAccepted) {
-                                viewModel.register(name, email, password)
-                            } else {
-                                showTermsDialog = true
-                            }
-                        } else {
-                            viewModel.login(email, password)
+                        when {
+                            uiState.requiresTwoFactor -> viewModel.verifyTwoFactorCode(twoFactorCode)
+                            isRegisterMode -> if (termsAccepted) viewModel.register(name, email, password)
+                                             else showTermsDialog = true
+                            else -> viewModel.login(email, password)
                         }
                     },
-                    enabled =
-                            !uiState.isLoading &&
-                                    !uiState.isWakingUp &&
-                                    email.isNotBlank() &&
-                                    if (uiState.requiresTwoFactor) twoFactorCode.length == 6
-                                    else password.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth()
-            ) {
-                if (uiState.isLoading || uiState.isWakingUp) {
-                    CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
+                    enabled = !uiState.isLoading && !uiState.isWakingUp &&
+                            email.isNotBlank() &&
+                            if (uiState.requiresTwoFactor) twoFactorCode.length == 6
+                            else password.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    if (uiState.isLoading || uiState.isWakingUp) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
                             color = MaterialTheme.colorScheme.onPrimary,
                             strokeWidth = 2.dp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (uiState.isWakingUp) "Conectando..." else "Cargando...")
-                } else {
-                    Text(
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (uiState.isWakingUp) "Conectando..." else "Cargando...")
+                    } else {
+                        Text(
                             when {
                                 uiState.requiresTwoFactor -> "Verificar código"
-                                isRegisterMode -> "Registrarse"
-                                else -> "Iniciar Sesión"
+                                isRegisterMode -> "Crear cuenta"
+                                else -> "Iniciar sesión"
                             }
-                    )
-                }
-            }
-
-            val wakeUpMessage = uiState.wakeUpProgress
-            if (uiState.isWakingUp && wakeUpMessage != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                        text = wakeUpMessage,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            if (uiState.requiresTwoFactor) {
-                Spacer(modifier = Modifier.height(8.dp))
-                TextButton(onClick = { viewModel.resendTwoFactorCode() }) {
-                    Text("Reenviar código")
-                }
-                TextButton(
-                        onClick = {
-                            viewModel.cancelTwoFactorFlow()
-                            twoFactorCode = ""
-                        }
-                ) { Text("Volver") }
-            } else {
-                Spacer(modifier = Modifier.height(16.dp))
-                if (!isRegisterMode) {
-                    TextButton(onClick = { showRecoverDialog = true }) {
-                        Text("Olvidé mi contraseña")
-                    }
-                }
-
-                TextButton(
-                        onClick = {
-                            isRegisterMode = !isRegisterMode
-                            termsAccepted = false
-                            viewModel.clearError()
-                        }
-                ) {
-                    Text(
-                            if (isRegisterMode) "¿Ya tienes cuenta? Iniciar sesión"
-                            else "¿No tienes cuenta? Regístrate"
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            TextButton(onClick = { showAdvancedDialog = true }) {
-                Icon(Icons.Default.Key, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Método avanzado (token)")
-            }
-
-            TextButton(
-                    onClick = {
-                        selectAccessKeyLauncher.launch(
-                                arrayOf("application/json", "text/plain", "*/*")
                         )
                     }
-            ) {
-                Icon(Icons.Default.Key, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Llave de acceso (sin internet)")
-            }
+                }
 
-            Spacer(modifier = Modifier.height(24.dp))
+                if (uiState.isWakingUp && uiState.wakeUpProgress != null) {
+                    Text(
+                        text = uiState.wakeUpProgress!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                // Acciones secundarias de flujo
+                if (uiState.requiresTwoFactor) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { viewModel.resendTwoFactorCode() }) {
+                            Text("Reenviar código")
+                        }
+                        TextButton(onClick = {
+                            viewModel.cancelTwoFactorFlow()
+                            twoFactorCode = ""
+                        }) {
+                            Text("Volver")
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        if (!isRegisterMode) {
+                            TextButton(onClick = { showRecoverDialog = true }) {
+                                Text("Olvidé mi contraseña")
+                            }
+                        }
+                        TextButton(
+                            onClick = {
+                                isRegisterMode = !isRegisterMode
+                                termsAccepted = false
+                                viewModel.clearError()
+                            }
+                        ) {
+                            Text(
+                                if (isRegisterMode) "Ya tengo cuenta"
+                                else "Registrarme"
+                            )
+                        }
+                    }
+                }
+
+                // ── Acceso avanzado (colapsable) ─────────────────────────
+                Divider()
+
+                Column(modifier = Modifier.animateContentSize()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showAdvancedSection = !showAdvancedSection }
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Acceso avanzado",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Icon(
+                            imageVector = if (showAdvancedSection) Icons.Outlined.KeyboardArrowUp
+                                          else Icons.Outlined.KeyboardArrowDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    AnimatedVisibility(visible = showAdvancedSection) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            AdvancedAccessButton(
+                                icon = Icons.Default.Key,
+                                label = "Iniciar con token de acceso",
+                                onClick = { showAdvancedDialog = true }
+                            )
+                            AdvancedAccessButton(
+                                icon = Icons.Default.FolderOpen,
+                                label = "Importar llave de acceso",
+                                onClick = {
+                                    selectAccessKeyLauncher.launch(
+                                        arrayOf("application/json", "text/plain", "*/*")
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Text(
+                    text = "© 2026 SYSGD Ecosystem",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                )
+            }
         }
     }
 
+    // ── Diálogos ─────────────────────────────────────────────────────────────
+
     if (showAdvancedDialog) {
         AlertDialog(
-                onDismissRequest = { showAdvancedDialog = false },
-                title = { Text("Token de Acceso Manual") },
-                text = {
-                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                        Text(
-                                "Si iniciaste sesión con Google u otro método externo, puedes obtener un token de acceso manual:",
-                                style = MaterialTheme.typography.bodySmall
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                                "1. Inicia sesión en la aplicación web",
-                                style = MaterialTheme.typography.bodySmall
-                        )
-                        Text(
-                                "2. Abre DevTools (F12) → Application → Local Storage",
-                                style = MaterialTheme.typography.bodySmall
-                        )
-                        Text(
-                                "3. Copia el valor de 'sysgd-cont:auth-token'",
-                                style = MaterialTheme.typography.bodySmall
-                        )
-                        Text("4. Pega el token abajo", style = MaterialTheme.typography.bodySmall)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        OutlinedTextField(
-                                value = manualToken,
-                                onValueChange = { manualToken = it },
-                                label = { Text("Token JWT") },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
-                        )
-                    }
-                },
-                confirmButton = {
-                    TextButton(
-                            onClick = {
-                                if (manualToken.isNotBlank()) {
-                                    viewModel.setManualToken(manualToken.trim())
-                                    showAdvancedDialog = false
-                                }
-                            },
-                            enabled = manualToken.isNotBlank()
-                    ) { Text("Usar Token") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showAdvancedDialog = false }) { Text("Cancelar") }
+            onDismissRequest = { showAdvancedDialog = false },
+            title = { Text("Token de acceso") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "Obtén tu token desde la aplicación web:",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        "1. Inicia sesión en work.ecosysgd.com",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        "2. Ve a Ajustes → Tokens",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        "3. Genera o copia tu token de acceso",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        "4. Pégalo aquí abajo",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = manualToken,
+                        onValueChange = { manualToken = it },
+                        label = { Text("Token JWT") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
                 }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (manualToken.isNotBlank()) {
+                            viewModel.setManualToken(manualToken.trim())
+                            showAdvancedDialog = false
+                        }
+                    },
+                    enabled = manualToken.isNotBlank()
+                ) { Text("Usar token") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAdvancedDialog = false }) { Text("Cancelar") }
+            }
         )
     }
 
     if (showRecoverDialog) {
         AlertDialog(
-                onDismissRequest = { showRecoverDialog = false },
-                title = { Text("Recuperar contraseña") },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                                "Solo cuentas con correo verificado pueden recuperar contraseña automáticamente.",
-                                style = MaterialTheme.typography.bodySmall
-                        )
-                        OutlinedTextField(
-                                value = email,
-                                onValueChange = { email = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                label = { Text("Correo") }
-                        )
-                        Text(
-                                "Si tu correo no está verificado, contacta soporte por WhatsApp (+53 51158544). Respuesta en 72h hábiles.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                confirmButton = {
-                    TextButton(
-                            onClick = {
-                                viewModel.requestPasswordReset(email)
-                                showRecoverDialog = false
-                            }
-                    ) { Text("Enviar enlace") }
-                },
-                dismissButton = {
-                    Row {
-                        TextButton(
-                                onClick = {
-                                    openWhatsAppSupport(
-                                            "Hola, necesito recuperar mi cuenta en SYSGD Cont."
-                                    )
-                                }
-                        ) { Text("Soporte") }
-                        TextButton(onClick = { showRecoverDialog = false }) { Text("Cerrar") }
-                    }
+            onDismissRequest = { showRecoverDialog = false },
+            title = { Text("Recuperar contraseña") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "Solo cuentas con correo verificado pueden recuperar la contraseña automáticamente.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("Correo electrónico") }
+                    )
+                    Text(
+                        "Si tu correo no está verificado, contacta soporte por WhatsApp (+53 51158544). Respuesta en 72h hábiles.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.requestPasswordReset(email)
+                    showRecoverDialog = false
+                }) { Text("Enviar enlace") }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        openWhatsAppSupport("Hola, necesito recuperar mi cuenta en SYSGD Cont.")
+                    }) { Text("Soporte") }
+                    TextButton(onClick = { showRecoverDialog = false }) { Text("Cerrar") }
+                }
+            }
         )
     }
 
     if (showTermsDialog) {
         TermsAndConditionsDialog(
-                onAccept = {
-                    termsAccepted = true
-                    showTermsDialog = false
-                    viewModel.register(name, email, password)
-                },
-                onDismiss = { showTermsDialog = false }
+            onAccept = {
+                termsAccepted = true
+                showTermsDialog = false
+                viewModel.register(name, email, password)
+            },
+            onDismiss = { showTermsDialog = false }
         )
     }
 
     if (showAccessKeyDialog && pendingAccessKeyUri != null) {
         AlertDialog(
-                onDismissRequest = {
+            onDismissRequest = {
+                showAccessKeyDialog = false
+                pendingAccessKeyUri = null
+                accessKeyPassword = ""
+            },
+            title = { Text("Llave de acceso") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Ingresa la contraseña que usaste al crear esta llave:")
+                    OutlinedTextField(
+                        value = accessKeyPassword,
+                        onValueChange = {
+                            accessKeyPassword = it
+                            accessKeyPasswordError = null
+                        },
+                        label = { Text("Contraseña") },
+                        singleLine = true,
+                        visualTransformation = if (accessKeyPasswordVisible) VisualTransformation.None
+                                               else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { accessKeyPasswordVisible = !accessKeyPasswordVisible }) {
+                                Icon(
+                                    if (accessKeyPasswordVisible) Icons.Default.VisibilityOff
+                                    else Icons.Default.Visibility,
+                                    contentDescription = if (accessKeyPasswordVisible) "Ocultar" else "Mostrar"
+                                )
+                            }
+                        },
+                        isError = accessKeyPasswordError != null
+                    )
+                    if (accessKeyPasswordError != null) {
+                        Text(
+                            text = accessKeyPasswordError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (accessKeyPassword.isBlank()) {
+                        accessKeyPasswordError = "Ingresa la contraseña"
+                    } else {
+                        pendingAccessKeyUri?.let { viewModel.importAccessKey(it, accessKeyPassword) }
+                        showAccessKeyDialog = false
+                        pendingAccessKeyUri = null
+                        accessKeyPassword = ""
+                    }
+                }) { Text("Usar llave") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
                     showAccessKeyDialog = false
                     pendingAccessKeyUri = null
                     accessKeyPassword = ""
-                },
-                title = { Text("Iniciar con llave de acceso") },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Ingresa la contraseña que usaste al crear esta llave de acceso:")
-                        OutlinedTextField(
-                                value = accessKeyPassword,
-                                onValueChange = {
-                                    accessKeyPassword = it
-                                    accessKeyPasswordError = null
-                                },
-                                label = { Text("Contraseña") },
-                                singleLine = true,
-                                visualTransformation =
-                                        if (accessKeyPasswordVisible) VisualTransformation.None
-                                        else PasswordVisualTransformation(),
-                                trailingIcon = {
-                                    IconButton(
-                                            onClick = {
-                                                accessKeyPasswordVisible = !accessKeyPasswordVisible
-                                            }
-                                    ) {
-                                        Icon(
-                                                if (accessKeyPasswordVisible)
-                                                        Icons.Default.VisibilityOff
-                                                else Icons.Default.Visibility,
-                                                contentDescription =
-                                                        if (accessKeyPasswordVisible) "Ocultar"
-                                                        else "Mostrar"
-                                        )
-                                    }
-                                },
-                                isError = accessKeyPasswordError != null
-                        )
-                        if (accessKeyPasswordError != null) {
-                            Text(
-                                    text = accessKeyPasswordError!!,
-                                    color = MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(
-                            onClick = {
-                                if (accessKeyPassword.isBlank()) {
-                                    accessKeyPasswordError = "Ingresa la contraseña"
-                                } else {
-                                    pendingAccessKeyUri?.let { uri ->
-                                        viewModel.importAccessKey(uri, accessKeyPassword)
-                                    }
-                                    showAccessKeyDialog = false
-                                    pendingAccessKeyUri = null
-                                    accessKeyPassword = ""
-                                }
-                            }
-                    ) { Text("Usar llave") }
-                },
-                dismissButton = {
-                    TextButton(
-                            onClick = {
-                                showAccessKeyDialog = false
-                                pendingAccessKeyUri = null
-                                accessKeyPassword = ""
-                            }
-                    ) { Text("Cancelar") }
-                }
+                }) { Text("Cancelar") }
+            }
+        )
+    }
+}
+
+// ── Botón de acceso avanzado ──────────────────────────────────────────────────
+
+@Composable
+private fun AdvancedAccessButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .border(
+                width = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

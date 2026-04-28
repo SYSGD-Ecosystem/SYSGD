@@ -862,7 +862,8 @@ fun MainScreen(
                         onRefresh = { planPurchaseViewModel.loadData(force = true) },
                         onSubmit = planPurchaseViewModel::submitOrder,
                         onDismissError = planPurchaseViewModel::clearError,
-                        onDismissInfo = planPurchaseViewModel::clearInfoMessage
+                        onDismissInfo = planPurchaseViewModel::clearInfoMessage,
+                        isProDistribution = !isFreemiumBuild
                     )
                 }
                 composable(ABOUT_ROUTE) {
