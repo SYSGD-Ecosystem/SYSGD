@@ -31,7 +31,7 @@ import AboutPage from "./pages/AboutPage.tsx";
 import TcpIncomeExpenseRegisterPage from "./pages/TcpIncomeExpenseRegisterPage.tsx";
 import VerifyEmail from "./pages/VerifyEmail.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
-import AccountingWorkspace from "./cont/AccountingWorkspace.tsx";
+import AccountingWorkspace from "./accounting/AccountingWorkspace.tsx";
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(

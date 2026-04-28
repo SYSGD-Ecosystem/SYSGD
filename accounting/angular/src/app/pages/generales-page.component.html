@@ -1,0 +1,33 @@
+<section class="page-container">
+  <h2>Datos Generales del Contribuyente</h2>
+  <p class="subtitle">Información fiscal registrada (solo lectura)</p>
+
+  <div class="read-only-grid">
+    <div class="info-card">
+      <h3>Información Básica</h3>
+      <div class="info-row"><span class="label">Nombre:</span><span>{{ generales.nombre || 'No registrado' }}</span></div>
+      <div class="info-row"><span class="label">NIT:</span><span>{{ generales.nit || 'No registrado' }}</span></div>
+      <div class="info-row"><span class="label">Actividad:</span><span>{{ generales.actividad || 'No registrada' }}</span></div>
+      <div class="info-row"><span class="label">Código:</span><span>{{ generales.codigo || 'No registrado' }}</span></div>
+      <div class="info-row"><span class="label">Año Fiscal:</span><span>{{ generales.anio || 'No registrado' }}</span></div>
+    </div>
+
+    <div class="info-card">
+      <h3>Domicilio Fiscal</h3>
+      <div class="info-row"><span class="label">Calle:</span><span>{{ generales.fiscalCalle || 'No registrado' }}</span></div>
+      <div class="info-row"><span class="label">Municipio:</span><span>{{ generales.fiscalMunicipio || 'No registrado' }}</span></div>
+      <div class="info-row"><span class="label">Provincia:</span><span>{{ generales.fiscalProvincia || 'No registrado' }}</span></div>
+    </div>
+
+    <div class="info-card">
+      <h3>Domicilio Legal</h3>
+      <div class="info-row"><span class="label">Calle:</span><span>{{ generales.legalCalle || 'No registrado' }}</span></div>
+      <div class="info-row"><span class="label">Municipio:</span><span>{{ generales.legalMunicipio || 'No registrado' }}</span></div>
+      <div class="info-row"><span class="label">Provincia:</span><span>{{ generales.legalProvincia || 'No registrado' }}</span></div>
+    </div>
+  </div>
+
+  <div class="read-only-notice">
+    <p>ℹ️ Esta información es de solo lectura. Para modificar estos datos, utiliza la aplicación Android.</p>
+  </div>
+</section>

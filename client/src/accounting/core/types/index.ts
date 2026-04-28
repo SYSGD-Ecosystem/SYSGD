@@ -37,3 +37,8 @@ export type TcpDocumentPayload = {
   gastos: MonthEntries;
   tributos: TributosEntry[];
 };
+
+export type AccountingDatabase = {
+  activeWorkspaceId: string;
+  workspaces: []any;
+}

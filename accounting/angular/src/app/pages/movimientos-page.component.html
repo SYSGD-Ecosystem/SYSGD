@@ -1,0 +1,72 @@
+<section class="page-container">
+  <h2>Ingresos y Gastos Mensuales</h2>
+  <p class="subtitle">Registro mensual de operaciones (solo lectura)</p>
+
+  <div class="month-selector">
+    <label>Mes seleccionado:
+      <select [(ngModel)]="selectedMonth" (ngModelChange)="onMonthChange()">
+        <option *ngFor="let month of months" [value]="month">{{ month }}</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="tables-grid">
+    <div class="table-card">
+      <h3>Ingresos - {{ selectedMonth }}</h3>
+      <div class="table-wrapper" *ngIf="ingresos.length > 0; else noIngresos">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Día</th>
+              <th>Importe (CUP)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of ingresos; trackBy: trackByIndex">
+              <td>{{ row.dia }}</td>
+              <td class="amount">{{ formatAmount(row.importe) }}</td>
+            </tr>
+            <tr class="total-row">
+              <td><strong>Total</strong></td>
+              <td class="amount"><strong>{{ formatAmount(ingresosTotal.toString()) }}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ng-template #noIngresos>
+        <p class="empty-message">No hay ingresos registrados para este mes.</p>
+      </ng-template>
+    </div>
+
+    <div class="table-card">
+      <h3>Gastos - {{ selectedMonth }}</h3>
+      <div class="table-wrapper" *ngIf="gastos.length > 0; else noGastos">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Día</th>
+              <th>Importe (CUP)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of gastos; trackBy: trackByIndex">
+              <td>{{ row.dia }}</td>
+              <td class="amount">{{ formatAmount(row.importe) }}</td>
+            </tr>
+            <tr class="total-row">
+              <td><strong>Total</strong></td>
+              <td class="amount"><strong>{{ formatAmount(gastosTotal.toString()) }}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ng-template #noGastos>
+        <p class="empty-message">No hay gastos registrados para este mes.</p>
+      </ng-template>
+    </div>
+  </div>
+
+  <div class="read-only-notice">
+    <p>ℹ️ Esta información es de solo lectura. Para registrar movimientos, utiliza la aplicación Android.</p>
+  </div>
+</section>

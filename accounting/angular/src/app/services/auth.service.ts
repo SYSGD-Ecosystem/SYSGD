@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 
 const TOKEN_KEY = 'sysgd-cont:auth-token';
 const API_BASE_KEY = 'sysgd-cont:api-base-url';
+const USER_KEY = 'sysgd-cont:auth-user';
 
 export interface AuthUser {
   id: string;
@@ -29,6 +30,16 @@ export class AuthService {
     return Boolean(this.token);
   }
 
+  get currentUserValue(): AuthUser | null {
+    const userStr = localStorage.getItem(USER_KEY);
+    if (!userStr) return null;
+    try {
+      return JSON.parse(userStr) as AuthUser;
+    } catch {
+      return null;
+    }
+  }
+
   get apiBaseUrl(): string {
     const configured = localStorage.getItem(API_BASE_KEY)?.trim();
     if (configured) return configured.replace(/\/$/, '');
@@ -48,6 +59,7 @@ export class AuthService {
       }, { headers })
     );
     localStorage.setItem(TOKEN_KEY, response.token);
+    localStorage.setItem(USER_KEY, JSON.stringify(response.user));
     return response.user;
   }
 
@@ -76,6 +88,7 @@ export class AuthService {
 
   logout(): void {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
   }
 
   authHeaders(token: string): HttpHeaders {

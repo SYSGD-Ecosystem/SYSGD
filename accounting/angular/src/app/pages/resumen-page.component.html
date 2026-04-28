@@ -1,0 +1,68 @@
+<section class="page-container">
+  <h2>Resumen Anual {{ report.year }}</h2>
+  <p class="subtitle">Vista general de tus finanzas (solo lectura)</p>
+
+  <div class="summary-grid">
+    <div class="summary-card">
+      <h3>Ingresos Totales</h3>
+      <p class="amount income">{{ formatNumber(report.totalIngresos) }} CUP</p>
+    </div>
+    <div class="summary-card">
+      <h3>Gastos Totales</h3>
+      <p class="amount expense">{{ formatNumber(report.totalGastos) }} CUP</p>
+    </div>
+    <div class="summary-card">
+      <h3>Tributos Pagados</h3>
+      <p class="amount tax">{{ formatNumber(report.totalTributos) }} CUP</p>
+    </div>
+    <div class="summary-card">
+      <h3>Otros Deducibles</h3>
+      <p class="amount">{{ formatNumber(report.totalOtrosDeducibles) }} CUP</p>
+    </div>
+    <div class="summary-card highlight">
+      <h3>Base Imponible</h3>
+      <p class="amount">{{ formatNumber(report.baseImponible) }} CUP</p>
+    </div>
+    <div class="summary-card highlight">
+      <h3>Impuesto Estimado</h3>
+      <p class="amount">{{ formatNumber(report.impuestoEstimado) }} CUP</p>
+    </div>
+  </div>
+
+  <div class="monthly-section">
+    <h3>Desglose Mensual</h3>
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Mes</th>
+            <th>Ingresos</th>
+            <th>Gastos</th>
+            <th>Tributos</th>
+            <th>Neto</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let month of report.monthly">
+            <td>{{ month.month }}</td>
+            <td class="amount">{{ formatNumber(month.ingresos) }}</td>
+            <td class="amount">{{ formatNumber(month.gastos) }}</td>
+            <td class="amount">{{ formatNumber(month.tributos) }}</td>
+            <td class="amount">{{ formatNumber(month.neto) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="alerts-section" *ngIf="alerts.length > 0">
+    <h3>Alertas</h3>
+    <ul class="alerts-list">
+      <li *ngFor="let alert of alerts" [class]="getAlertClass(alert.level)">{{ alert.message }}</li>
+    </ul>
+  </div>
+
+  <div class="read-only-notice">
+    <p>ℹ️ Esta información es de solo lectura. Para realizar cambios, utiliza la aplicación Android.</p>
+  </div>
+</section>

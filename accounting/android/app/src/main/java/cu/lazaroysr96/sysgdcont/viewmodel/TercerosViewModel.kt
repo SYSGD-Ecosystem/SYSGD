@@ -37,7 +37,9 @@ data class TercerosUiState(
     val showEditTerceroDialog: Boolean = false,
     val showEditCuentaDialog: Boolean = false,
     val terceroEnEdicion: TerceroListItem? = null,
-    val cuentaEnEdicion: TerceroCuentaListItem? = null
+    val cuentaEnEdicion: TerceroCuentaListItem? = null,
+    val showAbonarDialog: Boolean = false,     // ← NUEVO
+    val cuentaAAbonar: TerceroCuentaListItem? = null,  // ← NUEVO
 ) {
     val totalClientes: Int
         get() = terceros.count { RolTercero.CLIENTE in it.rolesList }
@@ -91,6 +93,45 @@ class TercerosViewModel @Inject constructor(
         viewModelScope.launch {
             repository.observeTotalPrestamos().collect { total ->
                 _uiState.update { it.copy(totalPrestamos = total, isLoading = false) }
+            }
+        }
+    }
+
+    // 3. TercerosViewModel — agregar métodos nuevos:
+
+   fun showAbonarDialog(cuenta: TerceroCuentaListItem) {
+       _uiState.update { it.copy(showAbonarDialog = true, cuentaAAbonar = cuenta) }
+   }
+
+   fun dismissAbonarDialog() {
+       _uiState.update { it.copy(showAbonarDialog = false, cuentaAAbonar = null) }
+   }
+
+    fun registrarAbono(cuentaId: String, monto: String, nota: String) {
+        val montoDouble = monto.toDoubleOrNull() ?: run {
+            _uiState.update { it.copy(snackbarMessage = "Monto inválido") }
+            return
+        }
+        viewModelScope.launch {
+            runCatching {
+                repository.abonarCuenta(cuentaId, montoDouble, nota)
+            }.onSuccess {
+                dismissAbonarDialog()
+                _uiState.update { it.copy(snackbarMessage = "Abono registrado") }
+            }.onFailure { error ->
+                _uiState.update { it.copy(snackbarMessage = error.message ?: "No se pudo registrar el abono") }
+            }
+        }
+    }
+
+    fun archivarCuenta(cuentaId: String) {
+        viewModelScope.launch {
+            runCatching {
+                repository.archivarCuenta(cuentaId)
+            }.onSuccess {
+                _uiState.update { it.copy(snackbarMessage = "Cuenta archivada") }
+            }.onFailure { error ->
+                _uiState.update { it.copy(snackbarMessage = error.message ?: "No se pudo archivar la cuenta") }
             }
         }
     }

@@ -1,0 +1,78 @@
+<section class="page-container">
+  <h2>Tributos y Otros Gastos</h2>
+  <p class="subtitle">Registro mensual de tributos pagados (solo lectura)</p>
+
+  <div class="month-selector">
+    <label>Mes seleccionado:
+      <select [(ngModel)]="selectedMonth" (ngModelChange)="onMonthChange()">
+        <option *ngFor="let month of months" [value]="month">{{ month }}</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="tributos-grid" *ngIf="currentTributos; else noData">
+    <div class="tributos-section">
+      <h3>Tributos Pagados Deducibles</h3>
+      <div class="tributo-row">
+        <span class="label">Ventas/Servicios (10%):</span>
+        <span class="amount">{{ formatValue(currentTributos.ventas) }} CUP</span>
+      </div>
+      <div class="tributo-row">
+        <span class="label">Fuerza de Trabajo:</span>
+        <span class="amount">{{ formatValue(currentTributos.fuerza) }} CUP</span>
+      </div>
+      <div class="tributo-row">
+        <span class="label">Documentos y Sellos:</span>
+        <span class="amount">{{ formatValue(currentTributos.sellos) }} CUP</span>
+      </div>
+      <div class="tributo-row">
+        <span class="label">Anuncios/Carteles:</span>
+        <span class="amount">{{ formatValue(currentTributos.anuncios) }} CUP</span>
+      </div>
+      <div class="tributo-row">
+        <span class="label">Seg. Social (20%):</span>
+        <span class="amount">{{ formatValue(currentTributos.css20) }} CUP</span>
+      </div>
+      <div class="tributo-row">
+        <span class="label">Seg. Social (14%):</span>
+        <span class="amount">{{ formatValue(currentTributos.css14) }} CUP</span>
+      </div>
+      <div class="tributo-row">
+        <span class="label">Otros tributos:</span>
+        <span class="amount">{{ formatValue(currentTributos.otros) }} CUP</span>
+      </div>
+    </div>
+
+    <div class="tributos-section">
+      <h3>Otros Gastos Deducibles</h3>
+      <div class="tributo-row">
+        <span class="label">Restauración/Preservación:</span>
+        <span class="amount">{{ formatValue(currentTributos.restauracion) }} CUP</span>
+      </div>
+      <div class="tributo-row">
+        <span class="label">Arrendamiento (estatal):</span>
+        <span class="amount">{{ formatValue(currentTributos.arrendamiento) }} CUP</span>
+      </div>
+      <div class="tributo-row">
+        <span class="label">Exonerado (reparaciones):</span>
+        <span class="amount">{{ formatValue(currentTributos.exonerado) }} CUP</span>
+      </div>
+      <div class="tributo-row">
+        <span class="label">Otros (MFP):</span>
+        <span class="amount">{{ formatValue(currentTributos.otrosMFP) }} CUP</span>
+      </div>
+      <div class="tributo-row">
+        <span class="label">Cuota Mensual (5%):</span>
+        <span class="amount">{{ formatValue(currentTributos.cuotaMensual) }} CUP</span>
+      </div>
+    </div>
+  </div>
+
+  <ng-template #noData>
+    <p class="empty-message">No hay datos de tributos para el mes seleccionado.</p>
+  </ng-template>
+
+  <div class="read-only-notice">
+    <p>ℹ️ Esta información es de solo lectura. Para registrar tributos, utiliza la aplicación Android.</p>
+  </div>
+</section>
