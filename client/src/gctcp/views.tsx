@@ -38,6 +38,7 @@ import {
 	tributoTotal,
 } from "./accountingMath";
 import { EmptyState, MetricCard, WorkspaceSelector } from "./components";
+import { ProductCatalogPanel } from "./products/ProductCatalogPanel";
 import type { GcTcpView, WorkspaceAnalysis } from "./types";
 
 export const DashboardView: FC<{
@@ -317,9 +318,12 @@ export const TercerosView: FC<{ workspace: CloudWorkspaceEntry }> = ({ workspace
 	);
 };
 
-export const CatalogosView: FC<{ workspace: CloudWorkspaceEntry }> = ({ workspace }) => {
+export const CatalogosView: FC<{
+	workspace: CloudWorkspaceEntry;
+	deletingProduct: boolean;
+	onDeleteProduct: (productId: string) => void;
+}> = ({ workspace, deletingProduct, onDeleteProduct }) => {
 	const cuentas = workspace.accounting.cuentasContables;
-	const productos = workspace.registro.inventario.productos;
 
 	return (
 		<div className="grid gap-4 xl:grid-cols-2">
@@ -340,23 +344,7 @@ export const CatalogosView: FC<{ workspace: CloudWorkspaceEntry }> = ({ workspac
 					{cuentas.length === 0 && <EmptyState title="Sin cuentas" description="El catalogo contable esta vacio." icon={<List />} />}
 				</CardContent>
 			</Card>
-			<Card className="rounded-lg shadow-sm">
-				<CardHeader className="p-4">
-					<CardTitle className="text-base">Productos</CardTitle>
-				</CardHeader>
-				<CardContent className="space-y-2 p-4 pt-0">
-					{productos.slice(0, 16).map((product) => (
-						<div key={product.id} className="flex items-center justify-between gap-3 rounded-md border border-slate-200 p-3 dark:border-slate-800">
-							<div className="min-w-0">
-								<p className="truncate font-medium text-slate-950 dark:text-slate-50">{product.nombre}</p>
-								<p className="text-xs text-slate-500 dark:text-slate-400">{product.descripcion || product.tipo || "Sin descripcion"}</p>
-							</div>
-							<span className="shrink-0 text-sm font-semibold">{formatMoney(product.precio)}</span>
-						</div>
-					))}
-					{productos.length === 0 && <EmptyState title="Sin productos" description="No hay productos disponibles para mostrar." icon={<Boxes />} />}
-				</CardContent>
-			</Card>
+			<ProductCatalogPanel workspace={workspace} deletingProduct={deletingProduct} onDeleteProduct={onDeleteProduct} />
 		</div>
 	);
 };

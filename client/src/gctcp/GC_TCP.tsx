@@ -15,6 +15,7 @@ import { EmptyState, GcTcpSidebar } from "./components";
 import { DeleteWorkspaceDialog } from "./DeleteWorkspaceDialog";
 import { NomenclatorsView } from "./nomenclators/NomenclatorsView";
 import { PointOfSaleView } from "./pos/PointOfSaleView";
+import { getProductUsage } from "./products/productUtils";
 import { getViewTitle } from "./navigation";
 import type { GcTcpView, LedgerApiResponse } from "./types";
 import {
@@ -40,6 +41,7 @@ const GC_TCP: FC = () => {
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 	const [savingWorkspace, setSavingWorkspace] = useState(false);
 	const [workspaceIdToDelete, setWorkspaceIdToDelete] = useState<string | null>(null);
+	const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
 
 	useEffect(() => {
 		if (!authLoading && !user) navigate("/login");
@@ -162,6 +164,58 @@ const GC_TCP: FC = () => {
 		}
 	};
 
+	const handleDeleteProduct = async (productId: string) => {
+		if (!ledger || !activeWorkspace) return;
+		const usage = getProductUsage(activeWorkspace, productId);
+		if (!usage.canDelete) {
+			toast({
+				title: "Producto en uso",
+				description: `No se puede eliminar porque aparece en: ${usage.labels.join(", ")}.`,
+				variant: "destructive",
+			});
+			return;
+		}
+
+		const product = activeWorkspace.registro.inventario.productos.find((item) => item.id === productId);
+		if (!product) return;
+
+		const updatedWorkspaces = ledger.workspaces.map((workspace) => {
+			if (workspace.id !== activeWorkspace.id) return workspace;
+			return {
+				...workspace,
+				registro: {
+					...workspace.registro,
+					inventario: {
+						...workspace.registro.inventario,
+						productos: workspace.registro.inventario.productos.filter((item) => item.id !== productId),
+					},
+				},
+			};
+		});
+		const updatedLedger: CloudLedgerContainer = { ...ledger, workspaces: updatedWorkspaces };
+
+		setDeletingProductId(productId);
+		try {
+			await api.put("/api/cont-ledger", {
+				registro: updatedLedger,
+				inventarioRegistro: data?.inventarioRegistro ?? null,
+			});
+			setData((current) => current ? { ...current, registro: updatedLedger } : current);
+			toast({
+				title: "Producto eliminado",
+				description: `${product.nombre} fue eliminado del espacio activo.`,
+			});
+		} catch {
+			toast({
+				title: "No se pudo eliminar",
+				description: "El producto no fue modificado.",
+				variant: "destructive",
+			});
+		} finally {
+			setDeletingProductId(null);
+		}
+	};
+
 	const handleDownloadBackup = () => {
 		if (!ledger) return;
 		const backup = {
@@ -216,7 +270,13 @@ const GC_TCP: FC = () => {
 			case "terceros":
 				return <TercerosView workspace={activeWorkspace} />;
 			case "catalogos":
-				return <CatalogosView workspace={activeWorkspace} />;
+				return (
+					<CatalogosView
+						workspace={activeWorkspace}
+						deletingProduct={Boolean(deletingProductId)}
+						onDeleteProduct={handleDeleteProduct}
+					/>
+				);
 			case "nomencladores":
 				return <NomenclatorsView />;
 			case "respaldo":
