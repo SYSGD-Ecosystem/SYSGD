@@ -251,10 +251,22 @@ export const EstadoResultadoView: FC<{ workspace: CloudWorkspaceEntry }> = ({ wo
 		});
 		return [...ingresos, ...gastos];
 	}).sort((a, b) => a.month.localeCompare(b.month) || a.dateLabel.localeCompare(b.dateLabel));
+	const totalIngresos = statementRows.reduce((total, row) => total + row.income, 0);
+	const totalGastos = statementRows.reduce((total, row) => total + row.expense, 0);
+	const resultado = totalIngresos - totalGastos;
+	const resultadoLabel = resultado >= 0 ? "POSITIVO" : "NEGATIVO";
 
 	const handleDownloadExcel = () => {
 		const workbook = XLSX.utils.book_new();
-		const rows = statementRows.map((row) => ({
+		const rows: Array<{
+			Mes: string;
+			Fecha: string;
+			Tipo: string;
+			Ingreso: number | "";
+			Gasto: number | "";
+			Detalle: string;
+			"Cuenta afectada": string;
+		}> = statementRows.map((row) => ({
 			Mes: row.month,
 			Fecha: row.dateLabel,
 			Tipo: row.type,
@@ -263,6 +275,12 @@ export const EstadoResultadoView: FC<{ workspace: CloudWorkspaceEntry }> = ({ wo
 			Detalle: row.detail,
 			"Cuenta afectada": row.account,
 		}));
+		rows.push(
+			{ Mes: "", Fecha: "", Tipo: "", Ingreso: "", Gasto: "", Detalle: "", "Cuenta afectada": "" },
+			{ Mes: "TOTAL INGRESOS", Fecha: "", Tipo: "", Ingreso: totalIngresos, Gasto: "", Detalle: "", "Cuenta afectada": "" },
+			{ Mes: "TOTAL GASTOS", Fecha: "", Tipo: "", Ingreso: "", Gasto: totalGastos, Detalle: "", "Cuenta afectada": "" },
+			{ Mes: `RESULTADO ${resultadoLabel}`, Fecha: "", Tipo: "", Ingreso: resultado, Gasto: "", Detalle: "", "Cuenta afectada": "" },
+		);
 		const worksheet = XLSX.utils.json_to_sheet(rows);
 		XLSX.utils.book_append_sheet(workbook, worksheet, "EstadoResultado");
 		const fileName = `estado-resultado-${workspace.name.replace(/\s+/g, "-").toLowerCase()}-${new Date().toISOString().slice(0, 10)}.xlsx`;
@@ -280,7 +298,7 @@ export const EstadoResultadoView: FC<{ workspace: CloudWorkspaceEntry }> = ({ wo
 				row.expense > 0 ? formatMoney(row.expense) : "-",
 				row.detail,
 				row.account,
-			]),
+				]),
 		];
 		const docDefinition: TDocumentDefinitions = {
 			content: [
@@ -293,6 +311,12 @@ export const EstadoResultadoView: FC<{ workspace: CloudWorkspaceEntry }> = ({ wo
 						body,
 					},
 					layout: "lightHorizontalLines",
+				},
+				{
+					text: `Resultado final: ${formatMoney(resultado)} (${resultadoLabel})`,
+					bold: true,
+					color: resultado >= 0 ? "#047857" : "#be123c",
+					margin: [0, 8, 0, 0],
 				},
 			],
 			styles: {
@@ -319,19 +343,21 @@ export const EstadoResultadoView: FC<{ workspace: CloudWorkspaceEntry }> = ({ wo
 			</CardHeader>
 			<CardContent className="space-y-4 p-4 pt-0">
 				<div className="grid gap-3 sm:grid-cols-3">
-					<div className="rounded-md bg-emerald-50 p-3 text-sm dark:bg-emerald-500/10">
-						<p className="text-slate-500 dark:text-slate-300">Ingresos</p>
-						<p className="font-semibold text-emerald-700 dark:text-emerald-300">{formatMoney(statementRows.reduce((t, r) => t + r.income, 0))}</p>
+						<div className="rounded-md bg-emerald-50 p-3 text-sm dark:bg-emerald-500/10">
+							<p className="text-slate-500 dark:text-slate-300">Ingresos</p>
+							<p className="font-semibold text-emerald-700 dark:text-emerald-300">{formatMoney(totalIngresos)}</p>
+						</div>
+						<div className="rounded-md bg-rose-50 p-3 text-sm dark:bg-rose-500/10">
+							<p className="text-slate-500 dark:text-slate-300">Gastos</p>
+							<p className="font-semibold text-rose-700 dark:text-rose-300">{formatMoney(totalGastos)}</p>
+						</div>
+						<div className="rounded-md bg-slate-100 p-3 text-sm dark:bg-slate-800">
+							<p className="text-slate-500 dark:text-slate-300">Resultado</p>
+							<p className={cn("font-semibold", resultado >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300")}>
+								{formatMoney(resultado)} ({resultadoLabel})
+							</p>
+						</div>
 					</div>
-					<div className="rounded-md bg-rose-50 p-3 text-sm dark:bg-rose-500/10">
-						<p className="text-slate-500 dark:text-slate-300">Gastos</p>
-						<p className="font-semibold text-rose-700 dark:text-rose-300">{formatMoney(statementRows.reduce((t, r) => t + r.expense, 0))}</p>
-					</div>
-					<div className="rounded-md bg-slate-100 p-3 text-sm dark:bg-slate-800">
-						<p className="text-slate-500 dark:text-slate-300">Resultado</p>
-						<p className="font-semibold text-slate-900 dark:text-slate-50">{formatMoney(statementRows.reduce((t, r) => t + r.income - r.expense, 0))}</p>
-					</div>
-				</div>
 				<div className="overflow-x-auto">
 					<table className="w-full min-w-[940px] text-sm">
 						<thead>
