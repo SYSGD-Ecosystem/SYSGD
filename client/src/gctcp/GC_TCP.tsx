@@ -20,9 +20,11 @@ import { getViewTitle } from "./navigation";
 import type { GcTcpView, LedgerApiResponse } from "./types";
 import {
 	BackupView,
+	CajaBancoView,
 	CatalogosView,
 	DashboardView,
 	EntriesView,
+	EstadoResultadoView,
 	GeneralView,
 	ResumenView,
 	SupportView,
@@ -265,8 +267,12 @@ const GC_TCP: FC = () => {
 				return <TributosView workspace={activeWorkspace} analysis={activeAnalysis} />;
 			case "resumen":
 				return <ResumenView analysis={activeAnalysis} />;
+			case "estadoResultado":
+				return <EstadoResultadoView workspace={activeWorkspace} />;
 			case "ventas":
 				return <PointOfSaleView workspace={activeWorkspace} />;
+			case "cajaBanco":
+				return <CajaBancoView workspace={activeWorkspace} />;
 			case "terceros":
 				return <TercerosView workspace={activeWorkspace} />;
 			case "catalogos":
