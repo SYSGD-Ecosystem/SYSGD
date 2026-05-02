@@ -32,6 +32,7 @@ import TcpIncomeExpenseRegisterPage from "./pages/TcpIncomeExpenseRegisterPage.t
 import VerifyEmail from "./pages/VerifyEmail.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import AccountingWorkspace from "./accounting/AccountingWorkspace.tsx";
+import GC_TCP from "./gctcp/GC_TCP.tsx";
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById("root")!).render(
@@ -65,6 +66,7 @@ createRoot(document.getElementById("root")!).render(
 						<Route path="/dashboard" element={<SystemDashboard />} />
 						<Route path="/about" element={<AboutPage/>} />
 						<Route path="/tcp-registro" element={<AccountingWorkspace />} />
+						<Route path="/gctcp" element={<GC_TCP />} />
 						<Route path="/tcp-registro/:documentId" element={<AccountingWorkspace />} />
 						<Route path="/tcp-registro2" element={<TcpIncomeExpenseRegisterPage />} />
 						<Route path="/tcp-registro2/:documentId" element={<TcpIncomeExpenseRegisterPage />} />

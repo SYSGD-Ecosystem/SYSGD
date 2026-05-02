@@ -10,6 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
 
@@ -18,6 +20,7 @@ fun CalculadoraScreen(viewModel: LedgerViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showDialogMargenComercial by rememberSaveable { mutableStateOf(false) }
+    var showDialogCosto by rememberSaveable { mutableStateOf(false) }
 
     LazyColumn(
             modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -51,10 +54,25 @@ fun CalculadoraScreen(viewModel: LedgerViewModel) {
             ) { Text("Calculo de Margen Comercial") }
         }
 
+        item {
+            Button(
+                    onClick = { showDialogCosto = true },
+                    modifier = Modifier.fillMaxWidth()
+            ) { Text("Calculo del Costo") }
+        }
+
         if (showDialogMargenComercial) {
             item {
                 MargenComercialDialog(
                         onDismiss = { showDialogMargenComercial = false },
+                )
+            }
+        }
+
+        if (showDialogCosto) {
+            item {
+                CostoProductoDialog(
+                        onDismiss = { showDialogCosto = false },
                 )
             }
         }
@@ -308,7 +326,8 @@ private fun CostoProductoDialog(
         onDismissRequest = onDismiss,
         title = { Text("Costo de Producto") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier
+                .verticalScroll(rememberScrollState())) {
 
                 // Sección: Compra
                 Text("Compra", style = MaterialTheme.typography.labelLarge)

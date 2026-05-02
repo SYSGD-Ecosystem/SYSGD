@@ -1,4 +1,4 @@
-import {  Box, CircleDollarSignIcon, FileText, Search, LayoutDashboard } from "lucide-react";
+import {  Box, CircleDollarSignIcon, FileText, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FC } from "react";
 
@@ -20,7 +20,6 @@ const AccountingSidebar: FC<SidebarProps> = ({
 		{ id: "inventario", label: "INVENTARIO", icon: Box },
 		{ id: "nomenclador", label: "NOMENCLADOR", icon: Search },
 		{ id: "fichaprecio", label: "FICHA DE PRECIO", icon: CircleDollarSignIcon },
-		{ id: "gc_tcp", label: "GC TCP", icon: LayoutDashboard },
 	];
 
 	return (
