@@ -6,6 +6,9 @@ import type {
   CloudWorkspaceEntry,
   GeneralesData,
 } from "../types/accountingTypes";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import UploadBackupPanel from "./UploadBackupPanel";
 
 const EMPTY_GENERALES: GeneralesData = {
   nombre: "",
@@ -24,7 +27,9 @@ const EMPTY_GENERALES: GeneralesData = {
 const GC_TCP: FC = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(true);
   const [data, setData] = useState<ContLedgerResponse | null>(null);
+  const [work, setwork] = useState("")
   const [activeWorkspace, setActiveWorkspace] = useState<CloudWorkspaceEntry | null>(null);
 
   useEffect(() => {
@@ -33,11 +38,21 @@ const GC_TCP: FC = () => {
         const { data: response } = await api.get<ContLedgerResponse>("/api/cont-ledger");
         setData(response);
         const ledger = response.registro;
-        const active = ledger.workspaces.find(
+        console.log(ledger)
+        if(ledger.workspaces){
+          const active = ledger.workspaces.find(
           (w) => w.id === ledger.activeWorkspaceId
         ) ?? ledger.workspaces[0] ?? null;
         setActiveWorkspace(active);
-      } catch {
+setError(false)
+        }else{
+          setError(true)
+          console.log(response.registro)
+        }
+        
+        
+      } catch(e:any) {
+        alert(e)
         toast({
           title: "Error",
           description: "No se pudo cargar el registro contable",
@@ -50,7 +65,7 @@ const GC_TCP: FC = () => {
     void load();
   }, [toast]);
 
-  const handleSwitchWorkspace = async (workspaceId: string) => {
+  /*const handleSwitchWorkspace = async (workspaceId: string) => {
     if (!data) return;
     try {
       await api.put("/api/cont-ledger/active-workspace", {
@@ -69,7 +84,41 @@ const GC_TCP: FC = () => {
         variant: "destructive",
       });
     }
-  };
+  };*/
+
+
+  const handleUpload = async () => {
+  try {
+    const parsed = JSON.parse(work);
+
+    // El controller acepta el objeto directo si tiene workspaces+activeWorkspaceId,
+    // o { registro: ... } si no. Enviamos directo para que el controller lo detecte.
+    await api.put("/api/cont-ledger", parsed);
+
+    toast({ title: "Éxito", description: "Datos restaurados correctamente" });
+
+    // Recargar los datos tras subir
+    const { data: response } = await api.get<ContLedgerResponse>("/api/cont-ledger");
+    setData(response);
+    const ledger = response.registro;
+    if (ledger?.workspaces) {
+      const active =
+        ledger.workspaces.find((w) => w.id === ledger.activeWorkspaceId) ??
+        ledger.workspaces[0] ??
+        null;
+      setActiveWorkspace(active);
+      setError(false);
+    }
+  } catch (e: any) {
+    toast({
+      title: "Error",
+      description: e?.message?.includes("JSON")
+        ? "El texto pegado no es un JSON válido"
+        : "No se pudo restaurar el registro",
+      variant: "destructive",
+    });
+  }
+};
 
   if (loading) {
     return (
@@ -79,11 +128,16 @@ const GC_TCP: FC = () => {
     );
   }
 
+
   if (!data) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-        No hay datos disponibles
-      </div>
+      <UploadBackupPanel onSuccess={()=>{}} />
+    );
+  }
+
+  if (error) {
+    return (
+      <UploadBackupPanel onSuccess={()=>{}}/>
     );
   }
 
@@ -103,7 +157,7 @@ const GC_TCP: FC = () => {
           </p>
         </div>
 
-        {/* Workspace Info */}
+       
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -123,12 +177,10 @@ const GC_TCP: FC = () => {
                     ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                     : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50"
                 }`}
-                onClick={() => handleSwitchWorkspace(ws.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    handleSwitchWorkspace(ws.id);
-                  }
-                }}
+                onClick={() => {}}
+                // onKeyDown={(e) => {
+                //   if (e.key === "Enter" || e.key === " ") {}
+                // }}
                 tabIndex={0}
                 role="button"
               >
@@ -152,7 +204,7 @@ const GC_TCP: FC = () => {
           </div>
         </div>
 
-        {/* Active Workspace General Data */}
+       
         {activeWorkspace && (
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -214,3 +266,6 @@ const GC_TCP: FC = () => {
 };
 
 export default GC_TCP;
+
+
+

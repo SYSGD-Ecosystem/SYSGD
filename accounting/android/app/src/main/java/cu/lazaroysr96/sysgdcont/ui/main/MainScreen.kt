@@ -813,6 +813,7 @@ fun MainScreen(
         onContactWhatsApp = {
             openWhatsAppContact(context, "Hola, necesito ayuda con Gestor Contable TCP.")
         },
+        ledgerViewModel,
                     )
                 }
                 composable(MainTab.Generales.route) { GeneralesScreen(ledgerViewModel) }
