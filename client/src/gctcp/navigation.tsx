@@ -10,6 +10,7 @@ import {
 	Landmark,
 	LayoutDashboard,
 	List,
+	NotebookText,
 	Search,
 	Shield,
 	ShoppingCart,
@@ -32,6 +33,7 @@ export const navigationSections: NavigationSection[] = [
 			{ id: "gastos", label: "Gastos", icon: <TrendingDown /> },
 			{ id: "tributos", label: "Tributos", icon: <Landmark /> },
 			{ id: "resumen", label: "Resumen", icon: <LayoutDashboard /> },
+			{ id: "estadoResultado", label: "Estado de resultado", icon: <NotebookText /> },
 		],
 	},
 	{

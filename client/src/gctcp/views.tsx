@@ -192,6 +192,109 @@ export const EntriesView: FC<{ workspace: CloudWorkspaceEntry; type: "ingresos" 
 	);
 };
 
+type StatementRow = {
+	id: string;
+	month: string;
+	dateLabel: string;
+	type: "Ingreso" | "Gasto";
+	income: number;
+	expense: number;
+	detail: string;
+	account: string;
+};
+
+export const EstadoResultadoView: FC<{ workspace: CloudWorkspaceEntry }> = ({ workspace }) => {
+	const statementRows: StatementRow[] = MONTH_CODES.flatMap((month) => {
+		const ingresos = activeRows(getRows(workspace.registro, "ingresos", month)).map((row) => {
+			const rowWithMeta = row as typeof row & { detalle?: string; cuenta?: string };
+			return {
+				id: `${month}-ingreso-${row.id}`,
+				month,
+				dateLabel: `${row.dia || "--"}/${month}`,
+				type: "Ingreso" as const,
+				income: parseAmount(row.importe),
+				expense: 0,
+				detail: rowWithMeta.detalle || "-",
+				account: rowWithMeta.cuenta || "-",
+			};
+		});
+		const gastos = activeRows(getRows(workspace.registro, "gastos", month)).map((row) => {
+			const rowWithMeta = row as typeof row & { detalle?: string; cuenta?: string };
+			return {
+				id: `${month}-gasto-${row.id}`,
+				month,
+				dateLabel: `${row.dia || "--"}/${month}`,
+				type: "Gasto" as const,
+				income: 0,
+				expense: parseAmount(row.importe),
+				detail: rowWithMeta.detalle || "-",
+				account: rowWithMeta.cuenta || "-",
+			};
+		});
+		return [...ingresos, ...gastos];
+	}).sort((a, b) => a.month.localeCompare(b.month) || a.dateLabel.localeCompare(b.dateLabel));
+
+	return (
+		<Card className="rounded-lg shadow-sm">
+			<CardHeader className="flex-row items-center justify-between gap-3 p-4">
+				<CardTitle className="text-base">Estado de resultado (ingresos y gastos)</CardTitle>
+				<Badge variant="outline">{workspace.name}</Badge>
+			</CardHeader>
+			<CardContent className="space-y-4 p-4 pt-0">
+				<div className="grid gap-3 sm:grid-cols-3">
+					<div className="rounded-md bg-emerald-50 p-3 text-sm dark:bg-emerald-500/10">
+						<p className="text-slate-500 dark:text-slate-300">Ingresos</p>
+						<p className="font-semibold text-emerald-700 dark:text-emerald-300">{formatMoney(statementRows.reduce((t, r) => t + r.income, 0))}</p>
+					</div>
+					<div className="rounded-md bg-rose-50 p-3 text-sm dark:bg-rose-500/10">
+						<p className="text-slate-500 dark:text-slate-300">Gastos</p>
+						<p className="font-semibold text-rose-700 dark:text-rose-300">{formatMoney(statementRows.reduce((t, r) => t + r.expense, 0))}</p>
+					</div>
+					<div className="rounded-md bg-slate-100 p-3 text-sm dark:bg-slate-800">
+						<p className="text-slate-500 dark:text-slate-300">Resultado</p>
+						<p className="font-semibold text-slate-900 dark:text-slate-50">{formatMoney(statementRows.reduce((t, r) => t + r.income - r.expense, 0))}</p>
+					</div>
+				</div>
+				<div className="overflow-x-auto">
+					<table className="w-full min-w-[940px] text-sm">
+						<thead>
+							<tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500 dark:border-slate-800 dark:text-slate-400">
+								<th className="py-3 pr-4">Mes</th>
+								<th className="py-3 pr-4">Fecha</th>
+								<th className="py-3 pr-4">Tipo</th>
+								<th className="py-3 pr-4 text-right">Ingreso</th>
+								<th className="py-3 pr-4 text-right">Gasto</th>
+								<th className="py-3 pr-4">Detalle</th>
+								<th className="py-3 pr-4">Cuenta afectada</th>
+							</tr>
+						</thead>
+						<tbody>
+							{statementRows.map((row) => (
+								<tr key={row.id} className="border-b border-slate-100 dark:border-slate-800/80">
+									<td className="py-3 pr-4 font-medium text-slate-950 dark:text-slate-50">{row.month}</td>
+									<td className="py-3 pr-4 text-slate-600 dark:text-slate-300">{row.dateLabel}</td>
+									<td className={cn("py-3 pr-4 font-medium", row.type === "Ingreso" ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300")}>{row.type}</td>
+									<td className="py-3 pr-4 text-right text-emerald-700 dark:text-emerald-300">{row.income > 0 ? formatMoney(row.income) : "-"}</td>
+									<td className="py-3 pr-4 text-right text-rose-700 dark:text-rose-300">{row.expense > 0 ? formatMoney(row.expense) : "-"}</td>
+									<td className="py-3 pr-4 text-slate-600 dark:text-slate-300">{row.detail}</td>
+									<td className="py-3 pr-4 text-slate-600 dark:text-slate-300">{row.account}</td>
+								</tr>
+							))}
+							{statementRows.length === 0 && (
+								<tr>
+									<td colSpan={7} className="py-8 text-center text-slate-500 dark:text-slate-400">
+										No hay movimientos registrados para mostrar.
+									</td>
+								</tr>
+							)}
+						</tbody>
+					</table>
+				</div>
+			</CardContent>
+		</Card>
+	);
+};
+
 export const TributosView: FC<{ workspace: CloudWorkspaceEntry; analysis: WorkspaceAnalysis }> = ({ workspace, analysis }) => (
 	<div className="space-y-4">
 		<div className="grid gap-4 md:grid-cols-3">

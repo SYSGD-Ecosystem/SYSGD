@@ -13,6 +13,7 @@ export type GcTcpView =
 	| "gastos"
 	| "tributos"
 	| "resumen"
+	| "estadoResultado"
 	| "ventas"
 	| "nomencladores"
 	| "terceros"
