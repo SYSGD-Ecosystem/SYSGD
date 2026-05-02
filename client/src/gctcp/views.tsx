@@ -204,9 +204,21 @@ type StatementRow = {
 };
 
 export const EstadoResultadoView: FC<{ workspace: CloudWorkspaceEntry }> = ({ workspace }) => {
+	const notasPorId = Object.fromEntries(
+		workspace.accounting.ingresoGastoNotas.map((nota) => [nota.ingresoGastoId, nota.nota]),
+	);
+	const cuentaIdPorId = Object.fromEntries(
+		workspace.accounting.ingresoGastoCuentas.map((cuentaRelacion) => [
+			cuentaRelacion.ingresoGastoId,
+			cuentaRelacion.cuentaId,
+		]),
+	);
+	const cuentasPorId = Object.fromEntries(
+		workspace.accounting.cuentasContables.map((cuentaContable) => [cuentaContable.id, cuentaContable.nombre]),
+	);
+
 	const statementRows: StatementRow[] = MONTH_CODES.flatMap((month) => {
 		const ingresos = activeRows(getRows(workspace.registro, "ingresos", month)).map((row) => {
-			const rowWithMeta = row as typeof row & { detalle?: string; cuenta?: string };
 			return {
 				id: `${month}-ingreso-${row.id}`,
 				month,
@@ -214,12 +226,11 @@ export const EstadoResultadoView: FC<{ workspace: CloudWorkspaceEntry }> = ({ wo
 				type: "Ingreso" as const,
 				income: parseAmount(row.importe),
 				expense: 0,
-				detail: rowWithMeta.detalle || "-",
-				account: rowWithMeta.cuenta || "-",
+				detail: notasPorId[row.id] ?? "-",
+				account: cuentasPorId[cuentaIdPorId[row.id]] ?? "-",
 			};
 		});
 		const gastos = activeRows(getRows(workspace.registro, "gastos", month)).map((row) => {
-			const rowWithMeta = row as typeof row & { detalle?: string; cuenta?: string };
 			return {
 				id: `${month}-gasto-${row.id}`,
 				month,
@@ -227,8 +238,8 @@ export const EstadoResultadoView: FC<{ workspace: CloudWorkspaceEntry }> = ({ wo
 				type: "Gasto" as const,
 				income: 0,
 				expense: parseAmount(row.importe),
-				detail: rowWithMeta.detalle || "-",
-				account: rowWithMeta.cuenta || "-",
+				detail: notasPorId[row.id] ?? "-",
+				account: cuentasPorId[cuentaIdPorId[row.id]] ?? "-",
 			};
 		});
 		return [...ingresos, ...gastos];
