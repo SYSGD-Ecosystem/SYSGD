@@ -13,6 +13,7 @@ import type { CloudLedgerContainer } from "../accounting/core/types/accountingTy
 import { calculateWorkspaceAnalysis, formatLedgerDate } from "./accountingMath";
 import { EmptyState, GcTcpSidebar } from "./components";
 import { NomenclatorsView } from "./nomenclators/NomenclatorsView";
+import { PointOfSaleView } from "./pos/PointOfSaleView";
 import { getViewTitle } from "./navigation";
 import type { GcTcpView, LedgerApiResponse } from "./types";
 import {
@@ -21,7 +22,6 @@ import {
 	DashboardView,
 	EntriesView,
 	GeneralView,
-	InventoryView,
 	ResumenView,
 	SupportView,
 	TercerosView,
@@ -160,7 +160,7 @@ const GC_TCP: FC = () => {
 			case "resumen":
 				return <ResumenView analysis={activeAnalysis} />;
 			case "ventas":
-				return <InventoryView workspace={activeWorkspace} />;
+				return <PointOfSaleView workspace={activeWorkspace} />;
 			case "terceros":
 				return <TercerosView workspace={activeWorkspace} />;
 			case "catalogos":
