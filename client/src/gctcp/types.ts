@@ -14,6 +14,7 @@ export type GcTcpView =
 	| "tributos"
 	| "resumen"
 	| "estadoResultado"
+	| "cajaBanco"
 	| "ventas"
 	| "nomencladores"
 	| "terceros"

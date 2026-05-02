@@ -4,6 +4,7 @@ import {
 	BookOpen,
 	CircleHelp,
 	CreditCard,
+	HandCoins,
 	DatabaseBackup,
 	FileText,
 	Info,
@@ -39,6 +40,7 @@ export const navigationSections: NavigationSection[] = [
 	{
 		title: "Herramientas",
 		items: [
+			{ id: "cajaBanco", label: "Caja y banco", icon: <HandCoins /> },
 			{ id: "ventas", label: "Punto de Venta", icon: <ShoppingCart /> },
 			{ id: "nomencladores", label: "Nomencladores", icon: <List /> },
 			{ id: "terceros", label: "Terceros", icon: <Users /> },

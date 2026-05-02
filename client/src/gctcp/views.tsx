@@ -390,6 +390,129 @@ export const EstadoResultadoView: FC<{ workspace: CloudWorkspaceEntry }> = ({ wo
 	);
 };
 
+type WalletLedgerRow = {
+	id: string;
+	fecha: string;
+	tipo: string;
+	descripcion: string;
+	origen: string;
+	destino: string;
+	monto: number;
+};
+
+export const CajaBancoView: FC<{ workspace: CloudWorkspaceEntry }> = ({ workspace }) => {
+	const wallets = workspace.accounting.wallets?.filter((wallet) => wallet.activo) ?? [];
+	const walletMovimientos = workspace.accounting.walletMovimientos ?? [];
+	const baseWallets = wallets.length > 0 ? wallets : [
+		{ id: "wallet-efectivo", nombre: "Caja efectivo", tipo: "EFECTIVO", saldoInicial: 0, moneda: "CUP", activo: true, createdAt: 0, updatedAt: 0 },
+		{ id: "wallet-banco", nombre: "Banco", tipo: "BANCO", saldoInicial: 0, moneda: "CUP", activo: true, createdAt: 0, updatedAt: 0 },
+		{ id: "wallet-movil", nombre: "Saldo móvil", tipo: "MOVIL", saldoInicial: 0, moneda: "CUP", activo: true, createdAt: 0, updatedAt: 0 },
+	];
+
+	const valorMercancia = workspace.registro.inventario.stock.reduce((total, stock) => {
+		const precioCostoActivo = workspace.registro.inventario.historialPrecios
+			.filter((precio) => precio.productoId === stock.productoId && precio.tipoPrecio === "COMPRA" && precio.activo)
+			.sort((a, b) => b.fechaDesde.localeCompare(a.fechaDesde))[0];
+		const precioCosto = precioCostoActivo?.precio ?? 0;
+		return total + (stock.stockDisponible * precioCosto);
+	}, 0);
+
+	const walletSaldos = baseWallets.map((wallet) => {
+		const entradas = walletMovimientos
+			.filter((mov) => mov.walletDestinoId === wallet.id)
+			.reduce((total, mov) => total + mov.monto, 0);
+		const salidas = walletMovimientos
+			.filter((mov) => mov.walletOrigenId === wallet.id)
+			.reduce((total, mov) => total + mov.monto, 0);
+		return { ...wallet, saldoActual: wallet.saldoInicial + entradas - salidas };
+	});
+
+	const totalLiquido = walletSaldos
+		.filter((wallet) => wallet.tipo !== "MERCANCIA")
+		.reduce((total, wallet) => total + wallet.saldoActual, 0);
+
+	const walletNameById = Object.fromEntries(walletSaldos.map((wallet) => [wallet.id, wallet.nombre]));
+	const movimientos: WalletLedgerRow[] = walletMovimientos
+		.map((mov) => ({
+			id: mov.id,
+			fecha: mov.fecha,
+			tipo: mov.tipo,
+			descripcion: mov.nota || mov.referenciaTipo || "Movimiento",
+			origen: mov.walletOrigenId ? walletNameById[mov.walletOrigenId] ?? "Wallet desconocida" : "Entrada externa",
+			destino: mov.walletDestinoId ? walletNameById[mov.walletDestinoId] ?? "Wallet desconocida" : "Salida externa",
+			monto: mov.monto,
+		}))
+		.sort((a, b) => b.fecha.localeCompare(a.fecha));
+
+	return (
+		<div className="space-y-4">
+			<div className="flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<h3 className="text-base font-semibold">Caja y banco</h3>
+					<p className="text-sm text-slate-500 dark:text-slate-400">Vista informativa del dinero por contenedor.</p>
+				</div>
+				<Button variant="outline" size="sm" disabled>
+					Registrar movimiento manual (próximamente)
+				</Button>
+			</div>
+			<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+				{walletSaldos.map((wallet) => (
+					<Card key={wallet.id} className="rounded-lg shadow-sm">
+						<CardContent className="p-4">
+							<p className="text-xs uppercase text-slate-500 dark:text-slate-400">{wallet.nombre}</p>
+							<p className={cn("mt-2 text-xl font-semibold", wallet.saldoActual >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300")}>
+								{formatMoney(wallet.saldoActual)} CUP
+							</p>
+							<p className="text-xs text-slate-500 dark:text-slate-400">{wallet.tipo}</p>
+						</CardContent>
+					</Card>
+				))}
+				<Card className="rounded-lg border-dashed shadow-sm">
+					<CardContent className="p-4">
+						<p className="text-xs uppercase text-slate-500 dark:text-slate-400">Mercancía (costo)</p>
+						<p className="mt-2 text-xl font-semibold text-sky-700 dark:text-sky-300">{formatMoney(valorMercancia)} CUP</p>
+						<p className="text-xs text-slate-500 dark:text-slate-400">Calculada automáticamente desde inventario.</p>
+					</CardContent>
+				</Card>
+			</div>
+			<Card className="rounded-lg shadow-sm">
+				<CardContent className="p-4">
+					<p className="text-sm text-slate-500 dark:text-slate-400">Total líquido (sin mercancía)</p>
+					<p className={cn("text-2xl font-semibold", totalLiquido >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300")}>
+						{formatMoney(totalLiquido)} CUP
+					</p>
+				</CardContent>
+			</Card>
+			<Card className="rounded-lg shadow-sm">
+				<CardHeader className="p-4">
+					<CardTitle className="text-base">Movimientos de wallets</CardTitle>
+				</CardHeader>
+				<CardContent className="p-4 pt-0">
+					<div className="overflow-x-auto">
+						<table className="w-full min-w-[860px] text-sm">
+							<thead>
+								<tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500 dark:border-slate-800 dark:text-slate-400">
+									<th className="py-3 pr-4">Fecha</th><th className="py-3 pr-4">Tipo</th><th className="py-3 pr-4">Origen</th><th className="py-3 pr-4">Destino</th><th className="py-3 pr-4">Descripción</th><th className="py-3 pr-4 text-right">Monto</th>
+								</tr>
+							</thead>
+							<tbody>
+								{movimientos.map((mov) => (
+									<tr key={mov.id} className="border-b border-slate-100 dark:border-slate-800/80">
+										<td className="py-3 pr-4">{mov.fecha}</td><td className="py-3 pr-4">{mov.tipo}</td><td className="py-3 pr-4">{mov.origen}</td><td className="py-3 pr-4">{mov.destino}</td><td className="py-3 pr-4">{mov.descripcion}</td><td className="py-3 pr-4 text-right font-semibold">{formatMoney(mov.monto)}</td>
+									</tr>
+								))}
+								{movimientos.length === 0 && (
+									<tr><td colSpan={6} className="py-8 text-center text-slate-500 dark:text-slate-400">Sin movimientos registrados en wallets.</td></tr>
+								)}
+							</tbody>
+						</table>
+					</div>
+				</CardContent>
+			</Card>
+		</div>
+	);
+};
+
 export const TributosView: FC<{ workspace: CloudWorkspaceEntry; analysis: WorkspaceAnalysis }> = ({ workspace, analysis }) => (
 	<div className="space-y-4">
 		<div className="grid gap-4 md:grid-cols-3">
