@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import type { CloudLedgerContainer } from "../accounting/core/types/accountingTypes";
 import { calculateWorkspaceAnalysis, formatLedgerDate } from "./accountingMath";
 import { EmptyState, GcTcpSidebar } from "./components";
+import { DeleteWorkspaceDialog } from "./DeleteWorkspaceDialog";
 import { NomenclatorsView } from "./nomenclators/NomenclatorsView";
 import { PointOfSaleView } from "./pos/PointOfSaleView";
 import { getViewTitle } from "./navigation";
@@ -38,6 +39,7 @@ const GC_TCP: FC = () => {
 	const [selectedView, setSelectedView] = useState<GcTcpView>("dashboard");
 	const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 	const [savingWorkspace, setSavingWorkspace] = useState(false);
+	const [workspaceIdToDelete, setWorkspaceIdToDelete] = useState<string | null>(null);
 
 	useEffect(() => {
 		if (!authLoading && !user) navigate("/login");
@@ -111,6 +113,55 @@ const GC_TCP: FC = () => {
 		}
 	};
 
+	const handleDeleteWorkspace = async () => {
+		if (!ledger || !workspaceIdToDelete) return;
+		if (ledger.workspaces.length <= 1) {
+			toast({
+				title: "No se puede eliminar",
+				description: "Debe existir al menos un espacio de trabajo.",
+				variant: "destructive",
+			});
+			return;
+		}
+
+		const workspaceToDelete = ledger.workspaces.find((workspace) => workspace.id === workspaceIdToDelete);
+		if (!workspaceToDelete) return;
+
+		const remainingWorkspaces = ledger.workspaces.filter((workspace) => workspace.id !== workspaceIdToDelete);
+		const nextActiveWorkspaceId =
+			ledger.activeWorkspaceId === workspaceIdToDelete
+				? remainingWorkspaces[0]?.id ?? ""
+				: ledger.activeWorkspaceId;
+		const updatedLedger: CloudLedgerContainer = {
+			...ledger,
+			activeWorkspaceId: nextActiveWorkspaceId,
+			workspaces: remainingWorkspaces,
+		};
+
+		setSavingWorkspace(true);
+		try {
+			await api.put("/api/cont-ledger", {
+				registro: updatedLedger,
+				inventarioRegistro: data?.inventarioRegistro ?? null,
+			});
+			setData((current) => current ? { ...current, registro: updatedLedger } : current);
+			setActiveWorkspaceId(nextActiveWorkspaceId);
+			setWorkspaceIdToDelete(null);
+			toast({
+				title: "Espacio eliminado",
+				description: `${workspaceToDelete.name} fue eliminado del ledger.`,
+			});
+		} catch {
+			toast({
+				title: "No se pudo eliminar",
+				description: "El espacio de trabajo no fue modificado.",
+				variant: "destructive",
+			});
+		} finally {
+			setSavingWorkspace(false);
+		}
+	};
+
 	const handleDownloadBackup = () => {
 		if (!ledger) return;
 		const backup = {
@@ -147,6 +198,7 @@ const GC_TCP: FC = () => {
 						savingWorkspace={savingWorkspace}
 						totals={totals}
 						onSelectWorkspace={handleSelectWorkspace}
+						onRequestDeleteWorkspace={setWorkspaceIdToDelete}
 					/>
 				);
 			case "generales":
@@ -203,6 +255,15 @@ const GC_TCP: FC = () => {
 
 	return (
 		<div className="flex h-full w-full overflow-hidden bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50">
+			<DeleteWorkspaceDialog
+				workspace={ledger.workspaces.find((workspace) => workspace.id === workspaceIdToDelete) ?? null}
+				open={Boolean(workspaceIdToDelete)}
+				deleting={savingWorkspace}
+				onOpenChange={(open) => {
+					if (!open && !savingWorkspace) setWorkspaceIdToDelete(null);
+				}}
+				onConfirm={handleDeleteWorkspace}
+			/>
 			<div className="hidden lg:block">
 				<GcTcpSidebar view={selectedView} onSelect={setSelectedView} />
 			</div>

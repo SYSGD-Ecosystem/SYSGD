@@ -1,5 +1,5 @@
 import type { FC, ReactNode } from "react";
-import { WalletCards, X } from "lucide-react";
+import { Trash2, WalletCards, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -111,48 +111,66 @@ export const WorkspaceSelector: FC<{
 	analyses: WorkspaceAnalysis[];
 	activeWorkspaceId: string;
 	onSelect: (workspaceId: string) => void;
+	onRequestDelete: (workspaceId: string) => void;
 	savingWorkspace: boolean;
-}> = ({ analyses, activeWorkspaceId, onSelect, savingWorkspace }) => (
+}> = ({ analyses, activeWorkspaceId, onSelect, onRequestDelete, savingWorkspace }) => (
 	<div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
 		{analyses.map((analysis) => {
 			const selected = analysis.workspace.id === activeWorkspaceId;
 			return (
-				<button
+				<div
 					key={analysis.workspace.id}
-					type="button"
-					onClick={() => onSelect(analysis.workspace.id)}
 					className={cn(
 						"rounded-lg border bg-white p-4 text-left transition-colors dark:bg-slate-900",
 						selected
 							? "border-emerald-500 ring-2 ring-emerald-500/20"
 							: "border-slate-200 hover:border-emerald-300 dark:border-slate-800 dark:hover:border-emerald-700",
 					)}
-					disabled={savingWorkspace}
 				>
-					<div className="flex items-start justify-between gap-3">
-						<div className="min-w-0">
-							<p className="truncate font-semibold text-slate-950 dark:text-slate-50">{analysis.workspace.name}</p>
-							<p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-								{analysis.workspace.registro.generales.nombre || "Sin nombre fiscal"}
-							</p>
+					<button
+						type="button"
+						onClick={() => onSelect(analysis.workspace.id)}
+						className="w-full text-left"
+						disabled={savingWorkspace}
+					>
+						<div className="flex items-start justify-between gap-3">
+							<div className="min-w-0">
+								<p className="truncate font-semibold text-slate-950 dark:text-slate-50">{analysis.workspace.name}</p>
+								<p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+									{analysis.workspace.registro.generales.nombre || "Sin nombre fiscal"}
+								</p>
+							</div>
+							{selected && <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Activo</Badge>}
 						</div>
-						{selected && <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Activo</Badge>}
+						<div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+							<div>
+								<p className="text-slate-500 dark:text-slate-400">Neto</p>
+								<p className="font-semibold text-slate-950 dark:text-slate-50">{formatMoney(analysis.baseImponible)}</p>
+							</div>
+							<div>
+								<p className="text-slate-500 dark:text-slate-400">Asientos</p>
+								<p className="font-semibold text-slate-950 dark:text-slate-50">{analysis.incomeRows + analysis.expenseRows}</p>
+							</div>
+							<div>
+								<p className="text-slate-500 dark:text-slate-400">Ficha</p>
+								<p className="font-semibold text-slate-950 dark:text-slate-50">{analysis.completenessScore}%</p>
+							</div>
+						</div>
+					</button>
+					<div className="mt-4 flex justify-end border-t border-slate-100 pt-3 dark:border-slate-800">
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
+							onClick={() => onRequestDelete(analysis.workspace.id)}
+							disabled={savingWorkspace || analyses.length <= 1}
+						>
+							<Trash2 className="size-4" />
+							Eliminar
+						</Button>
 					</div>
-					<div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-						<div>
-							<p className="text-slate-500 dark:text-slate-400">Neto</p>
-							<p className="font-semibold text-slate-950 dark:text-slate-50">{formatMoney(analysis.baseImponible)}</p>
-						</div>
-						<div>
-							<p className="text-slate-500 dark:text-slate-400">Asientos</p>
-							<p className="font-semibold text-slate-950 dark:text-slate-50">{analysis.incomeRows + analysis.expenseRows}</p>
-						</div>
-						<div>
-							<p className="text-slate-500 dark:text-slate-400">Ficha</p>
-							<p className="font-semibold text-slate-950 dark:text-slate-50">{analysis.completenessScore}%</p>
-						</div>
-					</div>
-				</button>
+				</div>
 			);
 		})}
 	</div>

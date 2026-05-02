@@ -47,7 +47,8 @@ export const DashboardView: FC<{
 	savingWorkspace: boolean;
 	totals: { ingresos: number; gastos: number; neto: number; asientos: number };
 	onSelectWorkspace: (workspaceId: string) => void;
-}> = ({ analyses, activeAnalysis, activeWorkspaceId, savingWorkspace, totals, onSelectWorkspace }) => (
+	onRequestDeleteWorkspace: (workspaceId: string) => void;
+}> = ({ analyses, activeAnalysis, activeWorkspaceId, savingWorkspace, totals, onSelectWorkspace, onRequestDeleteWorkspace }) => (
 	<div className="space-y-4">
 		<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 			<MetricCard title="Ingresos" value={formatMoney(totals.ingresos)} detail="Todos los espacios" icon={<TrendingUp />} accent="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" />
@@ -55,7 +56,13 @@ export const DashboardView: FC<{
 			<MetricCard title="Base imponible" value={formatMoney(totals.neto)} detail="Lectura consolidada" icon={<Landmark />} accent="bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300" />
 			<MetricCard title="Asientos" value={String(totals.asientos)} detail="Ingresos y gastos" icon={<Archive />} accent="bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300" />
 		</div>
-		<WorkspaceSelector analyses={analyses} activeWorkspaceId={activeWorkspaceId} onSelect={onSelectWorkspace} savingWorkspace={savingWorkspace} />
+		<WorkspaceSelector
+			analyses={analyses}
+			activeWorkspaceId={activeWorkspaceId}
+			onSelect={onSelectWorkspace}
+			onRequestDelete={onRequestDeleteWorkspace}
+			savingWorkspace={savingWorkspace}
+		/>
 		<ResumenView analysis={activeAnalysis} />
 	</div>
 );
