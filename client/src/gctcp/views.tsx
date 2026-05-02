@@ -20,6 +20,10 @@ import {
 	Users,
 	WalletCards,
 } from "lucide-react";
+import pdfMake from "pdfmake/build/pdfmake";
+import pdfFonts from "pdfmake/build/vfs_fonts";
+import type { TDocumentDefinitions } from "pdfmake/interfaces";
+import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +44,9 @@ import {
 import { EmptyState, MetricCard, WorkspaceSelector } from "./components";
 import { ProductCatalogPanel } from "./products/ProductCatalogPanel";
 import type { GcTcpView, WorkspaceAnalysis } from "./types";
+
+const pdfMakeWithVfs = pdfMake as unknown as { vfs?: typeof pdfFonts.vfs };
+pdfMakeWithVfs.vfs = pdfFonts.vfs;
 
 export const DashboardView: FC<{
 	analyses: WorkspaceAnalysis[];
@@ -245,11 +252,70 @@ export const EstadoResultadoView: FC<{ workspace: CloudWorkspaceEntry }> = ({ wo
 		return [...ingresos, ...gastos];
 	}).sort((a, b) => a.month.localeCompare(b.month) || a.dateLabel.localeCompare(b.dateLabel));
 
+	const handleDownloadExcel = () => {
+		const workbook = XLSX.utils.book_new();
+		const rows = statementRows.map((row) => ({
+			Mes: row.month,
+			Fecha: row.dateLabel,
+			Tipo: row.type,
+			Ingreso: row.income,
+			Gasto: row.expense,
+			Detalle: row.detail,
+			"Cuenta afectada": row.account,
+		}));
+		const worksheet = XLSX.utils.json_to_sheet(rows);
+		XLSX.utils.book_append_sheet(workbook, worksheet, "EstadoResultado");
+		const fileName = `estado-resultado-${workspace.name.replace(/\s+/g, "-").toLowerCase()}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+		XLSX.writeFile(workbook, fileName);
+	};
+
+	const handleDownloadPdf = () => {
+		const body = [
+			["Mes", "Fecha", "Tipo", "Ingreso", "Gasto", "Detalle", "Cuenta afectada"],
+			...statementRows.map((row) => [
+				row.month,
+				row.dateLabel,
+				row.type,
+				row.income > 0 ? formatMoney(row.income) : "-",
+				row.expense > 0 ? formatMoney(row.expense) : "-",
+				row.detail,
+				row.account,
+			]),
+		];
+		const docDefinition: TDocumentDefinitions = {
+			content: [
+				{ text: "Estado de resultado", style: "title" },
+				{ text: workspace.name, margin: [0, 0, 0, 8] },
+				{
+					table: {
+						headerRows: 1,
+						widths: ["auto", "auto", "auto", "auto", "auto", "*", "*"],
+						body,
+					},
+					layout: "lightHorizontalLines",
+				},
+			],
+			styles: {
+				title: { fontSize: 14, bold: true },
+			},
+			defaultStyle: { fontSize: 9 },
+		};
+		pdfMake.createPdf(docDefinition).download(
+			`estado-resultado-${workspace.name.replace(/\s+/g, "-").toLowerCase()}-${new Date().toISOString().slice(0, 10)}.pdf`,
+		);
+	};
+
 	return (
 		<Card className="rounded-lg shadow-sm">
 			<CardHeader className="flex-row items-center justify-between gap-3 p-4">
-				<CardTitle className="text-base">Estado de resultado (ingresos y gastos)</CardTitle>
-				<Badge variant="outline">{workspace.name}</Badge>
+				<div>
+					<CardTitle className="text-base">Estado de resultado (ingresos y gastos)</CardTitle>
+					<Badge variant="outline" className="mt-2">{workspace.name}</Badge>
+				</div>
+				<div className="flex gap-2">
+					<Button variant="outline" size="sm" onClick={handleDownloadExcel}>Descargar Excel</Button>
+					<Button variant="outline" size="sm" onClick={handleDownloadPdf}>Descargar PDF</Button>
+				</div>
 			</CardHeader>
 			<CardContent className="space-y-4 p-4 pt-0">
 				<div className="grid gap-3 sm:grid-cols-3">
