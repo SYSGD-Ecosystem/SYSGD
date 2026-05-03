@@ -1,4 +1,4 @@
-import type { FC } from "react";
+import { type FC, useState } from "react";
 import {
 	Archive,
 	Boxes,
@@ -20,6 +20,10 @@ import {
 	Users,
 	WalletCards,
 } from "lucide-react";
+import pdfMake from "pdfmake/build/pdfmake";
+import pdfFonts from "pdfmake/build/vfs_fonts";
+import type { TDocumentDefinitions } from "pdfmake/interfaces";
+import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +44,9 @@ import {
 import { EmptyState, MetricCard, WorkspaceSelector } from "./components";
 import { ProductCatalogPanel } from "./products/ProductCatalogPanel";
 import type { GcTcpView, WorkspaceAnalysis } from "./types";
+
+const pdfMakeWithVfs = pdfMake as unknown as { vfs?: typeof pdfFonts.vfs };
+pdfMakeWithVfs.vfs = pdfFonts.vfs;
 
 export const DashboardView: FC<{
 	analyses: WorkspaceAnalysis[];
@@ -189,6 +196,347 @@ export const EntriesView: FC<{ workspace: CloudWorkspaceEntry; type: "ingresos" 
 				</div>
 			</CardContent>
 		</Card>
+	);
+};
+
+type StatementRow = {
+	id: string;
+	month: string;
+	day: string;
+	income: number;
+	expense: number;
+	detail: string;
+	account: string;
+};
+
+export const EstadoResultadoView: FC<{ workspace: CloudWorkspaceEntry }> = ({ workspace }) => {
+	const notasPorId = Object.fromEntries(
+		workspace.accounting.ingresoGastoNotas.map((nota) => [nota.ingresoGastoId, nota.nota]),
+	);
+	const cuentaIdPorId = Object.fromEntries(
+		workspace.accounting.ingresoGastoCuentas.map((cuentaRelacion) => [
+			cuentaRelacion.ingresoGastoId,
+			cuentaRelacion.cuentaId,
+		]),
+	);
+	const cuentasPorId = Object.fromEntries(
+		workspace.accounting.cuentasContables.map((cuentaContable) => [cuentaContable.id, cuentaContable.nombre]),
+	);
+
+	const statementRows: StatementRow[] = MONTH_CODES.flatMap((month) => {
+		const ingresos = activeRows(getRows(workspace.registro, "ingresos", month)).map((row) => {
+			return {
+					id: `${month}-ingreso-${row.id}`,
+					month,
+					day: row.dia || "--",
+					income: parseAmount(row.importe),
+					expense: 0,
+					detail: notasPorId[row.id] ?? "-",
+				account: cuentasPorId[cuentaIdPorId[row.id]] ?? "-",
+			};
+		});
+		const gastos = activeRows(getRows(workspace.registro, "gastos", month)).map((row) => {
+			return {
+					id: `${month}-gasto-${row.id}`,
+					month,
+					day: row.dia || "--",
+					income: 0,
+					expense: parseAmount(row.importe),
+					detail: notasPorId[row.id] ?? "-",
+				account: cuentasPorId[cuentaIdPorId[row.id]] ?? "-",
+			};
+		});
+		return [...ingresos, ...gastos];
+		}).sort((a, b) => a.month.localeCompare(b.month) || a.day.localeCompare(b.day));
+	const totalIngresos = statementRows.reduce((total, row) => total + row.income, 0);
+	const totalGastos = statementRows.reduce((total, row) => total + row.expense, 0);
+	const resultado = totalIngresos - totalGastos;
+	const resultadoLabel = resultado >= 0 ? "POSITIVO" : "NEGATIVO";
+
+	const handleDownloadExcel = () => {
+		const workbook = XLSX.utils.book_new();
+			const rows: Array<{
+				Mes: string;
+				Dia: string;
+				Ingreso: number | "";
+				Gasto: number | "";
+				Detalle: string;
+			"Cuenta afectada": string;
+			}> = statementRows.map((row) => ({
+				Mes: row.month,
+				Dia: row.day,
+				Ingreso: row.income,
+				Gasto: row.expense,
+			Detalle: row.detail,
+			"Cuenta afectada": row.account,
+		}));
+			rows.push(
+				{ Mes: "", Dia: "", Ingreso: "", Gasto: "", Detalle: "", "Cuenta afectada": "" },
+				{ Mes: "TOTAL INGRESOS", Dia: "", Ingreso: totalIngresos, Gasto: "", Detalle: "", "Cuenta afectada": "" },
+				{ Mes: "TOTAL GASTOS", Dia: "", Ingreso: "", Gasto: totalGastos, Detalle: "", "Cuenta afectada": "" },
+				{ Mes: `RESULTADO ${resultadoLabel}`, Dia: "", Ingreso: resultado, Gasto: "", Detalle: "", "Cuenta afectada": "" },
+			);
+		const worksheet = XLSX.utils.json_to_sheet(rows);
+		XLSX.utils.book_append_sheet(workbook, worksheet, "EstadoResultado");
+			const fileName = `libro-ingresos-gastos-${workspace.name.replace(/\s+/g, "-").toLowerCase()}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+		XLSX.writeFile(workbook, fileName);
+	};
+
+	const handleDownloadPdf = () => {
+		const body = [
+				["Mes", "Día", "Ingreso", "Gasto", "Detalle", "Cuenta afectada"],
+				...statementRows.map((row) => [
+					row.month,
+					row.day,
+					row.income > 0 ? formatMoney(row.income) : "-",
+					row.expense > 0 ? formatMoney(row.expense) : "-",
+					row.detail,
+				row.account,
+				]),
+		];
+		const docDefinition: TDocumentDefinitions = {
+			content: [
+				{ text: "Libro de ingresos y gastos", style: "title" },
+				{ text: workspace.name, margin: [0, 0, 0, 8] },
+				{
+					table: {
+						headerRows: 1,
+							widths: ["auto", "auto", "auto", "auto", "*", "*"],
+						body,
+					},
+					layout: "lightHorizontalLines",
+				},
+				{
+					text: `Resultado final: ${formatMoney(resultado)} (${resultadoLabel})`,
+					bold: true,
+					color: resultado >= 0 ? "#047857" : "#be123c",
+					margin: [0, 8, 0, 0],
+				},
+			],
+			styles: {
+				title: { fontSize: 14, bold: true },
+			},
+			defaultStyle: { fontSize: 9 },
+		};
+			pdfMake.createPdf(docDefinition).download(
+				`libro-ingresos-gastos-${workspace.name.replace(/\s+/g, "-").toLowerCase()}-${new Date().toISOString().slice(0, 10)}.pdf`,
+			);
+		};
+
+	return (
+		<Card className="rounded-lg shadow-sm">
+			<CardHeader className="flex-row items-center justify-between gap-3 p-4">
+				<div>
+						<CardTitle className="text-base">Libro de ingresos y gastos</CardTitle>
+					<Badge variant="outline" className="mt-2">{workspace.name}</Badge>
+				</div>
+				<div className="flex gap-2">
+					<Button variant="outline" size="sm" onClick={handleDownloadExcel}>Descargar Excel</Button>
+					<Button variant="outline" size="sm" onClick={handleDownloadPdf}>Descargar PDF</Button>
+				</div>
+			</CardHeader>
+			<CardContent className="space-y-4 p-4 pt-0">
+				<div className="grid gap-3 sm:grid-cols-3">
+						<div className="rounded-md bg-emerald-50 p-3 text-sm dark:bg-emerald-500/10">
+							<p className="text-slate-500 dark:text-slate-300">Ingresos</p>
+							<p className="font-semibold text-emerald-700 dark:text-emerald-300">{formatMoney(totalIngresos)}</p>
+						</div>
+						<div className="rounded-md bg-rose-50 p-3 text-sm dark:bg-rose-500/10">
+							<p className="text-slate-500 dark:text-slate-300">Gastos</p>
+							<p className="font-semibold text-rose-700 dark:text-rose-300">{formatMoney(totalGastos)}</p>
+						</div>
+						<div className="rounded-md bg-slate-100 p-3 text-sm dark:bg-slate-800">
+							<p className="text-slate-500 dark:text-slate-300">Resultado</p>
+							<p className={cn("font-semibold", resultado >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300")}>
+								{formatMoney(resultado)} ({resultadoLabel})
+							</p>
+						</div>
+					</div>
+				<div className="overflow-x-auto">
+					<table className="w-full min-w-[940px] text-sm">
+						<thead>
+							<tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500 dark:border-slate-800 dark:text-slate-400">
+								<th className="py-3 pr-4">Mes</th>
+									<th className="py-3 pr-4">Día</th>
+									<th className="py-3 pr-4 text-right">Ingreso</th>
+								<th className="py-3 pr-4 text-right">Gasto</th>
+								<th className="py-3 pr-4">Detalle</th>
+								<th className="py-3 pr-4">Cuenta afectada</th>
+							</tr>
+						</thead>
+						<tbody>
+							{statementRows.map((row) => (
+								<tr key={row.id} className="border-b border-slate-100 dark:border-slate-800/80">
+									<td className="py-3 pr-4 font-medium text-slate-950 dark:text-slate-50">{row.month}</td>
+										<td className="py-3 pr-4 text-slate-600 dark:text-slate-300">{row.day}</td>
+									<td className="py-3 pr-4 text-right text-emerald-700 dark:text-emerald-300">{row.income > 0 ? formatMoney(row.income) : "-"}</td>
+									<td className="py-3 pr-4 text-right text-rose-700 dark:text-rose-300">{row.expense > 0 ? formatMoney(row.expense) : "-"}</td>
+									<td className="py-3 pr-4 text-slate-600 dark:text-slate-300">{row.detail}</td>
+									<td className="py-3 pr-4 text-slate-600 dark:text-slate-300">{row.account}</td>
+								</tr>
+							))}
+							{statementRows.length === 0 && (
+								<tr>
+										<td colSpan={6} className="py-8 text-center text-slate-500 dark:text-slate-400">
+										No hay movimientos registrados para mostrar.
+									</td>
+								</tr>
+							)}
+						</tbody>
+					</table>
+				</div>
+			</CardContent>
+		</Card>
+	);
+};
+
+type WalletLedgerRow = {
+	id: string;
+	fecha: string;
+	tipo: string;
+	descripcion: string;
+	origen: string;
+	destino: string;
+	monto: number;
+};
+
+export const CajaBancoView: FC<{ workspace: CloudWorkspaceEntry; onCreateWallet: (payload: { nombre: string; tipo: "EFECTIVO" | "BANCO" | "MOVIL" | "OTRO"; saldoInicial: number; }) => Promise<void>; savingWallet: boolean; }> = ({ workspace, onCreateWallet, savingWallet }) => {
+	const [walletNombre, setWalletNombre] = useState("");
+	const [walletTipo, setWalletTipo] = useState<"EFECTIVO" | "BANCO" | "MOVIL" | "OTRO">("EFECTIVO");
+	const [walletSaldoInicial, setWalletSaldoInicial] = useState("0");
+	const wallets = workspace.accounting.wallets?.filter((wallet) => wallet.activo) ?? [];
+	const walletMovimientos = workspace.accounting.walletMovimientos ?? [];
+	const baseWallets = wallets.length > 0 ? wallets : [
+		{ id: "wallet-efectivo", nombre: "Caja efectivo", tipo: "EFECTIVO", saldoInicial: 0, moneda: "CUP", activo: true, createdAt: 0, updatedAt: 0 },
+		{ id: "wallet-banco", nombre: "Banco", tipo: "BANCO", saldoInicial: 0, moneda: "CUP", activo: true, createdAt: 0, updatedAt: 0 },
+		{ id: "wallet-movil", nombre: "Saldo móvil", tipo: "MOVIL", saldoInicial: 0, moneda: "CUP", activo: true, createdAt: 0, updatedAt: 0 },
+	];
+
+	const valorMercancia = workspace.registro.inventario.stock.reduce((total, stock) => {
+		const precioCostoActivo = workspace.registro.inventario.historialPrecios
+			.filter((precio) => precio.productoId === stock.productoId && precio.tipoPrecio === "COMPRA" && precio.activo)
+			.sort((a, b) => b.fechaDesde.localeCompare(a.fechaDesde))[0];
+		const precioCosto = precioCostoActivo?.precio ?? 0;
+		return total + (stock.stockDisponible * precioCosto);
+	}, 0);
+
+	const walletSaldos = baseWallets.map((wallet) => {
+		const entradas = walletMovimientos
+			.filter((mov) => mov.walletDestinoId === wallet.id)
+			.reduce((total, mov) => total + mov.monto, 0);
+		const salidas = walletMovimientos
+			.filter((mov) => mov.walletOrigenId === wallet.id)
+			.reduce((total, mov) => total + mov.monto, 0);
+		return { ...wallet, saldoActual: wallet.saldoInicial + entradas - salidas };
+	});
+
+	const totalLiquido = walletSaldos
+		.filter((wallet) => wallet.tipo !== "MERCANCIA")
+		.reduce((total, wallet) => total + wallet.saldoActual, 0);
+
+	const walletNameById = Object.fromEntries(walletSaldos.map((wallet) => [wallet.id, wallet.nombre]));
+	const movimientos: WalletLedgerRow[] = walletMovimientos
+		.map((mov) => ({
+			id: mov.id,
+			fecha: mov.fecha,
+			tipo: mov.tipo,
+			descripcion: mov.nota || mov.referenciaTipo || "Movimiento",
+			origen: mov.walletOrigenId ? walletNameById[mov.walletOrigenId] ?? "Wallet desconocida" : "Entrada externa",
+			destino: mov.walletDestinoId ? walletNameById[mov.walletDestinoId] ?? "Wallet desconocida" : "Salida externa",
+			monto: mov.monto,
+		}))
+		.sort((a, b) => b.fecha.localeCompare(a.fecha));
+
+	return (
+		<div className="space-y-4">
+			<div className="flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<h3 className="text-base font-semibold">Caja y banco</h3>
+					<p className="text-sm text-slate-500 dark:text-slate-400">Vista informativa del dinero por contenedor.</p>
+				</div>
+				<Button variant="outline" size="sm" disabled>
+					Registrar movimiento manual (próximamente)
+				</Button>
+			</div>
+			<Card className="rounded-lg shadow-sm">
+				<CardHeader className="p-4 pb-2">
+					<CardTitle className="text-base">Crear billetera</CardTitle>
+				</CardHeader>
+				<CardContent className="grid gap-3 p-4 pt-0 md:grid-cols-4">
+					<input className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900" placeholder="Nombre (ej: BPA)" value={walletNombre} onChange={(event) => setWalletNombre(event.target.value)} />
+					<select className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900" value={walletTipo} onChange={(event) => setWalletTipo(event.target.value as "EFECTIVO" | "BANCO" | "MOVIL" | "OTRO")}>
+						<option value="EFECTIVO">EFECTIVO</option><option value="BANCO">BANCO</option><option value="MOVIL">MOVIL</option><option value="OTRO">OTRO</option>
+					</select>
+					<input className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900" type="number" step="0.01" placeholder="Saldo inicial" value={walletSaldoInicial} onChange={(event) => setWalletSaldoInicial(event.target.value)} />
+					<Button
+						onClick={() => {
+							const saldo = Number.parseFloat(walletSaldoInicial);
+							if (!walletNombre.trim() || Number.isNaN(saldo)) return;
+							void onCreateWallet({ nombre: walletNombre.trim(), tipo: walletTipo, saldoInicial: saldo });
+							setWalletNombre("");
+							setWalletSaldoInicial("0");
+						}}
+						disabled={savingWallet}
+					>
+						Crear billetera
+					</Button>
+				</CardContent>
+			</Card>
+			<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+				{walletSaldos.map((wallet) => (
+					<Card key={wallet.id} className="rounded-lg shadow-sm">
+						<CardContent className="p-4">
+							<p className="text-xs uppercase text-slate-500 dark:text-slate-400">{wallet.nombre}</p>
+							<p className={cn("mt-2 text-xl font-semibold", wallet.saldoActual >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300")}>
+								{formatMoney(wallet.saldoActual)} CUP
+							</p>
+							<p className="text-xs text-slate-500 dark:text-slate-400">{wallet.tipo}</p>
+						</CardContent>
+					</Card>
+				))}
+				<Card className="rounded-lg border-dashed shadow-sm">
+					<CardContent className="p-4">
+						<p className="text-xs uppercase text-slate-500 dark:text-slate-400">Mercancía (costo)</p>
+						<p className="mt-2 text-xl font-semibold text-sky-700 dark:text-sky-300">{formatMoney(valorMercancia)} CUP</p>
+						<p className="text-xs text-slate-500 dark:text-slate-400">Calculada automáticamente desde inventario.</p>
+					</CardContent>
+				</Card>
+			</div>
+			<Card className="rounded-lg shadow-sm">
+				<CardContent className="p-4">
+					<p className="text-sm text-slate-500 dark:text-slate-400">Total líquido (sin mercancía)</p>
+					<p className={cn("text-2xl font-semibold", totalLiquido >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300")}>
+						{formatMoney(totalLiquido)} CUP
+					</p>
+				</CardContent>
+			</Card>
+			<Card className="rounded-lg shadow-sm">
+				<CardHeader className="p-4">
+					<CardTitle className="text-base">Movimientos de wallets</CardTitle>
+				</CardHeader>
+				<CardContent className="p-4 pt-0">
+					<div className="overflow-x-auto">
+						<table className="w-full min-w-[860px] text-sm">
+							<thead>
+								<tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500 dark:border-slate-800 dark:text-slate-400">
+									<th className="py-3 pr-4">Fecha</th><th className="py-3 pr-4">Tipo</th><th className="py-3 pr-4">Origen</th><th className="py-3 pr-4">Destino</th><th className="py-3 pr-4">Descripción</th><th className="py-3 pr-4 text-right">Monto</th>
+								</tr>
+							</thead>
+							<tbody>
+								{movimientos.map((mov) => (
+									<tr key={mov.id} className="border-b border-slate-100 dark:border-slate-800/80">
+										<td className="py-3 pr-4">{mov.fecha}</td><td className="py-3 pr-4">{mov.tipo}</td><td className="py-3 pr-4">{mov.origen}</td><td className="py-3 pr-4">{mov.destino}</td><td className="py-3 pr-4">{mov.descripcion}</td><td className="py-3 pr-4 text-right font-semibold">{formatMoney(mov.monto)}</td>
+									</tr>
+								))}
+								{movimientos.length === 0 && (
+									<tr><td colSpan={6} className="py-8 text-center text-slate-500 dark:text-slate-400">Sin movimientos registrados en wallets.</td></tr>
+								)}
+							</tbody>
+						</table>
+					</div>
+				</CardContent>
+			</Card>
+		</div>
 	);
 };
 

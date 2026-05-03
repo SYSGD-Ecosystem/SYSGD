@@ -76,6 +76,35 @@ export type TributoCuentaBase = {
   createdAt: number;
 };
 
+export type WalletTipo = "EFECTIVO" | "BANCO" | "MOVIL" | "MERCANCIA" | "OTRO";
+
+export type Wallet = {
+  id: string;
+  nombre: string;
+  tipo: WalletTipo;
+  saldoInicial: number;
+  moneda: "CUP";
+  activo: boolean;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type WalletMovimientoTipo = "ENTRADA" | "SALIDA" | "TRANSFERENCIA";
+export type WalletReferenciaTipo = "INGRESO" | "GASTO" | "OPERACION_POS" | "MANUAL";
+
+export type WalletMovimiento = {
+  id: string;
+  walletOrigenId: string | null;
+  walletDestinoId: string | null;
+  monto: number;
+  tipo: WalletMovimientoTipo;
+  referenciaId: string | null;
+  referenciaTipo: WalletReferenciaTipo | null;
+  nota: string;
+  fecha: string;
+  createdAt: number;
+};
+
 export type AccountingWorkspaceState = {
   cuentasContables: CuentaContable[];
   ingresoGastoCuentas: IngresoGastoCuenta[];
@@ -83,6 +112,8 @@ export type AccountingWorkspaceState = {
   posIntegrationConfig: PosIntegrationConfig | null;
   tributoConfigs: TributoConfig[];
   tributoCuentaBases: TributoCuentaBase[];
+  wallets?: Wallet[];
+  walletMovimientos?: WalletMovimiento[];
 };
 
 export type Almacen = {

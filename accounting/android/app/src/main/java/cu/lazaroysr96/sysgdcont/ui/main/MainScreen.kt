@@ -123,6 +123,7 @@ import cu.lazaroysr96.sysgdcont.ui.main.screens.SecuritySettingsScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.TercerosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.TributosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.CatalogosScreen
+import cu.lazaroysr96.sysgdcont.ui.main.screens.CajaBancoScreen
 import cu.lazaroysr96.sysgdcont.ui.navigation.MainTab
 import cu.lazaroysr96.sysgdcont.ui.navigation.mainTabs
 import cu.lazaroysr96.sysgdcont.viewmodel.AuthViewModel
@@ -148,6 +149,7 @@ private const val NOMENCLATORS_ROUTE = "nomencladores"
 private const val TERCEROS_ROUTE = "terceros"
 private const val DOCUMENTOS_ROUTE = "documentos"
 private const val CATALOGOS_ROUTE = "catalogos"
+private const val CAJA_BANCO_ROUTE = "caja_banco"
 
 private fun openWhatsAppContact(context: android.content.Context, message: String): Boolean {
     return try {
@@ -440,6 +442,17 @@ fun MainScreen(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                             NavigationDrawerItem(
+                                    label = { Text("Caja y banco") },
+                                    selected = currentRoute == CAJA_BANCO_ROUTE,
+                                    icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = null) },
+                                    onClick = {
+                                        navController.navigate(CAJA_BANCO_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+                            NavigationDrawerItem(
                                     label = { Text("Punto de Venta") },
                                     selected = currentRoute == VENTAS_ROUTE,
                                     icon = { Icon(Icons.Default.Inventory2, contentDescription = null) },
@@ -652,12 +665,13 @@ fun MainScreen(
                                             TERCEROS_ROUTE -> "Terceros"
                                             DOCUMENTOS_ROUTE -> "Documentos"
                                             CATALOGOS_ROUTE -> "Catálogos"
+                                            CAJA_BANCO_ROUTE -> "Caja y banco"
                                             else -> "Gestor Contable TCP"
                                         }
                                 )
                             },
                             navigationIcon = {
-                                if (currentRoute == ABOUT_ROUTE || currentRoute == LICENSES_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE || currentRoute == NOMENCLATORS_ROUTE || currentRoute == TERCEROS_ROUTE || currentRoute == DOCUMENTOS_ROUTE || currentRoute == CATALOGOS_ROUTE) {
+                                if (currentRoute == ABOUT_ROUTE || currentRoute == LICENSES_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE || currentRoute == NOMENCLATORS_ROUTE || currentRoute == TERCEROS_ROUTE || currentRoute == DOCUMENTOS_ROUTE || currentRoute == CATALOGOS_ROUTE || currentRoute == CAJA_BANCO_ROUTE) {
                                     IconButton(onClick = { navController.popBackStack() }) {
                                         Icon(
                                                 Icons.Default.ArrowBack,
@@ -855,6 +869,9 @@ fun MainScreen(
                         inventarioViewModel = inventarioViewModel,
                         ledgerViewModel = ledgerViewModel
                     ) 
+                }
+                composable(CAJA_BANCO_ROUTE) {
+                    CajaBancoScreen()
                 }
                 composable(LICENSES_ROUTE) {
                     LicenseCenterScreen(
