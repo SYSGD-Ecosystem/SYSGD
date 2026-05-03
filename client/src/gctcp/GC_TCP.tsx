@@ -44,6 +44,7 @@ const GC_TCP: FC = () => {
 	const [savingWorkspace, setSavingWorkspace] = useState(false);
 	const [workspaceIdToDelete, setWorkspaceIdToDelete] = useState<string | null>(null);
 	const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
+	const [savingWallet, setSavingWallet] = useState(false);
 
 	useEffect(() => {
 		if (!authLoading && !user) navigate("/login");
@@ -218,6 +219,50 @@ const GC_TCP: FC = () => {
 		}
 	};
 
+	const handleCreateWallet = async (payload: {
+		nombre: string;
+		tipo: "EFECTIVO" | "BANCO" | "MOVIL" | "OTRO";
+		saldoInicial: number;
+	}) => {
+		if (!ledger || !activeWorkspace) return;
+		const now = Date.now();
+		const newWallet = {
+			id: `wallet-${now}`,
+			nombre: payload.nombre,
+			tipo: payload.tipo,
+			saldoInicial: payload.saldoInicial,
+			moneda: "CUP" as const,
+			activo: true,
+			createdAt: now,
+			updatedAt: now,
+		};
+		const updatedWorkspaces = ledger.workspaces.map((workspace) =>
+			workspace.id !== activeWorkspace.id
+				? workspace
+				: {
+					...workspace,
+					accounting: {
+						...workspace.accounting,
+						wallets: [...(workspace.accounting.wallets ?? []), newWallet],
+					},
+				},
+		);
+		const updatedLedger: CloudLedgerContainer = { ...ledger, workspaces: updatedWorkspaces };
+		setSavingWallet(true);
+		try {
+			await api.put("/api/cont-ledger", {
+				registro: updatedLedger,
+				inventarioRegistro: data?.inventarioRegistro ?? null,
+			});
+			setData((current) => (current ? { ...current, registro: updatedLedger } : current));
+			toast({ title: "Billetera creada" });
+		} catch {
+			toast({ title: "No se pudo crear la billetera", variant: "destructive" });
+		} finally {
+			setSavingWallet(false);
+		}
+	};
+
 	const handleDownloadBackup = () => {
 		if (!ledger) return;
 		const backup = {
@@ -272,7 +317,7 @@ const GC_TCP: FC = () => {
 			case "ventas":
 				return <PointOfSaleView workspace={activeWorkspace} />;
 			case "cajaBanco":
-				return <CajaBancoView workspace={activeWorkspace} />;
+				return <CajaBancoView workspace={activeWorkspace} onCreateWallet={handleCreateWallet} savingWallet={savingWallet} />;
 			case "terceros":
 				return <TercerosView workspace={activeWorkspace} />;
 			case "catalogos":
