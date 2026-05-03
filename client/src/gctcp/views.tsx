@@ -1,4 +1,4 @@
-import type { FC } from "react";
+import { type FC, useState } from "react";
 import {
 	Archive,
 	Boxes,
@@ -400,7 +400,10 @@ type WalletLedgerRow = {
 	monto: number;
 };
 
-export const CajaBancoView: FC<{ workspace: CloudWorkspaceEntry }> = ({ workspace }) => {
+export const CajaBancoView: FC<{ workspace: CloudWorkspaceEntry; onCreateWallet: (payload: { nombre: string; tipo: "EFECTIVO" | "BANCO" | "MOVIL" | "OTRO"; saldoInicial: number; }) => Promise<void>; savingWallet: boolean; }> = ({ workspace, onCreateWallet, savingWallet }) => {
+	const [walletNombre, setWalletNombre] = useState("");
+	const [walletTipo, setWalletTipo] = useState<"EFECTIVO" | "BANCO" | "MOVIL" | "OTRO">("EFECTIVO");
+	const [walletSaldoInicial, setWalletSaldoInicial] = useState("0");
 	const wallets = workspace.accounting.wallets?.filter((wallet) => wallet.activo) ?? [];
 	const walletMovimientos = workspace.accounting.walletMovimientos ?? [];
 	const baseWallets = wallets.length > 0 ? wallets : [
@@ -455,6 +458,30 @@ export const CajaBancoView: FC<{ workspace: CloudWorkspaceEntry }> = ({ workspac
 					Registrar movimiento manual (próximamente)
 				</Button>
 			</div>
+			<Card className="rounded-lg shadow-sm">
+				<CardHeader className="p-4 pb-2">
+					<CardTitle className="text-base">Crear billetera</CardTitle>
+				</CardHeader>
+				<CardContent className="grid gap-3 p-4 pt-0 md:grid-cols-4">
+					<input className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900" placeholder="Nombre (ej: BPA)" value={walletNombre} onChange={(event) => setWalletNombre(event.target.value)} />
+					<select className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900" value={walletTipo} onChange={(event) => setWalletTipo(event.target.value as "EFECTIVO" | "BANCO" | "MOVIL" | "OTRO")}>
+						<option value="EFECTIVO">EFECTIVO</option><option value="BANCO">BANCO</option><option value="MOVIL">MOVIL</option><option value="OTRO">OTRO</option>
+					</select>
+					<input className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900" type="number" step="0.01" placeholder="Saldo inicial" value={walletSaldoInicial} onChange={(event) => setWalletSaldoInicial(event.target.value)} />
+					<Button
+						onClick={() => {
+							const saldo = Number.parseFloat(walletSaldoInicial);
+							if (!walletNombre.trim() || Number.isNaN(saldo)) return;
+							void onCreateWallet({ nombre: walletNombre.trim(), tipo: walletTipo, saldoInicial: saldo });
+							setWalletNombre("");
+							setWalletSaldoInicial("0");
+						}}
+						disabled={savingWallet}
+					>
+						Crear billetera
+					</Button>
+				</CardContent>
+			</Card>
 			<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
 				{walletSaldos.map((wallet) => (
 					<Card key={wallet.id} className="rounded-lg shadow-sm">
