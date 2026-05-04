@@ -23,6 +23,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.ui.graphics.vector.ImageVector
 
 // ---------------------------------------------------------------------------
 // Tipos de dominio (idealmente en un archivo de modelos separado)
@@ -83,10 +86,16 @@ val dummyMovimientos = listOf(
 // Destinos del nav interno
 // ---------------------------------------------------------------------------
 
-private enum class CajaBancoDestino(val label: String, val iconRes: Int) {
-    RESUMEN("Resumen", android.R.drawable.ic_menu_today),
-    MOVIMIENTOS("Movimientos", android.R.drawable.ic_menu_agenda),
-    REPORTES("Reportes", android.R.drawable.ic_menu_save),
+// private enum class CajaBancoDestino(val label: String, val iconRes: Int) {
+//     RESUMEN("Resumen", android.R.drawable.ic_menu_today),
+//     MOVIMIENTOS("Movimientos", android.R.drawable.ic_menu_agenda),
+//     REPORTES("Reportes", android.R.drawable.ic_menu_save),
+// }
+
+private enum class CajaBancoDestino(val label: String, val icon: ImageVector) {
+    RESUMEN("Resumen", Icons.Outlined.Home),
+    MOVIMIENTOS("Movimientos", Icons.Outlined.List),
+    REPORTES("Reportes", Icons.Outlined.BarChart),
 }
 
 // ---------------------------------------------------------------------------
@@ -111,9 +120,9 @@ fun CajaBancoScreen(modifier: Modifier = Modifier) {
                         onClick = { selectedTab = index },
                         icon = {
                             Icon(
-                                painter = painterResource(destino.iconRes),
+                                imageVector = destino.icon,
                                 contentDescription = destino.label,
-                            )
+                                )
                         },
                         label = {
                             Text(

@@ -78,12 +78,36 @@ export type TributoCuentaBase = {
 
 export type WalletTipo = "EFECTIVO" | "BANCO" | "MOVIL" | "MERCANCIA" | "OTRO";
 
-export type Wallet = {
+export type MonedaTasa = {
+  id: string;
+  nombre: string;
+  tasa: number;           // respecto a moneda base
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type Moneda = {
+  id: string
+  nombre: string;
+  tipo: "CUP" | "USD" | "EUR" | "MLC" | string;
+  tasaId: string; // FK a MonedaTasa
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type MonedaTasaHistorial = {
+  id: string;
+  monedaId: string;       // FK a Moneda
+  tasa: number;           // respecto a moneda base (ej: USD)
+  createdAt: number;
+};
+
+export type Wallet2 = {
   id: string;
   nombre: string;
   tipo: WalletTipo;
   saldoInicial: number;
-  moneda: "CUP";
+  monedaId: string; // FK a Moneda
   activo: boolean;
   createdAt: number;
   updatedAt: number;
@@ -97,6 +121,8 @@ export type WalletMovimiento = {
   walletOrigenId: string | null;
   walletDestinoId: string | null;
   monto: number;
+  tasaAlMomento: number; 
+  monedaId: string; // FK a Moneda, para saber en qué moneda se hizo el movimiento
   tipo: WalletMovimientoTipo;
   referenciaId: string | null;
   referenciaTipo: WalletReferenciaTipo | null;
@@ -112,8 +138,11 @@ export type AccountingWorkspaceState = {
   posIntegrationConfig: PosIntegrationConfig | null;
   tributoConfigs: TributoConfig[];
   tributoCuentaBases: TributoCuentaBase[];
-  wallets?: Wallet[];
+  wallets?: Wallet2[];
   walletMovimientos?: WalletMovimiento[];
+  monedas?: Moneda[];
+  monedaTasas?: MonedaTasa[];
+  monedaTasaHistorial?: MonedaTasaHistorial[];
 };
 
 export type Almacen = {
