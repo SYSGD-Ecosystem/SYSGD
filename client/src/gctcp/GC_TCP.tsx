@@ -1,4 +1,4 @@
-import { act, type FC, useCallback, useEffect, useMemo, useState } from "react";
+import { type FC, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DatabaseBackup, Download, Menu, RefreshCw } from "lucide-react";
 import Loading from "@/components/Loading";
@@ -360,6 +360,10 @@ const GC_TCP: FC = () => {
       registro: updatedLedger,
       inventarioRegistro: data?.inventarioRegistro ?? null,
     });
+	setData((current) =>
+        current ? { ...current, registro: updatedLedger } : current,
+      );
+      toast({ title: "Tasa de cambio actualizada" });
   } catch {
     toast({ title: "No se pudo actualizar la tasa", variant: "destructive" });
   } finally {
@@ -437,6 +441,10 @@ const GC_TCP: FC = () => {
       registro: updatedLedger,
       inventarioRegistro: data?.inventarioRegistro ?? null,
     });
+	setData((current) =>
+        current ? { ...current, registro: updatedLedger } : current,
+      );
+      toast({ title: "Moneda creada" });
   } catch {
     toast({ title: "No se pudo crear la moneda", variant: "destructive" });
   } finally {
@@ -498,6 +506,10 @@ console.log(activeWorkspace?.accounting.monedas);
 		registro: updatedLedger,
 		inventarioRegistro: data?.inventarioRegistro ?? null,
 	  });
+	  setData((current) =>
+        current ? { ...current, registro: updatedLedger } : current,
+      );
+      toast({ title: "Movimiento registrado" });
 	} catch {
 	  toast({ title: "No se pudo crear el movimiento", variant: "destructive" });
 	} finally {
