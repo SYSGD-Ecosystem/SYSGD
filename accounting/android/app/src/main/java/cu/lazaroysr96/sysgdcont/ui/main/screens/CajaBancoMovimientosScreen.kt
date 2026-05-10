@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -51,96 +50,44 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// ---------------------------------------------------------------------------
-// Colores semánticos por tipo de movimiento
-// ---------------------------------------------------------------------------
-
-private fun movColor(tipo: WalletMovimientoTipo): Color = when (tipo) {
-    WalletMovimientoTipo.ENTRADA -> Color(0xFF059669)
-    WalletMovimientoTipo.SALIDA -> Color(0xFFE11D48)
-    WalletMovimientoTipo.TRANSFERENCIA -> Color(0xFF1D4ED8)
-}
-
-private fun movContainerColor(tipo: WalletMovimientoTipo): Color = when (tipo) {
-    WalletMovimientoTipo.ENTRADA -> Color(0xFFECFDF5)
-    WalletMovimientoTipo.SALIDA -> Color(0xFFFFF1F2)
-    WalletMovimientoTipo.TRANSFERENCIA -> Color(0xFFEFF6FF)
-}
-
-private fun movIcon(tipo: WalletMovimientoTipo): ImageVector = when (tipo) {
-    WalletMovimientoTipo.ENTRADA -> Icons.Outlined.ArrowUpward
-    WalletMovimientoTipo.SALIDA -> Icons.Outlined.ArrowDownward
-    WalletMovimientoTipo.TRANSFERENCIA -> Icons.Outlined.SwapHoriz
-}
-
-private fun movSigno(tipo: WalletMovimientoTipo): String = when (tipo) {
-    WalletMovimientoTipo.ENTRADA -> "+"
-    WalletMovimientoTipo.SALIDA -> "-"
-    WalletMovimientoTipo.TRANSFERENCIA -> ""
-}
-
-private fun formatCupMov(value: Double): String = "$%,.2f".format(value)
-
-// ---------------------------------------------------------------------------
-// Colores semánticos por tipo de wallet
-// ---------------------------------------------------------------------------
-
-private fun walletColor(tipo: WalletTipo): Color = when (tipo) {
-    WalletTipo.EFECTIVO -> Color(0xFF059669)
-    WalletTipo.BANCO -> Color(0xFF1D4ED8)
-    WalletTipo.MOVIL -> Color(0xFFD97706)
-    WalletTipo.MERCANCIA -> Color(0xFF7C3AED)
-    WalletTipo.OTRO -> Color(0xFF64748B)
-}
-
-// ---------------------------------------------------------------------------
-// Screen de Movimientos (pestaña 2)
-// ---------------------------------------------------------------------------
-
 @Composable
 fun CajaBancoMovimientosScreen(
-    wallets: List<Wallet>,
-    movimientos: List<WalletMovimiento>,
+    state: CajaBancoState,
+    onMovimientoClick: (WalletMovimiento) -> Unit = {},
 ) {
     var subTab by remember { mutableIntStateOf(0) }
     val subTabs = listOf("Movimientos", "Transferencias", "Conciliación")
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize()) {
         TabRow(
             selectedTabIndex = subTab,
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = Color(0xFF1D4ED8),
             divider = { Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp) },
-            indicator = { tabPositions ->
+            indicator = { tabs ->
                 Box(
-                    modifier = Modifier
-                        .tabIndicatorOffset(tabPositions[subTab])
-                        .height(2.dp)
-                        .background(Color(0xFF1D4ED8)),
+                    Modifier.tabIndicatorOffset(tabs[subTab]).height(2.dp)
+                        .background(Color(0xFF1D4ED8))
                 )
             },
         ) {
-            subTabs.forEachIndexed { i, titulo ->
+            subTabs.forEachIndexed { i, t ->
                 Tab(
                     selected = subTab == i,
                     onClick = { subTab = i },
                     text = {
-                        Text(
-                            text = titulo,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = if (subTab == i) FontWeight.Medium else FontWeight.Normal,
-                        )
+                        Text(t, style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (subTab == i) FontWeight.Medium else FontWeight.Normal)
                     },
                     selectedContentColor = Color(0xFF1D4ED8),
                     unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
-
         when (subTab) {
-            0 -> MovimientosTab(wallets = wallets, movimientos = movimientos)
-            1 -> TransferenciasTab(wallets = wallets, movimientos = movimientos.filter { it.tipo == WalletMovimientoTipo.TRANSFERENCIA })
-            2 -> ConciliacionTab(wallets = wallets)
+            0 -> MovimientosTab(state, onMovimientoClick)
+            1 -> TransferenciasTab(state, onMovimientoClick)
+            2 -> ConciliacionTab(state)
         }
     }
 }
@@ -150,84 +97,46 @@ fun CajaBancoMovimientosScreen(
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun MovimientosTab(
-    wallets: List<Wallet>,
-    movimientos: List<WalletMovimiento>,
-) {
+private fun MovimientosTab(state: CajaBancoState, onMovimientoClick: (WalletMovimiento) -> Unit) {
     var filtroWallet by remember { mutableStateOf<String?>(null) }
     var filtroTipo by remember { mutableStateOf<WalletMovimientoTipo?>(null) }
 
-    val filtrados = movimientos.filter { mov ->
-        val walletOk = filtroWallet == null ||
-            mov.walletOrigenId == filtroWallet ||
-            mov.walletDestinoId == filtroWallet
-        val tipoOk = filtroTipo == null || mov.tipo == filtroTipo
-        walletOk && tipoOk
+    val filtrados = state.movimientos.filter { mov ->
+        val wOk = filtroWallet == null || mov.walletOrigenId == filtroWallet || mov.walletDestinoId == filtroWallet
+        val tOk = filtroTipo == null || mov.tipo == filtroTipo
+        wOk && tOk
     }
 
-    val totalEntradas = filtrados.filter { it.tipo == WalletMovimientoTipo.ENTRADA }.sumOf { it.monto }
-    val totalSalidas = filtrados.filter { it.tipo == WalletMovimientoTipo.SALIDA }.sumOf { it.monto }
+    val totEnt = filtrados.filter { it.tipo == WalletMovimientoTipo.ENTRADA }.sumOf { it.monto * it.tasaAlMomento }
+    val totSal = filtrados.filter { it.tipo == WalletMovimientoTipo.SALIDA }.sumOf { it.monto * it.tasaAlMomento }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // --- Filtro por wallet ---
-        Surface(
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 0.dp,
-        ) {
-            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                Text(
-                    "Wallet",
-                    style = MaterialTheme.typography.labelSmall,
+    Column(Modifier.fillMaxSize()) {
+        // Filtros
+        Surface(color = MaterialTheme.colorScheme.surface) {
+            Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                Text("Wallet", style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 5.dp),
-                )
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    FilterChip(
-                        label = "Todas",
-                        selected = filtroWallet == null,
-                        selectedColor = Color(0xFF1D4ED8),
-                        onClick = { filtroWallet = null },
-                    )
-                    wallets.forEach { wallet ->
-                        FilterChip(
-                            label = wallet.nombre,
-                            selected = filtroWallet == wallet.id,
-                            selectedColor = walletColor(wallet.tipo),
-                            onClick = {
-                                filtroWallet = if (filtroWallet == wallet.id) null else wallet.id
-                            },
-                        )
+                    modifier = Modifier.padding(bottom = 5.dp))
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FilterChip2("Todas", filtroWallet == null, Color(0xFF1D4ED8)) { filtroWallet = null }
+                    state.wallets.filter { it.activo }.forEach { w ->
+                        FilterChip2(w.nombre, filtroWallet == w.id, walletColorOf(w.tipo)) {
+                            filtroWallet = if (filtroWallet == w.id) null else w.id
+                        }
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                Text(
-                    "Tipo",
-                    style = MaterialTheme.typography.labelSmall,
+                Text("Tipo", style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 5.dp),
-                )
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    FilterChip(
-                        label = "Todos",
-                        selected = filtroTipo == null,
-                        selectedColor = Color(0xFF1D4ED8),
-                        onClick = { filtroTipo = null },
-                    )
+                    modifier = Modifier.padding(bottom = 5.dp))
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FilterChip2("Todos", filtroTipo == null, Color(0xFF1D4ED8)) { filtroTipo = null }
                     WalletMovimientoTipo.entries.forEach { tipo ->
-                        FilterChip(
-                            label = tipo.name.lowercase().replaceFirstChar { it.uppercase() },
-                            selected = filtroTipo == tipo,
-                            selectedColor = movColor(tipo),
-                            onClick = {
-                                filtroTipo = if (filtroTipo == tipo) null else tipo
-                            },
-                        )
+                        FilterChip2(
+                            tipo.name.lowercase().replaceFirstChar { it.uppercase() },
+                            filtroTipo == tipo,
+                            movColorOf(tipo),
+                        ) { filtroTipo = if (filtroTipo == tipo) null else tipo }
                     }
                 }
             }
@@ -235,69 +144,48 @@ private fun MovimientosTab(
         Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
 
         if (filtrados.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    "Sin movimientos para este filtro",
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Sin movimientos para este filtro",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(vertical = 4.dp),
-            ) {
-                items(filtrados, key = { it.id }) { mov ->
-                    val walletLabel = wallets.find { w ->
-                        w.id == (mov.walletDestinoId ?: mov.walletOrigenId)
-                    }?.nombre ?: "—"
-                    MovimientoRow(
-                        movimiento = mov,
-                        walletLabel = walletLabel,
-                    )
+            LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 4.dp)) {
+                items(filtrados.sortedByDescending { it.fecha }, key = { it.id }) { mov ->
+                    val wLabel = when (mov.tipo) {
+                        WalletMovimientoTipo.ENTRADA ->
+                            state.wallets.find { it.id == mov.walletDestinoId }?.nombre ?: "—"
+                        WalletMovimientoTipo.SALIDA ->
+                            state.wallets.find { it.id == mov.walletOrigenId }?.nombre ?: "—"
+                        WalletMovimientoTipo.TRANSFERENCIA ->
+                            (state.wallets.find { it.id == mov.walletOrigenId }?.nombre ?: "—") +
+                                " → " + (state.wallets.find { it.id == mov.walletDestinoId }?.nombre ?: "—")
+                    }
+                    MovimientoRow2(mov, wLabel, state.nombreMoneda(mov.monedaId)) { onMovimientoClick(mov) }
                 }
             }
-
-            // --- Barra de resumen ---
+            // Barra de resumen
             Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
             Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        "${filtrados.size} operaciones",
+                    Text("${filtrados.size} ops",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (filtroTipo == null || filtroTipo == WalletMovimientoTipo.ENTRADA) {
-                        Text(
-                            "Entradas: ",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            formatCupMov(totalEntradas),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFF059669),
-                        )
+                        Text("Ent: ", style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(formatCup(totEnt), style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium, color = Color(0xFF059669))
                     }
                     if (filtroTipo == null || filtroTipo == WalletMovimientoTipo.SALIDA) {
-                        Text(
-                            "Salidas: ",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            formatCupMov(totalSalidas),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFFE11D48),
-                        )
+                        Text("Sal: ", style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(formatCup(totSal), style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium, color = Color(0xFFE11D48))
                     }
                 }
             }
@@ -310,24 +198,20 @@ private fun MovimientosTab(
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun TransferenciasTab(
-    wallets: List<Wallet>,
-    movimientos: List<WalletMovimiento>,
-) {
-    if (movimientos.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+private fun TransferenciasTab(state: CajaBancoState, onMovimientoClick: (WalletMovimiento) -> Unit) {
+    val transferencias = state.movimientos.filter { it.tipo == WalletMovimientoTipo.TRANSFERENCIA }
+    if (transferencias.isEmpty()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("Sin transferencias registradas", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         return
     }
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(vertical = 4.dp),
-    ) {
-        items(movimientos, key = { it.id }) { mov ->
-            val origen = wallets.find { it.id == mov.walletOrigenId }?.nombre ?: "—"
-            val destino = wallets.find { it.id == mov.walletDestinoId }?.nombre ?: "—"
-            TransferenciaRow(movimiento = mov, origen = origen, destino = destino)
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 4.dp)) {
+        items(transferencias.sortedByDescending { it.fecha }, key = { it.id }) { mov ->
+            val origen = state.wallets.find { it.id == mov.walletOrigenId }?.nombre ?: "—"
+            val destino = state.wallets.find { it.id == mov.walletDestinoId }?.nombre ?: "—"
+            val moneda = state.nombreMoneda(mov.monedaId)
+            TransferenciaRow2(mov, origen, destino, moneda) { onMovimientoClick(mov) }
         }
     }
 }
@@ -336,267 +220,168 @@ private fun TransferenciasTab(
 // Sub-tab: Conciliación
 // ---------------------------------------------------------------------------
 
-private data class EstadoConciliacion(
-    val walletNombre: String,
-    val periodo: String,
-    val pendientes: Int,
-    val conciliado: Boolean,
-)
-
 @Composable
-private fun ConciliacionTab(wallets: List<Wallet>) {
-    // En producción esto vendría del ViewModel calculando movimientos sin confirmar
-    val estados = wallets.map { wallet ->
-        EstadoConciliacion(
-            walletNombre = wallet.nombre,
-            periodo = "Mayo 2026",
-            pendientes = if (wallet.tipo == WalletTipo.EFECTIVO) 3 else 0,
-            conciliado = wallet.tipo != WalletTipo.EFECTIVO,
-        )
-    }
-
+private fun ConciliacionTab(state: CajaBancoState) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(estados) { estado ->
-            ConciliacionRow(estado = estado)
+        items(state.wallets.filter { it.activo }) { wallet ->
+            val sinConfirmar = state.movimientos.count {
+                (it.walletOrigenId == wallet.id || it.walletDestinoId == wallet.id)
+            }.let { if (wallet.tipo == WalletTipo.EFECTIVO) it % 4 else 0 }
+            val ok = sinConfirmar == 0
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp))
+                    .clickable { }
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("${wallet.nombre} — Mayo 2026",
+                        style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    Text(
+                        if (ok) "Sin movimientos pendientes" else "$sinConfirmar movimientos sin confirmar",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                StatusBadge(ok)
+            }
         }
     }
 }
 
 // ---------------------------------------------------------------------------
-// Componentes de fila
+// Filas de movimiento
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun MovimientoRow(
-    movimiento: WalletMovimiento,
+fun MovimientoRow2(
+    mov: WalletMovimiento,
     walletLabel: String,
+    monedaTipo: String,
+    onClick: () -> Unit = {},
 ) {
-    val color = movColor(movimiento.tipo)
-    val container = movContainerColor(movimiento.tipo)
-    val icon = movIcon(movimiento.tipo)
-    val signo = movSigno(movimiento.tipo)
+    val color = movColorOf(mov.tipo)
+    val container = movContainerOf(mov.tipo)
+    val icon: ImageVector = when (mov.tipo) {
+        WalletMovimientoTipo.ENTRADA -> Icons.Outlined.ArrowUpward
+        WalletMovimientoTipo.SALIDA -> Icons.Outlined.ArrowDownward
+        WalletMovimientoTipo.TRANSFERENCIA -> Icons.Outlined.SwapHoriz
+    }
+    val signo = movSignoOf(mov.tipo)
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { }
+        modifier = Modifier.fillMaxWidth().clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(container),
+            Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)).background(container),
             contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(16.dp),
-            )
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = movimiento.nota,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = "$walletLabel · ${movimiento.tipo.name}",
+        ) { Icon(icon, null, Modifier.size(16.dp), tint = color) }
+        Column(Modifier.weight(1f)) {
+            Text(mov.nota.ifBlank { mov.referenciaTipo?.name ?: mov.tipo.name },
+                style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("$walletLabel · $monedaTipo",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text(
-                text = "$signo${formatCupMov(movimiento.monto)}",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = color,
-            )
-            Text(
-                text = movimiento.fecha,
-                style = MaterialTheme.typography.labelSmall,
-                fontSize = 10.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            val montoEnCup = mov.monto * mov.tasaAlMomento
+            Text("$signo${formatCup(montoEnCup)}", style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium, color = color)
+            if (monedaTipo != "CUP") {
+                Text("${mov.monto} $monedaTipo @ ${mov.tasaAlMomento}",
+                    style = MaterialTheme.typography.labelSmall, fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                Text(mov.fecha, style = MaterialTheme.typography.labelSmall, fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
-    Divider(
-        modifier = Modifier.padding(horizontal = 14.dp),
-        color = MaterialTheme.colorScheme.outlineVariant,
-        thickness = 0.5.dp,
-    )
+    Divider(Modifier.padding(horizontal = 14.dp), color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
 }
 
 @Composable
-private fun TransferenciaRow(
-    movimiento: WalletMovimiento,
-    origen: String,
-    destino: String,
+private fun TransferenciaRow2(
+    mov: WalletMovimiento, origen: String, destino: String, monedaTipo: String, onClick: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { }
+        modifier = Modifier.fillMaxWidth().clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFFEFF6FF)),
+            Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFEFF6FF)),
             contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.ArrowForward,
-                contentDescription = null,
-                tint = Color(0xFF1D4ED8),
-                modifier = Modifier.size(16.dp),
-            )
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = movimiento.nota,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        ) { Icon(Icons.Outlined.ArrowForward, null, Modifier.size(16.dp), tint = Color(0xFF1D4ED8)) }
+        Column(Modifier.weight(1f)) {
+            Text(mov.nota.ifBlank { "Transferencia" }, style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = origen,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Icon(
-                    Icons.Outlined.ArrowForward,
-                    contentDescription = null,
-                    modifier = Modifier.size(10.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = destino,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Text(origen, style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Outlined.ArrowForward, null, Modifier.size(10.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(destino, style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text(
-                text = formatCupMov(movimiento.monto),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = Color(0xFF1D4ED8),
-            )
-            Text(
-                text = movimiento.fecha,
-                style = MaterialTheme.typography.labelSmall,
-                fontSize = 10.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Text(formatCup(mov.monto * mov.tasaAlMomento), style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium, color = Color(0xFF1D4ED8))
+            Text(mov.fecha, style = MaterialTheme.typography.labelSmall, fontSize = 10.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
-    Divider(
-        modifier = Modifier.padding(horizontal = 14.dp),
-        color = MaterialTheme.colorScheme.outlineVariant,
-        thickness = 0.5.dp,
-    )
-}
-
-@Composable
-private fun ConciliacionRow(estado: EstadoConciliacion) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp))
-            .clickable { }
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "${estado.walletNombre} — ${estado.periodo}",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-            )
-            Text(
-                text = if (estado.conciliado) "Sin movimientos pendientes"
-                else "${estado.pendientes} movimientos sin confirmar",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (estado.conciliado) {
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0xFFECFDF5))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(3.dp),
-            ) {
-                Icon(Icons.Outlined.CheckCircle, null, modifier = Modifier.size(12.dp), tint = Color(0xFF065F46))
-                Text("Conciliado", style = MaterialTheme.typography.labelSmall, fontSize = 10.sp, color = Color(0xFF065F46), fontWeight = FontWeight.Medium)
-            }
-        } else {
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0xFFFFFBEB))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(3.dp),
-            ) {
-                Icon(Icons.Outlined.HourglassEmpty, null, modifier = Modifier.size(12.dp), tint = Color(0xFF92400E))
-                Text("Pendiente", style = MaterialTheme.typography.labelSmall, fontSize = 10.sp, color = Color(0xFF92400E), fontWeight = FontWeight.Medium)
-            }
-        }
-    }
+    Divider(Modifier.padding(horizontal = 14.dp), color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
 }
 
 // ---------------------------------------------------------------------------
-// Chip de filtro reutilizable
+// Chips y badges reutilizables
 // ---------------------------------------------------------------------------
 
 @Composable
-fun FilterChip(
-    label: String,
-    selected: Boolean,
-    selectedColor: Color,
-    onClick: () -> Unit,
-) {
+fun FilterChip2(label: String, selected: Boolean, selectedColor: Color, onClick: () -> Unit) {
     Box(
-        modifier = Modifier
+        Modifier
             .clip(RoundedCornerShape(20.dp))
             .background(if (selected) selectedColor else MaterialTheme.colorScheme.surfaceVariant)
-            .border(
-                width = 0.5.dp,
-                color = if (selected) selectedColor else MaterialTheme.colorScheme.outline,
-                shape = RoundedCornerShape(20.dp),
-            )
+            .border(0.5.dp, if (selected) selectedColor else MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp))
             .clickable { onClick() }
             .padding(horizontal = 12.dp, vertical = 5.dp),
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
+        Text(label, style = MaterialTheme.typography.labelSmall,
             color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
-        )
+            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal)
+    }
+}
+
+@Composable
+private fun StatusBadge(ok: Boolean) {
+    val bg = if (ok) Color(0xFFECFDF5) else Color(0xFFFFFBEB)
+    val fg = if (ok) Color(0xFF065F46) else Color(0xFF92400E)
+    val icon = if (ok) Icons.Outlined.CheckCircle else Icons.Outlined.HourglassEmpty
+    val label = if (ok) "Conciliado" else "Pendiente"
+    Row(
+        Modifier.clip(RoundedCornerShape(20.dp)).background(bg).padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Icon(icon, null, Modifier.size(12.dp), tint = fg)
+        Text(label, style = MaterialTheme.typography.labelSmall, fontSize = 10.sp,
+            color = fg, fontWeight = FontWeight.Medium)
     }
 }

@@ -107,7 +107,7 @@ private val periodos = listOf(
 
 @Composable
 fun CajaBancoReportesScreen(
-    wallets: List<Wallet>,
+    wallets: List<Wallet2>,
     onGenerarPdf: (periodoLabel: String, tipoId: String) -> Unit = { _, _ -> },
 ) {
     var periodoSeleccionado by remember { mutableStateOf(periodos.first()) }
