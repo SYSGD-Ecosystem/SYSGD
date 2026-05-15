@@ -257,14 +257,10 @@ constructor(
     val cuentasContables: Flow<List<CuentaContable>> = cuentaContableDao.observeActivas()
 
     val cuentasIngreso: Flow<List<CuentaContable>> =
-            cuentasContables.map { cuentas ->
-                cuentas.filter { cuenta -> cuenta.disponibleParaIngresos() }
-            }
+            cuentaContableDao.observeByUso(UsoOperativoCuenta.INGRESO)
 
     val cuentasGasto: Flow<List<CuentaContable>> =
-            cuentasContables.map { cuentas ->
-                cuentas.filter { cuenta -> cuenta.disponibleParaGastos() }
-            }
+            cuentaContableDao.observeByUso(UsoOperativoCuenta.GASTO)
 
     val ingresoGastoCuentas: Flow<List<IngresoGastoCuenta>> = ingresoGastoCuentaDao.observeAll()
     val ingresoGastoNotas: Flow<List<IngresoGastoNota>> = ingresoGastoNotaDao.observeAll()
@@ -486,7 +482,7 @@ constructor(
             raw: RawAccountingWorkspaceState?
     ): AccountingWorkspaceState {
         return AccountingWorkspaceState(
-                cuentasContables = raw?.cuentasContables.orEmpty(),
+                cuentasContables = raw?.cuentasContables.orEmpty().map { it.conUsoOperativoNormalizado() },
                 ingresoGastoCuentas = raw?.ingresoGastoCuentas.orEmpty(),
                 ingresoGastoNotas = raw?.ingresoGastoNotas.orEmpty(),
                 posIntegrationConfig = raw?.posIntegrationConfig,
@@ -680,8 +676,9 @@ constructor(
             ingresoGastoCuentaDao.deleteAll()
             cuentaContableDao.deleteAll()
 
-            if (normalizedState.cuentasContables.isNotEmpty()) {
-                cuentaContableDao.insertAll(normalizedState.cuentasContables)
+            val cuentasNormalizadas = normalizedState.cuentasContables.map { it.conUsoOperativoNormalizado() }
+            if (cuentasNormalizadas.isNotEmpty()) {
+                cuentaContableDao.insertAll(cuentasNormalizadas)
             }
             if (normalizedState.ingresoGastoCuentas.isNotEmpty()) {
                 ingresoGastoCuentaDao.insertAll(normalizedState.ingresoGastoCuentas)
@@ -862,7 +859,8 @@ constructor(
             codigo: String,
             nombre: String,
             naturaleza: String,
-            tipo: String
+            tipo: String,
+            usoOperativo: String
     ) {
         val codigoNormalizado = codigo.trim()
         val nombreNormalizado = nombre.trim()
@@ -880,6 +878,7 @@ constructor(
                         nombre = nombreNormalizado,
                         naturaleza = naturaleza,
                         tipo = tipo,
+                        usoOperativo = usoOperativo,
                         createdAt = ahora,
                         updatedAt = ahora
                 )

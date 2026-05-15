@@ -32,6 +32,7 @@ import cu.lazaroysr96.sysgdcont.data.model.NaturalezaCuenta
 import cu.lazaroysr96.sysgdcont.data.model.PrecioProductoDetalle
 import cu.lazaroysr96.sysgdcont.data.model.TipoPrecio
 import cu.lazaroysr96.sysgdcont.data.model.TipoCuenta
+import cu.lazaroysr96.sysgdcont.data.model.UsoOperativoCuenta
 import cu.lazaroysr96.sysgdcont.data.model.Producto
 import cu.lazaroysr96.sysgdcont.viewmodel.InventarioViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
@@ -678,7 +679,7 @@ private fun ProductoPrecioVigenteBlock(
 private fun CuentasTab(
     cuentas: List<CuentaContable>,
     saldoPorCuentaId: Map<String, Double>,
-    onAddCuenta: (codigo: String, nombre: String, naturaleza: String, tipo: String) -> Unit
+    onAddCuenta: (codigo: String, nombre: String, naturaleza: String, tipo: String, usoOperativo: String) -> Unit
 ) {
     var showAddDialog      by remember { mutableStateOf(false) }
     var search             by remember { mutableStateOf("") }
@@ -744,8 +745,8 @@ private fun CuentasTab(
     if (showAddDialog) {
         AddCuentaDialog(
             onDismiss = { showAddDialog = false },
-            onConfirm = { codigo, nombre, naturaleza, tipo ->
-                onAddCuenta(codigo, nombre, naturaleza, tipo)
+            onConfirm = { codigo, nombre, naturaleza, tipo, usoOperativo ->
+                onAddCuenta(codigo, nombre, naturaleza, tipo, usoOperativo)
                 showAddDialog = false
             }
         )
@@ -834,14 +835,16 @@ private fun CuentaTreeCard(
 @Composable
 private fun AddCuentaDialog(
     onDismiss: () -> Unit,
-    onConfirm: (codigo: String, nombre: String, naturaleza: String, tipo: String) -> Unit
+    onConfirm: (codigo: String, nombre: String, naturaleza: String, tipo: String, usoOperativo: String) -> Unit
 ) {
     var codigo             by remember { mutableStateOf("") }
     var nombre             by remember { mutableStateOf("") }
     var naturaleza         by remember { mutableStateOf("ACREEDORA") }
     var tipo               by remember { mutableStateOf("INGRESO") }
+    var usoOperativo       by remember { mutableStateOf(UsoOperativoCuenta.INGRESO) }
     var expandedNaturaleza by remember { mutableStateOf(false) }
     var expandedTipo       by remember { mutableStateOf(false) }
+    var expandedUso        by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -868,21 +871,25 @@ private fun AddCuentaDialog(
                                 text = { Text(TipoCuenta.label(t)) },
                                 onClick = {
                                     tipo = t
-                                    naturaleza = when (t) {
-                                        TipoCuenta.ACTIVO, TipoCuenta.GASTO -> NaturalezaCuenta.DEUDORA
-                                        TipoCuenta.PASIVO, TipoCuenta.PATRIMONIO, TipoCuenta.INGRESO -> NaturalezaCuenta.ACREEDORA
-                                        TipoCuenta.MIXTO -> NaturalezaCuenta.MIXTA
-                                        else -> naturaleza
-                                    }
                                     expandedTipo = false
                                 }
                             )
                         }
                     }
                 }
+
+                ExposedDropdownMenuBox(expanded = expandedUso, onExpandedChange = { expandedUso = !expandedUso }) {
+                    OutlinedTextField(value = UsoOperativoCuenta.label(usoOperativo), onValueChange = {}, readOnly = true, label = { Text("Uso operativo") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedUso) }, modifier = Modifier.menuAnchor().fillMaxWidth())
+                    ExposedDropdownMenu(expanded = expandedUso, onDismissRequest = { expandedUso = false }) {
+                        UsoOperativoCuenta.todos.forEach { uso ->
+                            DropdownMenuItem(text = { Text(UsoOperativoCuenta.label(uso)) }, onClick = { usoOperativo = uso; expandedUso = false })
+                        }
+                    }
+                }
+
             }
         },
-        confirmButton = { TextButton(onClick = { onConfirm(codigo, nombre, naturaleza, tipo) }, enabled = codigo.isNotBlank() && nombre.isNotBlank()) { Text("Guardar") } },
+        confirmButton = { TextButton(onClick = { onConfirm(codigo, nombre, naturaleza, tipo, usoOperativo) }, enabled = codigo.isNotBlank() && nombre.isNotBlank()) { Text("Guardar") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
     )
 }

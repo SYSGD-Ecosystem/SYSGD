@@ -928,6 +928,20 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
     }
 }
 
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+        database.execSQL(
+            "ALTER TABLE catalogo_cuentas ADD COLUMN usoOperativo TEXT NOT NULL DEFAULT 'MIXTO'"
+        )
+        database.execSQL(
+            "UPDATE catalogo_cuentas SET usoOperativo = 'INGRESO' WHERE tipo = 'INGRESO'"
+        )
+        database.execSQL(
+            "UPDATE catalogo_cuentas SET usoOperativo = 'GASTO' WHERE tipo = 'GASTO'"
+        )
+    }
+}
+
 @Database(
     entities = [
         Producto::class,
@@ -959,7 +973,7 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
         Wallet2::class,
         WalletMovimiento::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -1,5 +1,6 @@
 package cu.lazaroysr96.sysgdcont.data.model
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -12,8 +13,10 @@ data class CuentaContable(
     @PrimaryKey val id: String,
     val codigo: String,
     val nombre: String,
-    val naturaleza: String, // ACREEDORA, DEUDORA, MIXTA
+    val naturaleza: String, // ACREEDORA, DEUDORA, MIXTA (solo contabilidad interna)
     val tipo: String, // ACTIVO, PASIVO, PATRIMONIO, INGRESO, GASTO, MIXTO
+    @ColumnInfo(defaultValue = "'MIXTO'")
+    val usoOperativo: String = UsoOperativoCuenta.MIXTO,
     val padreId: String? = null,
     val usaParaTributo: String? = null, // Vinculación a tributo específico
     val activo: Boolean = true,
@@ -57,11 +60,34 @@ object TipoCuenta {
     }
 }
 
-fun CuentaContable.disponibleParaIngresos(): Boolean =
-    activo && (tipo == TipoCuenta.INGRESO || tipo == TipoCuenta.MIXTO || naturaleza == NaturalezaCuenta.MIXTA)
+object UsoOperativoCuenta {
+    const val INGRESO = "INGRESO"
+    const val GASTO = "GASTO"
+    const val MIXTO = "MIXTO"
+    const val AFT = "AFT"
 
-fun CuentaContable.disponibleParaGastos(): Boolean =
-    activo && (tipo == TipoCuenta.GASTO || tipo == TipoCuenta.MIXTO || naturaleza == NaturalezaCuenta.MIXTA)
+    val todos = listOf(INGRESO, GASTO, MIXTO, AFT)
+
+    fun label(uso: String): String = when (uso) {
+        INGRESO -> "Ingreso"
+        GASTO -> "Gasto"
+        MIXTO -> "Mixto"
+        AFT -> "AFT"
+        else -> uso
+    }
+}
+
+@Suppress("SENSELESS_COMPARISON")
+fun CuentaContable.usoOperativoNormalizado(): String =
+    usoOperativo?.takeIf { it.isNotBlank() } ?: UsoOperativoCuenta.MIXTO
+
+fun CuentaContable.disponibleParaUso(uso: String): Boolean {
+    val actual = usoOperativoNormalizado()
+    return activo && (actual == uso || (uso in listOf(UsoOperativoCuenta.INGRESO, UsoOperativoCuenta.GASTO) && actual == UsoOperativoCuenta.MIXTO))
+}
+
+fun CuentaContable.conUsoOperativoNormalizado(): CuentaContable =
+    copy(usoOperativo = usoOperativoNormalizado())
 
 object CuentasContablesPorDefecto {
     const val CODIGO_INGRESOS_VENTAS = "740"
@@ -72,6 +98,7 @@ object CuentasContablesPorDefecto {
         codigo = CODIGO_INGRESOS_VENTAS,
         nombre = "Ingresos por ventas de bienes y servicios",
         tipo = TipoCuenta.INGRESO,
+        usoOperativo = UsoOperativoCuenta.INGRESO,
         naturaleza = NaturalezaCuenta.ACREEDORA
     )
 
@@ -80,6 +107,7 @@ object CuentasContablesPorDefecto {
         codigo = CODIGO_GASTOS_ACTIVIDAD,
         nombre = "Gastos de la actividad",
         tipo = TipoCuenta.GASTO,
+        usoOperativo = UsoOperativoCuenta.GASTO,
         naturaleza = NaturalezaCuenta.DEUDORA
     )
 

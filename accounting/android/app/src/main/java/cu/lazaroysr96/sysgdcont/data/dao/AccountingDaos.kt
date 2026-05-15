@@ -23,11 +23,15 @@ interface CuentaContableDao {
     @Query(
         """
         SELECT * FROM catalogo_cuentas
-        WHERE activo = 1 AND tipo = :tipo AND naturaleza = :naturaleza
+        WHERE activo = 1
+          AND (
+              usoOperativo = :uso
+              OR (:uso IN ('INGRESO', 'GASTO') AND usoOperativo = 'MIXTO')
+          )
         ORDER BY codigo ASC, nombre ASC
         """
     )
-    fun observeByTipoNaturaleza(tipo: String, naturaleza: String): Flow<List<CuentaContable>>
+    fun observeByUso(uso: String): Flow<List<CuentaContable>>
 
     @Query("SELECT * FROM catalogo_cuentas WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): CuentaContable?
