@@ -257,14 +257,13 @@ constructor(
     val cuentasContables: Flow<List<CuentaContable>> = cuentaContableDao.observeActivas()
 
     val cuentasIngreso: Flow<List<CuentaContable>> =
-            cuentaContableDao.observeByTipoNaturaleza(
-                    TipoCuenta.INGRESO,
-                    NaturalezaCuenta.ACREEDORA
-            )
+            cuentasContables.map { cuentas ->
+                cuentas.filter { cuenta -> cuenta.disponibleParaIngresos() }
+            }
 
     val cuentasGasto: Flow<List<CuentaContable>> =
             cuentasContables.map { cuentas ->
-                cuentas.filter { cuenta -> cuenta.tipo == TipoCuenta.GASTO }
+                cuentas.filter { cuenta -> cuenta.disponibleParaGastos() }
             }
 
     val ingresoGastoCuentas: Flow<List<IngresoGastoCuenta>> = ingresoGastoCuentaDao.observeAll()
@@ -2749,6 +2748,10 @@ constructor(
                                     tipoMovimiento == TipoCuenta.GASTO -> 1.0
                             cuenta.naturaleza == NaturalezaCuenta.DEUDORA &&
                                     tipoMovimiento == TipoCuenta.INGRESO -> -1.0
+                            cuenta.naturaleza == NaturalezaCuenta.MIXTA &&
+                                    tipoMovimiento == TipoCuenta.INGRESO -> 1.0
+                            cuenta.naturaleza == NaturalezaCuenta.MIXTA &&
+                                    tipoMovimiento == TipoCuenta.GASTO -> -1.0
                             else -> 1.0
                         }
                 acumulado[cuenta.id] = round2((acumulado[cuenta.id] ?: 0.0) + importe * signo)

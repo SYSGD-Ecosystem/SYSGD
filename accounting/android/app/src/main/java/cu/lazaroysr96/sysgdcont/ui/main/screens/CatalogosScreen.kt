@@ -854,8 +854,8 @@ private fun AddCuentaDialog(
                 ExposedDropdownMenuBox(expanded = expandedNaturaleza, onExpandedChange = { expandedNaturaleza = !expandedNaturaleza }) {
                     OutlinedTextField(value = naturaleza, onValueChange = {}, readOnly = true, label = { Text("Naturaleza") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedNaturaleza) }, modifier = Modifier.menuAnchor().fillMaxWidth())
                     ExposedDropdownMenu(expanded = expandedNaturaleza, onDismissRequest = { expandedNaturaleza = false }) {
-                        listOf("ACREEDORA", "DEUDORA").forEach { nat ->
-                            DropdownMenuItem(text = { Text(if (nat == "ACREEDORA") "Acreedora" else "Deudora") }, onClick = { naturaleza = nat; expandedNaturaleza = false })
+                        NaturalezaCuenta.todos.forEach { nat ->
+                            DropdownMenuItem(text = { Text(NaturalezaCuenta.label(nat)) }, onClick = { naturaleza = nat; expandedNaturaleza = false })
                         }
                     }
                 }
@@ -871,6 +871,7 @@ private fun AddCuentaDialog(
                                     naturaleza = when (t) {
                                         TipoCuenta.ACTIVO, TipoCuenta.GASTO -> NaturalezaCuenta.DEUDORA
                                         TipoCuenta.PASIVO, TipoCuenta.PATRIMONIO, TipoCuenta.INGRESO -> NaturalezaCuenta.ACREEDORA
+                                        TipoCuenta.MIXTO -> NaturalezaCuenta.MIXTA
                                         else -> naturaleza
                                     }
                                     expandedTipo = false
