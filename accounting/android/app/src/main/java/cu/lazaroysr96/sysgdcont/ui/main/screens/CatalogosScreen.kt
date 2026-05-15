@@ -863,8 +863,19 @@ private fun AddCuentaDialog(
                 ExposedDropdownMenuBox(expanded = expandedTipo, onExpandedChange = { expandedTipo = !expandedTipo }) {
                     OutlinedTextField(value = tipo, onValueChange = {}, readOnly = true, label = { Text("Tipo") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedTipo) }, modifier = Modifier.menuAnchor().fillMaxWidth())
                     ExposedDropdownMenu(expanded = expandedTipo, onDismissRequest = { expandedTipo = false }) {
-                        listOf("ACTIVO", "PASIVO", "PATRIMONIO", "INGRESO", "GASTO").forEach { t ->
-                            DropdownMenuItem(text = { Text(t) }, onClick = { tipo = t; expandedTipo = false })
+                        TipoCuenta.todos.forEach { t ->
+                            DropdownMenuItem(
+                                text = { Text(TipoCuenta.label(t)) },
+                                onClick = {
+                                    tipo = t
+                                    naturaleza = when (t) {
+                                        TipoCuenta.ACTIVO, TipoCuenta.GASTO -> NaturalezaCuenta.DEUDORA
+                                        TipoCuenta.PASIVO, TipoCuenta.PATRIMONIO, TipoCuenta.INGRESO -> NaturalezaCuenta.ACREEDORA
+                                        else -> naturaleza
+                                    }
+                                    expandedTipo = false
+                                }
+                            )
                         }
                     }
                 }

@@ -257,7 +257,9 @@ constructor(
             )
 
     val cuentasGasto: Flow<List<CuentaContable>> =
-            cuentaContableDao.observeByTipoNaturaleza(TipoCuenta.GASTO, NaturalezaCuenta.DEUDORA)
+            cuentasContables.map { cuentas ->
+                cuentas.filter { cuenta -> cuenta.tipo == TipoCuenta.GASTO }
+            }
 
     val ingresoGastoCuentas: Flow<List<IngresoGastoCuenta>> = ingresoGastoCuentaDao.observeAll()
     val ingresoGastoNotas: Flow<List<IngresoGastoNota>> = ingresoGastoNotaDao.observeAll()
