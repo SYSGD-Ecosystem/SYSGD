@@ -71,6 +71,7 @@ constructor(
     private val posIntegrationConfigDao by lazy { appDatabase.posIntegrationConfigDao() }
     private val tributoConfigDao by lazy { appDatabase.tributoConfigDao() }
     private val tributoCuentaBaseDao by lazy { appDatabase.tributoCuentaBaseDao() }
+    private val cajaBancoDao by lazy { appDatabase.cajaBancoDao() }
 
     private data class RegistroBackupPayload(
             val app: String = "SYSGD Cont Android",
@@ -92,7 +93,12 @@ constructor(
             val ingresoGastoNotas: List<IngresoGastoNota>?,
             val posIntegrationConfig: PosIntegrationConfig?,
             val tributoConfigs: List<TributoConfig>?,
-            val tributoCuentaBases: List<TributoCuentaBase>?
+            val tributoCuentaBases: List<TributoCuentaBase>?,
+            val wallets: List<Wallet2>?,
+            val walletMovimientos: List<WalletMovimiento>?,
+            val monedas: List<Moneda>?,
+            val monedaTasas: List<MonedaTasa>?,
+            val monedaTasaHistorial: List<MonedaTasaHistorial>?
     )
 
     private data class RawCloudWorkspaceEntry(
@@ -298,6 +304,50 @@ constructor(
         }
     }
 
+    private fun defaultCajaBancoState(createdAt: Long = System.currentTimeMillis()): AccountingWorkspaceState {
+        val tasa = MonedaTasa(
+                id = "moneda_tasa_cup",
+                nombre = "Tasa CUP",
+                tasa = 1.0,
+                createdAt = createdAt,
+                updatedAt = createdAt
+        )
+        val moneda = Moneda(
+                id = "moneda_cup",
+                nombre = "Peso Cubano",
+                tipo = "CUP",
+                tasaId = tasa.id,
+                createdAt = createdAt,
+                updatedAt = createdAt
+        )
+        val historial = MonedaTasaHistorial(
+                id = "moneda_tasa_historial_cup_inicial",
+                monedaId = moneda.id,
+                tasa = 1.0,
+                createdAt = createdAt
+        )
+        return AccountingWorkspaceState(
+                monedas = listOf(moneda),
+                monedaTasas = listOf(tasa),
+                monedaTasaHistorial = listOf(historial)
+        )
+    }
+
+    @Suppress("SENSELESS_COMPARISON")
+    private fun AccountingWorkspaceState.withCajaBancoDefaultsIfNeeded(): AccountingWorkspaceState {
+        val currentMonedas = if (monedas == null) emptyList() else monedas
+        val currentTasas = if (monedaTasas == null) emptyList() else monedaTasas
+        val currentHistorial = if (monedaTasaHistorial == null) emptyList() else monedaTasaHistorial
+        val defaults = defaultCajaBancoState()
+        return copy(
+                wallets = if (wallets == null) emptyList() else wallets,
+                walletMovimientos = if (walletMovimientos == null) emptyList() else walletMovimientos,
+                monedas = currentMonedas.ifEmpty { defaults.monedas },
+                monedaTasas = currentTasas.ifEmpty { defaults.monedaTasas },
+                monedaTasaHistorial = currentHistorial.ifEmpty { defaults.monedaTasaHistorial }
+        )
+    }
+
     private fun emptyWorkspaceSnapshot(): WorkspaceSnapshot {
         val baseRegistro = emptyRegistro()
         return WorkspaceSnapshot(
@@ -324,7 +374,10 @@ constructor(
                                                                         .ingresosVentas()
                                                                         .id
                                                 )
-                                        )
+                                        ),
+                                monedas = defaultCajaBancoState().monedas,
+                                monedaTasas = defaultCajaBancoState().monedaTasas,
+                                monedaTasaHistorial = defaultCajaBancoState().monedaTasaHistorial
                         )
         )
     }
@@ -333,7 +386,11 @@ constructor(
         val raw =
                 context.ledgerDataStore.data.first()[workspaceSnapshotKey(workspaceId)]
                         ?: return null
-        return runCatching { gson.fromJson(raw, WorkspaceSnapshot::class.java) }.getOrNull()
+        return runCatching { gson.fromJson(raw, WorkspaceSnapshot::class.java) }
+                .getOrNull()
+                ?.let { snapshot ->
+                    snapshot.copy(accounting = snapshot.accounting.withCajaBancoDefaultsIfNeeded())
+                }
     }
 
     private suspend fun saveRegistro(registro: RegistroTCP, modifiedByUser: Boolean) {
@@ -373,7 +430,12 @@ constructor(
                 ingresoGastoNotas = ingresoGastoNotaDao.getAll(),
                 posIntegrationConfig = posIntegrationConfigDao.getById(),
                 tributoConfigs = tributoConfigDao.getAll(),
-                tributoCuentaBases = tributoCuentaBaseDao.getAll()
+                tributoCuentaBases = tributoCuentaBaseDao.getAll(),
+                wallets = cajaBancoDao.getWalletsList(),
+                walletMovimientos = cajaBancoDao.getMovimientosList(),
+                monedas = cajaBancoDao.getMonedasList(),
+                monedaTasas = cajaBancoDao.getMonedaTasasList(),
+                monedaTasaHistorial = cajaBancoDao.getMonedaTasaHistorialList()
         )
     }
 
@@ -430,8 +492,13 @@ constructor(
                 ingresoGastoNotas = raw?.ingresoGastoNotas.orEmpty(),
                 posIntegrationConfig = raw?.posIntegrationConfig,
                 tributoConfigs = raw?.tributoConfigs.orEmpty(),
-                tributoCuentaBases = raw?.tributoCuentaBases.orEmpty()
-        )
+                tributoCuentaBases = raw?.tributoCuentaBases.orEmpty(),
+                wallets = raw?.wallets.orEmpty(),
+                walletMovimientos = raw?.walletMovimientos.orEmpty(),
+                monedas = raw?.monedas.orEmpty(),
+                monedaTasas = raw?.monedaTasas.orEmpty(),
+                monedaTasaHistorial = raw?.monedaTasaHistorial.orEmpty()
+        ).withCajaBancoDefaultsIfNeeded()
     }
 
     private fun parseCloudLedgerContainer(json: String): CloudLedgerContainer? {
@@ -472,7 +539,7 @@ constructor(
         val normalizedRegistro = normalizeImportedRegistro(entry.registro)
         return WorkspaceSnapshot(
                 registro = normalizedRegistro,
-                accounting = entry.accounting,
+                accounting = entry.accounting.withCajaBancoDefaultsIfNeeded(),
                 lastSync =
                         if (serverVersion.isBlank()) null else java.time.Instant.now().toString(),
                 ledgerModified = false,
@@ -552,7 +619,10 @@ constructor(
                                                                                                 .ingresosVentas()
                                                                                                 .id
                                                                         )
-                                                                )
+                                                                ),
+                                                        monedas = defaultCajaBancoState().monedas,
+                                                        monedaTasas = defaultCajaBancoState().monedaTasas,
+                                                        monedaTasaHistorial = defaultCajaBancoState().monedaTasaHistorial
                                                 )
                                 )
                         )
@@ -597,7 +667,13 @@ constructor(
     }
 
     private suspend fun restoreAccountingWorkspaceState(state: AccountingWorkspaceState) {
+        val normalizedState = state.withCajaBancoDefaultsIfNeeded()
         appDatabase.withTransaction {
+            cajaBancoDao.deleteMovimientos()
+            cajaBancoDao.deleteWallets()
+            cajaBancoDao.deleteMonedaTasaHistorial()
+            cajaBancoDao.deleteMonedas()
+            cajaBancoDao.deleteMonedaTasas()
             tributoCuentaBaseDao.deleteAll()
             tributoConfigDao.deleteAll()
             posIntegrationConfigDao.deleteAll()
@@ -605,21 +681,36 @@ constructor(
             ingresoGastoCuentaDao.deleteAll()
             cuentaContableDao.deleteAll()
 
-            if (state.cuentasContables.isNotEmpty()) {
-                cuentaContableDao.insertAll(state.cuentasContables)
+            if (normalizedState.cuentasContables.isNotEmpty()) {
+                cuentaContableDao.insertAll(normalizedState.cuentasContables)
             }
-            if (state.ingresoGastoCuentas.isNotEmpty()) {
-                ingresoGastoCuentaDao.insertAll(state.ingresoGastoCuentas)
+            if (normalizedState.ingresoGastoCuentas.isNotEmpty()) {
+                ingresoGastoCuentaDao.insertAll(normalizedState.ingresoGastoCuentas)
             }
-            if (state.ingresoGastoNotas.isNotEmpty()) {
-                ingresoGastoNotaDao.insertAll(state.ingresoGastoNotas)
+            if (normalizedState.ingresoGastoNotas.isNotEmpty()) {
+                ingresoGastoNotaDao.insertAll(normalizedState.ingresoGastoNotas)
             }
-            state.posIntegrationConfig?.let { posIntegrationConfigDao.insert(it) }
-            if (state.tributoConfigs.isNotEmpty()) {
-                tributoConfigDao.insertAll(state.tributoConfigs)
+            normalizedState.posIntegrationConfig?.let { posIntegrationConfigDao.insert(it) }
+            if (normalizedState.tributoConfigs.isNotEmpty()) {
+                tributoConfigDao.insertAll(normalizedState.tributoConfigs)
             }
-            if (state.tributoCuentaBases.isNotEmpty()) {
-                tributoCuentaBaseDao.insertAll(state.tributoCuentaBases)
+            if (normalizedState.tributoCuentaBases.isNotEmpty()) {
+                tributoCuentaBaseDao.insertAll(normalizedState.tributoCuentaBases)
+            }
+            if (normalizedState.monedaTasas.isNotEmpty()) {
+                cajaBancoDao.insertMonedaTasas(normalizedState.monedaTasas)
+            }
+            if (normalizedState.monedas.isNotEmpty()) {
+                cajaBancoDao.insertMonedas(normalizedState.monedas)
+            }
+            if (normalizedState.monedaTasaHistorial.isNotEmpty()) {
+                cajaBancoDao.insertMonedaTasaHistorial(normalizedState.monedaTasaHistorial)
+            }
+            if (normalizedState.wallets.isNotEmpty()) {
+                cajaBancoDao.insertWallets(normalizedState.wallets)
+            }
+            if (normalizedState.walletMovimientos.isNotEmpty()) {
+                cajaBancoDao.insertMovimientos(normalizedState.walletMovimientos)
             }
         }
         ensureDefaultAccounts()
@@ -990,7 +1081,10 @@ constructor(
                                                                                                 .ingresosVentas()
                                                                                                 .id
                                                                         )
-                                                                )
+                                                                ),
+                                                        monedas = defaultCajaBancoState().monedas,
+                                                        monedaTasas = defaultCajaBancoState().monedaTasas,
+                                                        monedaTasaHistorial = defaultCajaBancoState().monedaTasaHistorial
                                                 )
                                 )
                         )
@@ -1544,6 +1638,12 @@ constructor(
 
     suspend fun isLocalModified(): Boolean {
         return localModified.first()
+    }
+
+    suspend fun markLocalModified(modified: Boolean = true) {
+        context.ledgerDataStore.edit { prefs ->
+            prefs[LOCAL_MODIFIED_KEY] = if (modified) "true" else "false"
+        }
     }
 
     private suspend fun getLastDownloadedVersion(): String {

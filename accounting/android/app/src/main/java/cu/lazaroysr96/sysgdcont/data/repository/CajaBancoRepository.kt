@@ -17,6 +17,7 @@ import javax.inject.Singleton
 @Singleton
 class CajaBancoRepository @Inject constructor(
     private val cajaBancoDao: CajaBancoDao,
+    private val ledgerRepository: LedgerRepository,
 ) {
     val monedas: Flow<List<Moneda>> = cajaBancoDao.getMonedas()
     val monedaTasas: Flow<List<MonedaTasa>> = cajaBancoDao.getMonedaTasas()
@@ -26,11 +27,16 @@ class CajaBancoRepository @Inject constructor(
 
     suspend fun ensureConfiguracionInicial() {
         if (cajaBancoDao.countMonedas() == 0) {
-            crearMoneda(nombre = "Peso Cubano", tipo = "CUP", tasaInicial = 1.0)
+            crearMoneda(nombre = "Peso Cubano", tipo = "CUP", tasaInicial = 1.0, modifiedByUser = false)
         }
     }
 
-    suspend fun crearMoneda(nombre: String, tipo: String, tasaInicial: Double): Moneda {
+    suspend fun crearMoneda(
+        nombre: String,
+        tipo: String,
+        tasaInicial: Double,
+        modifiedByUser: Boolean = true,
+    ): Moneda {
         val now = System.currentTimeMillis()
         val tipoNormalizado = tipo.trim().uppercase()
         val tasa = MonedaTasa(
@@ -55,6 +61,7 @@ class CajaBancoRepository @Inject constructor(
             createdAt = now,
         )
         cajaBancoDao.insertMonedaCompleta(moneda, tasa, historial)
+        markModifiedIfNeeded(modifiedByUser)
         return moneda
     }
 
@@ -77,10 +84,12 @@ class CajaBancoRepository @Inject constructor(
                 createdAt = now,
             )
         )
+        ledgerRepository.markLocalModified()
     }
 
     suspend fun eliminarMoneda(moneda: Moneda) {
         cajaBancoDao.deleteMonedaCompleta(moneda)
+        ledgerRepository.markLocalModified()
     }
 
     suspend fun crearWallet(nombre: String, tipo: WalletTipo, saldo: Double, monedaId: String): Wallet2 {
@@ -96,6 +105,7 @@ class CajaBancoRepository @Inject constructor(
             updatedAt = now,
         )
         cajaBancoDao.insertWallet(wallet)
+        ledgerRepository.markLocalModified()
         return wallet
     }
 
@@ -109,10 +119,12 @@ class CajaBancoRepository @Inject constructor(
                 updatedAt = System.currentTimeMillis(),
             )
         )
+        ledgerRepository.markLocalModified()
     }
 
     suspend fun eliminarWallet(wallet: Wallet2) {
         cajaBancoDao.deleteWallet(wallet)
+        ledgerRepository.markLocalModified()
     }
 
     suspend fun registrarMovimiento(
@@ -140,14 +152,23 @@ class CajaBancoRepository @Inject constructor(
             createdAt = System.currentTimeMillis(),
         )
         cajaBancoDao.insertMovimiento(movimiento)
+        ledgerRepository.markLocalModified()
         return movimiento
     }
 
     suspend fun editarNota(movId: String, nota: String) {
         cajaBancoDao.updateMovimientoNota(movId, nota.trim())
+        ledgerRepository.markLocalModified()
     }
 
     suspend fun eliminarMovimiento(movId: String) {
         cajaBancoDao.deleteMovimiento(movId)
+        ledgerRepository.markLocalModified()
+    }
+
+    private suspend fun markModifiedIfNeeded(modifiedByUser: Boolean) {
+        if (modifiedByUser) {
+            ledgerRepository.markLocalModified()
+        }
     }
 }
