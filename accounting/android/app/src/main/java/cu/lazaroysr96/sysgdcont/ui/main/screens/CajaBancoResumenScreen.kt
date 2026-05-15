@@ -1,5 +1,6 @@
 package cu.lazaroysr96.sysgdcont.ui.main.screens
 
+import cu.lazaroysr96.sysgdcont.data.model.*
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
