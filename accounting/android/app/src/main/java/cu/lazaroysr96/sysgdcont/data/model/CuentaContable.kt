@@ -24,12 +24,14 @@ data class CuentaContable(
 object NaturalezaCuenta {
     const val ACREEDORA = "ACREEDORA"
     const val DEUDORA = "DEUDORA"
+    const val MIXTA = "MIXTA"
     
-    val todos = listOf(ACREEDORA, DEUDORA)
+    val todos = listOf(ACREEDORA, DEUDORA, MIXTA)
     
     fun label(naturaleza: String): String = when(naturaleza) {
         ACREEDORA -> "Acreedora"
         DEUDORA -> "Deudora"
+        MIXTA -> "Mixta"
         else -> naturaleza
     }
 }
@@ -40,8 +42,9 @@ object TipoCuenta {
     const val PATRIMONIO = "PATRIMONIO"
     const val INGRESO = "INGRESO"
     const val GASTO = "GASTO"
+    const val MIXTO = "MIXTO"
     
-    val todos = listOf(ACTIVO, PASIVO, PATRIMONIO, INGRESO, GASTO)
+    val todos = listOf(ACTIVO, PASIVO, PATRIMONIO, INGRESO, GASTO, MIXTO)
     
     fun label(tipo: String): String = when(tipo) {
         ACTIVO -> "Activo"
@@ -49,6 +52,7 @@ object TipoCuenta {
         PATRIMONIO -> "Patrimonio"
         INGRESO -> "Ingreso"
         GASTO -> "Gasto"
+        MIXTO -> "Mixto"
         else -> tipo
     }
 }

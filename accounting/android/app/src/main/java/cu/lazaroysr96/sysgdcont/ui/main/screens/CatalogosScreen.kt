@@ -854,8 +854,8 @@ private fun AddCuentaDialog(
                 ExposedDropdownMenuBox(expanded = expandedNaturaleza, onExpandedChange = { expandedNaturaleza = !expandedNaturaleza }) {
                     OutlinedTextField(value = naturaleza, onValueChange = {}, readOnly = true, label = { Text("Naturaleza") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedNaturaleza) }, modifier = Modifier.menuAnchor().fillMaxWidth())
                     ExposedDropdownMenu(expanded = expandedNaturaleza, onDismissRequest = { expandedNaturaleza = false }) {
-                        listOf("ACREEDORA", "DEUDORA").forEach { nat ->
-                            DropdownMenuItem(text = { Text(if (nat == "ACREEDORA") "Acreedora" else "Deudora") }, onClick = { naturaleza = nat; expandedNaturaleza = false })
+                        listOf("ACREEDORA", "DEUDORA", "MIXTA").forEach { nat ->
+                            DropdownMenuItem(text = { Text(if (nat == "ACREEDORA") "Acreedora" else if(nat == "DEUDORA") "Deudora" else "Mixta") }, onClick = { naturaleza = nat; expandedNaturaleza = false })
                         }
                     }
                 }
@@ -863,7 +863,7 @@ private fun AddCuentaDialog(
                 ExposedDropdownMenuBox(expanded = expandedTipo, onExpandedChange = { expandedTipo = !expandedTipo }) {
                     OutlinedTextField(value = tipo, onValueChange = {}, readOnly = true, label = { Text("Tipo") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedTipo) }, modifier = Modifier.menuAnchor().fillMaxWidth())
                     ExposedDropdownMenu(expanded = expandedTipo, onDismissRequest = { expandedTipo = false }) {
-                        listOf("ACTIVO", "PASIVO", "PATRIMONIO", "INGRESO", "GASTO").forEach { t ->
+                        listOf("ACTIVO", "PASIVO", "PATRIMONIO", "INGRESO", "GASTO", "MIXTO").forEach { t ->
                             DropdownMenuItem(text = { Text(t) }, onClick = { tipo = t; expandedTipo = false })
                         }
                     }
