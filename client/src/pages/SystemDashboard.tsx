@@ -989,14 +989,24 @@ const SystemDashboard: FC = () => {
 						{filteredAccountingDocuments.length} registros en total
 					</p>
 				</div>
-				<Button
-					variant="outline"
-					onClick={() => setIsAccountingDialogOpen(true)}
-					disabled={!hasAccountingFeature}
-				>
-					<BookMarked className="w-4 h-4 mr-2" />
-					Nuevo Registro
-				</Button>
+				<div className="flex flex-wrap gap-2">
+					<Button
+						variant="outline"
+						onClick={() => navigate("/gctcp")}
+						disabled={!hasAccountingFeature}
+					>
+						<BookMarked className="w-4 h-4 mr-2" />
+						Abrir GC TCP
+					</Button>
+					<Button
+						variant="outline"
+						onClick={() => setIsAccountingDialogOpen(true)}
+						disabled={!hasAccountingFeature}
+					>
+						<BookMarked className="w-4 h-4 mr-2" />
+						Nuevo Registro
+					</Button>
+				</div>
 			</div>
 
 			{!hasAccountingFeature && (
@@ -1100,10 +1110,16 @@ const SystemDashboard: FC = () => {
 							: "Comienza creando tu primer registro contable"}
 					</p>
 					{!searchTerm && hasAccountingFeature && (
-						<Button onClick={() => setIsAccountingDialogOpen(true)}>
-							<BookMarked className="w-4 h-4 mr-2" />
-							Crear Registro
-						</Button>
+						<div className="flex justify-center gap-2">
+							<Button variant="outline" onClick={() => navigate("/gctcp")}>
+								<BookMarked className="w-4 h-4 mr-2" />
+								Abrir GC TCP
+							</Button>
+							<Button onClick={() => setIsAccountingDialogOpen(true)}>
+								<BookMarked className="w-4 h-4 mr-2" />
+								Crear Registro
+							</Button>
+						</div>
 					)}
 				</div>
 			)}

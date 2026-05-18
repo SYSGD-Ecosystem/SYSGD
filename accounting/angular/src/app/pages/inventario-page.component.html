@@ -1,0 +1,93 @@
+<section class="page-container">
+  <h2>Inventario</h2>
+  <p class="subtitle">Productos y operaciones registradas (solo lectura)</p>
+
+  <div class="inventario-grid">
+    <div class="inventario-section">
+      <h3>Productos para la Venta</h3>
+      <div class="table-wrapper" *ngIf="productosVenta.length > 0; else noVentas">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Precio</th>
+              <th>Unidad</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of productosVenta">
+              <td>{{ p.nombre }}</td>
+              <td class="amount">{{ formatPrice(p.precio) }} CUP</td>
+              <td>{{ p.unidad }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ng-template #noVentas>
+        <p class="empty-message">No hay productos para la venta registrados.</p>
+      </ng-template>
+    </div>
+
+    <div class="inventario-section">
+      <h3>Productos de Compra</h3>
+      <div class="table-wrapper" *ngIf="productosCompra.length > 0; else noCompras">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Precio</th>
+              <th>Unidad</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of productosCompra">
+              <td>{{ p.nombre }}</td>
+              <td class="amount">{{ formatPrice(p.precio) }} CUP</td>
+              <td>{{ p.unidad }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ng-template #noCompras>
+        <p class="empty-message">No hay productos de compra registrados.</p>
+      </ng-template>
+    </div>
+
+    <div class="inventario-section full-width">
+      <h3>Historial de Operaciones</h3>
+      <div class="table-wrapper" *ngIf="operaciones.length > 0; else noOperaciones">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Tipo</th>
+              <th>Producto</th>
+              <th>Cantidad</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let op of operaciones">
+              <td>{{ op.fecha }}</td>
+              <td>
+                <span [class]="op.tipo === 'venta' ? 'badge-venta' : 'badge-compra'">
+                  {{ op.tipo === 'venta' ? 'Venta' : 'Compra' }}
+                </span>
+              </td>
+              <td>{{ getOperacionProducto(op.productoId, op.tipo)?.nombre || 'Desconocido' }}</td>
+              <td>{{ op.cantidad }}</td>
+              <td class="amount">{{ op.total.toFixed(2) }} CUP</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ng-template #noOperaciones>
+        <p class="empty-message">No hay operaciones registradas.</p>
+      </ng-template>
+    </div>
+  </div>
+
+  <div class="read-only-notice">
+    <p>ℹ️ Esta información es de solo lectura. Para gestionar inventario, utiliza la aplicación Android.</p>
+  </div>
+</section>

@@ -123,6 +123,7 @@ import cu.lazaroysr96.sysgdcont.ui.main.screens.SecuritySettingsScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.TercerosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.TributosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.CatalogosScreen
+import cu.lazaroysr96.sysgdcont.ui.main.screens.CajaBancoScreen
 import cu.lazaroysr96.sysgdcont.ui.navigation.MainTab
 import cu.lazaroysr96.sysgdcont.ui.navigation.mainTabs
 import cu.lazaroysr96.sysgdcont.viewmodel.AuthViewModel
@@ -148,6 +149,7 @@ private const val NOMENCLATORS_ROUTE = "nomencladores"
 private const val TERCEROS_ROUTE = "terceros"
 private const val DOCUMENTOS_ROUTE = "documentos"
 private const val CATALOGOS_ROUTE = "catalogos"
+private const val CAJA_BANCO_ROUTE = "caja_banco"
 
 private fun openWhatsAppContact(context: android.content.Context, message: String): Boolean {
     return try {
@@ -226,9 +228,6 @@ fun MainScreen(
     val isFreemiumBuild = AppEdition.isFreemium
     val canUseProFeatures = !isFreemiumBuild || currentTier == "pro" || currentTier == "vip"
     val canUseVipFeatures = !isFreemiumBuild || currentTier == "vip"
-    val showNomenclatorsModule = !isFreemiumBuild
-    val canUseTercerosModule = !isFreemiumBuild || canUseProFeatures
-    val canCreateMultipleWorkspaces = !isFreemiumBuild || canUseProFeatures
     val workspaceLimitMessage =
         if (isFreemiumBuild && !canUseProFeatures) {
             "El plan Free solo permite un espacio de trabajo. Actualiza a Pro para crear varios negocios."
@@ -288,7 +287,6 @@ fun MainScreen(
         }
     }
 
-    // val drawerWidthFraction = if (isLandscape) 0.5f else 0.8f
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         ModalNavigationDrawer(
@@ -444,6 +442,17 @@ fun MainScreen(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                             NavigationDrawerItem(
+                                    label = { Text("Caja y banco") },
+                                    selected = currentRoute == CAJA_BANCO_ROUTE,
+                                    icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = null) },
+                                    onClick = {
+                                        navController.navigate(CAJA_BANCO_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+                            NavigationDrawerItem(
                                     label = { Text("Punto de Venta") },
                                     selected = currentRoute == VENTAS_ROUTE,
                                     icon = { Icon(Icons.Default.Inventory2, contentDescription = null) },
@@ -454,7 +463,7 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
-                            if (showNomenclatorsModule) {
+                            if (canUseProFeatures) {
                                 NavigationDrawerItem(
                                         label = { Text("Nomencladores") },
                                         selected = currentRoute == NOMENCLATORS_ROUTE,
@@ -467,7 +476,7 @@ fun MainScreen(
                                         }
                                 )
                             }
-                            if (canUseTercerosModule) {
+                            if (canUseProFeatures) {
                                 NavigationDrawerItem(
                                         label = { Text("Terceros") },
                                         selected = currentRoute == TERCEROS_ROUTE,
@@ -656,12 +665,13 @@ fun MainScreen(
                                             TERCEROS_ROUTE -> "Terceros"
                                             DOCUMENTOS_ROUTE -> "Documentos"
                                             CATALOGOS_ROUTE -> "Catálogos"
+                                            CAJA_BANCO_ROUTE -> "Caja y banco"
                                             else -> "Gestor Contable TCP"
                                         }
                                 )
                             },
                             navigationIcon = {
-                                if (currentRoute == ABOUT_ROUTE || currentRoute == LICENSES_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE || currentRoute == NOMENCLATORS_ROUTE || currentRoute == TERCEROS_ROUTE || currentRoute == DOCUMENTOS_ROUTE || currentRoute == CATALOGOS_ROUTE) {
+                                if (currentRoute == ABOUT_ROUTE || currentRoute == LICENSES_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE || currentRoute == NOMENCLATORS_ROUTE || currentRoute == TERCEROS_ROUTE || currentRoute == DOCUMENTOS_ROUTE || currentRoute == CATALOGOS_ROUTE || currentRoute == CAJA_BANCO_ROUTE) {
                                     IconButton(onClick = { navController.popBackStack() }) {
                                         Icon(
                                                 Icons.Default.ArrowBack,
@@ -748,7 +758,7 @@ fun MainScreen(
                         cuentasGasto = ledgerState.cuentasGasto,
                         onSwitchWorkspace = ledgerViewModel::switchWorkspace,
                         onCreateWorkspace = ledgerViewModel::createWorkspace,
-                        canCreateWorkspace = canCreateMultipleWorkspaces,
+                        canCreateWorkspace = canUseProFeatures,
                         workspaceLimitMessage = workspaceLimitMessage,
                         onOpenRegistro = {
                             navController.navigate(MainTab.Generales.route) {
@@ -761,26 +771,26 @@ fun MainScreen(
                             }
                         },
                         onOpenNomencladores = {
-                            if (showNomenclatorsModule) {
+                            if (canUseProFeatures) {
                                 navController.navigate(NOMENCLATORS_ROUTE) {
                                     launchSingleTop = true
                                 }
                             }
                         },
-                        showNomencladoresShortcut = showNomenclatorsModule,
+                        showNomencladoresShortcut = canUseProFeatures,
                         onOpenCatalogos = {
                             navController.navigate(CATALOGOS_ROUTE) {
                                 launchSingleTop = true
                             }
                         },
                         onOpenTerceros = {
-                            if (canUseTercerosModule) {
+                            if (canUseProFeatures) {
                                 navController.navigate(TERCEROS_ROUTE) {
                                     launchSingleTop = true
                                 }
                             }
                         },
-                        showTercerosShortcut = canUseTercerosModule,
+                        showTercerosShortcut = canUseProFeatures,
                         onOpenDocumentos = {
                             navController.navigate(DOCUMENTOS_ROUTE) {
                                 launchSingleTop = true
@@ -817,6 +827,7 @@ fun MainScreen(
         onContactWhatsApp = {
             openWhatsAppContact(context, "Hola, necesito ayuda con Gestor Contable TCP.")
         },
+        ledgerViewModel,
                     )
                 }
                 composable(MainTab.Generales.route) { GeneralesScreen(ledgerViewModel) }
@@ -838,14 +849,14 @@ fun MainScreen(
                     )
                 }
                 composable(NOMENCLATORS_ROUTE) {
-                    if (showNomenclatorsModule) {
+                    if (canUseProFeatures) {
                         NomenclatorsScreen()
                     } else {
                         FeatureUnavailableScreen("Nomencladores no está disponible en la versión Freemium.")
                     }
                 }
                 composable(TERCEROS_ROUTE) {
-                    if (canUseTercerosModule) {
+                    if (canUseProFeatures) {
                         TercerosScreen(tercerosViewModel, tarjetaViewModel)
                     } else {
                         FeatureUnavailableScreen("Terceros requiere plan Pro en la app Freemium.")
@@ -859,6 +870,9 @@ fun MainScreen(
                         ledgerViewModel = ledgerViewModel
                     ) 
                 }
+                composable(CAJA_BANCO_ROUTE) {
+                    CajaBancoScreen()
+                }
                 composable(LICENSES_ROUTE) {
                     LicenseCenterScreen(
                         experimentalFeaturesEnabled = ledgerState.experimentalFeaturesEnabled,
@@ -866,7 +880,8 @@ fun MainScreen(
                         onRefresh = { planPurchaseViewModel.loadData(force = true) },
                         onSubmit = planPurchaseViewModel::submitOrder,
                         onDismissError = planPurchaseViewModel::clearError,
-                        onDismissInfo = planPurchaseViewModel::clearInfoMessage
+                        onDismissInfo = planPurchaseViewModel::clearInfoMessage,
+                        isProDistribution = !isFreemiumBuild
                     )
                 }
                 composable(ABOUT_ROUTE) {

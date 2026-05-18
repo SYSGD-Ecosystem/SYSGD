@@ -243,10 +243,11 @@ class LedgerViewModel @Inject constructor(
         codigo: String,
         nombre: String,
         naturaleza: String,
-        tipo: String
+        tipo: String,
+        usoOperativo: String
     ) {
         viewModelScope.launch {
-            ledgerRepository.crearCuentaContable(codigo, nombre, naturaleza, tipo)
+            ledgerRepository.crearCuentaContable(codigo, nombre, naturaleza, tipo, usoOperativo)
         }
     }
 
@@ -591,5 +592,18 @@ class LedgerViewModel @Inject constructor(
 
     fun dismissNoCreditsDialog() {
         _uiState.update { it.copy(showNoCreditsDialog = false, noCreditsMessage = null) }
+    }
+
+    fun generateMonthlyReport(month: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isDownloadingPdf = true, pdfError = null, pdfIntent = null) }
+            ledgerRepository.generateMonthlyReportPdf(month)
+                .onSuccess { intent ->
+                    _uiState.update { it.copy(isDownloadingPdf = false, pdfIntent = intent) }
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isDownloadingPdf = false, pdfError = e.message) }
+                }
+        }
     }
 }

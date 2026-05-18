@@ -1,0 +1,23 @@
+<div class="portal-layout">
+  <aside class="portal-sidebar">
+    <div class="sidebar-header">
+      <h2>SYSGD Cont</h2>
+      <p class="user-name">{{ auth.currentUserValue?.name ?? 'Usuario' }}</p>
+    </div>
+    <nav class="sidebar-nav">
+      <a routerLink="/portal/resumen" routerLinkActive="active" class="nav-item">Resumen</a>
+      <a routerLink="/portal/generales" routerLinkActive="active" class="nav-item">Generales</a>
+      <a routerLink="/portal/movimientos" routerLinkActive="active" class="nav-item">Ingresos/Gastos</a>
+      <a routerLink="/portal/tributos" routerLinkActive="active" class="nav-item">Tributos</a>
+      <a routerLink="/portal/inventario" routerLinkActive="active" class="nav-item">Inventario</a>
+      <a routerLink="/portal/account" routerLinkActive="active" class="nav-item">Mi Cuenta</a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="logout-btn" (click)="logout()">Cerrar Sesión</button>
+    </div>
+  </aside>
+
+  <main class="portal-content">
+    <router-outlet />
+  </main>
+</div>

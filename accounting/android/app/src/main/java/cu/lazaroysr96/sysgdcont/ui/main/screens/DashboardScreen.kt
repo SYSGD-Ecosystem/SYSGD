@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.AlertDialog
@@ -67,6 +68,8 @@ import cu.lazaroysr96.sysgdcont.data.model.AnnualReport
 import cu.lazaroysr96.sysgdcont.data.model.CuentaContable
 import cu.lazaroysr96.sysgdcont.data.model.GeneralesData
 import cu.lazaroysr96.sysgdcont.data.model.WorkspaceProfile
+import cu.lazaroysr96.sysgdcont.ui.main.screens.CalculadoraScreen
+import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -85,6 +88,7 @@ private data class DashboardShortcut(
 private enum class DashboardTab {
     GENERAL,
     MODULOS,
+    CALCULADORA,
     CUENTA
 }
 
@@ -126,6 +130,7 @@ fun DashboardScreen(
     onNavigateToLicenses: () -> Unit,
     onNavigateToSecurity: () -> Unit,
     onContactWhatsApp: () -> Unit,
+    viewModel: LedgerViewModel,
 ) {
     var showWorkspaceDialog by remember { mutableStateOf(false) }
     var showQuickActions by remember { mutableStateOf(false) }
@@ -218,6 +223,12 @@ fun DashboardScreen(
                     onClick = { selectedTab = DashboardTab.MODULOS },
                     icon = { Icon(Icons.Default.Apps, contentDescription = null) },
                     label = { Text("Módulos") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == DashboardTab.CALCULADORA,
+                    onClick = { selectedTab = DashboardTab.CALCULADORA },
+                    icon = { Icon(Icons.Default.Widgets, contentDescription = null) },
+                    label = { Text("Calculadora") }
                 )
                 NavigationBarItem(
                     selected = selectedTab == DashboardTab.CUENTA,
@@ -350,6 +361,10 @@ DashboardTab.MODULOS -> {
 
                 Spacer(modifier = Modifier.height(96.dp))
             }
+    }
+
+    DashboardTab.CALCULADORA -> {
+        CalculadoraScreen(viewModel)
     }
     
         DashboardTab.CUENTA -> {
