@@ -3,6 +3,7 @@ package cu.lazaroysr96.sysgdcont.data
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
+import cu.lazaroysr96.sysgdcont.data.dao.CajaBancoDao
 import cu.lazaroysr96.sysgdcont.data.dao.CatalogoCompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.CatalogoVentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
@@ -21,6 +22,11 @@ import cu.lazaroysr96.sysgdcont.data.dao.TributoConfigDao
 import cu.lazaroysr96.sysgdcont.data.dao.TributoCuentaBaseDao
 import cu.lazaroysr96.sysgdcont.data.dao.TarjetaDao
 import cu.lazaroysr96.sysgdcont.data.dao.TercerosDao
+import cu.lazaroysr96.sysgdcont.data.model.Moneda
+import cu.lazaroysr96.sysgdcont.data.model.MonedaTasa
+import cu.lazaroysr96.sysgdcont.data.model.MonedaTasaHistorial
+import cu.lazaroysr96.sysgdcont.data.model.Wallet2
+import cu.lazaroysr96.sysgdcont.data.model.WalletMovimiento
 import cu.lazaroysr96.sysgdcont.data.model.LineaVenta
 import cu.lazaroysr96.sysgdcont.data.model.Almacen
 import cu.lazaroysr96.sysgdcont.data.model.CatalogoCompra
@@ -807,6 +813,135 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
     }
 }
 
+
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+        database.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `moneda_tasas` (
+                `id` TEXT NOT NULL,
+                `nombre` TEXT NOT NULL,
+                `tasa` REAL NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                `updatedAt` INTEGER NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent()
+        )
+        database.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `monedas` (
+                `id` TEXT NOT NULL,
+                `nombre` TEXT NOT NULL,
+                `tipo` TEXT NOT NULL,
+                `tasaId` TEXT NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                `updatedAt` INTEGER NOT NULL,
+                PRIMARY KEY(`id`),
+                FOREIGN KEY(`tasaId`) REFERENCES `moneda_tasas`(`id`) ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_monedas_tasaId` ON `monedas` (`tasaId`)")
+        database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_monedas_tipo` ON `monedas` (`tipo`)")
+        database.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `moneda_tasa_historial` (
+                `id` TEXT NOT NULL,
+                `monedaId` TEXT NOT NULL,
+                `tasa` REAL NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                PRIMARY KEY(`id`),
+                FOREIGN KEY(`monedaId`) REFERENCES `monedas`(`id`) ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_moneda_tasa_historial_monedaId` ON `moneda_tasa_historial` (`monedaId`)")
+        database.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `wallets` (
+                `id` TEXT NOT NULL,
+                `nombre` TEXT NOT NULL,
+                `tipo` TEXT NOT NULL,
+                `saldoInicial` REAL NOT NULL,
+                `monedaId` TEXT NOT NULL,
+                `activo` INTEGER NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                `updatedAt` INTEGER NOT NULL,
+                PRIMARY KEY(`id`),
+                FOREIGN KEY(`monedaId`) REFERENCES `monedas`(`id`) ON DELETE RESTRICT
+            )
+            """.trimIndent()
+        )
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_wallets_monedaId` ON `wallets` (`monedaId`)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_wallets_tipo` ON `wallets` (`tipo`)")
+        database.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `wallet_movimientos` (
+                `id` TEXT NOT NULL,
+                `walletOrigenId` TEXT,
+                `walletDestinoId` TEXT,
+                `monto` REAL NOT NULL,
+                `tasaAlMomento` REAL NOT NULL,
+                `monedaId` TEXT NOT NULL,
+                `tipo` TEXT NOT NULL,
+                `referenciaId` TEXT,
+                `referenciaTipo` TEXT,
+                `nota` TEXT NOT NULL,
+                `fecha` TEXT NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                PRIMARY KEY(`id`),
+                FOREIGN KEY(`walletOrigenId`) REFERENCES `wallets`(`id`) ON DELETE SET NULL,
+                FOREIGN KEY(`walletDestinoId`) REFERENCES `wallets`(`id`) ON DELETE SET NULL,
+                FOREIGN KEY(`monedaId`) REFERENCES `monedas`(`id`) ON DELETE RESTRICT
+            )
+            """.trimIndent()
+        )
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_wallet_movimientos_walletOrigenId` ON `wallet_movimientos` (`walletOrigenId`)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_wallet_movimientos_walletDestinoId` ON `wallet_movimientos` (`walletDestinoId`)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_wallet_movimientos_monedaId` ON `wallet_movimientos` (`monedaId`)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_wallet_movimientos_tipo` ON `wallet_movimientos` (`tipo`)")
+        database.execSQL("CREATE INDEX IF NOT EXISTS `index_wallet_movimientos_fecha` ON `wallet_movimientos` (`fecha`)")
+
+        val now = System.currentTimeMillis()
+        database.execSQL(
+            """
+            INSERT OR IGNORE INTO `moneda_tasas` (`id`, `nombre`, `tasa`, `createdAt`, `updatedAt`)
+            VALUES ('moneda_tasa_cup', 'Tasa CUP', 1.0, ?, ?)
+            """.trimIndent(),
+            arrayOf(now, now)
+        )
+        database.execSQL(
+            """
+            INSERT OR IGNORE INTO `monedas` (`id`, `nombre`, `tipo`, `tasaId`, `createdAt`, `updatedAt`)
+            VALUES ('moneda_cup', 'Peso Cubano', 'CUP', 'moneda_tasa_cup', ?, ?)
+            """.trimIndent(),
+            arrayOf(now, now)
+        )
+        database.execSQL(
+            """
+            INSERT OR IGNORE INTO `moneda_tasa_historial` (`id`, `monedaId`, `tasa`, `createdAt`)
+            VALUES ('moneda_tasa_historial_cup_inicial', 'moneda_cup', 1.0, ?)
+            """.trimIndent(),
+            arrayOf(now)
+        )
+    }
+}
+
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+        database.execSQL(
+            "ALTER TABLE catalogo_cuentas ADD COLUMN usoOperativo TEXT NOT NULL DEFAULT 'MIXTO'"
+        )
+        database.execSQL(
+            "UPDATE catalogo_cuentas SET usoOperativo = 'INGRESO' WHERE tipo = 'INGRESO'"
+        )
+        database.execSQL(
+            "UPDATE catalogo_cuentas SET usoOperativo = 'GASTO' WHERE tipo = 'GASTO'"
+        )
+    }
+}
+
 @Database(
     entities = [
         Producto::class,
@@ -831,9 +966,14 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
         Tercero::class,
         TerceroRol::class,
         TerceroCuenta::class,
-        TerceroMovimiento::class
+        TerceroMovimiento::class,
+        MonedaTasa::class,
+        Moneda::class,
+        MonedaTasaHistorial::class,
+        Wallet2::class,
+        WalletMovimiento::class
     ],
-    version = 11,
+    version = 13,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -855,4 +995,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun almacenDao(): AlmacenDao
     abstract fun tarjetaDao(): TarjetaDao
     abstract fun tercerosDao(): TercerosDao
+    abstract fun cajaBancoDao(): CajaBancoDao
 }

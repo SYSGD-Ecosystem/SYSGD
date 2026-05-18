@@ -13,7 +13,12 @@ data class AccountingWorkspaceState(
     val ingresoGastoNotas: List<IngresoGastoNota> = emptyList(),
     val posIntegrationConfig: PosIntegrationConfig? = null,
     val tributoConfigs: List<TributoConfig> = emptyList(),
-    val tributoCuentaBases: List<TributoCuentaBase> = emptyList()
+    val tributoCuentaBases: List<TributoCuentaBase> = emptyList(),
+    val wallets: List<Wallet2> = emptyList(),
+    val walletMovimientos: List<WalletMovimiento> = emptyList(),
+    val monedas: List<Moneda> = emptyList(),
+    val monedaTasas: List<MonedaTasa> = emptyList(),
+    val monedaTasaHistorial: List<MonedaTasaHistorial> = emptyList()
 )
 
 data class WorkspaceSnapshot(

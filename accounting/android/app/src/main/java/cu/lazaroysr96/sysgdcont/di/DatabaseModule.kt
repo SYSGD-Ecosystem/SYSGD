@@ -13,6 +13,9 @@ import cu.lazaroysr96.sysgdcont.data.MIGRATION_7_8
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_8_9
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_9_10
 import cu.lazaroysr96.sysgdcont.data.MIGRATION_10_11
+import cu.lazaroysr96.sysgdcont.data.MIGRATION_11_12
+import cu.lazaroysr96.sysgdcont.data.MIGRATION_12_13
+import cu.lazaroysr96.sysgdcont.data.dao.CajaBancoDao
 import cu.lazaroysr96.sysgdcont.data.dao.CatalogoCompraDao
 import cu.lazaroysr96.sysgdcont.data.dao.CatalogoVentaDao
 import cu.lazaroysr96.sysgdcont.data.dao.ProductoDao
@@ -54,7 +57,9 @@ object DatabaseModule {
                 MIGRATION_7_8,
                 MIGRATION_8_9,
                 MIGRATION_9_10,
-                MIGRATION_10_11
+                MIGRATION_10_11,
+                MIGRATION_11_12,
+                MIGRATION_12_13
             )
             .build()
     }
@@ -130,5 +135,11 @@ object DatabaseModule {
     @Singleton
     fun provideTercerosDao(database: AppDatabase): TercerosDao {
         return database.tercerosDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideCajaBancoDao(database: AppDatabase): CajaBancoDao {
+        return database.cajaBancoDao()
     }
 }

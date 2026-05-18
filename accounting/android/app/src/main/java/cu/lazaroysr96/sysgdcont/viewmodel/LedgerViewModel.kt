@@ -243,10 +243,11 @@ class LedgerViewModel @Inject constructor(
         codigo: String,
         nombre: String,
         naturaleza: String,
-        tipo: String
+        tipo: String,
+        usoOperativo: String
     ) {
         viewModelScope.launch {
-            ledgerRepository.crearCuentaContable(codigo, nombre, naturaleza, tipo)
+            ledgerRepository.crearCuentaContable(codigo, nombre, naturaleza, tipo, usoOperativo)
         }
     }
 
