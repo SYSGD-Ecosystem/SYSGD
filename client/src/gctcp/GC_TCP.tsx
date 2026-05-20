@@ -24,13 +24,14 @@ import {
   DashboardView,
   EntriesView,
   EstadoResultadoView,
-  GeneralView,
   ResumenView,
   SupportView,
   TercerosView,
   TributosView,
 } from "./views";
 import CajaBanco from "./modules/CajaBaco";
+import DjGeneral from "./dj/General";
+import { useDjActions } from "./hooks/useDjActions";
 
 const GC_TCP: FC = () => {
   const navigate = useNavigate();
@@ -117,6 +118,15 @@ const GC_TCP: FC = () => {
     }),
     [analyses],
   );
+
+  const djActions = useDjActions({
+    ledger,
+    activeWorkspaceId,
+    data,
+    setData,
+    api,
+    toast,
+  });
 
   const handleSelectWorkspace = async (workspaceId: string) => {
     if (!ledger || workspaceId === activeWorkspaceId) return;
@@ -566,7 +576,12 @@ console.log(activeWorkspace?.accounting.monedas);
         );
       case "generales":
         return (
-          <GeneralView workspace={activeWorkspace} analysis={activeAnalysis} />
+          <DjGeneral
+            workspace={activeWorkspace}
+            analysis={activeAnalysis}
+            saving={djActions.saving}
+            onSave={djActions.handleUpdateGenerals}
+          />
         );
       case "ingresos":
         return <EntriesView workspace={activeWorkspace} type="ingresos" />;

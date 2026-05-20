@@ -32,7 +32,7 @@ import type { CloudWorkspaceEntry } from "../accounting/core/types/accountingTyp
 import { MONTH_CODES } from "../accounting/core/utils/constants";
 import UploadBackupPanel from "./UploadBackupPanel";
 import {
-  EMPTY_GENERALES,
+  // EMPTY_GENERALES,
   activeRows,
   formatMoney,
   getRows,
@@ -161,90 +161,6 @@ const MonthlyChart: FC<{ analysis: WorkspaceAnalysis }> = ({ analysis }) => {
   );
 };
 
-export const GeneralView: FC<{
-  workspace: CloudWorkspaceEntry;
-  analysis: WorkspaceAnalysis;
-}> = ({ workspace, analysis }) => {
-  const generales = workspace.registro.generales ?? EMPTY_GENERALES;
-  const fiscalAddress = [
-    generales.fiscalCalle,
-    generales.fiscalMunicipio,
-    generales.fiscalProvincia,
-  ]
-    .filter(Boolean)
-    .join(", ");
-  const legalAddress = [
-    generales.legalCalle,
-    generales.legalMunicipio,
-    generales.legalProvincia,
-  ]
-    .filter(Boolean)
-    .join(", ");
-  const fields = [
-    ["Nombre", generales.nombre],
-    ["Año", String(generales.anio || "")],
-    ["NIT", generales.nit],
-    ["Actividad", generales.actividad],
-    ["Codigo", generales.codigo],
-    ["Direccion fiscal", fiscalAddress],
-    ["Direccion legal", legalAddress],
-  ];
-
-  return (
-    <div className="grid gap-4 xl:grid-cols-[1fr_22rem]">
-      <Card className="rounded-lg shadow-sm">
-        <CardHeader className="p-4">
-          <CardTitle className="text-base">Datos generales</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 p-4 pt-0 sm:grid-cols-2">
-          {fields.map(([label, value]) => (
-            <div
-              key={label}
-              className="rounded-md border border-slate-200 p-3 dark:border-slate-800"
-            >
-              <p className="text-xs font-medium uppercase text-slate-500 dark:text-slate-400">
-                {label}
-              </p>
-              <p className="mt-1 wrap-break-word text-sm font-semibold text-slate-950 dark:text-slate-50">
-                {value || "-"}
-              </p>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-      <Card className="rounded-lg shadow-sm">
-        <CardHeader className="p-4">
-          <CardTitle className="text-base">Lectura del espacio</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 p-4 pt-0">
-          <MetricCard
-            title="Completitud fiscal"
-            value={`${analysis.completenessScore}%`}
-            detail="Campos base completados"
-            icon={<WalletCards />}
-            accent="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
-          />
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-md bg-slate-100 p-3 dark:bg-slate-800">
-              <p className="text-slate-500 dark:text-slate-400">
-                Ultimo mes activo
-              </p>
-              <p className="font-semibold text-slate-950 dark:text-slate-50">
-                {analysis.lastMonthWithActivity}
-              </p>
-            </div>
-            <div className="rounded-md bg-slate-100 p-3 dark:bg-slate-800">
-              <p className="text-slate-500 dark:text-slate-400">Cuentas</p>
-              <p className="font-semibold text-slate-950 dark:text-slate-50">
-                {analysis.accountCount}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
 
 export const EntriesView: FC<{
   workspace: CloudWorkspaceEntry;
