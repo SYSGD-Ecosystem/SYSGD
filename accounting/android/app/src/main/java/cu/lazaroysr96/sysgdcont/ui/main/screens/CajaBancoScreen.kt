@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import cu.lazaroysr96.sysgdcont.BuildConfig
 import cu.lazaroysr96.sysgdcont.data.model.Moneda
 import cu.lazaroysr96.sysgdcont.data.model.MonedaTasa
 import cu.lazaroysr96.sysgdcont.data.model.Wallet2
@@ -170,6 +171,9 @@ private enum class CajaBancoTab(val label: String, val icon: ImageVector) {
     REPORTES("Reportes", Icons.Outlined.Description),
 }
 
+private fun cajaBancoTabsForBuild(): List<CajaBancoTab> =
+    if (BuildConfig.DEBUG) CajaBancoTab.entries else CajaBancoTab.entries.filter { it != CajaBancoTab.REPORTES }
+
 // ---------------------------------------------------------------------------
 // Screen raíz
 // ---------------------------------------------------------------------------
@@ -181,6 +185,7 @@ fun CajaBancoScreen(
     viewModel: CajaBancoViewModel = hiltViewModel(),
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    val availableTabs = remember { cajaBancoTabsForBuild() }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var sheetActivo by remember { mutableStateOf<SheetActivo?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -313,7 +318,7 @@ fun CajaBancoScreen(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
             NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                CajaBancoTab.entries.forEachIndexed { i, tab ->
+                availableTabs.forEachIndexed { i, tab ->
                     NavigationBarItem(
                         selected = selectedTab == i,
                         onClick = { selectedTab = i },
@@ -354,9 +359,11 @@ fun CajaBancoScreen(
                         onEditarTasa = { sheetActivo = SheetActivo.EditarTasa(it) },
                         onEliminarMoneda = { sheetActivo = SheetActivo.EliminarMoneda(it) },
                     )
-                    3 -> CajaBancoReportesScreen(wallets = state.wallets.map {
-                        Wallet2(it.id, it.nombre, it.tipo, it.saldoInicial, it.monedaId, it.activo)
-                    })
+                    3 -> if (BuildConfig.DEBUG) {
+                        CajaBancoReportesScreen(wallets = state.wallets.map {
+                            Wallet2(it.id, it.nombre, it.tipo, it.saldoInicial, it.monedaId, it.activo)
+                        })
+                    }
                 }
             }
         }
