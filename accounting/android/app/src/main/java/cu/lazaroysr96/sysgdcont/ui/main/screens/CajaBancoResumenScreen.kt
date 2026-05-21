@@ -64,6 +64,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 
 @Composable
 fun CajaBancoResumenScreen(
@@ -322,11 +325,37 @@ private fun SpeedDialItem(
 
 @Composable
 private fun FlujoCashChart(state: CajaBancoState) {
-    // Agrupar últimos 7 días desde movimientos reales
-    val dias = listOf("L", "M", "X", "J", "V", "S", "D")
-    // Datos demo por día (en producción: agrupar state.movimientos por fecha)
-    val entradas = listOf(1200.0, 3400.0, 0.0, 950.0, 0.0, 5000.0, 0.0)
-    val salidas = listOf(0.0, 800.0, 680.0, 0.0, 120.0, 0.0, 0.0)
+    val today = LocalDate.now()
+    val daysWindow = (6 downTo 0).map { today.minusDays(it.toLong()) }
+    val dias = daysWindow.map {
+        when (it.dayOfWeek.value) {
+            1 -> "L"
+            2 -> "M"
+            3 -> "X"
+            4 -> "J"
+            5 -> "V"
+            6 -> "S"
+            else -> "D"
+        }
+    }
+    val entradasPorDia = mutableMapOf<LocalDate, Double>()
+    val salidasPorDia = mutableMapOf<LocalDate, Double>()
+
+    state.movimientos.forEach { movimiento ->
+        val fechaMovimiento = parseMovimientoDate(movimiento.fecha) ?: return@forEach
+        if (fechaMovimiento !in daysWindow) return@forEach
+        val montoCUP = movimiento.monto * movimiento.tasaAlMomento
+        when (movimiento.tipo) {
+            WalletMovimientoTipo.ENTRADA ->
+                entradasPorDia[fechaMovimiento] = (entradasPorDia[fechaMovimiento] ?: 0.0) + montoCUP
+            WalletMovimientoTipo.SALIDA ->
+                salidasPorDia[fechaMovimiento] = (salidasPorDia[fechaMovimiento] ?: 0.0) + montoCUP
+            WalletMovimientoTipo.TRANSFERENCIA -> Unit
+        }
+    }
+
+    val entradas = daysWindow.map { entradasPorDia[it] ?: 0.0 }
+    val salidas = daysWindow.map { salidasPorDia[it] ?: 0.0 }
     val netos = entradas.zip(salidas).map { (e, s) -> e - s }
     val maxVal = netos.map { kotlin.math.abs(it) }.maxOrNull()?.takeIf { it > 0 } ?: 1.0
 
@@ -382,4 +411,23 @@ private fun FlujoCashChart(state: CajaBancoState) {
             }
         }
     }
+}
+
+private fun parseMovimientoDate(rawDate: String): LocalDate? {
+    val normalized = rawDate.trim()
+    if (normalized.isEmpty()) return null
+
+    val formatters = listOf(
+        DateTimeFormatter.ISO_LOCAL_DATE,
+        DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+        DateTimeFormatter.ofPattern("d/M/yyyy"),
+    )
+
+    for (formatter in formatters) {
+        try {
+            return LocalDate.parse(normalized, formatter)
+        } catch (_: DateTimeParseException) {
+        }
+    }
+    return null
 }

@@ -40,7 +40,7 @@ fun CalculadoraScreen(viewModel: LedgerViewModel) {
                             )
             ) {
                 Text(
-                        text = "La calculadora esta en face de desarrollo",
+                        text = "La calculadora está en fase experimental.",
                         modifier = Modifier.padding(16.dp),
                         color = MaterialTheme.colorScheme.onErrorContainer
                 )
