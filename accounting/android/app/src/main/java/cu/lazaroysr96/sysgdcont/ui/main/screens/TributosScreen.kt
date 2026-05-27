@@ -501,6 +501,7 @@ private fun readTributoValue(row: TributoRow, key: String): String = when (key) 
     TributoKeys.ANUNCIOS -> row.anuncios
     TributoKeys.CSS20 -> row.css20
     TributoKeys.CSS14 -> row.css14
+    TributoKeys.CSS_SUBSIDIO -> row.cssSubsidio
     TributoKeys.OTROS -> row.otros
     TributoKeys.RESTAURACION -> row.restauracion
     TributoKeys.ARRENDAMIENTO -> row.arrendamiento
@@ -517,6 +518,7 @@ private fun updateTributoRowValue(row: TributoRow, key: String, value: String): 
     TributoKeys.ANUNCIOS -> row.copy(anuncios = value)
     TributoKeys.CSS20 -> row.copy(css20 = value)
     TributoKeys.CSS14 -> row.copy(css14 = value)
+    TributoKeys.CSS_SUBSIDIO -> row.copy(cssSubsidio = value)
     TributoKeys.OTROS -> row.copy(otros = value)
     TributoKeys.RESTAURACION -> row.copy(restauracion = value)
     TributoKeys.ARRENDAMIENTO -> row.copy(arrendamiento = value)

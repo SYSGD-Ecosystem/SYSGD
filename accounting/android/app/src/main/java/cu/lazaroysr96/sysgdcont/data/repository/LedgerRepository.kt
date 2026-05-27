@@ -1390,6 +1390,7 @@ constructor(
                             anuncios = row?.anuncios?.sanitizeText() ?: "",
                             css20 = row?.css20?.sanitizeText() ?: "",
                             css14 = row?.css14?.sanitizeText() ?: "",
+                            cssSubsidio = "5",
                             otros = row?.otros?.sanitizeText() ?: "",
                             restauracion = row?.restauracion?.sanitizeText() ?: "",
                             arrendamiento = row?.arrendamiento?.sanitizeText() ?: "",
@@ -1884,7 +1885,8 @@ constructor(
             val entryId =
                     previousEntry?.id?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
             monthEntries.add(
-                    DayAmountRow(entryId, newDia.toString(), String.format("%.2f", importe))
+                // TODO: Hay que incluir aqui una funcion para indicar el año del registro
+                    DayAmountRow(entryId, 2026, newDia.toString(), String.format("%.2f", importe))
             )
             saveEntryMetadata(entryId, month, type, cuenta, nota)
         } else {
@@ -1969,7 +1971,8 @@ constructor(
 
         val monthEntries = entries[month]?.toMutableList() ?: mutableListOf()
         val entryId = UUID.randomUUID().toString()
-        monthEntries.add(DayAmountRow(entryId, dia.toString(), String.format("%.2f", importe)))
+        // TODO: Hay que incluir aqui una funcion para indicar el año del registro
+        monthEntries.add(DayAmountRow(entryId, 2026, dia.toString(), String.format("%.2f", importe)))
         saveEntryMetadata(entryId, month, type, cuenta, nota)
 
         entries[month] = monthEntries
@@ -2676,6 +2679,7 @@ constructor(
                 TributoKeys.ANUNCIOS -> row.anuncios
                 TributoKeys.CSS20 -> row.css20
                 TributoKeys.CSS14 -> row.css14
+                TributoKeys.CSS_SUBSIDIO -> row.cssSubsidio
                 TributoKeys.OTROS -> row.otros
                 TributoKeys.RESTAURACION -> row.restauracion
                 TributoKeys.ARRENDAMIENTO -> row.arrendamiento
@@ -2693,6 +2697,7 @@ constructor(
                 TributoKeys.ANUNCIOS -> row.copy(anuncios = value)
                 TributoKeys.CSS20 -> row.copy(css20 = value)
                 TributoKeys.CSS14 -> row.copy(css14 = value)
+                TributoKeys.CSS_SUBSIDIO -> row.copy(cssSubsidio = value)
                 TributoKeys.OTROS -> row.copy(otros = value)
                 TributoKeys.RESTAURACION -> row.copy(restauracion = value)
                 TributoKeys.ARRENDAMIENTO -> row.copy(arrendamiento = value)
@@ -2823,7 +2828,7 @@ constructor(
     }
 
     private fun tributosSubtotal(item: TributoRow): Double {
-        val keys = listOf("ventas", "fuerza", "sellos", "anuncios", "css20", "css14", "otros")
+        val keys = listOf("ventas", "fuerza", "sellos", "anuncios", "css20", "css14" , "cssSubsidio", "otros")
         return round2(
                 keys.sumOf { key ->
                     when (key) {
@@ -2833,6 +2838,7 @@ constructor(
                         "anuncios" -> item.anuncios.toDoubleOrNull() ?: 0.0
                         "css20" -> item.css20.toDoubleOrNull() ?: 0.0
                         "css14" -> item.css14.toDoubleOrNull() ?: 0.0
+                        "cssSubsidio" -> item.cssSubsidio.toDoubleOrNull() ?: 0.0
                         "otros" -> item.otros.toDoubleOrNull() ?: 0.0
                         else -> 0.0
                     }
@@ -2931,6 +2937,7 @@ constructor(
                             anuncios = row?.anuncios.orEmpty(),
                             css20 = row?.css20.orEmpty(),
                             css14 = row?.css14.orEmpty(),
+                            cssSubsidio = row?.cssSubsidio.orEmpty(),
                             otros = row?.otros.orEmpty(),
                             restauracion = row?.restauracion.orEmpty(),
                             arrendamiento = row?.arrendamiento.orEmpty(),
@@ -3226,13 +3233,13 @@ constructor(
                                                     e = row.anuncios,
                                                     f = row.css20,
                                                     h = row.css14,
-                                                    i = row.otros,
-                                                    j = row.restauracion,
-                                                    l = row.arrendamiento,
-                                                    m = row.exonerado,
-                                                    n = row.otrosMFP,
-                                                    o = row.cuotaMensual,
-                                                    p = ""
+                                                    i = row.cssSubsidio,
+                                                    j = row.otros,
+                                                    l = row.restauracion,
+                                                    m = row.arrendamiento,
+                                                    n = row.exonerado,
+                                                    o = row.otrosMFP,
+                                                    p = row.cuotaMensual
                                             )
                                         }
                         )
@@ -3303,13 +3310,13 @@ constructor(
                                                     e = row.anuncios,
                                                     f = row.css20,
                                                     h = row.css14,
-                                                    i = row.otros,
-                                                    j = row.restauracion,
-                                                    l = row.arrendamiento,
-                                                    m = row.exonerado,
-                                                    n = row.otrosMFP,
-                                                    o = row.cuotaMensual,
-                                                    p = ""
+                                                    i = row.cssSubsidio,
+                                                    j = row.otros,
+                                                    l = row.restauracion,
+                                                    m = row.arrendamiento,
+                                                    n = row.exonerado,
+                                                    o = row.otrosMFP,
+                                                    p = row.cuotaMensual
                                             )
                                         }
                         )
@@ -3918,21 +3925,21 @@ constructor(
 
     private data class OfflineTributoRow(
             val mes: String,
-            val b: String,
-            val c: String,
-            val d: String,
-            val e: String,
-            val f: String,
-            val g: Double,
-            val h: String,
-            val i: String,
-            val j: String,
-            val k: Double,
-            val l: String,
-            val m: String,
-            val n: String,
-            val o: String,
-            val p: String
+            val b: String, //1
+            val c: String, //2
+            val d: String, //3
+            val e: String, //4
+            val f: String, //5
+            val g: Double, //6
+            val h: String, //7
+            val i: String, //8
+            val j: String, //9
+            val k: Double, //10
+            val l: String, //11
+            val m: String, //12
+            val n: String, //13
+            val o: String, //14
+            val p: String  //15
     )
 
     private data class OfflineTributoTotals(

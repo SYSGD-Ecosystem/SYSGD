@@ -15,12 +15,19 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
 
+import java.math.BigDecimal
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+
 @Composable
 fun CalculadoraScreen(viewModel: LedgerViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showDialogMargenComercial by rememberSaveable { mutableStateOf(false) }
     var showDialogCosto by rememberSaveable { mutableStateOf(false) }
+    var showDialogCalcBasica by rememberSaveable { mutableStateOf(false) }
 
     LazyColumn(
             modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -60,6 +67,23 @@ fun CalculadoraScreen(viewModel: LedgerViewModel) {
                     modifier = Modifier.fillMaxWidth()
             ) { Text("Calculo del Costo") }
         }
+
+        
+
+// Botón (agrégalo antes de los otros o donde prefieras)
+item {
+    Button(
+        onClick = { showDialogCalcBasica = true },
+        modifier = Modifier.fillMaxWidth()
+    ) { Text("Calculadora") }
+}
+
+// Dialog
+if (showDialogCalcBasica) {
+    item {
+        CalculadoraBasicaDialog(onDismiss = { showDialogCalcBasica = false })
+    }
+}
 
         if (showDialogMargenComercial) {
             item {
@@ -509,6 +533,177 @@ private fun CostoProductoDialog(
                                     else MaterialTheme.colorScheme.error,
                             fontWeight = FontWeight.SemiBold
                         )
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }
+    )
+}
+
+@Composable
+private fun CalculadoraBasicaDialog(onDismiss: () -> Unit) {
+
+    var current by remember { mutableStateOf("0") }
+    var operador by remember { mutableStateOf<String?>(null) }
+    var prevValor by remember { mutableStateOf<Double?>(null) }
+    var expresion by remember { mutableStateOf("") }
+    var justCalculated by remember { mutableStateOf(false) }
+
+    fun compute(): String {
+        val a = prevValor ?: return current
+        val b = current.toDoubleOrNull() ?: return current
+        val resultado = when (operador) {
+            "+" -> a + b
+            "−" -> a - b
+            "×" -> a * b
+            "÷" -> if (b == 0.0) null else a / b
+            else -> return current
+        }
+        return if (resultado == null) "Error"
+        else {
+            val r = BigDecimal(resultado).stripTrailingZeros()
+            r.toPlainString().let {
+                if (it.length > 12) "%.6g".format(resultado) else it
+            }
+        }
+    }
+
+    fun onKey(key: String) {
+        when (key) {
+            "C" -> {
+                current = "0"; operador = null
+                prevValor = null; expresion = ""; justCalculated = false
+            }
+            "±" -> {
+                current = if (current.startsWith("-")) current.drop(1) else "-$current"
+            }
+            "%" -> {
+                current = ((current.toDoubleOrNull() ?: 0.0) / 100).let {
+                    BigDecimal(it).stripTrailingZeros().toPlainString()
+                }
+            }
+            "+", "−", "×", "÷" -> {
+                if (prevValor != null && operador != null && !justCalculated) {
+                    current = compute()
+                }
+                prevValor = current.toDoubleOrNull()
+                operador = key
+                expresion = "$current $key"
+                current = "0"
+                justCalculated = false
+            }
+            "=" -> {
+                if (operador != null && prevValor != null) {
+                    val expr = "$expresion $current ="
+                    current = compute()
+                    expresion = expr
+                    prevValor = null; operador = null
+                    justCalculated = true
+                }
+            }
+            "." -> {
+                if (justCalculated) { current = "0"; justCalculated = false }
+                if (!current.contains(".")) current += "."
+            }
+            else -> { // dígito
+                if (justCalculated) { current = "0"; justCalculated = false }
+                current = if (current == "0") key else if (current.length < 12) current + key else current
+            }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Calculadora") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+
+                // Display
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalAlignment = Alignment.End
+                    ) {
+                        Text(
+                            text = expresion,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = current,
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Teclado
+                val botones = listOf(
+                    listOf("C", "±", "%", "÷"),
+                    listOf("7", "8", "9", "×"),
+                    listOf("4", "5", "6", "−"),
+                    listOf("1", "2", "3", "+"),
+                    listOf("0", ".", "=")
+                )
+                val operadores = setOf("+", "−", "×", "÷", "%", "±")
+
+                botones.forEach { fila ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        fila.forEach { tecla ->
+                            val isEqual = tecla == "="
+                            val isZero = tecla == "0"
+                            val isOp = tecla in operadores
+                            val isClear = tecla == "C"
+
+                            val containerColor = when {
+                                isEqual -> MaterialTheme.colorScheme.primary
+                                else -> MaterialTheme.colorScheme.surface
+                            }
+                            val contentColor = when {
+                                isEqual -> MaterialTheme.colorScheme.onPrimary
+                                isClear -> MaterialTheme.colorScheme.error
+                                isOp -> MaterialTheme.colorScheme.primary
+                                else -> MaterialTheme.colorScheme.onSurface
+                            }
+
+                            Button(
+                                onClick = { onKey(tecla) },
+                                modifier = Modifier
+                                    .weight(if (isZero) 2f else 1f)
+                                    .height(52.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = containerColor,
+                                    contentColor = contentColor
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+                                border = if (!isEqual) BorderStroke(
+                                    0.5.dp,
+                                    MaterialTheme.colorScheme.outlineVariant
+                                ) else null
+                            ) {
+                                Text(
+                                    text = tecla,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = if (isOp || isEqual) FontWeight.Medium else FontWeight.Normal
+                                )
+                            }
+                        }
                     }
                 }
             }
