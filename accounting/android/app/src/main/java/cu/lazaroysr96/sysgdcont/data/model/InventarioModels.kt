@@ -46,6 +46,7 @@ data class StockRegistro(
     val productosVinculadosIds: String = "[]",
     val ratiosConversion: String = "[]",
     val ultimaActualizacion: String = "",
+    // TODO: El valor visivle en vents no es necesario ya que esto se puede deducir de buscar si el producto se encuentra en el catalogo de productos a la venta, la logica deve ser midificada para que se pueda eliminar este valor.
     val visibleEnVentas: Boolean = false
 )
 
@@ -59,6 +60,7 @@ data class InventarioRegistro(
     val vinculos: List<InventarioVinculoRegistro> = emptyList(),
     val movimientos: List<MovimientoInventarioRegistro> = emptyList(),
     val operaciones: List<OperacionInventario> = emptyList(),
+    // TODO: Esto ultimos dos son redundantes si se tiene en cuenta que los catalogos de venta y de compra ya cumplen esta funcion.
     val productosVenta: List<ProductoInventario> = emptyList(),
     val productosCompra: List<ProductoInventario> = emptyList()
 )

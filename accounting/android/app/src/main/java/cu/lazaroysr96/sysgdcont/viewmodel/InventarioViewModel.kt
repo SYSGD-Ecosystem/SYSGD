@@ -709,6 +709,17 @@ class InventarioViewModel @Inject constructor(
     suspend fun obtenerHistorialPreciosProducto(productoId: String): List<PrecioProductoDetalle> =
         repo.getHistorialPreciosProducto(productoId)
 
+    fun deleteProductoBase(id: String) {
+        viewModelScope.launch {
+            try {
+                repo.deleteProductoBase(id)
+                _uiState.update { it.copy(snackbarMessage = "Producto eliminado permanentemente") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al eliminar producto") }
+            }
+        }
+    }
+
     fun eliminarProducto(id: String) {
         viewModelScope.launch {
             try {

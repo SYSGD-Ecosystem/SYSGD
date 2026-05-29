@@ -305,6 +305,32 @@ class InventarioRepository @Inject constructor(
         markLocalModified()
     }
 
+    suspend fun deleteProductoBase(id: String) {
+        val existente = productoDao.getById(id)
+            ?: throw IllegalStateException("No existe el producto")
+
+        val enVentas = catalogoVentaDao.countActivoByProductoId(id) > 0
+        val enCompras = catalogoCompraDao.countActivoByProductoId(id) > 0
+        val enStock = itemInventarioDao.countActivoByProductoId(id) > 0
+        val esComponente = inventarioVinculoDao.countByProductoComponenteId(id) > 0
+
+        val usos = buildList {
+            if (enVentas) add("catálogo de ventas")
+            if (enCompras) add("catálogo de compras")
+            if (enStock) add("inventario (stock activo)")
+            if (esComponente) add("vinculado como componente de otro producto")
+        }
+
+        if (usos.isNotEmpty()) {
+            throw IllegalStateException(
+                "No se puede eliminar \"${existente.nombre}\": está en uso en ${usos.joinToString(", ")}."
+            )
+        }
+
+        productoDao.delete(id)
+        markLocalModified()
+    }
+
     suspend fun agregarProducto(
         nombre: String,
         precio: Double,

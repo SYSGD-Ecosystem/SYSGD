@@ -109,6 +109,7 @@ fun CatalogosScreen(
                 productos        = productosState.productosBase,
                 onAddProduct     = inventarioViewModel::agregarProductoBase,
                 onEditProduct    = inventarioViewModel::actualizarProductoBase,
+                onDeleteProduct  = inventarioViewModel::deleteProductoBase,
                 loadPriceHistory = inventarioViewModel::obtenerHistorialPreciosProducto
             )
         }
@@ -124,9 +125,10 @@ private fun ProductosTab(
     productos: List<Producto>,
     onAddProduct:  (nombre: String, imagenJson: String, unidad: String, descripcion: String) -> Unit,
     onEditProduct: (id: String, nombre: String, imagenJson: String, unidad: String, descripcion: String) -> Unit,
+    onDeleteProduct: (id: String) -> Unit,
     loadPriceHistory: suspend (String) -> List<PrecioProductoDetalle>
 ) {
-    var productoDetalle by remember { mutableStateOf<Producto?>(null) }
+    var productoDetalle  by remember { mutableStateOf<Producto?>(null) }
     var productoEditando by remember { mutableStateOf<Producto?>(null) }
     var showAddDialog    by remember { mutableStateOf(false) }
     var searchQuery      by remember { mutableStateOf("") }
@@ -212,6 +214,10 @@ private fun ProductosTab(
             onEdit = {
                 productoDetalle = null
                 productoEditando = producto
+            },
+            onDelete = {
+                onDeleteProduct(producto.id)
+                productoDetalle = null
             }
         )
     }
@@ -229,94 +235,14 @@ private fun ProductosTab(
     }
 }
 
-// @Composable
-// private fun ProductoDetalleDialog(
-//     producto: Producto,
-//     loadPriceHistory: suspend (String) -> List<PrecioProductoDetalle>,
-//     onDismiss: () -> Unit,
-//     onEdit: () -> Unit
-// ) {
-//     val historial by produceState<List<PrecioProductoDetalle>>(initialValue = emptyList(), key1 = producto.id) {
-//         value = runCatching { loadPriceHistory(producto.id) }.getOrDefault(emptyList())
-//     }
-//     val preciosVenta = remember(historial) { historial.filter { it.tipoPrecio == TipoPrecio.VENTA && it.activo } }
-//     val preciosCompra = remember(historial) { historial.filter { it.tipoPrecio == TipoPrecio.COMPRA && it.activo } }
-
-//     AlertDialog(
-//         onDismissRequest = onDismiss,
-//         title = { Text(producto.nombre) },
-//         text = {
-//             Column(
-//                 modifier = Modifier
-//                     .fillMaxWidth()
-//                     .verticalScroll(rememberScrollState()),
-//                 verticalArrangement = Arrangement.spacedBy(12.dp)
-//             ) {
-//                 ProductoDetalleDato("Unidad", producto.unidad)
-//                 if (producto.descripcion.isNotBlank()) {
-//                     ProductoDetalleDato("Descripcion", producto.descripcion)
-//                 }
-//                 ProductoPrecioVigenteBlock("Precio de venta vigente", preciosVenta)
-//                 ProductoPrecioVigenteBlock("Precio de compra vigente", preciosCompra)
-//                 Divider()
-//                 Text("Historial de precios", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-//                 if (historial.isEmpty()) {
-//                     Text(
-//                         "Todavia no hay cambios de precio registrados para este producto.",
-//                         style = MaterialTheme.typography.bodyMedium,
-//                         color = MaterialTheme.colorScheme.onSurfaceVariant
-//                     )
-//                 } else {
-//                     historial.forEach { item ->
-//                         ElevatedCard(
-//                             colors = CardDefaults.elevatedCardColors(
-//                                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-//                             )
-//                         ) {
-//                             Column(
-//                                 modifier = Modifier
-//                                     .fillMaxWidth()
-//                                     .padding(12.dp),
-//                                 verticalArrangement = Arrangement.spacedBy(4.dp)
-//                             ) {
-//                                 Text(
-//                                     "${TipoPrecio.label(item.tipoPrecio)} • ${item.almacenNombre ?: "Almacen"}",
-//                                     style = MaterialTheme.typography.labelLarge,
-//                                     fontWeight = FontWeight.SemiBold
-//                                 )
-//                                 Text(
-//                                     "${"%.2f".format(item.precio)} ${item.moneda}",
-//                                     style = MaterialTheme.typography.titleSmall
-//                                 )
-//                                 Text(
-//                                     if (item.activo) "Vigente desde ${item.fechaDesde}" else "${item.fechaDesde} → ${item.fechaHasta ?: "sin cierre"}",
-//                                     style = MaterialTheme.typography.bodySmall,
-//                                     color = MaterialTheme.colorScheme.onSurfaceVariant
-//                                 )
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-//         },
-//         confirmButton = {
-//             Button(onClick = onEdit) { Text("Editar") }
-//         },
-//         dismissButton = {
-//             TextButton(onClick = onDismiss) { Text("Cerrar") }
-//         }
-//     )
-// }
-
-
-
 
 @Composable
 private fun ProductoDetalleDialog(
     producto: Producto,
     loadPriceHistory: suspend (String) -> List<PrecioProductoDetalle>,
     onDismiss: () -> Unit,
-    onEdit: () -> Unit
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     val historial by produceState<List<PrecioProductoDetalle>>(
         initialValue = emptyList(),
@@ -494,6 +420,12 @@ private fun ProductoDetalleDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(onClick = onDismiss) { Text("Cerrar") }
+                    Spacer(Modifier.width(8.dp))
+                    Button(onClick = onDelete) {
+                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Eliminar")
+                    }
                     Spacer(Modifier.width(8.dp))
                     Button(onClick = onEdit) {
                         Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
