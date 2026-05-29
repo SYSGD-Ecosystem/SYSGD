@@ -1,9 +1,18 @@
 import { Building2, LogIn, UserPlus } from "lucide-react";
 import { useLicense } from "@/contexts/LicenseContext";
 import { Button } from "@/components/ui/button";
+import { IoExit } from "react-icons/io5";
+import useDatabase from "@/hooks/electron/useDatabase";
 
 export default function WelcomeScreen() {
 	const { setSetupStep, hasAccount } = useLicense();
+	if (window.electronAPI) {
+		
+		// alert("database")
+		// eslint-disable-next-line react-hooks/rules-of-hooks
+		useDatabase()
+      }
+	
 
 	return (
 		<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
@@ -15,7 +24,7 @@ export default function WelcomeScreen() {
 			<div className="w-full max-w-md text-center space-y-8">
 				{/* Logo */}
 				<div className="flex flex-col items-center gap-4">
-					<div className="w-20 h-20 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-cyan-500/25">
+					<div className="w-20 h-20 bg-linear-to-br from-cyan-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-cyan-500/25">
 						<Building2 className="w-10 h-10 text-white" />
 					</div>
 					<div>
@@ -30,7 +39,7 @@ export default function WelcomeScreen() {
 						Bienvenido
 					</h2>
 					<p className="text-gray-400">
-						Gestiona tus documentos, proyectos y más desde tu escritorio
+						Sistema de Gestión Empresarial Modular
 					</p>
 				</div>
 
@@ -54,6 +63,13 @@ export default function WelcomeScreen() {
 							Activar licencia
 						</Button>
 					)}
+					<Button
+						onClick={() => window.electronAPI?.close()}
+						className="w-full h-14 text-lg bg-linear-to-r from-red-700 to-red-900 hover:from-red-600 hover:to-red-700 text-white"
+					>
+						<IoExit className="w-5 h-5 mr-2" />
+						Cerrar
+					</Button>
 				</div>
 			</div>
 		</div>

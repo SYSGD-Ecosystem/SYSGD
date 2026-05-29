@@ -104,6 +104,7 @@ data class InventarioUiState(
     val nombreItemArchivando: String = "",
     val nombreEmpresaFactura: String = "",
     val nombreVendedorFactura: String = "",
+    val nitVendedorFactura: String = "",
     val correoVendedorFactura: String = "",
     val telefonoVendedorFactura: String = "",
     val direccionVendedorFactura: String = "",
@@ -243,6 +244,7 @@ class InventarioViewModel @Inject constructor(
                     it.copy(
                         nombreEmpresaFactura = config.nombreEmpresa,
                         nombreVendedorFactura = config.nombreVendedor,
+                        nitVendedorFactura = config.nitVendedor,
                         correoVendedorFactura = config.correoVendedor,
                         telefonoVendedorFactura = config.telefonoVendedor,
                         direccionVendedorFactura = config.direccionVendedor,
@@ -424,6 +426,10 @@ class InventarioViewModel @Inject constructor(
         _uiState.update { it.copy(nombreVendedorFactura = nombre) }
     }
 
+    fun updateNitVendedorFactura(nit: String) {
+        _uiState.update { it.copy(nitVendedorFactura = nit) }
+    }
+
     fun updateCorreoVendedorFactura(correo: String) {
         _uiState.update { it.copy(correoVendedorFactura = correo) }
     }
@@ -452,6 +458,7 @@ class InventarioViewModel @Inject constructor(
                     ConfiguracionFacturacion(
                         nombreEmpresa = state.nombreEmpresaFactura,
                         nombreVendedor = state.nombreVendedorFactura,
+                        nitVendedor = state.nitVendedorFactura,
                         correoVendedor = state.correoVendedorFactura,
                         telefonoVendedor = state.telefonoVendedorFactura,
                         direccionVendedor = state.direccionVendedorFactura,

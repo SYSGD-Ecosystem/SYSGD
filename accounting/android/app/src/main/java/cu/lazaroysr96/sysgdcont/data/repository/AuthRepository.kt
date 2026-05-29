@@ -403,6 +403,7 @@ class AuthRepository @Inject constructor(
         val userName: String,
         val userEmail: String,
         val userPrivileges: String,
+        val userPlan: String,
         val createdAt: String
     )
 
@@ -414,6 +415,8 @@ class AuthRepository @Inject constructor(
             val userName = prefs[USER_NAME_KEY] ?: ""
             val userEmail = prefs[USER_EMAIL_KEY] ?: ""
             val userPrivileges = prefs[USER_PRIVILEGES_KEY] ?: ""
+            val userPlan = prefs[PLAN_CACHE_KEY] ?: ""
+
 
             val payload = AccessKeyPayload(
                 token = token,
@@ -421,6 +424,7 @@ class AuthRepository @Inject constructor(
                 userName = userName,
                 userEmail = userEmail,
                 userPrivileges = userPrivileges,
+                userPlan = userPlan,
                 createdAt = java.time.Instant.now().toString()
             )
 
@@ -459,6 +463,7 @@ class AuthRepository @Inject constructor(
                 prefs[USER_NAME_KEY] = payload.userName
                 prefs[USER_EMAIL_KEY] = payload.userEmail
                 prefs[USER_PRIVILEGES_KEY] = payload.userPrivileges
+                prefs[PLAN_CACHE_KEY] = payload.userPlan
             }
 
             Result.success(AuthUser(

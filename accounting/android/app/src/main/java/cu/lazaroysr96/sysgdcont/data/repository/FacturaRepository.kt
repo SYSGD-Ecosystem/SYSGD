@@ -42,6 +42,7 @@ private val Context.facturaDataStore: DataStore<Preferences> by preferencesDataS
 data class ConfiguracionFacturacion(
     val nombreEmpresa: String = "",
     val nombreVendedor: String = "",
+    val nitVendedor: String = "",
     val correoVendedor: String = "",
     val telefonoVendedor: String = "",
     val direccionVendedor: String = "",
@@ -81,6 +82,7 @@ class FacturaRepository @Inject constructor(
     companion object {
         private val NOMBRE_EMPRESA_KEY = stringPreferencesKey("nombre_empresa")
         private val NOMBRE_VENDEDOR_KEY = stringPreferencesKey("nombre_vendedor")
+        private val NIT_VENDEDOR_KEY = stringPreferencesKey("nit_vendedor")
         private val CORREO_VENDEDOR_KEY = stringPreferencesKey("correo_vendedor")
         private val TELEFONO_VENDEDOR_KEY = stringPreferencesKey("telefono_vendedor")
         private val DIRECCION_VENDEDOR_KEY = stringPreferencesKey("direccion_vendedor")
@@ -94,6 +96,7 @@ class FacturaRepository @Inject constructor(
         ConfiguracionFacturacion(
             nombreEmpresa = prefs[NOMBRE_EMPRESA_KEY].orEmpty(),
             nombreVendedor = prefs[NOMBRE_VENDEDOR_KEY].orEmpty(),
+            nitVendedor = prefs[NIT_VENDEDOR_KEY].orEmpty(),
             correoVendedor = prefs[CORREO_VENDEDOR_KEY].orEmpty(),
             telefonoVendedor = prefs[TELEFONO_VENDEDOR_KEY].orEmpty(),
             direccionVendedor = prefs[DIRECCION_VENDEDOR_KEY].orEmpty(),
@@ -106,6 +109,7 @@ class FacturaRepository @Inject constructor(
         context.facturaDataStore.edit { prefs ->
             guardarValor(prefs, NOMBRE_EMPRESA_KEY, config.nombreEmpresa)
             guardarValor(prefs, NOMBRE_VENDEDOR_KEY, config.nombreVendedor)
+            guardarValor(prefs, NIT_VENDEDOR_KEY, config.nitVendedor)
             guardarValor(prefs, CORREO_VENDEDOR_KEY, config.correoVendedor)
             guardarValor(prefs, TELEFONO_VENDEDOR_KEY, config.telefonoVendedor)
             guardarValor(prefs, DIRECCION_VENDEDOR_KEY, config.direccionVendedor)
@@ -528,14 +532,41 @@ class FacturaRepository @Inject constructor(
         table.setBorder(Border.NO_BORDER)
 
         val infoCell = Cell().setBorder(Border.NO_BORDER).setPaddingRight(12f)
+
+        infoCell.add(
+            Paragraph("\nFACTURA")
+                .setBold()
+                .setFontSize(16f)
+                
+        )
+        infoCell.add(
+            Paragraph("No. $numero")
+                .setFontSize(11f)
+                .setMarginTop(2f)
+        )
+        infoCell.add(
+            Paragraph("Fecha: ${venta.fecha}  Hora: ${venta.hora}")
+                .setFontSize(10f)
+                .setMarginTop(2f)
+        )
+
+
         infoCell.add(
             Paragraph(configuracion.nombreEmpresa)
                 .setBold()
                 .setFontSize(18f)
+                .setMarginTop(10f)
         )
         if (configuracion.nombreVendedor.isNotBlank() && configuracion.nombreVendedor != configuracion.nombreEmpresa) {
             infoCell.add(
                 Paragraph("Vendedor: ${configuracion.nombreVendedor}")
+                    .setFontSize(10f)
+                    .setMarginTop(4f)
+            )
+        }
+        if (configuracion.nitVendedor.isNotBlank()) {
+            infoCell.add(
+                Paragraph("NIT: ${configuracion.nitVendedor}")
                     .setFontSize(10f)
                     .setMarginTop(4f)
             )
@@ -565,22 +596,7 @@ class FacturaRepository @Inject constructor(
             )
         }
 
-        infoCell.add(
-            Paragraph("\nFACTURA")
-                .setBold()
-                .setFontSize(16f)
-                .setMarginTop(10f)
-        )
-        infoCell.add(
-            Paragraph("No. $numero")
-                .setFontSize(11f)
-                .setMarginTop(2f)
-        )
-        infoCell.add(
-            Paragraph("Fecha: ${venta.fecha}  Hora: ${venta.hora}")
-                .setFontSize(10f)
-                .setMarginTop(2f)
-        )
+        
 
         val logoCell = Cell()
             .setBorder(Border.NO_BORDER)

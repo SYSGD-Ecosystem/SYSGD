@@ -22,6 +22,7 @@ data class Factura(
     val idTransaccion: String? = null,
     val nombreEmpresa: String,
     val nombreVendedor: String,
+    val nitVendedor: String,
     val total: Double,
     val pdfPath: String? = null,
     val createdAt: String

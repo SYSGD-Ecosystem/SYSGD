@@ -35,7 +35,7 @@ const PurchaseSidebar: FC<PurchaseSidebarProps> = ({
   };
 
   return (
-    <aside className="hidden md:flex w-64 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex-col">
+    <aside className="hidden h-full md:flex w-64 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex-col">
       <div className="flex flex-col h-full p-4">
         {/* Volver al Dashboard */}
         <div className="mb-8">
@@ -44,8 +44,8 @@ const PurchaseSidebar: FC<PurchaseSidebarProps> = ({
             className="w-full justify-start text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
             onClick={handleGoToDashboard}
           >
-            <Home className="w-4 h-4 mr-3" />
-            ← Volver al Dashboard
+            <Home className="w-4 h-4 mr-1" />
+            Inicio
           </Button>
         </div>
 

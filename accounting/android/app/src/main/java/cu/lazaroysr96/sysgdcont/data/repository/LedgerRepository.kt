@@ -184,8 +184,8 @@ constructor(
     companion object {
         private const val DEFAULT_WORKSPACE_ID = "workspace_default"
         private const val TCP_MONTH_DAY_COLUMN_WIDTH = 16f
-        private const val TCP_MONTH_VALUE_COLUMN_WIDTH = 34f
-        private const val TCP_MONTH_TABLE_WIDTH = 600f
+        private const val TCP_MONTH_VALUE_COLUMN_WIDTH = 52f  //34f 
+        private const val TCP_MONTH_TABLE_WIDTH = 816f //600f A4=842x595
         private val REGISTRO_KEY = stringPreferencesKey("registro_tcp")
         private val LAST_SYNC_KEY = stringPreferencesKey("last_sync")
         private val LOCAL_MODIFIED_KEY = stringPreferencesKey("local_modified")
@@ -3617,7 +3617,7 @@ constructor(
         val table = Table(widths)
         table.setWidth(TCP_MONTH_TABLE_WIDTH)
         table.setFixedLayout()
-        val monthCellHeight = 14f
+        val monthCellHeight = 12f
 
         table.addCell(textCell(title, boldFont, 9f, TextAlignment.CENTER, colspan = 24))
         LedgerConstants.MONTHS.forEach { month ->
@@ -3751,7 +3751,7 @@ constructor(
         )
         table.addCell(
                 textCell(
-                        "Cuota Mensual (5 %)051012",
+                        "Cuota Mensual (5%) 051012",
                         boldFont,
                         8f,
                         TextAlignment.CENTER,

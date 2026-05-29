@@ -35,6 +35,7 @@ export const navigationSections: NavigationSection[] = [
 			{ id: "tributos", label: "Tributos", icon: <Landmark /> },
 			{ id: "resumen", label: "Resumen", icon: <LayoutDashboard /> },
 			{ id: "estadoResultado", label: "Libro de ingresos y gastos", icon: <NotebookText /> },
+			{ id: "libroDiario", label: "Libro Diario", icon: <NotebookText /> },
 		],
 	},
 	{

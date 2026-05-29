@@ -143,6 +143,7 @@ export type AccountingWorkspaceState = {
   monedas?: Moneda[];
   monedaTasas?: MonedaTasa[];
   monedaTasaHistorial?: MonedaTasaHistorial[];
+  libroDiario?: LibroDiario
 };
 
 export type Almacen = {
@@ -421,3 +422,23 @@ export type AnnualReport = {
   impuestoEstimado: number;
   monthly: MonthlyTotals[];
 };
+
+export type LibroDiarioOperation = {
+id: string
+operation_id: string
+type: "Parcial" | "Debito" | "Haber" 
+cuenta_id: string
+importe: number
+moneda_id: string
+}
+
+export type LibroDiarioListOperations = {
+  id: string
+  fecha: string
+  explication: string
+  operations: LibroDiarioOperation[]
+}
+
+export type LibroDiario = {
+operations: LibroDiarioListOperations[]
+}

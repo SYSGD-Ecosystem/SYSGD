@@ -23,7 +23,6 @@ import {
   CatalogosView,
   DashboardView,
   EntriesView,
-  EstadoResultadoView,
   ResumenView,
   SupportView,
   TercerosView,
@@ -32,6 +31,8 @@ import {
 import CajaBanco from "./modules/CajaBaco";
 import DjGeneral from "./dj/General";
 import { useDjActions } from "./hooks/useDjActions";
+import EstadoResultadoView from "./views/EstadoResultadoView";
+import LibroDiarioView from "./libros/LibroDiarioView";
 
 const GC_TCP: FC = () => {
   const navigate = useNavigate();
@@ -595,6 +596,8 @@ console.log(activeWorkspace?.accounting.monedas);
         return <ResumenView analysis={activeAnalysis} />;
       case "estadoResultado":
         return <EstadoResultadoView workspace={activeWorkspace} />;
+      case "libroDiario":
+        return <LibroDiarioView workspace={activeWorkspace} />;
       case "ventas":
         return <PointOfSaleView workspace={activeWorkspace} />;
       case "cajaBanco":

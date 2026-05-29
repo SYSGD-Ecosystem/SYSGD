@@ -441,6 +441,7 @@ fun MainScreen(
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
+                            if (canUseProFeatures) {
                             NavigationDrawerItem(
                                     label = { Text("Caja y banco") },
                                     selected = currentRoute == CAJA_BANCO_ROUTE,
@@ -452,6 +453,7 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
+                                }
                             NavigationDrawerItem(
                                     label = { Text("Punto de Venta") },
                                     selected = currentRoute == VENTAS_ROUTE,
@@ -502,7 +504,7 @@ fun MainScreen(
                             )
 
                           
-
+                            if (canUseProFeatures) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Divider()
                             Text(
@@ -523,6 +525,7 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
+                                }
 
                             Spacer(modifier = Modifier.height(12.dp))
                             Divider()
