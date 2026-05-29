@@ -1004,22 +1004,87 @@ data class VinculadoTemp(val productoId: String, val ratio: Double)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun VinculadoItemRow(vinculado: VinculadoTemp, productosCompra: List<ProductoCompra>, productosVinculados: List<String>, onProductoCambiado: (String) -> Unit, onRatioCambiado: (Double) -> Unit, onEliminar: () -> Unit) {
+private fun VinculadoItemRow(
+    vinculado: VinculadoTemp,
+    productosCompra: List<ProductoCompra>,
+    productosVinculados: List<String>,
+    onProductoCambiado: (String) -> Unit,
+    onRatioCambiado: (Double) -> Unit,
+    onEliminar: () -> Unit
+) {
     var dropdownExpanded by remember { mutableStateOf(false) }
     var ratioInput by remember { mutableStateOf(if (vinculado.ratio > 0) vinculado.ratio.toString() else "1") }
-    val productosDisponibles = productosCompra.filter { p -> p.id == vinculado.productoId || !productosVinculados.contains(p.id) }
+    val productoSeleccionado = productosCompra.find { it.id == vinculado.productoId }
+    val productosDisponibles = productosCompra.filter { producto ->
+        producto.id == vinculado.productoId || !productosVinculados.contains(producto.id)
+    }
+
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(8.dp)) {
-            ExposedDropdownMenuBox(expanded = dropdownExpanded, onExpandedChange = { dropdownExpanded = it }) {
-                OutlinedTextField(value = productosCompra.find { it.id == vinculado.productoId }?.nombre ?: "Seleccionar", onValueChange = {}, readOnly = true, label = { Text("Producto") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(dropdownExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
-                ExposedDropdownMenu(expanded = dropdownExpanded, onDismissRequest = { dropdownExpanded = false }) {
-                    productosDisponibles.forEach { p -> DropdownMenuItem(text = { Text("${p.emoji} ${p.nombre}") }, onClick = { onProductoCambiado(p.id); dropdownExpanded = false }) }
+            ExposedDropdownMenuBox(
+                expanded = dropdownExpanded,
+                onExpandedChange = { dropdownExpanded = it }
+            ) {
+                OutlinedTextField(
+                    value = productoSeleccionado?.nombre ?: "Seleccionar",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Producto") },
+                    leadingIcon = {
+                        ProductoImagenAvatar(
+                            rawEmoji = productoSeleccionado?.emoji.orEmpty(),
+                            size = 32.dp,
+                            cornerRadius = 8.dp
+                        )
+                    },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(dropdownExpanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = dropdownExpanded,
+                    onDismissRequest = { dropdownExpanded = false }
+                ) {
+                    productosDisponibles.forEach { producto ->
+                        DropdownMenuItem(
+                            text = { Text(producto.nombre) },
+                            leadingIcon = {
+                                ProductoImagenAvatar(
+                                    rawEmoji = producto.emoji,
+                                    size = 32.dp,
+                                    cornerRadius = 8.dp
+                                )
+                            },
+                            onClick = {
+                                onProductoCambiado(producto.id)
+                                dropdownExpanded = false
+                            }
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(4.dp))
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                OutlinedTextField(value = ratioInput, onValueChange = { ratioInput = it.replace(',', '.'); it.replace(',', '.').toDoubleOrNull()?.let { r -> onRatioCambiado(r) } }, label = { Text("Cantidad a descontar") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true, modifier = Modifier.weight(1f))
-                IconButton(onClick = onEliminar) { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                OutlinedTextField(
+                    value = ratioInput,
+                    onValueChange = {
+                        val normalized = it.replace(',', '.')
+                        ratioInput = normalized
+                        normalized.toDoubleOrNull()?.let { ratio -> onRatioCambiado(ratio) }
+                    },
+                    label = { Text("Cantidad a descontar") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onEliminar) {
+                    Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)
+                }
             }
         }
     }
