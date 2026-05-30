@@ -47,7 +47,8 @@ data class LedgerUiState(
     val showNoCreditsDialog: Boolean = false,
     val noCreditsMessage: String? = null,
     val backupMessage: String? = null,
-    val backupError: String? = null
+    val backupError: String? = null,
+    val errorMessage: String? = null
 )
 
 @HiltViewModel
