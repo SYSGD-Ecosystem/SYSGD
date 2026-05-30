@@ -1671,7 +1671,13 @@ constructor(
 
     suspend fun updateGenerales(data: GeneralesData) {
         val current = getRegistro()
-        saveUserEditedRegistro(current.copy(generales = data))
+        saveUserEditedRegistro(current.copy(generales = data.copy(anio = current.generales.anio)))
+    }
+
+    suspend fun selectFiscalYear(year: Int) {
+        val normalizedYear = year.coerceIn(1900, 2200)
+        val current = getRegistro()
+        saveUserEditedRegistro(current.copy(generales = current.generales.copy(anio = normalizedYear)))
     }
 
     suspend fun addIngreso(
@@ -1701,13 +1707,15 @@ constructor(
             ingresoCuentaId: String = "",
             gasto: Double?,
             gastoCuentaId: String = "",
-            nota: String = ""
+            nota: String = "",
+            year: Int? = null
     ) {
         val ingresoNormalizado = ingreso?.takeIf { it > 0.0 }
         val gastoNormalizado = gasto?.takeIf { it > 0.0 }
         if (ingresoNormalizado == null && gastoNormalizado == null) return
 
         val current = getRegistro()
+        val entryYear = year ?: current.generales.anio
         val ingresos = current.ingresos.toMutableMap()
         val gastos = current.gastos.toMutableMap()
 
@@ -1717,6 +1725,7 @@ constructor(
             monthEntries.add(
                     DayAmountRow(
                             id = entryId,
+                            anio = entryYear,
                             dia = dia.toString(),
                             importe = String.format(Locale.US, "%.2f", it)
                     )
@@ -1731,6 +1740,7 @@ constructor(
             monthEntries.add(
                     DayAmountRow(
                             id = entryId,
+                            anio = entryYear,
                             dia = dia.toString(),
                             importe = String.format(Locale.US, "%.2f", it)
                     )
@@ -1877,16 +1887,21 @@ constructor(
                 }
 
         val monthEntries = entries[month]?.toMutableList() ?: mutableListOf()
-        val previousEntry = monthEntries.firstOrNull { it.dia == oldDia.toString() }
+        val selectedYear = current.generales.anio
+        val previousEntry = monthEntries.firstOrNull { it.anio == selectedYear && it.dia == oldDia.toString() }
 
-        monthEntries.removeAll { it.dia == oldDia.toString() }
+        monthEntries.removeAll { it.anio == selectedYear && it.dia == oldDia.toString() }
 
         if (newDia in 1..31 && importe > 0) {
             val entryId =
                     previousEntry?.id?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
             monthEntries.add(
-                // TODO: Hay que incluir aqui una funcion para indicar el año del registro
-                    DayAmountRow(entryId, 2026, newDia.toString(), String.format("%.2f", importe))
+                    DayAmountRow(
+                            id = entryId,
+                            anio = selectedYear,
+                            dia = newDia.toString(),
+                            importe = String.format(Locale.US, "%.2f", importe)
+                    )
             )
             saveEntryMetadata(entryId, month, type, cuenta, nota)
         } else {
@@ -1914,8 +1929,9 @@ constructor(
                 }
 
         val monthEntries = entries[month]?.toMutableList() ?: mutableListOf()
-        val idsEliminados = monthEntries.filter { it.dia == dia.toString() }.map { it.id }
-        monthEntries.removeAll { it.dia == dia.toString() }
+        val selectedYear = current.generales.anio
+        val idsEliminados = monthEntries.filter { it.anio == selectedYear && it.dia == dia.toString() }.map { it.id }
+        monthEntries.removeAll { it.anio == selectedYear && it.dia == dia.toString() }
         idsEliminados.forEach { deleteEntryMetadata(it) }
 
         entries[month] = monthEntries
@@ -1971,8 +1987,14 @@ constructor(
 
         val monthEntries = entries[month]?.toMutableList() ?: mutableListOf()
         val entryId = UUID.randomUUID().toString()
-        // TODO: Hay que incluir aqui una funcion para indicar el año del registro
-        monthEntries.add(DayAmountRow(entryId, 2026, dia.toString(), String.format("%.2f", importe)))
+        monthEntries.add(
+                DayAmountRow(
+                        id = entryId,
+                        anio = current.generales.anio,
+                        dia = dia.toString(),
+                        importe = String.format(Locale.US, "%.2f", importe)
+                )
+        )
         saveEntryMetadata(entryId, month, type, cuenta, nota)
 
         entries[month] = monthEntries
@@ -2112,6 +2134,7 @@ constructor(
                     LedgerConstants.MONTHS.first()
                 }
         val dia = fecha.dayOfMonth.toString()
+        val entryYear = fecha.year
         val current = getRegistro()
         val entries =
                 when (type) {
@@ -2124,7 +2147,8 @@ constructor(
         val notas = ingresoGastoNotaDao.getAll().associateBy { it.ingresoGastoId }
         val entry =
                 monthEntries.firstOrNull {
-                    it.dia == dia &&
+                    it.anio == entryYear &&
+                            it.dia == dia &&
                             cuentas[it.id]?.cuentaId == cuentaId &&
                             notas[it.id]?.nota == nota
                 }
@@ -2145,6 +2169,7 @@ constructor(
             monthEntries.add(
                     DayAmountRow(
                             id = entryId,
+                            anio = entryYear,
                             dia = dia,
                             importe = String.format(Locale.US, "%.2f", importeDelta)
                     )
@@ -2783,8 +2808,9 @@ constructor(
     fun calculateAnnualReport(registro: RegistroTCP): AnnualReport {
         val monthly =
                 LedgerConstants.MONTHS.map { month ->
-                    val ingresos = monthTotal(registro.ingresos[month] ?: emptyList())
-                    val gastos = monthTotal(registro.gastos[month] ?: emptyList())
+                    val selectedYear = registro.generales.anio
+                    val ingresos = monthTotal((registro.ingresos[month] ?: emptyList()).filter { it.anio == selectedYear })
+                    val gastos = monthTotal((registro.gastos[month] ?: emptyList()).filter { it.anio == selectedYear })
                     val tribIndex = LedgerConstants.MONTHS.indexOf(month)
                     val tributos =
                             if (tribIndex < registro.tributos.size) {
@@ -3170,8 +3196,9 @@ constructor(
                     if (importe == null || importe <= 0.0) return@mapNotNull null
                     DayAmountRow(
                             id = row.id.ifBlank { UUID.randomUUID().toString() },
+                            anio = row.anio,
                             dia = dia.toString(),
-                            importe = String.format("%.2f", importe)
+                            importe = String.format(Locale.US, "%.2f", importe)
                     )
                     // DayAmountRow(dia = dia.toString(), importe = String.format(Locale.US, "%.2f",importe))
                 }

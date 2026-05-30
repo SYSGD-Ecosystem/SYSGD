@@ -3,6 +3,8 @@ package cu.lazaroysr96.sysgdcont.ui.main.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,7 +24,7 @@ fun GeneralesScreen(viewModel: LedgerViewModel) {
 
     var nombre by remember(generales) { mutableStateOf(generales.nombre) }
     var nit by remember(generales) { mutableStateOf(generales.nit) }
-    var anio by remember(generales) { mutableStateOf(generales.anio.toString()) }
+    val selectedYear = generales.anio
     var actividad by remember(generales) { mutableStateOf(generales.actividad) }
     var codigo by remember(generales) { mutableStateOf(generales.codigo) }
     var fiscalCalle by remember(generales) { mutableStateOf(generales.fiscalCalle) }
@@ -62,12 +64,14 @@ fun GeneralesScreen(viewModel: LedgerViewModel) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             OutlinedTextField(
-                value = anio,
-                onValueChange = { anio = it.filter { c -> c.isDigit() }.take(4) },
+                value = selectedYear.toString(),
+                onValueChange = {},
+                readOnly = true,
                 label = { Text("Año") },
+                leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
+                supportingText = { Text("Se controla con el selector global de año.") },
                 modifier = Modifier.weight(1f),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                singleLine = true
             )
         }
 
@@ -172,7 +176,7 @@ fun GeneralesScreen(viewModel: LedgerViewModel) {
                     GeneralesData(
                         nombre = nombre,
                         nit = nit,
-                        anio = anio.toIntOrNull() ?: 2026,
+                        anio = selectedYear,
                         actividad = actividad,
                         codigo = codigo,
                         fiscalCalle = fiscalCalle,

@@ -151,6 +151,12 @@ class LedgerViewModel @Inject constructor(
         }
     }
 
+    fun selectFiscalYear(year: Int) {
+        viewModelScope.launch {
+            ledgerRepository.selectFiscalYear(year)
+        }
+    }
+
     fun addIngreso(month: String, dia: Int, importe: Double, cuenta: String = "", nota: String = "") {
         viewModelScope.launch {
             ledgerRepository.addIngreso(month, dia, importe, cuenta, nota)
@@ -170,7 +176,8 @@ class LedgerViewModel @Inject constructor(
         ingresoCuentaId: String = "",
         gasto: Double?,
         gastoCuentaId: String = "",
-        nota: String = ""
+        nota: String = "",
+        year: Int? = null
     ) {
         viewModelScope.launch {
             ledgerRepository.registrarOperacionRapida(
@@ -180,7 +187,8 @@ class LedgerViewModel @Inject constructor(
                 ingresoCuentaId = ingresoCuentaId,
                 gasto = gasto,
                 gastoCuentaId = gastoCuentaId,
-                nota = nota
+                nota = nota,
+                year = year
             )
         }
     }
