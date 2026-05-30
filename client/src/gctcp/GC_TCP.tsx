@@ -5,16 +5,32 @@ import Loading from "@/components/Loading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuthSession } from "@/hooks/connection/useAuthSession";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { CloudLedgerContainer, Moneda, MonedaTasa, MonedaTasaHistorial, WalletMovimiento, WalletMovimientoTipo, WalletReferenciaTipo, WalletTipo } from "../accounting/core/types/accountingTypes";
-import { calculateWorkspaceAnalysis, formatLedgerDate } from "./accountingMath";
+import type { CatalogoCompra, CatalogoVenta, CloudLedgerContainer, HistorialPrecio, Moneda, MonedaTasa, MonedaTasaHistorial, StockRegistro, WalletMovimiento, WalletMovimientoTipo, WalletReferenciaTipo, WalletTipo } from "../accounting/core/types/accountingTypes";
+import {
+  calculateWorkspaceAnalysis,
+  ensureRegistroYear,
+  formatLedgerDate,
+  formatMoney,
+  getWorkspaceForYear,
+  getWorkspaceYears,
+  normalizeLedgerYear,
+} from "./accountingMath";
 import { EmptyState, GcTcpSidebar } from "./components";
 import { DeleteWorkspaceDialog } from "./DeleteWorkspaceDialog";
 import { NomenclatorsView } from "./nomenclators/NomenclatorsView";
 import { PointOfSaleView } from "./pos/PointOfSaleView";
+import type { ProductPriceUpdate, ProductStockUpdate } from "./products/ProductEditDialogs";
 import { getProductUsage } from "./products/productUtils";
 import { getViewTitle } from "./navigation";
 import type { GcTcpView, LedgerApiResponse } from "./types";
@@ -34,6 +50,14 @@ import { useDjActions } from "./hooks/useDjActions";
 import EstadoResultadoView from "./views/EstadoResultadoView";
 import LibroDiarioView from "./libros/LibroDiarioView";
 
+type ProductLedgerToast = {
+  title: string;
+  description: string;
+};
+
+const formatProductQuantity = (value: number): string =>
+  value.toLocaleString("es-CU", { maximumFractionDigits: 2 });
+
 const GC_TCP: FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -50,6 +74,9 @@ const GC_TCP: FC = () => {
   const [deletingProductId, setDeletingProductId] = useState<string | null>(
     null,
   );
+  const [savingProductChanges, setSavingProductChanges] = useState(false);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [savingYear, setSavingYear] = useState(false);
   const [savingWallet, setSavingWallet] = useState(false);
 
   useEffect(() => {
@@ -85,18 +112,31 @@ const GC_TCP: FC = () => {
   }, [loadLedger, user]);
 
   const ledger = data?.registro ?? null;
+  const baseActiveWorkspace =
+    ledger?.workspaces.find((workspace) => workspace.id === activeWorkspaceId) ??
+    ledger?.workspaces[0] ??
+    null;
+  const yearOptions = useMemo(
+    () => getWorkspaceYears(baseActiveWorkspace),
+    [baseActiveWorkspace],
+  );
   const analyses = useMemo(
     () =>
       ledger?.workspaces.map((workspace) =>
-        calculateWorkspaceAnalysis(workspace),
+        calculateWorkspaceAnalysis(getWorkspaceForYear(workspace, selectedYear)),
       ) ?? [],
-    [ledger],
+    [ledger, selectedYear],
   );
   const activeAnalysis =
     analyses.find((analysis) => analysis.workspace.id === activeWorkspaceId) ??
     analyses[0] ??
     null;
   const activeWorkspace = activeAnalysis?.workspace ?? null;
+
+  useEffect(() => {
+    if (!baseActiveWorkspace) return;
+    setSelectedYear(normalizeLedgerYear(baseActiveWorkspace.registro.generales?.anio));
+  }, [activeWorkspaceId, baseActiveWorkspace]);
 
   const totals = useMemo(
     () => ({
@@ -128,6 +168,53 @@ const GC_TCP: FC = () => {
     api,
     toast,
   });
+
+
+  const handleSelectYear = async (yearValue: string) => {
+    const nextYear = normalizeLedgerYear(yearValue);
+    if (!ledger || !baseActiveWorkspace || nextYear === selectedYear) return;
+
+    const previousYear = selectedYear;
+    const updatedLedger: CloudLedgerContainer = {
+      ...ledger,
+      workspaces: ledger.workspaces.map((workspace) =>
+        workspace.id === baseActiveWorkspace.id
+          ? {
+              ...workspace,
+              registro: ensureRegistroYear(workspace.registro, nextYear),
+            }
+          : workspace,
+      ),
+    };
+
+    setSelectedYear(nextYear);
+    setData((current) =>
+      current ? { ...current, registro: updatedLedger } : current,
+    );
+    setSavingYear(true);
+    try {
+      await api.put("/api/cont-ledger", {
+        registro: updatedLedger,
+        inventarioRegistro: data?.inventarioRegistro ?? null,
+      });
+      toast({
+        title: "Año fiscal seleccionado",
+        description: `Ingresos, gastos y operaciones POS se muestran para ${nextYear}.`,
+      });
+    } catch {
+      setSelectedYear(previousYear);
+      setData((current) =>
+        current ? { ...current, registro: ledger } : current,
+      );
+      toast({
+        title: "No se pudo cambiar el año fiscal",
+        description: "Se mantuvo el año anterior para no desincronizar los registros.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingYear(false);
+    }
+  };
 
   const handleSelectWorkspace = async (workspaceId: string) => {
     if (!ledger || workspaceId === activeWorkspaceId) return;
@@ -222,8 +309,8 @@ const GC_TCP: FC = () => {
     const usage = getProductUsage(activeWorkspace, productId);
     if (!usage.canDelete) {
       toast({
-        title: "Producto en uso",
-        description: `No se puede eliminar porque aparece en: ${usage.labels.join(", ")}.`,
+        title: "No se pudo eliminar desde Cuentas y Productos",
+        description: `El producto esta vinculado a ${usage.labels.join(", ")}. Revisa esos registros antes de eliminarlo del catalogo.`,
         variant: "destructive",
       });
       return;
@@ -264,18 +351,212 @@ const GC_TCP: FC = () => {
         current ? { ...current, registro: updatedLedger } : current,
       );
       toast({
-        title: "Producto eliminado",
-        description: `${product.nombre} fue eliminado del espacio activo.`,
+        title: "Producto eliminado de Cuentas y Productos",
+        description: `${product.nombre} ya no aparece en el catalogo del espacio activo.`,
       });
     } catch {
       toast({
-        title: "No se pudo eliminar",
-        description: "El producto no fue modificado.",
+        title: "No se pudo eliminar desde Cuentas y Productos",
+        description: `${product.nombre} no fue modificado. Intenta nuevamente desde el catalogo.`,
         variant: "destructive",
       });
     } finally {
       setDeletingProductId(null);
     }
+  };
+
+
+  const persistProductLedger = async (
+    updatedLedger: CloudLedgerContainer,
+    successToast: ProductLedgerToast,
+    failureToast: ProductLedgerToast,
+  ) => {
+    setSavingProductChanges(true);
+    try {
+      await api.put("/api/cont-ledger", {
+        registro: updatedLedger,
+        inventarioRegistro: data?.inventarioRegistro ?? null,
+      });
+      setData((current) =>
+        current ? { ...current, registro: updatedLedger } : current,
+      );
+      toast(successToast);
+    } catch {
+      toast({ ...failureToast, variant: "destructive" });
+    } finally {
+      setSavingProductChanges(false);
+    }
+  };
+
+  const handleUpdateProductPrice = async (payload: ProductPriceUpdate) => {
+    if (!ledger || !activeWorkspace) return;
+    const now = Date.now();
+    const isoDate = new Date(now).toISOString();
+    const product = activeWorkspace.registro.inventario.productos.find((item) => item.id === payload.productId);
+    if (!product) return;
+
+    const updatedWorkspaces = ledger.workspaces.map((workspace) => {
+      if (workspace.id !== activeWorkspace.id) return workspace;
+      const { inventario } = workspace.registro;
+      const principalWarehouse = inventario.almacenes.find((almacen) => almacen.principal) ?? inventario.almacenes[0] ?? null;
+      const existingSaleItems = inventario.catalogoVentas.filter((item) => item.productoId === payload.productId && item.activo);
+      const existingPurchaseItems = inventario.catalogoCompras.filter((item) => item.productoId === payload.productId && item.activo);
+      const newPriceHistory: HistorialPrecio = {
+        id: `price-${payload.productId}-${payload.tipoPrecio.toLowerCase()}-${now}`,
+        productoId: payload.productId,
+        almacenId: principalWarehouse?.id ?? "principal",
+        fechaDesde: isoDate,
+        precio: payload.precio,
+        moneda: "CUP",
+        tipoPrecio: payload.tipoPrecio,
+        activo: true,
+        createdAt: now,
+      };
+
+      const catalogoVentas = payload.tipoPrecio === "VENTA"
+        ? existingSaleItems.length > 0
+          ? inventario.catalogoVentas.map((item): CatalogoVenta =>
+              item.productoId === payload.productId && item.activo
+                ? { ...item, precioReferencia: payload.precio }
+                : item,
+            )
+          : principalWarehouse
+            ? [
+                ...inventario.catalogoVentas,
+                {
+                  id: `venta-${payload.productId}-${now}`,
+                  productoId: payload.productId,
+                  precioReferencia: payload.precio,
+                  almacenId: principalWarehouse.id,
+                  activo: true,
+                },
+              ]
+            : inventario.catalogoVentas
+        : inventario.catalogoVentas;
+
+      const catalogoCompras = payload.tipoPrecio === "COMPRA"
+        ? existingPurchaseItems.length > 0
+          ? inventario.catalogoCompras.map((item): CatalogoCompra =>
+              item.productoId === payload.productId && item.activo
+                ? { ...item, precioReferencia: payload.precio }
+                : item,
+            )
+          : principalWarehouse
+            ? [
+                ...inventario.catalogoCompras,
+                {
+                  id: `compra-${payload.productId}-${now}`,
+                  productoId: payload.productId,
+                  precioReferencia: payload.precio,
+                  almacenDestinoId: principalWarehouse.id,
+                  activo: true,
+                },
+              ]
+            : inventario.catalogoCompras
+        : inventario.catalogoCompras;
+
+      return {
+        ...workspace,
+        registro: {
+          ...workspace.registro,
+          inventario: {
+            ...inventario,
+            productos: inventario.productos.map((item) =>
+              item.id === payload.productId ? { ...item, precio: payload.precio } : item,
+            ),
+            catalogoVentas,
+            catalogoCompras,
+            historialPrecios: [
+              ...inventario.historialPrecios.map((item) =>
+                item.productoId === payload.productId && item.tipoPrecio === payload.tipoPrecio
+                  ? { ...item, activo: false }
+                  : item,
+              ),
+              newPriceHistory,
+            ],
+          },
+        },
+      };
+    });
+
+    await persistProductLedger(
+      { ...ledger, workspaces: updatedWorkspaces },
+      {
+        title: "Precio actualizado en Cuentas y Productos",
+        description: `${product.nombre}: precio de ${payload.tipoPrecio === "VENTA" ? "venta" : "compra"} cambiado a ${formatMoney(payload.precio)}.`,
+      },
+      {
+        title: "No se pudo guardar el precio en Cuentas y Productos",
+        description: `${product.nombre} mantiene su precio anterior. Intenta nuevamente desde el catalogo.`,
+      },
+    );
+  };
+
+  const handleUpdateProductStock = async (payload: ProductStockUpdate) => {
+    if (!ledger || !activeWorkspace) return;
+    const now = Date.now();
+    const product = activeWorkspace.registro.inventario.productos.find((item) => item.id === payload.productId);
+    if (!product) return;
+
+    const warehouseName = activeWorkspace.registro.inventario.almacenes.find(
+      (almacen) => almacen.id === payload.almacenId,
+    )?.nombre ?? payload.almacenId;
+
+    const updatedWorkspaces = ledger.workspaces.map((workspace) => {
+      if (workspace.id !== activeWorkspace.id) return workspace;
+      const { inventario } = workspace.registro;
+      const existingStock = inventario.stock.find(
+        (item) => item.productoId === payload.productId && item.almacenId === payload.almacenId,
+      );
+      const updatedStock = existingStock
+        ? inventario.stock.map((item): StockRegistro =>
+            item.id === existingStock.id
+              ? {
+                  ...item,
+                  stockDisponible: payload.stockDisponible,
+                  modoStock: payload.modoStock,
+                  ultimaActualizacion: new Date(now).toISOString(),
+                }
+              : item,
+          )
+        : [
+            ...inventario.stock,
+            {
+              id: `stock-${payload.productId}-${payload.almacenId}-${now}`,
+              productoId: payload.productId,
+              almacenId: payload.almacenId,
+              stockDisponible: payload.stockDisponible,
+              modoStock: payload.modoStock,
+              productosVinculadosIds: "[]",
+              ratiosConversion: "{}",
+              ultimaActualizacion: new Date(now).toISOString(),
+              visibleEnVentas: true,
+            },
+          ];
+
+      return {
+        ...workspace,
+        registro: {
+          ...workspace.registro,
+          inventario: {
+            ...inventario,
+            stock: updatedStock,
+          },
+        },
+      };
+    });
+
+    await persistProductLedger(
+      { ...ledger, workspaces: updatedWorkspaces },
+      {
+        title: "Disponibilidad actualizada en Cuentas y Productos",
+        description: `${product.nombre}: ${formatProductQuantity(payload.stockDisponible)} ${product.unidad || "unidades"} en ${warehouseName} (${payload.modoStock.toLowerCase()}).`,
+      },
+      {
+        title: "No se pudo guardar la disponibilidad en Cuentas y Productos",
+        description: `${product.nombre} mantiene su cantidad anterior en ${warehouseName}. Intenta nuevamente desde el catalogo.`,
+      },
+    );
   };
 
   const handleCreateWallet = async (payload: {
@@ -599,7 +880,7 @@ console.log(activeWorkspace?.accounting.monedas);
       case "libroDiario":
         return <LibroDiarioView workspace={activeWorkspace} />;
       case "ventas":
-        return <PointOfSaleView workspace={activeWorkspace} />;
+        return <PointOfSaleView workspace={activeWorkspace} selectedYear={selectedYear} />;
       case "cajaBanco":
         return (
           <CajaBanco
@@ -622,7 +903,10 @@ console.log(activeWorkspace?.accounting.monedas);
           <CatalogosView
             workspace={activeWorkspace}
             deletingProduct={Boolean(deletingProductId)}
+            savingProductChanges={savingProductChanges}
             onDeleteProduct={handleDeleteProduct}
+            onUpdateProductPrice={handleUpdateProductPrice}
+            onUpdateProductStock={handleUpdateProductStock}
           />
         );
       case "nomencladores":
@@ -738,7 +1022,26 @@ console.log(activeWorkspace?.accounting.monedas);
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1 dark:border-slate-800 dark:bg-slate-900">
+                <span className="text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Año</span>
+                <Select
+                  value={String(selectedYear)}
+                  onValueChange={(value) => void handleSelectYear(value)}
+                  disabled={savingYear}
+                >
+                  <SelectTrigger className="h-8 w-[5.75rem] border-0 px-2 shadow-none focus:ring-0">
+                    <SelectValue placeholder="Año" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {yearOptions.map((year) => (
+                      <SelectItem key={year} value={String(year)}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Badge variant="outline">
                 {ledger.workspaces.length} workspace
                 {ledger.workspaces.length === 1 ? "" : "s"}

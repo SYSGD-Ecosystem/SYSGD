@@ -352,11 +352,18 @@ export type TributoRow = {
   cuotaMensual: string;
 };
 
+export type RegistroAnualTCP = {
+  ingresos: MonthEntries;
+  gastos: MonthEntries;
+  tributos: TributoRow[];
+};
+
 export type RegistroTCP = {
   generales: GeneralesData;
   ingresos: MonthEntries;
   gastos: MonthEntries;
   tributos: TributoRow[];
+  registrosPorAnio?: Record<string, RegistroAnualTCP>;
   inventario: InventarioRegistro;
   terceros: TercerosRegistro;
 };

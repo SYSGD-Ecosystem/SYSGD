@@ -16,6 +16,7 @@ import cu.lazaroysr96.sysgdcont.data.model.FormaPago
 import cu.lazaroysr96.sysgdcont.data.model.RolTercero
 import cu.lazaroysr96.sysgdcont.data.model.TerceroListItem
 import cu.lazaroysr96.sysgdcont.data.model.TipoCuentaTercero
+import cu.lazaroysr96.sysgdcont.data.model.TipoPrecio
 import cu.lazaroysr96.sysgdcont.data.model.TipoProductoInv
 import cu.lazaroysr96.sysgdcont.data.model.ModoStock
 import cu.lazaroysr96.sysgdcont.data.model.MovimientoInventario
@@ -708,6 +709,32 @@ class InventarioViewModel @Inject constructor(
 
     suspend fun obtenerHistorialPreciosProducto(productoId: String): List<PrecioProductoDetalle> =
         repo.getHistorialPreciosProducto(productoId)
+
+
+
+    fun actualizarPrecioProductoCatalogo(productoId: String, tipoPrecio: String, precio: Double, almacenId: String) {
+        viewModelScope.launch {
+            try {
+                repo.actualizarPrecioCatalogoProducto(productoId, tipoPrecio, precio, almacenId)
+                val etiqueta = if (tipoPrecio == TipoPrecio.VENTA) "venta" else "compra"
+                _uiState.update { it.copy(snackbarMessage = "Precio de $etiqueta actualizado en Cuentas y Productos") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al actualizar precio") }
+            }
+        }
+    }
+
+    fun ajustarInventarioProductoCatalogo(productoId: String, almacenId: String, cantidad: Double, modo: ModoStock) {
+        viewModelScope.launch {
+            try {
+                repo.ajustarInventarioProductoCatalogo(productoId, almacenId, cantidad, modo)
+                _uiState.update { it.copy(snackbarMessage = "Inventario actualizado en Cuentas y Productos") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al actualizar inventario") }
+            }
+        }
+    }
+
 
     fun deleteProductoBase(id: String) {
         viewModelScope.launch {

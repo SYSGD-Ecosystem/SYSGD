@@ -31,6 +31,7 @@ import java.util.Calendar
 fun GastosScreen(viewModel: LedgerViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val cuentasPorId = remember(uiState.cuentasContables) { uiState.cuentasContables.associateBy { it.id } }
+    val selectedYear = uiState.registro.generales.anio
     var showDialog by remember { mutableStateOf(false) }
     var isEditMode by remember { mutableStateOf(false) }
     var editEntry by remember { mutableStateOf<Pair<String, DayAmountRow>?>(null) }
@@ -54,7 +55,7 @@ fun GastosScreen(viewModel: LedgerViewModel) {
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            Text("Gastos", style = MaterialTheme.typography.titleLarge)
+            Text("Gastos ${selectedYear}", style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(8.dp))
 
             val totalGastos = uiState.annualReport?.totalGastos ?: 0.0
@@ -64,7 +65,8 @@ fun GastosScreen(viewModel: LedgerViewModel) {
 
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(LedgerConstants.MONTHS) { month ->
-                    val entries = uiState.registro.gastos[month] ?: emptyList()
+                    val entries = (uiState.registro.gastos[month] ?: emptyList())
+                        .filter { it.anio == selectedYear }
                     val total = entries.sumOf { it.importe.toDoubleOrNull() ?: 0.0 }
                     val isExpanded = expandedMonths.contains(month)
 

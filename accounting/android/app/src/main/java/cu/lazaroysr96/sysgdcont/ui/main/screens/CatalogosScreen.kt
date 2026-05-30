@@ -27,7 +27,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import cu.lazaroysr96.sysgdcont.data.model.Almacen
 import cu.lazaroysr96.sysgdcont.data.model.CuentaContable
+import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
+import cu.lazaroysr96.sysgdcont.data.model.ModoStock
 import cu.lazaroysr96.sysgdcont.data.model.NaturalezaCuenta
 import cu.lazaroysr96.sysgdcont.data.model.PrecioProductoDetalle
 import cu.lazaroysr96.sysgdcont.data.model.TipoPrecio
@@ -81,8 +84,17 @@ fun CatalogosScreen(
     var selectedTab    by remember { mutableStateOf(0) }
     val productosState by inventarioViewModel.uiState.collectAsStateWithLifecycle()
     val ledgerState    by ledgerViewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    LaunchedEffect(productosState.snackbarMessage) {
+        productosState.snackbarMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            inventarioViewModel.clearSnackbar()
+        }
+    }
+
+    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
+    Column(modifier = Modifier.fillMaxSize().padding(padding)) {
         TabRow(selectedTabIndex = selectedTab) {
             listOf("Cuentas", "Productos").forEachIndexed { index, title ->
                 Tab(
@@ -107,12 +119,17 @@ fun CatalogosScreen(
             )
             1 -> ProductosTab(
                 productos        = productosState.productosBase,
+                almacenes        = productosState.almacenes,
+                itemsInventario  = (productosState.itemsInventarioVenta + productosState.itemsInventarioCompra).distinctBy { it.id },
                 onAddProduct     = inventarioViewModel::agregarProductoBase,
                 onEditProduct    = inventarioViewModel::actualizarProductoBase,
                 onDeleteProduct  = inventarioViewModel::deleteProductoBase,
+                onUpdatePrice    = inventarioViewModel::actualizarPrecioProductoCatalogo,
+                onUpdateStock    = inventarioViewModel::ajustarInventarioProductoCatalogo,
                 loadPriceHistory = inventarioViewModel::obtenerHistorialPreciosProducto
             )
         }
+    }
     }
 }
 
@@ -123,9 +140,13 @@ fun CatalogosScreen(
 @Composable
 private fun ProductosTab(
     productos: List<Producto>,
+    almacenes: List<Almacen>,
+    itemsInventario: List<ItemInventario>,
     onAddProduct:  (nombre: String, imagenJson: String, unidad: String, descripcion: String) -> Unit,
     onEditProduct: (id: String, nombre: String, imagenJson: String, unidad: String, descripcion: String) -> Unit,
     onDeleteProduct: (id: String) -> Unit,
+    onUpdatePrice: (productoId: String, tipoPrecio: String, precio: Double, almacenId: String) -> Unit,
+    onUpdateStock: (productoId: String, almacenId: String, cantidad: Double, modo: ModoStock) -> Unit,
     loadPriceHistory: suspend (String) -> List<PrecioProductoDetalle>
 ) {
     var productoDetalle  by remember { mutableStateOf<Producto?>(null) }
@@ -209,7 +230,11 @@ private fun ProductosTab(
     productoDetalle?.let { producto ->
         ProductoDetalleDialog(
             producto = producto,
+            almacenes = almacenes,
+            itemsInventario = itemsInventario.filter { it.productoId == producto.id },
             loadPriceHistory = loadPriceHistory,
+            onUpdatePrice = onUpdatePrice,
+            onUpdateStock = onUpdateStock,
             onDismiss = { productoDetalle = null },
             onEdit = {
                 productoDetalle = null
@@ -239,7 +264,11 @@ private fun ProductosTab(
 @Composable
 private fun ProductoDetalleDialog(
     producto: Producto,
+    almacenes: List<Almacen>,
+    itemsInventario: List<ItemInventario>,
     loadPriceHistory: suspend (String) -> List<PrecioProductoDetalle>,
+    onUpdatePrice: (productoId: String, tipoPrecio: String, precio: Double, almacenId: String) -> Unit,
+    onUpdateStock: (productoId: String, almacenId: String, cantidad: Double, modo: ModoStock) -> Unit,
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -254,6 +283,8 @@ private fun ProductoDetalleDialog(
     val preciosCompra = remember(historial) { historial.filter { it.tipoPrecio == TipoPrecio.COMPRA && it.activo } }
     val imagen = remember(producto.emoji) { producto.emoji.toProductoImagen() }
     val colorScheme = MaterialTheme.colorScheme
+    var priceEditor by remember { mutableStateOf<String?>(null) }
+    var stockEditorOpen by remember { mutableStateOf(false) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -372,16 +403,24 @@ private fun ProductoDetalleDialog(
                             precios = preciosVenta,
                             containerColor = colorScheme.primaryContainer,
                             contentColor = colorScheme.onPrimaryContainer,
-                            modifier = Modifier.weight(1f).fillMaxHeight()
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            onEdit = { priceEditor = TipoPrecio.VENTA }
                         )
                         PrecioVigenteCard(
                             titulo = "Compra",
                             precios = preciosCompra,
                             containerColor = colorScheme.secondaryContainer,
                             contentColor = colorScheme.onSecondaryContainer,
-                            modifier = Modifier.weight(1f).fillMaxHeight()
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            onEdit = { priceEditor = TipoPrecio.COMPRA }
                         )
                     }
+
+                    InventoryAvailabilitySection(
+                        items = itemsInventario,
+                        almacenes = almacenes,
+                        onEdit = { stockEditorOpen = true }
+                    )
 
                     // Historial
                     if (historial.isNotEmpty()) {
@@ -436,6 +475,33 @@ private fun ProductoDetalleDialog(
             }
         }
     }
+
+    priceEditor?.let { tipoPrecio ->
+        EditPriceDialog(
+            producto = producto,
+            tipoPrecio = tipoPrecio,
+            almacenes = almacenes,
+            currentPrice = (if (tipoPrecio == TipoPrecio.VENTA) preciosVenta else preciosCompra).firstOrNull(),
+            onDismiss = { priceEditor = null },
+            onConfirm = { almacenId, precio ->
+                onUpdatePrice(producto.id, tipoPrecio, precio, almacenId)
+                priceEditor = null
+            }
+        )
+    }
+
+    if (stockEditorOpen) {
+        EditStockDialog(
+            producto = producto,
+            almacenes = almacenes,
+            items = itemsInventario,
+            onDismiss = { stockEditorOpen = false },
+            onConfirm = { almacenId, cantidad, modo ->
+                onUpdateStock(producto.id, almacenId, cantidad, modo)
+                stockEditorOpen = false
+            }
+        )
+    }
 }
 
 // ── Auxiliares ────────────────────────────────────────────────────────────────
@@ -447,6 +513,7 @@ private fun PrecioVigenteCard(
     containerColor: Color,
     contentColor: Color,
     modifier: Modifier = Modifier,
+    onEdit: () -> Unit = {}
 ) {
     Surface(
         modifier = modifier,
@@ -457,11 +524,20 @@ private fun PrecioVigenteCard(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(
-                text = titulo,
-                style = MaterialTheme.typography.labelMedium,
-                color = contentColor.copy(alpha = 0.75f)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = titulo,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = contentColor.copy(alpha = 0.75f)
+                )
+                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Edit, contentDescription = "Editar precio", tint = contentColor)
+                }
+            }
             if (precios.isEmpty()) {
                 Text(
                     text = "Sin precio",
@@ -569,6 +645,165 @@ private fun HistorialPrecioItem(item: PrecioProductoDetalle) {
 
 
 
+
+@Composable
+private fun InventoryAvailabilitySection(
+    items: List<ItemInventario>,
+    almacenes: List<Almacen>,
+    onEdit: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Inventario disponible", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                TextButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Modificar")
+                }
+            }
+            if (items.isEmpty()) {
+                Text("Sin inventario registrado", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                items.forEach { item ->
+                    val almacen = almacenes.firstOrNull { it.id == item.almacenId }?.nombre ?: item.almacenId
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(almacen, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = if (item.modoStock == ModoStock.ILIMITADO.name) "Ilimitado" else "${"%.2f".format(item.stockDisponible)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditPriceDialog(
+    producto: Producto,
+    tipoPrecio: String,
+    almacenes: List<Almacen>,
+    currentPrice: PrecioProductoDetalle?,
+    onDismiss: () -> Unit,
+    onConfirm: (String, Double) -> Unit
+) {
+    val defaultAlmacen = currentPrice?.almacenId ?: almacenes.firstOrNull()?.id.orEmpty()
+    var almacenId by remember(defaultAlmacen) { mutableStateOf(defaultAlmacen) }
+    var precioText by remember(currentPrice) { mutableStateOf(currentPrice?.precio?.toString().orEmpty()) }
+    val precio = precioText.replace(',', '.').toDoubleOrNull()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Editar precio de ${TipoPrecio.label(tipoPrecio).lowercase()}") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(producto.nombre, style = MaterialTheme.typography.titleSmall)
+                AlmacenSelector(almacenes = almacenes, selectedId = almacenId, onSelected = { almacenId = it })
+                OutlinedTextField(
+                    value = precioText,
+                    onValueChange = { precioText = it },
+                    label = { Text("Precio") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = almacenId.isNotBlank() && precio != null && precio >= 0.0,
+                onClick = { onConfirm(almacenId, precio ?: 0.0) }
+            ) { Text("Guardar") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
+}
+
+@Composable
+private fun EditStockDialog(
+    producto: Producto,
+    almacenes: List<Almacen>,
+    items: List<ItemInventario>,
+    onDismiss: () -> Unit,
+    onConfirm: (String, Double, ModoStock) -> Unit
+) {
+    val defaultItem = items.firstOrNull()
+    val defaultAlmacen = defaultItem?.almacenId ?: almacenes.firstOrNull()?.id.orEmpty()
+    var almacenId by remember(defaultAlmacen) { mutableStateOf(defaultAlmacen) }
+    val selectedItem = items.firstOrNull { it.almacenId == almacenId }
+    var cantidadText by remember(selectedItem) { mutableStateOf((selectedItem?.stockDisponible ?: 0.0).toString()) }
+    var modo by remember(selectedItem) { mutableStateOf(runCatching { ModoStock.valueOf(selectedItem?.modoStock ?: ModoStock.MANUAL.name) }.getOrDefault(ModoStock.MANUAL)) }
+    val cantidad = cantidadText.replace(',', '.').toDoubleOrNull()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Modificar inventario") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(producto.nombre, style = MaterialTheme.typography.titleSmall)
+                AlmacenSelector(almacenes = almacenes, selectedId = almacenId, onSelected = { almacenId = it })
+                OutlinedTextField(
+                    value = cantidadText,
+                    onValueChange = { cantidadText = it },
+                    label = { Text("Cantidad disponible") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(ModoStock.MANUAL, ModoStock.ILIMITADO).forEach { option ->
+                        FilterChip(
+                            selected = modo == option,
+                            onClick = { modo = option },
+                            label = { Text(option.name.lowercase().replaceFirstChar { it.uppercase() }) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = almacenId.isNotBlank() && cantidad != null && cantidad >= 0.0,
+                onClick = { onConfirm(almacenId, cantidad ?: 0.0, modo) }
+            ) { Text("Guardar") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
+}
+
+@Composable
+private fun AlmacenSelector(
+    almacenes: List<Almacen>,
+    selectedId: String,
+    onSelected: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedName = almacenes.firstOrNull { it.id == selectedId }?.nombre ?: "Seleccionar almacén"
+    Box {
+        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+            Text(selectedName, modifier = Modifier.weight(1f))
+            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            almacenes.forEach { almacen ->
+                DropdownMenuItem(
+                    text = { Text(if (almacen.principal) "${almacen.nombre} (principal)" else almacen.nombre) },
+                    onClick = {
+                        onSelected(almacen.id)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
 
 
 @Composable

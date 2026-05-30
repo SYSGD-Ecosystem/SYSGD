@@ -59,6 +59,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -175,6 +177,44 @@ private fun openExternalUrl(context: android.content.Context, url: String): Bool
 }
 
 @Composable
+private fun FiscalYearSelector(
+        selectedYear: Int,
+        onYearSelected: (Int) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val currentYear = remember { java.time.Year.now().value }
+    val yearOptions = remember(selectedYear, currentYear) {
+        ((currentYear - 2)..(currentYear + 2)).toMutableSet()
+                .apply { add(selectedYear) }
+                .sortedDescending()
+    }
+
+    Box {
+        TextButton(onClick = { expanded = true }) {
+            Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(selectedYear.toString())
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            yearOptions.forEach { year ->
+                DropdownMenuItem(
+                        text = { Text(year.toString()) },
+                        onClick = {
+                            expanded = false
+                            if (year != selectedYear) onYearSelected(year)
+                        },
+                        leadingIcon = {
+                            if (year == selectedYear) {
+                                Icon(Icons.Default.Check, contentDescription = null)
+                            }
+                        }
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun FeatureUnavailableScreen(message: String) {
     Box(
         modifier = Modifier
@@ -223,6 +263,7 @@ fun MainScreen(
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
     val ledgerState by ledgerViewModel.uiState.collectAsStateWithLifecycle()
+    val inventarioState by inventarioViewModel.uiState.collectAsStateWithLifecycle()
     val planPurchaseState by planPurchaseViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val drawerState =
@@ -250,6 +291,7 @@ fun MainScreen(
         )
     }
     val syncRoutes = remember { accountingRoutes + DASHBOARD_ROUTE }
+    val fiscalYearRoutes = remember { accountingRoutes + VENTAS_ROUTE }
     var showCreditsInfoDialog by remember { mutableStateOf(false) }
     var showVentasHelpDialog by remember { mutableStateOf(false) }
     var showAccessKeyPasswordDialog by remember { mutableStateOf(false) }
@@ -712,6 +754,20 @@ fun MainScreen(
                                 }
                             },
                             actions = {
+                                if (currentRoute in fiscalYearRoutes) {
+                                    FiscalYearSelector(
+                                            selectedYear = ledgerState.registro.generales.anio,
+                                            onYearSelected = { year ->
+                                                ledgerViewModel.selectFiscalYear(year)
+                                                if (currentRoute == VENTAS_ROUTE) {
+                                                    val adjustedDate = runCatching {
+                                                        inventarioState.fechaTrabajo.withYear(year)
+                                                    }.getOrDefault(inventarioState.fechaTrabajo)
+                                                    inventarioViewModel.setFechaTrabajo(adjustedDate)
+                                                }
+                                            }
+                                    )
+                                }
                                 if (currentRoute == VENTAS_ROUTE) {
                                     IconButton(onClick = { showVentasHelpDialog = true }) {
                                         Icon(
@@ -842,7 +898,8 @@ fun MainScreen(
                                 ingresoCuentaId = ingresoCuentaId.orEmpty(),
                                 gasto = gasto,
                                 gastoCuentaId = gastoCuentaId.orEmpty(),
-                                nota = nota
+                                nota = nota,
+                                year = fecha.year
                             )
                         },
                                 userName = authState.currentUser?.name ?: "Usuario",
