@@ -41,6 +41,7 @@ import {
 } from "./accountingMath";
 import { EmptyState, MetricCard, WorkspaceSelector } from "./components";
 import { ProductCatalogPanel } from "./products/ProductCatalogPanel";
+import type { ProductPriceUpdate, ProductStockUpdate } from "./products/ProductEditDialogs";
 import type { GcTcpView, WorkspaceAnalysis } from "./types";
 
 const pdfMakeWithVfs = pdfMake as unknown as { vfs?: typeof pdfFonts.vfs };
@@ -513,8 +514,11 @@ export const TercerosView: FC<{ workspace: CloudWorkspaceEntry }> = ({
 export const CatalogosView: FC<{
   workspace: CloudWorkspaceEntry;
   deletingProduct: boolean;
+  savingProductChanges: boolean;
   onDeleteProduct: (productId: string) => void;
-}> = ({ workspace, deletingProduct, onDeleteProduct }) => {
+  onUpdateProductPrice: (payload: ProductPriceUpdate) => void;
+  onUpdateProductStock: (payload: ProductStockUpdate) => void;
+}> = ({ workspace, deletingProduct, savingProductChanges, onDeleteProduct, onUpdateProductPrice, onUpdateProductStock }) => {
   const cuentas = workspace.accounting.cuentasContables;
 
   return (
@@ -554,7 +558,10 @@ export const CatalogosView: FC<{
       <ProductCatalogPanel
         workspace={workspace}
         deletingProduct={deletingProduct}
+        savingProductChanges={savingProductChanges}
         onDeleteProduct={onDeleteProduct}
+        onUpdateProductPrice={onUpdateProductPrice}
+        onUpdateProductStock={onUpdateProductStock}
       />
     </div>
   );

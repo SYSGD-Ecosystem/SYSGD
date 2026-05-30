@@ -9,12 +9,13 @@ import { useAuthSession } from "@/hooks/connection/useAuthSession";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { CloudLedgerContainer, Moneda, MonedaTasa, MonedaTasaHistorial, WalletMovimiento, WalletMovimientoTipo, WalletReferenciaTipo, WalletTipo } from "../accounting/core/types/accountingTypes";
+import type { CatalogoCompra, CatalogoVenta, CloudLedgerContainer, HistorialPrecio, Moneda, MonedaTasa, MonedaTasaHistorial, StockRegistro, WalletMovimiento, WalletMovimientoTipo, WalletReferenciaTipo, WalletTipo } from "../accounting/core/types/accountingTypes";
 import { calculateWorkspaceAnalysis, formatLedgerDate } from "./accountingMath";
 import { EmptyState, GcTcpSidebar } from "./components";
 import { DeleteWorkspaceDialog } from "./DeleteWorkspaceDialog";
 import { NomenclatorsView } from "./nomenclators/NomenclatorsView";
 import { PointOfSaleView } from "./pos/PointOfSaleView";
+import type { ProductPriceUpdate, ProductStockUpdate } from "./products/ProductEditDialogs";
 import { getProductUsage } from "./products/productUtils";
 import { getViewTitle } from "./navigation";
 import type { GcTcpView, LedgerApiResponse } from "./types";
@@ -50,6 +51,7 @@ const GC_TCP: FC = () => {
   const [deletingProductId, setDeletingProductId] = useState<string | null>(
     null,
   );
+  const [savingProductChanges, setSavingProductChanges] = useState(false);
   const [savingWallet, setSavingWallet] = useState(false);
 
   useEffect(() => {
@@ -276,6 +278,180 @@ const GC_TCP: FC = () => {
     } finally {
       setDeletingProductId(null);
     }
+  };
+
+
+  const persistProductLedger = async (updatedLedger: CloudLedgerContainer, successTitle: string, failureTitle: string) => {
+    setSavingProductChanges(true);
+    try {
+      await api.put("/api/cont-ledger", {
+        registro: updatedLedger,
+        inventarioRegistro: data?.inventarioRegistro ?? null,
+      });
+      setData((current) =>
+        current ? { ...current, registro: updatedLedger } : current,
+      );
+      toast({ title: successTitle });
+    } catch {
+      toast({ title: failureTitle, variant: "destructive" });
+    } finally {
+      setSavingProductChanges(false);
+    }
+  };
+
+  const handleUpdateProductPrice = async (payload: ProductPriceUpdate) => {
+    if (!ledger || !activeWorkspace) return;
+    const now = Date.now();
+    const isoDate = new Date(now).toISOString();
+    const product = activeWorkspace.registro.inventario.productos.find((item) => item.id === payload.productId);
+    if (!product) return;
+
+    const updatedWorkspaces = ledger.workspaces.map((workspace) => {
+      if (workspace.id !== activeWorkspace.id) return workspace;
+      const { inventario } = workspace.registro;
+      const principalWarehouse = inventario.almacenes.find((almacen) => almacen.principal) ?? inventario.almacenes[0] ?? null;
+      const existingSaleItems = inventario.catalogoVentas.filter((item) => item.productoId === payload.productId && item.activo);
+      const existingPurchaseItems = inventario.catalogoCompras.filter((item) => item.productoId === payload.productId && item.activo);
+      const newPriceHistory: HistorialPrecio = {
+        id: `price-${payload.productId}-${payload.tipoPrecio.toLowerCase()}-${now}`,
+        productoId: payload.productId,
+        almacenId: principalWarehouse?.id ?? "principal",
+        fechaDesde: isoDate,
+        precio: payload.precio,
+        moneda: "CUP",
+        tipoPrecio: payload.tipoPrecio,
+        activo: true,
+        createdAt: now,
+      };
+
+      const catalogoVentas = payload.tipoPrecio === "VENTA"
+        ? existingSaleItems.length > 0
+          ? inventario.catalogoVentas.map((item): CatalogoVenta =>
+              item.productoId === payload.productId && item.activo
+                ? { ...item, precioReferencia: payload.precio }
+                : item,
+            )
+          : principalWarehouse
+            ? [
+                ...inventario.catalogoVentas,
+                {
+                  id: `venta-${payload.productId}-${now}`,
+                  productoId: payload.productId,
+                  precioReferencia: payload.precio,
+                  almacenId: principalWarehouse.id,
+                  activo: true,
+                },
+              ]
+            : inventario.catalogoVentas
+        : inventario.catalogoVentas;
+
+      const catalogoCompras = payload.tipoPrecio === "COMPRA"
+        ? existingPurchaseItems.length > 0
+          ? inventario.catalogoCompras.map((item): CatalogoCompra =>
+              item.productoId === payload.productId && item.activo
+                ? { ...item, precioReferencia: payload.precio }
+                : item,
+            )
+          : principalWarehouse
+            ? [
+                ...inventario.catalogoCompras,
+                {
+                  id: `compra-${payload.productId}-${now}`,
+                  productoId: payload.productId,
+                  precioReferencia: payload.precio,
+                  almacenDestinoId: principalWarehouse.id,
+                  activo: true,
+                },
+              ]
+            : inventario.catalogoCompras
+        : inventario.catalogoCompras;
+
+      return {
+        ...workspace,
+        registro: {
+          ...workspace.registro,
+          inventario: {
+            ...inventario,
+            productos: inventario.productos.map((item) =>
+              item.id === payload.productId ? { ...item, precio: payload.precio } : item,
+            ),
+            catalogoVentas,
+            catalogoCompras,
+            historialPrecios: [
+              ...inventario.historialPrecios.map((item) =>
+                item.productoId === payload.productId && item.tipoPrecio === payload.tipoPrecio
+                  ? { ...item, activo: false }
+                  : item,
+              ),
+              newPriceHistory,
+            ],
+          },
+        },
+      };
+    });
+
+    await persistProductLedger(
+      { ...ledger, workspaces: updatedWorkspaces },
+      "Precio de producto actualizado",
+      "No se pudo actualizar el precio",
+    );
+  };
+
+  const handleUpdateProductStock = async (payload: ProductStockUpdate) => {
+    if (!ledger || !activeWorkspace) return;
+    const now = Date.now();
+    const product = activeWorkspace.registro.inventario.productos.find((item) => item.id === payload.productId);
+    if (!product) return;
+
+    const updatedWorkspaces = ledger.workspaces.map((workspace) => {
+      if (workspace.id !== activeWorkspace.id) return workspace;
+      const { inventario } = workspace.registro;
+      const existingStock = inventario.stock.find(
+        (item) => item.productoId === payload.productId && item.almacenId === payload.almacenId,
+      );
+      const updatedStock = existingStock
+        ? inventario.stock.map((item): StockRegistro =>
+            item.id === existingStock.id
+              ? {
+                  ...item,
+                  stockDisponible: payload.stockDisponible,
+                  modoStock: payload.modoStock,
+                  ultimaActualizacion: new Date(now).toISOString(),
+                }
+              : item,
+          )
+        : [
+            ...inventario.stock,
+            {
+              id: `stock-${payload.productId}-${payload.almacenId}-${now}`,
+              productoId: payload.productId,
+              almacenId: payload.almacenId,
+              stockDisponible: payload.stockDisponible,
+              modoStock: payload.modoStock,
+              productosVinculadosIds: "[]",
+              ratiosConversion: "{}",
+              ultimaActualizacion: new Date(now).toISOString(),
+              visibleEnVentas: true,
+            },
+          ];
+
+      return {
+        ...workspace,
+        registro: {
+          ...workspace.registro,
+          inventario: {
+            ...inventario,
+            stock: updatedStock,
+          },
+        },
+      };
+    });
+
+    await persistProductLedger(
+      { ...ledger, workspaces: updatedWorkspaces },
+      "Inventario de producto actualizado",
+      "No se pudo actualizar el inventario",
+    );
   };
 
   const handleCreateWallet = async (payload: {
@@ -622,7 +798,10 @@ console.log(activeWorkspace?.accounting.monedas);
           <CatalogosView
             workspace={activeWorkspace}
             deletingProduct={Boolean(deletingProductId)}
+            savingProductChanges={savingProductChanges}
             onDeleteProduct={handleDeleteProduct}
+            onUpdateProductPrice={handleUpdateProductPrice}
+            onUpdateProductStock={handleUpdateProductStock}
           />
         );
       case "nomencladores":

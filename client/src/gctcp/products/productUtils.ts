@@ -1,4 +1,4 @@
-import type { CloudWorkspaceEntry, ProductoInventario } from "../../accounting/core/types/accountingTypes";
+import type { CloudWorkspaceEntry, ProductoInventario, StockRegistro } from "../../accounting/core/types/accountingTypes";
 import { formatMoney } from "../accountingMath";
 
 export type ProductUsage = {
@@ -14,6 +14,14 @@ export type ProductAvailability = {
 export type ProductPricing = {
 	salePrice: string;
 	purchasePrice: string;
+	salePriceValue: number | null;
+	purchasePriceValue: number | null;
+};
+
+export type ProductAvailabilityItem = {
+	stock: StockRegistro;
+	warehouseName: string;
+	quantityLabel: string;
 };
 
 const containsProductId = (value: unknown, productId: string): boolean => {
@@ -54,6 +62,19 @@ export const getProductUsage = (workspace: CloudWorkspaceEntry, productId: strin
 	};
 };
 
+export const getProductStockItems = (workspace: CloudWorkspaceEntry, productId: string): ProductAvailabilityItem[] => {
+	const { inventario } = workspace.registro;
+	return inventario.stock
+		.filter((item) => item.productoId === productId)
+		.map((stock) => ({
+			stock,
+			warehouseName: inventario.almacenes.find((almacen) => almacen.id === stock.almacenId)?.nombre ?? stock.almacenId,
+			quantityLabel: stock.modoStock === "ILIMITADO"
+				? "Ilimitado"
+				: stock.stockDisponible.toLocaleString("es-CU", { maximumFractionDigits: 2 }),
+		}));
+};
+
 export const getProductAvailability = (workspace: CloudWorkspaceEntry, productId: string): ProductAvailability => {
 	const stockItems = workspace.registro.inventario.stock.filter((item) => item.productoId === productId);
 	if (stockItems.length === 0) {
@@ -70,28 +91,38 @@ export const getProductAvailability = (workspace: CloudWorkspaceEntry, productId
 	};
 };
 
-const summarizePrices = (prices: number[]): string => {
+const getPriceSummary = (prices: number[]): { label: string; value: number | null } => {
 	const validPrices = prices.filter((price) => Number.isFinite(price));
-	if (validPrices.length === 0) return "No disponible";
+	if (validPrices.length === 0) return { label: "No disponible", value: null };
 	const min = Math.min(...validPrices);
 	const max = Math.max(...validPrices);
-	if (min === max) return formatMoney(min);
-	return `${formatMoney(min)} - ${formatMoney(max)}`;
+	return {
+		label: min === max ? formatMoney(min) : `${formatMoney(min)} - ${formatMoney(max)}`,
+		value: validPrices[validPrices.length - 1] ?? null,
+	};
 };
 
 export const getProductPricing = (workspace: CloudWorkspaceEntry, productId: string): ProductPricing => {
 	const { inventario } = workspace.registro;
+	const saleCatalogPrices = inventario.catalogoVentas
+		.filter((item) => item.productoId === productId && item.activo)
+		.map((item) => item.precioReferencia);
+	const purchaseCatalogPrices = inventario.catalogoCompras
+		.filter((item) => item.productoId === productId && item.activo)
+		.map((item) => item.precioReferencia);
+	const saleHistoryPrices = inventario.historialPrecios
+		.filter((item) => item.productoId === productId && item.tipoPrecio === "VENTA" && item.activo)
+		.map((item) => item.precio);
+	const purchaseHistoryPrices = inventario.historialPrecios
+		.filter((item) => item.productoId === productId && item.tipoPrecio === "COMPRA" && item.activo)
+		.map((item) => item.precio);
+	const salePrice = getPriceSummary(saleCatalogPrices.length > 0 ? saleCatalogPrices : saleHistoryPrices);
+	const purchasePrice = getPriceSummary(purchaseCatalogPrices.length > 0 ? purchaseCatalogPrices : purchaseHistoryPrices);
 	return {
-		salePrice: summarizePrices(
-			inventario.catalogoVentas
-				.filter((item) => item.productoId === productId && item.activo)
-				.map((item) => item.precioReferencia),
-		),
-		purchasePrice: summarizePrices(
-			inventario.catalogoCompras
-				.filter((item) => item.productoId === productId && item.activo)
-				.map((item) => item.precioReferencia),
-		),
+		salePrice: salePrice.label,
+		purchasePrice: purchasePrice.label,
+		salePriceValue: salePrice.value,
+		purchasePriceValue: purchasePrice.value,
 	};
 };
 
