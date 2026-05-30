@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { CatalogoCompra, CatalogoVenta, CloudLedgerContainer, HistorialPrecio, Moneda, MonedaTasa, MonedaTasaHistorial, StockRegistro, WalletMovimiento, WalletMovimientoTipo, WalletReferenciaTipo, WalletTipo } from "../accounting/core/types/accountingTypes";
-import { calculateWorkspaceAnalysis, formatLedgerDate } from "./accountingMath";
+import { calculateWorkspaceAnalysis, formatLedgerDate, formatMoney } from "./accountingMath";
 import { EmptyState, GcTcpSidebar } from "./components";
 import { DeleteWorkspaceDialog } from "./DeleteWorkspaceDialog";
 import { NomenclatorsView } from "./nomenclators/NomenclatorsView";
@@ -34,6 +34,14 @@ import DjGeneral from "./dj/General";
 import { useDjActions } from "./hooks/useDjActions";
 import EstadoResultadoView from "./views/EstadoResultadoView";
 import LibroDiarioView from "./libros/LibroDiarioView";
+
+type ProductLedgerToast = {
+  title: string;
+  description: string;
+};
+
+const formatProductQuantity = (value: number): string =>
+  value.toLocaleString("es-CU", { maximumFractionDigits: 2 });
 
 const GC_TCP: FC = () => {
   const navigate = useNavigate();
@@ -224,8 +232,8 @@ const GC_TCP: FC = () => {
     const usage = getProductUsage(activeWorkspace, productId);
     if (!usage.canDelete) {
       toast({
-        title: "Producto en uso",
-        description: `No se puede eliminar porque aparece en: ${usage.labels.join(", ")}.`,
+        title: "No se pudo eliminar desde Cuentas y Productos",
+        description: `El producto esta vinculado a ${usage.labels.join(", ")}. Revisa esos registros antes de eliminarlo del catalogo.`,
         variant: "destructive",
       });
       return;
@@ -266,13 +274,13 @@ const GC_TCP: FC = () => {
         current ? { ...current, registro: updatedLedger } : current,
       );
       toast({
-        title: "Producto eliminado",
-        description: `${product.nombre} fue eliminado del espacio activo.`,
+        title: "Producto eliminado de Cuentas y Productos",
+        description: `${product.nombre} ya no aparece en el catalogo del espacio activo.`,
       });
     } catch {
       toast({
-        title: "No se pudo eliminar",
-        description: "El producto no fue modificado.",
+        title: "No se pudo eliminar desde Cuentas y Productos",
+        description: `${product.nombre} no fue modificado. Intenta nuevamente desde el catalogo.`,
         variant: "destructive",
       });
     } finally {
@@ -281,7 +289,11 @@ const GC_TCP: FC = () => {
   };
 
 
-  const persistProductLedger = async (updatedLedger: CloudLedgerContainer, successTitle: string, failureTitle: string) => {
+  const persistProductLedger = async (
+    updatedLedger: CloudLedgerContainer,
+    successToast: ProductLedgerToast,
+    failureToast: ProductLedgerToast,
+  ) => {
     setSavingProductChanges(true);
     try {
       await api.put("/api/cont-ledger", {
@@ -291,9 +303,9 @@ const GC_TCP: FC = () => {
       setData((current) =>
         current ? { ...current, registro: updatedLedger } : current,
       );
-      toast({ title: successTitle });
+      toast(successToast);
     } catch {
-      toast({ title: failureTitle, variant: "destructive" });
+      toast({ ...failureToast, variant: "destructive" });
     } finally {
       setSavingProductChanges(false);
     }
@@ -392,8 +404,14 @@ const GC_TCP: FC = () => {
 
     await persistProductLedger(
       { ...ledger, workspaces: updatedWorkspaces },
-      "Precio de producto actualizado",
-      "No se pudo actualizar el precio",
+      {
+        title: "Precio actualizado en Cuentas y Productos",
+        description: `${product.nombre}: precio de ${payload.tipoPrecio === "VENTA" ? "venta" : "compra"} cambiado a ${formatMoney(payload.precio)}.`,
+      },
+      {
+        title: "No se pudo guardar el precio en Cuentas y Productos",
+        description: `${product.nombre} mantiene su precio anterior. Intenta nuevamente desde el catalogo.`,
+      },
     );
   };
 
@@ -402,6 +420,10 @@ const GC_TCP: FC = () => {
     const now = Date.now();
     const product = activeWorkspace.registro.inventario.productos.find((item) => item.id === payload.productId);
     if (!product) return;
+
+    const warehouseName = activeWorkspace.registro.inventario.almacenes.find(
+      (almacen) => almacen.id === payload.almacenId,
+    )?.nombre ?? payload.almacenId;
 
     const updatedWorkspaces = ledger.workspaces.map((workspace) => {
       if (workspace.id !== activeWorkspace.id) return workspace;
@@ -449,8 +471,14 @@ const GC_TCP: FC = () => {
 
     await persistProductLedger(
       { ...ledger, workspaces: updatedWorkspaces },
-      "Inventario de producto actualizado",
-      "No se pudo actualizar el inventario",
+      {
+        title: "Disponibilidad actualizada en Cuentas y Productos",
+        description: `${product.nombre}: ${formatProductQuantity(payload.stockDisponible)} ${product.unidad || "unidades"} en ${warehouseName} (${payload.modoStock.toLowerCase()}).`,
+      },
+      {
+        title: "No se pudo guardar la disponibilidad en Cuentas y Productos",
+        description: `${product.nombre} mantiene su cantidad anterior en ${warehouseName}. Intenta nuevamente desde el catalogo.`,
+      },
     );
   };
 
