@@ -124,6 +124,8 @@ import cu.lazaroysr96.sysgdcont.ui.main.screens.TercerosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.TributosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.CatalogosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.CajaBancoScreen
+import cu.lazaroysr96.sysgdcont.ui.fichacosto.FichaCostoScreen
+import cu.lazaroysr96.sysgdcont.ui.fichacosto.FichaCostoViewModel
 import cu.lazaroysr96.sysgdcont.ui.navigation.MainTab
 import cu.lazaroysr96.sysgdcont.ui.navigation.mainTabs
 import cu.lazaroysr96.sysgdcont.viewmodel.AuthViewModel
@@ -150,6 +152,7 @@ private const val TERCEROS_ROUTE = "terceros"
 private const val DOCUMENTOS_ROUTE = "documentos"
 private const val CATALOGOS_ROUTE = "catalogos"
 private const val CAJA_BANCO_ROUTE = "caja_banco"
+private const val FICHA_COSTO_ROUTE = "ficha_costo"
 
 private fun openWhatsAppContact(context: android.content.Context, message: String): Boolean {
     return try {
@@ -209,7 +212,9 @@ fun MainScreen(
         tarjetaViewModel: TarjetaViewModel = hiltViewModel(),
         facturaViewModel: FacturaViewModel = hiltViewModel(),
         documentosViewModel: DocumentosViewModel = hiltViewModel(),
-        planPurchaseViewModel: PlanPurchaseViewModel = hiltViewModel()
+        planPurchaseViewModel: PlanPurchaseViewModel = hiltViewModel(),
+        fichaCostoViewModel: FichaCostoViewModel = hiltViewModel()
+
 ) {
     val context = LocalContext.current
     // val configuration = LocalConfiguration.current
@@ -441,19 +446,7 @@ fun MainScreen(
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
-                            if (canUseProFeatures) {
-                            NavigationDrawerItem(
-                                    label = { Text("Caja y banco") },
-                                    selected = currentRoute == CAJA_BANCO_ROUTE,
-                                    icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = null) },
-                                    onClick = {
-                                        navController.navigate(CAJA_BANCO_ROUTE) {
-                                            launchSingleTop = true
-                                        }
-                                        drawerScope.launch { drawerState.close() }
-                                    }
-                            )
-                                }
+                            
                             NavigationDrawerItem(
                                     label = { Text("Punto de Venta") },
                                     selected = currentRoute == VENTAS_ROUTE,
@@ -491,6 +484,34 @@ fun MainScreen(
                                         }
                                 )
                             }
+                            if (canUseProFeatures) {
+                            NavigationDrawerItem(
+                                    label = { Text("Caja y banco") },
+                                    selected = currentRoute == CAJA_BANCO_ROUTE,
+                                    icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = null) },
+                                    onClick = {
+                                        navController.navigate(CAJA_BANCO_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+                            }
+
+                            if (canUseProFeatures) {
+                            NavigationDrawerItem(
+                                    label = { Text("Ficha de costo") },
+                                    selected = currentRoute == FICHA_COSTO_ROUTE,
+                                    icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = null) },
+                                    onClick = {
+                                        navController.navigate(FICHA_COSTO_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+                            }
+
                             NavigationDrawerItem(
                                     label = { Text("Documentos") },
                                     selected = currentRoute == DOCUMENTOS_ROUTE,
@@ -669,12 +690,13 @@ fun MainScreen(
                                             DOCUMENTOS_ROUTE -> "Documentos"
                                             CATALOGOS_ROUTE -> "Catálogos"
                                             CAJA_BANCO_ROUTE -> "Caja y banco"
+                                            FICHA_COSTO_ROUTE -> "Ficha de costo"
                                             else -> "Gestor Contable TCP"
                                         }
                                 )
                             },
                             navigationIcon = {
-                                if (currentRoute == ABOUT_ROUTE || currentRoute == LICENSES_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE || currentRoute == NOMENCLATORS_ROUTE || currentRoute == TERCEROS_ROUTE || currentRoute == DOCUMENTOS_ROUTE || currentRoute == CATALOGOS_ROUTE || currentRoute == CAJA_BANCO_ROUTE) {
+                                if (currentRoute == ABOUT_ROUTE || currentRoute == LICENSES_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE || currentRoute == NOMENCLATORS_ROUTE || currentRoute == TERCEROS_ROUTE || currentRoute == DOCUMENTOS_ROUTE || currentRoute == CATALOGOS_ROUTE || currentRoute == CAJA_BANCO_ROUTE || currentRoute == FICHA_COSTO_ROUTE) {
                                     IconButton(onClick = { navController.popBackStack() }) {
                                         Icon(
                                                 Icons.Default.ArrowBack,
@@ -695,6 +717,14 @@ fun MainScreen(
                                         Icon(
                                             Icons.Default.Help,
                                             contentDescription = "Ayuda de uso del punto de venta"
+                                        )
+                                    }
+                                }
+                                if (currentRoute == FICHA_COSTO_ROUTE) {
+                                    IconButton(onClick = { fichaCostoViewModel.generatePDF(context)}) {
+                                        Icon(
+                                            Icons.Default.PictureAsPdf,
+                                            contentDescription = "Generar PDF"
                                         )
                                     }
                                 }
@@ -875,6 +905,9 @@ fun MainScreen(
                 }
                 composable(CAJA_BANCO_ROUTE) {
                     CajaBancoScreen()
+                }
+                composable(FICHA_COSTO_ROUTE) {
+                    FichaCostoScreen()
                 }
                 composable(LICENSES_ROUTE) {
                     LicenseCenterScreen(

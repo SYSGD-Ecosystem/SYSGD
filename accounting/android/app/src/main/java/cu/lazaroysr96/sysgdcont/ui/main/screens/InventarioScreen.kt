@@ -40,7 +40,6 @@ import cu.lazaroysr96.sysgdcont.viewmodel.CompraCheckoutOptions
 import cu.lazaroysr96.sysgdcont.viewmodel.EstadoCobroOperacion
 import cu.lazaroysr96.sysgdcont.viewmodel.VentaCheckoutOptions
 import cu.lazaroysr96.sysgdcont.viewmodel.OperacionDetalleResumen
-// ─── Nuevos imports de componentes unificados ─────────────────────────────────
 import cu.lazaroysr96.sysgdcont.ui.components.producto.CatalogoItemRow
 import cu.lazaroysr96.sysgdcont.ui.components.producto.InventarioItemAvatar
 import cu.lazaroysr96.sysgdcont.ui.components.producto.ProductGridCard
@@ -49,7 +48,6 @@ import cu.lazaroysr96.sysgdcont.ui.components.producto.ProductoBaseItem
 import cu.lazaroysr96.sysgdcont.ui.components.producto.ProductoFormDialog
 import cu.lazaroysr96.sysgdcont.ui.components.producto.ProductoImagenAvatar
 import cu.lazaroysr96.sysgdcont.ui.components.producto.toBaseItem
-// ─────────────────────────────────────────────────────────────────────────────
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -58,10 +56,6 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
-
-// ─────────────────────────────────────────────────────────────────────────────
-// InventarioScreen
-// ─────────────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
