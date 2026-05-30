@@ -1,7 +1,7 @@
 import { CloudWorkspaceEntry, GeneralesData } from "@/accounting/core/types/accountingTypes";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Edit2, WalletCards } from "lucide-react";
-import { useState, type FC } from "react";
+import { useEffect, useState, type FC } from "react";
 import { EMPTY_GENERALES } from "../accountingMath";
 import { MetricCard } from "../components";
 import { WorkspaceAnalysis } from "../types";
@@ -38,7 +38,6 @@ const DjGeneral: FC<{
 
   const [nombre, setNombre] = useState(generales.nombre);
   const [nit, setNit] = useState(generales.nit);
-  const [anio, setAnio] = useState(generales.anio);
 
   const [legalProvincia, setLegalProvincia] = useState(
     generales.legalProvincia,
@@ -58,6 +57,19 @@ const DjGeneral: FC<{
 
   const [actividad, setActividad] = useState(generales.actividad);
   const [codigo, setCodigo] = useState(generales.codigo);
+
+  useEffect(() => {
+    setNombre(generales.nombre);
+    setNit(generales.nit);
+    setLegalProvincia(generales.legalProvincia);
+    setLegalMunicipio(generales.legalMunicipio);
+    setLegalCalle(generales.legalCalle);
+    setFiscalProvincia(generales.fiscalProvincia);
+    setFiscalMunicipio(generales.fiscalMunicipio);
+    setFiscalCalle(generales.fiscalCalle);
+    setActividad(generales.actividad);
+    setCodigo(generales.codigo);
+  }, [generales]);
 
   const fiscalAddress = [
     generales.fiscalCalle,
@@ -129,9 +141,13 @@ const DjGeneral: FC<{
                     <Input
                       id="anio"
                       placeholder="Año"
-                      value={anio}
-                      onChange={(e) => setAnio(Number.parseInt(e.target.value))}
+                      value={generales.anio}
+                      disabled
+                      readOnly
                     />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Se actualiza desde el selector de año fiscal.
+                    </p>
                   </div>
                 </div>
 
@@ -296,7 +312,7 @@ const DjGeneral: FC<{
                   onClick={() => {
                     onSave?.({
                       nombre,
-                      anio,
+                      anio: generales.anio,
                       nit,
                       actividad,
                       codigo,

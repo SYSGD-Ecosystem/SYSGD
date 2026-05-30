@@ -10,7 +10,11 @@ import { findProduct, formatStock, getVisibleStock, getWarehouseName } from "./p
 
 type WorkspaceSectionProps = {
 	workspace: CloudWorkspaceEntry;
+	selectedYear: number;
 };
+
+const operationMatchesYear = (fecha: string, selectedYear: number): boolean =>
+	Number.parseInt(fecha.slice(0, 4), 10) === selectedYear;
 
 const ProductCard: FC<{
 	name: string;
@@ -32,13 +36,13 @@ const ProductCard: FC<{
 	</Card>
 );
 
-export const SaleSection: FC<WorkspaceSectionProps> = ({ workspace }) => {
+export const SaleSection: FC<WorkspaceSectionProps> = ({ workspace, selectedYear }) => {
 	const { inventario } = workspace.registro;
 	const catalogItems = inventario.catalogoVentas
 		.filter((item) => item.activo)
 		.map((item) => ({ catalog: item, product: findProduct(workspace, item.productoId) }))
 		.filter((item) => item.product);
-	const sales = inventario.operaciones.filter((operation) => operation.tipo === "venta" && !operation.anulada);
+	const sales = inventario.operaciones.filter((operation) => operation.tipo === "venta" && !operation.anulada && operationMatchesYear(operation.fecha, selectedYear));
 	const salesTotal = sales.reduce((total, operation) => total + operation.total, 0);
 
 	return (
@@ -46,7 +50,7 @@ export const SaleSection: FC<WorkspaceSectionProps> = ({ workspace }) => {
 			<div className="grid gap-4 md:grid-cols-3">
 				<PosSummary title="Catalogo de ventas" value={String(catalogItems.length)} detail="Productos activos para vender" icon={<ShoppingCart />} />
 				<PosSummary title="Ventas registradas" value={String(sales.length)} detail="Operaciones no anuladas" icon={<ReceiptText />} />
-				<PosSummary title="Total vendido" value={formatMoney(salesTotal)} detail="Historico del espacio" icon={<TrendingUp />} />
+				<PosSummary title="Total vendido" value={formatMoney(salesTotal)} detail={`Año ${selectedYear}`} icon={<TrendingUp />} />
 			</div>
 			<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
 				{catalogItems.map(({ catalog, product }) => (
@@ -64,13 +68,13 @@ export const SaleSection: FC<WorkspaceSectionProps> = ({ workspace }) => {
 	);
 };
 
-export const PurchaseSection: FC<WorkspaceSectionProps> = ({ workspace }) => {
+export const PurchaseSection: FC<WorkspaceSectionProps> = ({ workspace, selectedYear }) => {
 	const { inventario } = workspace.registro;
 	const catalogItems = inventario.catalogoCompras
 		.filter((item) => item.activo)
 		.map((item) => ({ catalog: item, product: findProduct(workspace, item.productoId) }))
 		.filter((item) => item.product);
-	const purchases = inventario.operaciones.filter((operation) => operation.tipo === "compra" && !operation.anulada);
+	const purchases = inventario.operaciones.filter((operation) => operation.tipo === "compra" && !operation.anulada && operationMatchesYear(operation.fecha, selectedYear));
 	const purchasesTotal = purchases.reduce((total, operation) => total + operation.total, 0);
 
 	return (
@@ -78,7 +82,7 @@ export const PurchaseSection: FC<WorkspaceSectionProps> = ({ workspace }) => {
 			<div className="grid gap-4 md:grid-cols-3">
 				<PosSummary title="Catalogo de compras" value={String(catalogItems.length)} detail="Insumos activos" icon={<Package />} />
 				<PosSummary title="Compras registradas" value={String(purchases.length)} detail="Operaciones no anuladas" icon={<ReceiptText />} />
-				<PosSummary title="Total comprado" value={formatMoney(purchasesTotal)} detail="Historico del espacio" icon={<TrendingDown />} />
+				<PosSummary title="Total comprado" value={formatMoney(purchasesTotal)} detail={`Año ${selectedYear}`} icon={<TrendingDown />} />
 			</div>
 			<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
 				{catalogItems.map(({ catalog, product }) => (
@@ -96,7 +100,7 @@ export const PurchaseSection: FC<WorkspaceSectionProps> = ({ workspace }) => {
 	);
 };
 
-export const WarehouseSection: FC<WorkspaceSectionProps> = ({ workspace }) => {
+export const WarehouseSection: FC<WorkspaceSectionProps> = ({ workspace, selectedYear }) => {
 	const { inventario } = workspace.registro;
 	const visibleStock = getVisibleStock(inventario.stock);
 
@@ -105,7 +109,7 @@ export const WarehouseSection: FC<WorkspaceSectionProps> = ({ workspace }) => {
 			<div className="grid gap-4 md:grid-cols-3">
 				<PosSummary title="Almacenes" value={String(inventario.almacenes.length)} detail="Espacios de inventario" icon={<Warehouse />} />
 				<PosSummary title="Items en stock" value={String(visibleStock.length)} detail="Disponibles o visibles en venta" icon={<Boxes />} />
-				<PosSummary title="Movimientos" value={String(inventario.movimientos.length)} detail="Entradas, salidas y ajustes" icon={<ReceiptText />} />
+				<PosSummary title="Movimientos" value={String(inventario.movimientos.filter((movement) => operationMatchesYear(movement.fecha, selectedYear)).length)} detail={`Entradas, salidas y ajustes ${selectedYear}`} icon={<ReceiptText />} />
 			</div>
 			<Card className="rounded-lg shadow-sm">
 				<CardHeader className="p-4">
@@ -143,21 +147,23 @@ export const WarehouseSection: FC<WorkspaceSectionProps> = ({ workspace }) => {
 	);
 };
 
-export const HistorySection: FC<WorkspaceSectionProps> = ({ workspace }) => {
-	const operations = [...workspace.registro.inventario.operaciones].reverse();
+export const HistorySection: FC<WorkspaceSectionProps> = ({ workspace, selectedYear }) => {
+	const operations = workspace.registro.inventario.operaciones
+		.filter((operation) => operationMatchesYear(operation.fecha, selectedYear))
+		.reverse();
 	const salesTotal = operations.filter((operation) => operation.tipo === "venta").reduce((total, operation) => total + operation.total, 0);
 	const purchasesTotal = operations.filter((operation) => operation.tipo === "compra").reduce((total, operation) => total + operation.total, 0);
 
 	return (
 		<div className="space-y-4">
 			<div className="grid gap-4 md:grid-cols-3">
-				<PosSummary title="Operaciones" value={String(operations.length)} detail="Compras y ventas" icon={<ReceiptText />} />
-				<PosSummary title="Ventas" value={formatMoney(salesTotal)} detail="Total historico" icon={<TrendingUp />} />
-				<PosSummary title="Compras" value={formatMoney(purchasesTotal)} detail="Total historico" icon={<TrendingDown />} />
+				<PosSummary title="Operaciones" value={String(operations.length)} detail={`Compras y ventas ${selectedYear}`} icon={<ReceiptText />} />
+				<PosSummary title="Ventas" value={formatMoney(salesTotal)} detail={`Total ${selectedYear}`} icon={<TrendingUp />} />
+				<PosSummary title="Compras" value={formatMoney(purchasesTotal)} detail={`Total ${selectedYear}`} icon={<TrendingDown />} />
 			</div>
 			<Card className="rounded-lg shadow-sm">
 				<CardHeader className="p-4">
-					<CardTitle className="text-base">Historial reciente</CardTitle>
+					<CardTitle className="text-base">Historial reciente de {selectedYear}</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-2 p-4 pt-0">
 					{operations.slice(0, 20).map((operation) => (
@@ -181,17 +187,18 @@ export const HistorySection: FC<WorkspaceSectionProps> = ({ workspace }) => {
 	);
 };
 
-export const MoreSection: FC<WorkspaceSectionProps> = ({ workspace }) => {
+export const MoreSection: FC<WorkspaceSectionProps> = ({ workspace, selectedYear }) => {
 	const { inventario } = workspace.registro;
-	const salesTotal = inventario.operaciones.filter((operation) => operation.tipo === "venta").reduce((total, operation) => total + operation.total, 0);
-	const purchasesTotal = inventario.operaciones.filter((operation) => operation.tipo === "compra").reduce((total, operation) => total + operation.total, 0);
+	const operationsForYear = inventario.operaciones.filter((operation) => operationMatchesYear(operation.fecha, selectedYear));
+	const salesTotal = operationsForYear.filter((operation) => operation.tipo === "venta").reduce((total, operation) => total + operation.total, 0);
+	const purchasesTotal = operationsForYear.filter((operation) => operation.tipo === "compra").reduce((total, operation) => total + operation.total, 0);
 	const balance = salesTotal - purchasesTotal;
 
 	return (
 		<div className="grid gap-4 xl:grid-cols-2">
 			<Card className="rounded-lg shadow-sm">
 				<CardHeader className="p-4">
-					<CardTitle className="text-base">Resumen rapido</CardTitle>
+					<CardTitle className="text-base">Resumen rapido de {selectedYear}</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-3 p-4 pt-0 text-sm">
 					<div className="flex justify-between gap-3"><span>Ventas</span><strong>{formatMoney(salesTotal)}</strong></div>

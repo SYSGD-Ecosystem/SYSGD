@@ -174,7 +174,12 @@ export const EntriesView: FC<{
   return (
     <Card className="rounded-lg shadow-sm">
       <CardHeader className="flex-row items-center justify-between gap-3 p-4">
-        <CardTitle className="text-base">{label} por mes</CardTitle>
+        <div>
+          <CardTitle className="text-base">{label} por mes</CardTitle>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Año fiscal {workspace.registro.generales.anio}
+          </p>
+        </div>
         <Badge variant="outline">{workspace.name}</Badge>
       </CardHeader>
       <CardContent className="p-4 pt-0">

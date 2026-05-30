@@ -3,11 +3,145 @@ import type {
 	DayAmountRow,
 	GeneralesData,
 	MonthCode,
+	MonthEntries,
+	RegistroAnualTCP,
 	RegistroTCP,
 	TributoRow,
 } from "../accounting/core/types/accountingTypes";
 import { MONTH_CODES, MONTH_NAMES } from "../accounting/core/utils/constants";
 import type { WorkspaceAnalysis } from "./types";
+
+
+export const normalizeLedgerYear = (value: number | string | null | undefined): number => {
+	const parsed = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
+	return Number.isFinite(parsed) && parsed > 1900 ? parsed : new Date().getFullYear();
+};
+
+const createEmptyMonthRows = (year: number, key: "ingresos" | "gastos", month: MonthCode): DayAmountRow[] =>
+	Array.from({ length: 36 }, (_, index) => ({
+		id: `${key}-${year}-${month}-${index + 1}`,
+		dia: "",
+		importe: "",
+	}));
+
+export const createEmptyMonthEntries = (year: number, key: "ingresos" | "gastos"): MonthEntries =>
+	MONTH_CODES.reduce((entries, month) => ({
+		...entries,
+		[month]: createEmptyMonthRows(year, key, month),
+	}), {} as MonthEntries);
+
+export const createEmptyTributoRows = (): TributoRow[] =>
+	MONTH_NAMES.map((mes) => ({
+		mes,
+		ventas: "",
+		fuerza: "",
+		sellos: "",
+		anuncios: "",
+		css20: "",
+		css14: "",
+		otros: "",
+		restauracion: "",
+		arrendamiento: "",
+		exonerado: "",
+		otrosMFP: "",
+		cuotaMensual: "",
+	}));
+
+export const createEmptyAnnualRegistro = (year: number): RegistroAnualTCP => ({
+	ingresos: createEmptyMonthEntries(year, "ingresos"),
+	gastos: createEmptyMonthEntries(year, "gastos"),
+	tributos: createEmptyTributoRows(),
+});
+
+export const getRegistroAnnualData = (registro: RegistroTCP, year: number): RegistroAnualTCP => {
+	const normalizedYear = normalizeLedgerYear(year);
+	const yearKey = String(normalizedYear);
+	const annualData = registro.registrosPorAnio?.[yearKey];
+	if (annualData) return annualData;
+
+	const rootYear = normalizeLedgerYear(registro.generales?.anio);
+	if (rootYear === normalizedYear) {
+		return {
+			ingresos: registro.ingresos,
+			gastos: registro.gastos,
+			tributos: registro.tributos,
+		};
+	}
+
+	return createEmptyAnnualRegistro(normalizedYear);
+};
+
+export const getWorkspaceForYear = (workspace: CloudWorkspaceEntry, year: number): CloudWorkspaceEntry => {
+	const normalizedYear = normalizeLedgerYear(year);
+	const annualData = getRegistroAnnualData(workspace.registro, normalizedYear);
+	return {
+		...workspace,
+		registro: {
+			...workspace.registro,
+			generales: {
+				...workspace.registro.generales,
+				anio: normalizedYear,
+			},
+			ingresos: annualData.ingresos,
+			gastos: annualData.gastos,
+			tributos: annualData.tributos,
+		},
+	};
+};
+
+export const ensureRegistroYear = (registro: RegistroTCP, year: number): RegistroTCP => {
+	const normalizedYear = normalizeLedgerYear(year);
+	const rootYear = normalizeLedgerYear(registro.generales?.anio);
+	const currentYears = registro.registrosPorAnio ?? {};
+	const yearsWithRoot = currentYears[String(rootYear)]
+		? currentYears
+		: {
+				...currentYears,
+				[String(rootYear)]: {
+					ingresos: registro.ingresos,
+					gastos: registro.gastos,
+					tributos: registro.tributos,
+				},
+			};
+	const selectedAnnualData = yearsWithRoot[String(normalizedYear)] ?? createEmptyAnnualRegistro(normalizedYear);
+	const nextYears = {
+		...yearsWithRoot,
+		[String(normalizedYear)]: selectedAnnualData,
+	};
+
+	return {
+		...registro,
+		generales: {
+			...registro.generales,
+			anio: normalizedYear,
+		},
+		ingresos: selectedAnnualData.ingresos,
+		gastos: selectedAnnualData.gastos,
+		tributos: selectedAnnualData.tributos,
+		registrosPorAnio: nextYears,
+	};
+};
+
+export const getWorkspaceYears = (workspace: CloudWorkspaceEntry | null): number[] => {
+	const yearSet = new Set<number>();
+	const currentYear = new Date().getFullYear();
+	yearSet.add(currentYear);
+	yearSet.add(currentYear - 1);
+	yearSet.add(currentYear + 1);
+
+	if (workspace) {
+		yearSet.add(normalizeLedgerYear(workspace.registro.generales?.anio));
+		Object.keys(workspace.registro.registrosPorAnio ?? {}).forEach((yearKey) => {
+			yearSet.add(normalizeLedgerYear(yearKey));
+		});
+		workspace.registro.inventario.operaciones.forEach((operation) => {
+			const operationYear = Number.parseInt(operation.fecha.slice(0, 4), 10);
+			if (Number.isFinite(operationYear)) yearSet.add(operationYear);
+		});
+	}
+
+	return Array.from(yearSet).sort((a, b) => b - a);
+};
 
 export const EMPTY_GENERALES: GeneralesData = {
 	nombre: "",

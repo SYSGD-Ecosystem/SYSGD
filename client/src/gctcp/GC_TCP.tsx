@@ -5,12 +5,27 @@ import Loading from "@/components/Loading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuthSession } from "@/hooks/connection/useAuthSession";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { CatalogoCompra, CatalogoVenta, CloudLedgerContainer, HistorialPrecio, Moneda, MonedaTasa, MonedaTasaHistorial, StockRegistro, WalletMovimiento, WalletMovimientoTipo, WalletReferenciaTipo, WalletTipo } from "../accounting/core/types/accountingTypes";
-import { calculateWorkspaceAnalysis, formatLedgerDate, formatMoney } from "./accountingMath";
+import {
+  calculateWorkspaceAnalysis,
+  ensureRegistroYear,
+  formatLedgerDate,
+  formatMoney,
+  getWorkspaceForYear,
+  getWorkspaceYears,
+  normalizeLedgerYear,
+} from "./accountingMath";
 import { EmptyState, GcTcpSidebar } from "./components";
 import { DeleteWorkspaceDialog } from "./DeleteWorkspaceDialog";
 import { NomenclatorsView } from "./nomenclators/NomenclatorsView";
@@ -60,6 +75,8 @@ const GC_TCP: FC = () => {
     null,
   );
   const [savingProductChanges, setSavingProductChanges] = useState(false);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [savingYear, setSavingYear] = useState(false);
   const [savingWallet, setSavingWallet] = useState(false);
 
   useEffect(() => {
@@ -95,18 +112,31 @@ const GC_TCP: FC = () => {
   }, [loadLedger, user]);
 
   const ledger = data?.registro ?? null;
+  const baseActiveWorkspace =
+    ledger?.workspaces.find((workspace) => workspace.id === activeWorkspaceId) ??
+    ledger?.workspaces[0] ??
+    null;
+  const yearOptions = useMemo(
+    () => getWorkspaceYears(baseActiveWorkspace),
+    [baseActiveWorkspace],
+  );
   const analyses = useMemo(
     () =>
       ledger?.workspaces.map((workspace) =>
-        calculateWorkspaceAnalysis(workspace),
+        calculateWorkspaceAnalysis(getWorkspaceForYear(workspace, selectedYear)),
       ) ?? [],
-    [ledger],
+    [ledger, selectedYear],
   );
   const activeAnalysis =
     analyses.find((analysis) => analysis.workspace.id === activeWorkspaceId) ??
     analyses[0] ??
     null;
   const activeWorkspace = activeAnalysis?.workspace ?? null;
+
+  useEffect(() => {
+    if (!baseActiveWorkspace) return;
+    setSelectedYear(normalizeLedgerYear(baseActiveWorkspace.registro.generales?.anio));
+  }, [activeWorkspaceId, baseActiveWorkspace]);
 
   const totals = useMemo(
     () => ({
@@ -138,6 +168,53 @@ const GC_TCP: FC = () => {
     api,
     toast,
   });
+
+
+  const handleSelectYear = async (yearValue: string) => {
+    const nextYear = normalizeLedgerYear(yearValue);
+    if (!ledger || !baseActiveWorkspace || nextYear === selectedYear) return;
+
+    const previousYear = selectedYear;
+    const updatedLedger: CloudLedgerContainer = {
+      ...ledger,
+      workspaces: ledger.workspaces.map((workspace) =>
+        workspace.id === baseActiveWorkspace.id
+          ? {
+              ...workspace,
+              registro: ensureRegistroYear(workspace.registro, nextYear),
+            }
+          : workspace,
+      ),
+    };
+
+    setSelectedYear(nextYear);
+    setData((current) =>
+      current ? { ...current, registro: updatedLedger } : current,
+    );
+    setSavingYear(true);
+    try {
+      await api.put("/api/cont-ledger", {
+        registro: updatedLedger,
+        inventarioRegistro: data?.inventarioRegistro ?? null,
+      });
+      toast({
+        title: "Año fiscal seleccionado",
+        description: `Ingresos, gastos y operaciones POS se muestran para ${nextYear}.`,
+      });
+    } catch {
+      setSelectedYear(previousYear);
+      setData((current) =>
+        current ? { ...current, registro: ledger } : current,
+      );
+      toast({
+        title: "No se pudo cambiar el año fiscal",
+        description: "Se mantuvo el año anterior para no desincronizar los registros.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingYear(false);
+    }
+  };
 
   const handleSelectWorkspace = async (workspaceId: string) => {
     if (!ledger || workspaceId === activeWorkspaceId) return;
@@ -803,7 +880,7 @@ console.log(activeWorkspace?.accounting.monedas);
       case "libroDiario":
         return <LibroDiarioView workspace={activeWorkspace} />;
       case "ventas":
-        return <PointOfSaleView workspace={activeWorkspace} />;
+        return <PointOfSaleView workspace={activeWorkspace} selectedYear={selectedYear} />;
       case "cajaBanco":
         return (
           <CajaBanco
@@ -945,7 +1022,26 @@ console.log(activeWorkspace?.accounting.monedas);
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1 dark:border-slate-800 dark:bg-slate-900">
+                <span className="text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Año</span>
+                <Select
+                  value={String(selectedYear)}
+                  onValueChange={(value) => void handleSelectYear(value)}
+                  disabled={savingYear}
+                >
+                  <SelectTrigger className="h-8 w-[5.75rem] border-0 px-2 shadow-none focus:ring-0">
+                    <SelectValue placeholder="Año" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {yearOptions.map((year) => (
+                      <SelectItem key={year} value={String(year)}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Badge variant="outline">
                 {ledger.workspaces.length} workspace
                 {ledger.workspaces.length === 1 ? "" : "s"}
