@@ -38,6 +38,8 @@ import cu.lazaroysr96.sysgdcont.data.model.TipoPrecio
 import cu.lazaroysr96.sysgdcont.data.model.TipoCuenta
 import cu.lazaroysr96.sysgdcont.data.model.UsoOperativoCuenta
 import cu.lazaroysr96.sysgdcont.data.model.Producto
+import cu.lazaroysr96.sysgdcont.data.model.ProductoCompra
+import cu.lazaroysr96.sysgdcont.data.model.ProductoVenta
 import cu.lazaroysr96.sysgdcont.viewmodel.InventarioViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
 import cu.lazaroysr96.sysgdcont.ui.components.producto.ChevronTrailing
@@ -123,6 +125,8 @@ fun CatalogosScreen(
             )
             1 -> ProductosTab(
                 productos        = productosState.productosBase,
+                productosVenta   = productosState.productos,
+                productosCompra  = productosState.productosCompra,
                 almacenes        = productosState.almacenes,
                 itemsInventario  = (productosState.itemsInventarioVenta + productosState.itemsInventarioCompra).distinctBy { it.id },
                 onAddProduct     = inventarioViewModel::agregarProductoBase,
@@ -144,6 +148,8 @@ fun CatalogosScreen(
 @Composable
 private fun ProductosTab(
     productos: List<Producto>,
+    productosVenta: List<ProductoVenta>,
+    productosCompra: List<ProductoCompra>,
     almacenes: List<Almacen>,
     itemsInventario: List<ItemInventario>,
     onAddProduct:  (nombre: String, imagenJson: String, unidad: String, descripcion: String) -> Unit,
@@ -232,10 +238,22 @@ private fun ProductosTab(
     }
 
     productoDetalle?.let { producto ->
+        val productoItems = itemsInventario.filter { it.productoId == producto.id }
+        val deleteAvailability = remember(producto.id, productoItems, productosVenta, productosCompra, itemsInventario) {
+            buildProductoDeleteAvailability(
+                producto = producto,
+                itemsInventario = productoItems,
+                productosVenta = productosVenta,
+                productosCompra = productosCompra,
+                allItemsInventario = itemsInventario
+            )
+        }
+
         ProductoDetalleDialog(
             producto = producto,
             almacenes = almacenes,
-            itemsInventario = itemsInventario.filter { it.productoId == producto.id },
+            itemsInventario = productoItems,
+            deleteAvailability = deleteAvailability,
             loadPriceHistory = loadPriceHistory,
             onUpdatePrice = onUpdatePrice,
             onUpdateStock = onUpdateStock,
@@ -270,6 +288,7 @@ private fun ProductoDetalleDialog(
     producto: Producto,
     almacenes: List<Almacen>,
     itemsInventario: List<ItemInventario>,
+    deleteAvailability: ProductoDeleteAvailability,
     loadPriceHistory: suspend (String) -> List<PrecioProductoDetalle>,
     onUpdatePrice: (productoId: String, tipoPrecio: String, precio: Double, almacenId: String) -> Unit,
     onUpdateStock: (productoId: String, almacenId: String, cantidad: Double, modo: ModoStock) -> Unit,
@@ -291,6 +310,7 @@ private fun ProductoDetalleDialog(
     var priceEditor by remember { mutableStateOf<String?>(null) }
     var stockEditorOpen by remember { mutableStateOf(false) }
     var fichaCostoOpen by remember { mutableStateOf(false) }
+    var deleteConfirmOpen by remember { mutableStateOf(false) }
     var fichaCostoExiste by remember(producto.id) {
         mutableStateOf(FichaCostoProductoPreferences.hasFicha(context, producto.id))
     }
@@ -302,12 +322,12 @@ private fun ProductoDetalleDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.95f)
-                .wrapContentHeight(),
+                .fillMaxHeight(0.92f),
             shape = RoundedCornerShape(24.dp),
             color = colorScheme.surface,
             tonalElevation = 6.dp
         ) {
-            Column {
+            Column(Modifier.fillMaxHeight()) {
 
                 // ── Hero ─────────────────────────────────────────────────────
                 Box(
@@ -323,7 +343,18 @@ private fun ProductoDetalleDialog(
                         )
                         .padding(24.dp),
                 ) {
+                    IconButton(
+                        onClick = { deleteConfirmOpen = true },
+                        modifier = Modifier.align(Alignment.TopStart)
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Eliminar producto",
+                            tint = colorScheme.error
+                        )
+                    }
                     Row(
+                        modifier = Modifier.padding(start = 44.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
@@ -397,6 +428,7 @@ private fun ProductoDetalleDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .weight(1f)
                         .verticalScroll(rememberScrollState())
                         .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -474,12 +506,6 @@ private fun ProductoDetalleDialog(
                 ) {
                     TextButton(onClick = onDismiss) { Text("Cerrar") }
                     Spacer(Modifier.width(8.dp))
-                    Button(onClick = onDelete) {
-                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Eliminar")
-                    }
-                    Spacer(Modifier.width(8.dp))
                     Button(onClick = onEdit) {
                         Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
@@ -488,6 +514,18 @@ private fun ProductoDetalleDialog(
                 }
             }
         }
+    }
+
+    if (deleteConfirmOpen) {
+        DeleteProductoConfirmDialog(
+            producto = producto,
+            deleteAvailability = deleteAvailability,
+            onDismiss = { deleteConfirmOpen = false },
+            onConfirmDelete = {
+                deleteConfirmOpen = false
+                onDelete()
+            }
+        )
     }
 
     if (fichaCostoOpen) {
@@ -527,6 +565,87 @@ private fun ProductoDetalleDialog(
             }
         )
     }
+}
+
+private data class ProductoDeleteAvailability(
+    val canDelete: Boolean,
+    val blockers: List<String>,
+)
+
+private fun buildProductoDeleteAvailability(
+    producto: Producto,
+    itemsInventario: List<ItemInventario>,
+    productosVenta: List<ProductoVenta>,
+    productosCompra: List<ProductoCompra>,
+    allItemsInventario: List<ItemInventario>,
+): ProductoDeleteAvailability {
+    val blockers = buildList {
+        if (productosVenta.any { it.id == producto.id }) add("está en el catálogo de ventas")
+        if (productosCompra.any { it.id == producto.id }) add("está en el catálogo de compras")
+        if (itemsInventario.isNotEmpty()) add("tiene inventario/stock activo")
+        if (allItemsInventario.any { item -> item.productosVinculadosIds.contains("\"${producto.id}\"") }) {
+            add("está vinculado como componente de otro producto")
+        }
+    }
+    return ProductoDeleteAvailability(canDelete = blockers.isEmpty(), blockers = blockers)
+}
+
+@Composable
+private fun DeleteProductoConfirmDialog(
+    producto: Producto,
+    deleteAvailability: ProductoDeleteAvailability,
+    onDismiss: () -> Unit,
+    onConfirmDelete: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                Icons.Default.Delete,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error
+            )
+        },
+        title = { Text(if (deleteAvailability.canDelete) "Eliminar producto" else "No se puede eliminar") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    if (deleteAvailability.canDelete) {
+                        "Puedes eliminar \"${producto.nombre}\" porque no tiene usos activos en catálogos, inventario ni vínculos conocidos."
+                    } else {
+                        "No puedes eliminar \"${producto.nombre}\" todavía porque:"
+                    }
+                )
+                if (!deleteAvailability.canDelete) {
+                    deleteAvailability.blockers.forEach { reason ->
+                        Text("• $reason", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Text(
+                        "Retíralo primero de esas secciones y vuelve a intentarlo.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (deleteAvailability.canDelete) {
+                Button(
+                    onClick = onConfirmDelete,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Sí, eliminar")
+                }
+            } else {
+                TextButton(onClick = onDismiss) { Text("Entendido") }
+            }
+        },
+        dismissButton = {
+            if (deleteAvailability.canDelete) {
+                TextButton(onClick = onDismiss) { Text("Cancelar") }
+            }
+        }
+    )
 }
 
 
