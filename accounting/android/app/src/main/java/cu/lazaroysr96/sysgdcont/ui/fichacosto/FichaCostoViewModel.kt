@@ -115,6 +115,52 @@ class FichaCostoViewModel : ViewModel() {
     /** Retorna la lista completa de filas (incluyendo dinámicas ya insertadas) */
     fun filasParaPdf(): List<FilaCosto> = filas.toList()
 
+    fun inicializarParaProducto(
+        productoId: String,
+        productoNombre: String,
+        unidadMedida: String,
+        fichaGuardada: FichaCostoPersistida?
+    ) {
+        if (fichaGuardada == null) {
+            estado.productoServicio.value = productoNombre
+            estado.codigo.value = productoId
+            estado.um.value = unidadMedida
+            estado.nivelProduccion.value = ""
+            estado.pctCapacidad.value = ""
+            filas.clear()
+            filas.addAll(buildFilasIniciales())
+            recalcular()
+            return
+        }
+
+        estado.productoServicio.value = fichaGuardada.productoServicio.ifBlank { productoNombre }
+        estado.codigo.value = fichaGuardada.codigo.ifBlank { productoId }
+        estado.um.value = fichaGuardada.um.ifBlank { unidadMedida }
+        estado.nivelProduccion.value = fichaGuardada.nivelProduccion
+        estado.pctCapacidad.value = fichaGuardada.pctCapacidad
+
+        filas.clear()
+        filas.addAll(
+            fichaGuardada.filas
+                .takeIf { it.isNotEmpty() }
+                ?.map { it.toFilaCosto() }
+                ?: buildFilasIniciales()
+        )
+        reconstruirSubfilasDinamicas()
+        recalcular()
+    }
+
+    fun toPersistida(): FichaCostoPersistida = estado.toPersistida(filasParaPdf())
+
+    private fun reconstruirSubfilasDinamicas() {
+        filas.forEach { it.subFilasDinamicas.clear() }
+        val porId = filas.associateBy { it.id }
+        filas.filter { it.id.contains("_d") }.forEach { subfila ->
+            val grupoId = subfila.id.substringBefore("_d")
+            porId[grupoId]?.subFilasDinamicas?.add(subfila)
+        }
+    }
+
     fun generatePDF(context: Context){
         // val context = LocalContext.current
         try{

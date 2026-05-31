@@ -51,6 +51,59 @@ data class FichaCostoState(
     val pctCapacidad: androidx.compose.runtime.MutableState<String> = mutableStateOf(""),
 )
 
+
+// ─────────────────────────────────────────────
+//  Modelo persistible temporal por producto
+// ─────────────────────────────────────────────
+
+data class FichaCostoPersistida(
+    val productoServicio: String = "",
+    val codigo: String = "",
+    val um: String = "",
+    val nivelProduccion: String = "",
+    val pctCapacidad: String = "",
+    val filas: List<FilaCostoPersistida> = emptyList(),
+)
+
+data class FilaCostoPersistida(
+    val id: String = "",
+    val etiqueta: String = "",
+    val numero: String = "",
+    val tipo: FilaTipo = FilaTipo.SUBFILA,
+    val expandible: Boolean = false,
+    val costoBase: Double = 0.0,
+    val costoNuevo: Double = 0.0,
+)
+
+fun FichaCostoState.toPersistida(filas: List<FilaCosto>): FichaCostoPersistida = FichaCostoPersistida(
+    productoServicio = productoServicio.value,
+    codigo = codigo.value,
+    um = um.value,
+    nivelProduccion = nivelProduccion.value,
+    pctCapacidad = pctCapacidad.value,
+    filas = filas.map { it.toPersistida() },
+)
+
+fun FilaCosto.toPersistida(): FilaCostoPersistida = FilaCostoPersistida(
+    id = id,
+    etiqueta = etiqueta,
+    numero = numero,
+    tipo = tipo,
+    expandible = expandible,
+    costoBase = costoBase.value,
+    costoNuevo = costoNuevo.value,
+)
+
+fun FilaCostoPersistida.toFilaCosto(): FilaCosto = FilaCosto(
+    id = id,
+    etiqueta = etiqueta,
+    numero = numero,
+    tipo = tipo,
+    expandible = expandible,
+    costoBase = mutableStateOf(costoBase),
+    costoNuevo = mutableStateOf(costoNuevo),
+)
+
 // ─────────────────────────────────────────────
 //  Construcción inicial de las filas
 // ─────────────────────────────────────────────
