@@ -241,6 +241,29 @@ private fun getAppVersionName(context: android.content.Context): String {
     }
 }
 
+private fun buildLedgerBugReportMessage(
+        context: android.content.Context,
+        errorMessage: String,
+        currentRoute: String?,
+        fiscalYear: Int
+): String {
+    val manufacturer = android.os.Build.MANUFACTURER.orEmpty().ifBlank { "Desconocido" }
+    val model = android.os.Build.MODEL.orEmpty().ifBlank { "Desconocido" }
+    val androidVersion = android.os.Build.VERSION.RELEASE.orEmpty().ifBlank { "Desconocida" }
+    return """
+        Hola, deseo reportar un error en SYSGD Cont Android.
+
+        Pantalla: ${currentRoute ?: "desconocida"}
+        Año fiscal: $fiscalYear
+        Versión de la app: ${getAppVersionName(context)}
+        Dispositivo: $manufacturer $model
+        Android: $androidVersion (SDK ${android.os.Build.VERSION.SDK_INT})
+
+        Error mostrado:
+        $errorMessage
+    """.trimIndent()
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
@@ -1130,6 +1153,50 @@ fun MainScreen(
             snackbarHostState.showSnackbar(error)
             ledgerViewModel.clearBackupStatus()
         }
+    }
+
+
+    ledgerState.errorMessage?.let { errorMessage ->
+        AlertDialog(
+                onDismissRequest = { ledgerViewModel.clearErrorMessage() },
+                title = { Text("No se pudo guardar el registro") },
+                text = {
+                    Text(
+                            "Ocurrió un error al procesar el ingreso o gasto. " +
+                                    "Puedes enviar un reporte por WhatsApp al desarrollador con los detalles técnicos.\n\n" +
+                                    errorMessage
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                            onClick = {
+                                val opened = openWhatsAppContact(
+                                        context,
+                                        buildLedgerBugReportMessage(
+                                                context = context,
+                                                errorMessage = errorMessage,
+                                                currentRoute = currentRoute,
+                                                fiscalYear = ledgerState.registro.generales.anio
+                                        )
+                                )
+                                if (!opened) {
+                                    drawerScope.launch {
+                                        snackbarHostState.showSnackbar(
+                                                "No se pudo abrir WhatsApp en este dispositivo"
+                                        )
+                                    }
+                                }
+                            }
+                    ) {
+                        Text("Enviar por WhatsApp")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { ledgerViewModel.clearErrorMessage() }) {
+                        Text("Cerrar")
+                    }
+                }
+        )
     }
 
     ledgerState.pendingSyncDecision?.let { decision ->

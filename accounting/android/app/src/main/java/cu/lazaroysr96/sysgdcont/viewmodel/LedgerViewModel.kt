@@ -159,13 +159,13 @@ class LedgerViewModel @Inject constructor(
     }
 
     fun addIngreso(month: String, dia: Int, importe: Double, cuenta: String = "", nota: String = "") {
-        viewModelScope.launch {
+        runLedgerEntryOperation("registrar el ingreso") {
             ledgerRepository.addIngreso(month, dia, importe, cuenta, nota)
         }
     }
 
     fun addGasto(month: String, dia: Int, importe: Double, cuenta: String = "", nota: String = "") {
-        viewModelScope.launch {
+        runLedgerEntryOperation("registrar el gasto") {
             ledgerRepository.addGasto(month, dia, importe, cuenta, nota)
         }
     }
@@ -180,7 +180,7 @@ class LedgerViewModel @Inject constructor(
         nota: String = "",
         year: Int? = null
     ) {
-        viewModelScope.launch {
+        runLedgerEntryOperation("registrar la operación rápida") {
             ledgerRepository.registrarOperacionRapida(
                 month = month,
                 dia = dia,
@@ -195,51 +195,72 @@ class LedgerViewModel @Inject constructor(
     }
 
     fun editIngreso(month: String, oldDia: Int, newDia: Int, importe: Double, cuenta: String = "", nota: String = "") {
-        viewModelScope.launch {
+        runLedgerEntryOperation("editar el ingreso") {
             ledgerRepository.updateIngreso(month, oldDia, newDia, importe, cuenta, nota)
         }
     }
 
     fun editIngresoById(entryId: String, month: String, newDia: Int, importe: Double, cuenta: String = "", nota: String = "") {
-        viewModelScope.launch {
+        runLedgerEntryOperation("editar el ingreso") {
             ledgerRepository.updateIngresoById(entryId, month, newDia, importe, cuenta, nota)
         }
     }
 
     fun editGasto(month: String, oldDia: Int, newDia: Int, importe: Double, cuenta: String = "", nota: String = "") {
-        viewModelScope.launch {
+        runLedgerEntryOperation("editar el gasto") {
             ledgerRepository.updateGasto(month, oldDia, newDia, importe, cuenta, nota)
         }
     }
 
     fun editGastoById(entryId: String, month: String, newDia: Int, importe: Double, cuenta: String = "", nota: String = "") {
-        viewModelScope.launch {
+        runLedgerEntryOperation("editar el gasto") {
             ledgerRepository.updateGastoById(entryId, month, newDia, importe, cuenta, nota)
         }
     }
 
     fun deleteIngreso(month: String, dia: Int) {
-        viewModelScope.launch {
+        runLedgerEntryOperation("eliminar el ingreso") {
             ledgerRepository.deleteIngreso(month, dia)
         }
     }
 
     fun deleteIngresoById(month: String, entryId: String) {
-        viewModelScope.launch {
+        runLedgerEntryOperation("eliminar el ingreso") {
             ledgerRepository.deleteIngresoById(month, entryId)
         }
     }
 
     fun deleteGasto(month: String, dia: Int) {
-        viewModelScope.launch {
+        runLedgerEntryOperation("eliminar el gasto") {
             ledgerRepository.deleteGasto(month, dia)
         }
     }
 
     fun deleteGastoById(month: String, entryId: String) {
-        viewModelScope.launch {
+        runLedgerEntryOperation("eliminar el gasto") {
             ledgerRepository.deleteGastoById(month, entryId)
         }
+    }
+
+    fun clearErrorMessage() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    private fun runLedgerEntryOperation(action: String, operation: suspend () -> Unit) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(errorMessage = null) }
+            runCatching { operation() }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(errorMessage = buildLedgerEntryErrorMessage(action, error))
+                    }
+                }
+        }
+    }
+
+    private fun buildLedgerEntryErrorMessage(action: String, error: Throwable): String {
+        val detail = error.message?.takeIf { it.isNotBlank() } ?: error::class.simpleName ?: "Error desconocido"
+        return "No se pudo $action. Detalle técnico: $detail"
     }
 
     fun setHideInventarioDisclaimer(hide: Boolean) {
