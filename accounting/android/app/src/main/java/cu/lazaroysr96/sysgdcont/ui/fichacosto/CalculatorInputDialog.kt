@@ -366,7 +366,7 @@ fun CalculatorInputDialog(
                             contentPadding = PaddingValues(0.dp),
                     ) {
                         Text(
-                                "7",
+                                ".",
                                 color = Color.White,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold

@@ -131,7 +131,13 @@ class FichaCostoPdfGenerator(private val context: Context) {
         document.add(tabla)
 
         document.add(
-            Paragraph("\nElaborado por: ________________________________ Firma: ___________ Cargo: ____________________________ Fecha: ____________")
+            Paragraph("\nElaborado por: ___________________________________ Firma: ___________ Cargo: ____________________________ Fecha: ____________")
+                .setFont(fontNormal)
+                .setFontSize(8f)
+        )
+
+        document.add(
+            Paragraph("\nAprobado por: ________________________________ Firma: ___________ Cargo: _______________________________ Fecha: ____________")
                 .setFont(fontNormal)
                 .setFontSize(8f)
         )
