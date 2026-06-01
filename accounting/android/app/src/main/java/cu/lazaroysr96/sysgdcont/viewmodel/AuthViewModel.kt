@@ -300,6 +300,40 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+
+    fun changePassword(currentPassword: String, newPassword: String, confirmPassword: String) {
+        if (currentPassword.isBlank() || newPassword.isBlank()) {
+            _uiState.update { it.copy(error = "Completa la contraseña actual y la nueva contraseña") }
+            return
+        }
+
+        if (newPassword.length < 8) {
+            _uiState.update { it.copy(error = "La nueva contraseña debe tener al menos 8 caracteres") }
+            return
+        }
+
+        if (newPassword != confirmPassword) {
+            _uiState.update { it.copy(error = "La confirmación no coincide con la nueva contraseña") }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSecuritySaving = true, error = null, infoMessage = null) }
+            authRepository.changePassword(currentPassword, newPassword)
+                .onSuccess { message ->
+                    _uiState.update {
+                        it.copy(
+                            isSecuritySaving = false,
+                            infoMessage = message,
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isSecuritySaving = false, error = e.message ?: "No se pudo cambiar la contraseña") }
+                }
+        }
+    }
+
     fun deleteOwnAccount(password: String) {
         if (password.isBlank()) {
             _uiState.update { it.copy(error = "Escribe tu contraseña para eliminar la cuenta") }

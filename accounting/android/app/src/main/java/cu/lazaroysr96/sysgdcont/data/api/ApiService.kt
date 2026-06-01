@@ -33,6 +33,12 @@ interface ApiService {
         @Body request: UpdateTwoFactorRequest
     ): Response<ApiMessageResponse>
 
+    @PUT("api/auth/password")
+    suspend fun changePassword(
+        @Header("Authorization") token: String,
+        @Body request: ChangePasswordRequest
+    ): Response<ApiMessageResponse>
+
     @HTTP(method = "DELETE", path = "api/auth/account", hasBody = true)
     suspend fun deleteOwnAccount(
         @Header("Authorization") token: String,

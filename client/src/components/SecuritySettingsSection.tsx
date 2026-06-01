@@ -1,4 +1,5 @@
 import { type FC, useEffect, useState } from "react";
+import { isAxiosError } from "axios";
 import { Loader2 } from "lucide-react";
 import {
   AlertDialog,
@@ -35,6 +36,23 @@ interface VerificationStatus {
   verifiedAt?: string | null;
 }
 
+interface ApiErrorBody {
+  message?: string;
+  error?: string;
+  support?: {
+    whatsapp?: string;
+    responseTime?: string;
+  };
+}
+
+const getApiErrorBody = (error: unknown): ApiErrorBody | undefined => {
+  if (isAxiosError<ApiErrorBody>(error)) {
+    return error.response?.data;
+  }
+
+  return undefined;
+};
+
 const SUPPORT_WHATSAPP = "+5351158544";
 const SUPPORT_MESSAGE = encodeURIComponent(
   "Hola, necesito ayuda con seguridad de mi cuenta en SYSGD.",
@@ -47,7 +65,8 @@ interface SecuritySettingsSectionProps {
 const SecuritySettingsSection: FC<SecuritySettingsSectionProps> = ({
   onAccountDeleted,
 }) => {
-  const [twoFactorStatus, setTwoFactorStatus] = useState<TwoFactorStatus | null>(null);
+  const [twoFactorStatus, setTwoFactorStatus] =
+    useState<TwoFactorStatus | null>(null);
   const [twoFactorLoading, setTwoFactorLoading] = useState(false);
   const [twoFactorSaving, setTwoFactorSaving] = useState(false);
   const [twoFactorEnabledDraft, setTwoFactorEnabledDraft] = useState(false);
@@ -62,6 +81,10 @@ const SecuritySettingsSection: FC<SecuritySettingsSectionProps> = ({
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordChangeLoading, setPasswordChangeLoading] = useState(false);
 
   useEffect(() => {
     void fetchTwoFactorStatus();
@@ -89,7 +112,9 @@ const SecuritySettingsSection: FC<SecuritySettingsSectionProps> = ({
   const fetchVerificationStatus = async () => {
     setVerificationLoading(true);
     try {
-      const response = await api.get<VerificationStatus>("/api/verification/status");
+      const response = await api.get<VerificationStatus>(
+        "/api/verification/status",
+      );
       setEmailVerified(Boolean(response.data.verified));
     } catch (error) {
       console.error("Error fetching verification status:", error);
@@ -110,10 +135,10 @@ const SecuritySettingsSection: FC<SecuritySettingsSectionProps> = ({
         response.data?.message ||
           "Te enviamos un correo con el enlace para verificar tu cuenta.",
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = getApiErrorBody(error);
       setSecurityError(
-        error?.response?.data?.error ||
-          "No se pudo enviar el correo de verificación.",
+        apiError?.error || "No se pudo enviar el correo de verificación.",
       );
     } finally {
       setVerificationSending(false);
@@ -147,10 +172,10 @@ const SecuritySettingsSection: FC<SecuritySettingsSectionProps> = ({
       setTwoFactorEnabledDraft(response.data.enabled);
       setSecurityPassword("");
       setSecurityMessage(response.data.message || "Configuración actualizada.");
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = getApiErrorBody(error);
       setSecurityError(
-        error?.response?.data?.message ||
-          "No se pudo actualizar la configuración de 2FA.",
+        apiError?.message || "No se pudo actualizar la configuración de 2FA.",
       );
     } finally {
       setTwoFactorSaving(false);
@@ -173,12 +198,54 @@ const SecuritySettingsSection: FC<SecuritySettingsSectionProps> = ({
       setDeleteDialogOpen(false);
       onAccountDeleted?.();
       window.location.href = "/login";
-    } catch (error: any) {
-      setSecurityError(
-        error?.response?.data?.message || "No se pudo eliminar la cuenta.",
-      );
+    } catch (error: unknown) {
+      const apiError = getApiErrorBody(error);
+      setSecurityError(apiError?.message || "No se pudo eliminar la cuenta.");
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword.trim() || !newPassword.trim()) {
+      setSecurityError("Completa la contraseña actual y la nueva contraseña.");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setSecurityError("La nueva contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setSecurityError("La confirmación no coincide con la nueva contraseña.");
+      return;
+    }
+
+    setPasswordChangeLoading(true);
+    setSecurityError("");
+    setSecurityMessage("");
+    try {
+      const response = await api.put<{ message?: string }>(
+        "/api/auth/password",
+        {
+          currentPassword,
+          newPassword,
+        },
+      );
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      setSecurityMessage(
+        response.data?.message || "Contraseña actualizada correctamente.",
+      );
+    } catch (error: unknown) {
+      const apiError = getApiErrorBody(error);
+      setSecurityError(
+        apiError?.message || "No se pudo cambiar la contraseña.",
+      );
+    } finally {
+      setPasswordChangeLoading(false);
     }
   };
 
@@ -202,9 +269,10 @@ const SecuritySettingsSection: FC<SecuritySettingsSectionProps> = ({
         response.data?.message ||
           "Si el correo está verificado, recibirás un enlace de recuperación.",
       );
-    } catch (error: any) {
-      const backendError = error?.response?.data?.error;
-      const supportInfo = error?.response?.data?.support;
+    } catch (error: unknown) {
+      const apiError = getApiErrorBody(error);
+      const backendError = apiError?.error;
+      const supportInfo = apiError?.support;
       if (supportInfo?.whatsapp) {
         setSecurityError(
           `${backendError || "No se pudo procesar la recuperación."} Soporte: ${supportInfo.whatsapp} (${supportInfo.responseTime || "72h hábiles"}).`,
@@ -238,14 +306,18 @@ const SecuritySettingsSection: FC<SecuritySettingsSectionProps> = ({
             <>
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
-                  <p className="font-medium text-sm">Activar 2FA en tu cuenta</p>
+                  <p className="font-medium text-sm">
+                    Activar 2FA en tu cuenta
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     Método actual: correo electrónico
                   </p>
                 </div>
                 <Switch
                   checked={twoFactorEnabledDraft}
-                  disabled={Boolean(twoFactorStatus?.mandatory) || !emailVerified}
+                  disabled={
+                    Boolean(twoFactorStatus?.mandatory) || !emailVerified
+                  }
                   onCheckedChange={setTwoFactorEnabledDraft}
                 />
               </div>
@@ -263,7 +335,9 @@ const SecuritySettingsSection: FC<SecuritySettingsSectionProps> = ({
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="security-password">Confirma tu contraseña</Label>
+                <Label htmlFor="security-password">
+                  Confirma tu contraseña
+                </Label>
                 <Input
                   id="security-password"
                   type="password"
@@ -289,7 +363,8 @@ const SecuritySettingsSection: FC<SecuritySettingsSectionProps> = ({
         <CardHeader>
           <CardTitle className="text-sm">Verificación de correo</CardTitle>
           <CardDescription>
-            Confirma tu correo electrónico para habilitar funciones sensibles como 2FA.
+            Confirma tu correo electrónico para habilitar funciones sensibles
+            como 2FA.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -299,13 +374,12 @@ const SecuritySettingsSection: FC<SecuritySettingsSectionProps> = ({
               Cargando estado...
             </div>
           ) : emailVerified ? (
-            <p className="text-sm text-green-700">
-              Tu correo está verificado.
-            </p>
+            <p className="text-sm text-green-700">Tu correo está verificado.</p>
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
-                Tu correo aún no está verificado. Te enviaremos un enlace para confirmar la cuenta.
+                Tu correo aún no está verificado. Te enviaremos un enlace para
+                confirmar la cuenta.
               </p>
               <Button
                 onClick={handleSendVerificationEmail}
@@ -313,10 +387,63 @@ const SecuritySettingsSection: FC<SecuritySettingsSectionProps> = ({
                 variant="outline"
                 className="w-full"
               >
-                {verificationSending ? "Enviando..." : "Enviar enlace de verificación"}
+                {verificationSending
+                  ? "Enviando..."
+                  : "Enviar enlace de verificación"}
               </Button>
             </>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Cambiar contraseña</CardTitle>
+          <CardDescription>
+            Actualiza tu contraseña sin cerrar la sesión actual. Usa al menos 8
+            caracteres.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor="current-password">Contraseña actual</Label>
+            <Input
+              id="current-password"
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Tu contraseña actual"
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="new-password">Nueva contraseña</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Mínimo 8 caracteres"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-new-password">Confirmar contraseña</Label>
+              <Input
+                id="confirm-new-password"
+                type="password"
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                placeholder="Repite la nueva contraseña"
+              />
+            </div>
+          </div>
+          <Button
+            onClick={handleChangePassword}
+            disabled={passwordChangeLoading}
+            className="w-full"
+          >
+            {passwordChangeLoading ? "Actualizando..." : "Cambiar contraseña"}
+          </Button>
         </CardContent>
       </Card>
 
@@ -406,12 +533,18 @@ const SecuritySettingsSection: FC<SecuritySettingsSectionProps> = ({
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar cuenta?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción es irreversible. Tu acceso se desactivará inmediatamente.
+              Esta acción es irreversible. Tu acceso se desactivará
+              inmediatamente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteLoading}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteAccount} disabled={deleteLoading}>
+            <AlertDialogCancel disabled={deleteLoading}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAccount}
+              disabled={deleteLoading}
+            >
               {deleteLoading ? "Eliminando..." : "Sí, eliminar"}
             </AlertDialogAction>
           </AlertDialogFooter>
