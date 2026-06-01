@@ -45,27 +45,18 @@ import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
 import cu.lazaroysr96.sysgdcont.ui.components.producto.ChevronTrailing
 import cu.lazaroysr96.sysgdcont.ui.components.producto.ProductoFormDialog
 import cu.lazaroysr96.sysgdcont.ui.components.producto.ProductoItem
-
 import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.Brush
 import java.io.File
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
-
-// Shapes y layout
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Color
-
-// Dialog
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-
-// Imagen
 import androidx.compose.ui.res.painterResource
-
-// ProductoImagen — ajusta el paquete según donde esté definida en tu proyecto
 import cu.lazaroysr96.sysgdcont.ui.components.producto.toProductoImagen
 import cu.lazaroysr96.sysgdcont.ui.fichacosto.FichaCostoProductoPreferences
 import cu.lazaroysr96.sysgdcont.ui.fichacosto.FichaCostoScreen
@@ -345,7 +336,7 @@ private fun ProductoDetalleDialog(
                 ) {
                     IconButton(
                         onClick = { deleteConfirmOpen = true },
-                        modifier = Modifier.align(Alignment.TopStart)
+                        modifier = Modifier.align(Alignment.TopEnd)
                     ) {
                         Icon(
                             Icons.Default.Delete,
@@ -354,7 +345,7 @@ private fun ProductoDetalleDialog(
                         )
                     }
                     Row(
-                        modifier = Modifier.padding(start = 44.dp),
+                        // modifier = Modifier.padding(start = 44.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
@@ -671,7 +662,7 @@ private fun FichaCostoProductActionCard(
                 color = colorScheme.onTertiaryContainer
             )
             Text(
-                text = "Se guardará temporalmente en las preferencias internas de la app hasta que esta función pase oficialmente a la base de datos.",
+                text = "La funcionalidad de generación de fichas de costo está en desarrollo. Por ahora, no se guarda en la base de datos, el modelo o la interfaz de usuario. Podría ser modificada en el tiempo.",
                 style = MaterialTheme.typography.bodySmall,
                 color = colorScheme.onTertiaryContainer.copy(alpha = 0.78f)
             )
@@ -734,7 +725,7 @@ private fun ProductoFichaCostoDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    TextButton(onClick = onDismiss) { Text("Cerrar") }
+                    TextButton(onClick = {vm.generatePDF(context)}) { Text("Generar PDF") }
                 }
                 Divider()
                 Box(modifier = Modifier.weight(1f)) {

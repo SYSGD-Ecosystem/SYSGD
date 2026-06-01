@@ -987,7 +987,9 @@ fun MainScreen(
                     CajaBancoScreen()
                 }
                 composable(FICHA_COSTO_ROUTE) {
-                    FichaCostoScreen()
+                    FichaCostoScreen(
+                        vm = fichaCostoViewModel
+                    )
                 }
                 composable(LICENSES_ROUTE) {
                     LicenseCenterScreen(
