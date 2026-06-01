@@ -10,6 +10,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.google.gson.Gson
 import cu.lazaroysr96.sysgdcont.data.api.ApiService
 import cu.lazaroysr96.sysgdcont.data.model.AuthUser
+import cu.lazaroysr96.sysgdcont.data.model.ChangePasswordRequest
 import cu.lazaroysr96.sysgdcont.data.model.DeleteAccountRequest
 import cu.lazaroysr96.sysgdcont.data.model.LoginRequest
 import cu.lazaroysr96.sysgdcont.data.model.PasswordResetRequest
@@ -303,6 +304,31 @@ class AuthRepository @Inject constructor(
                     return Result.failure(Exception("Tu sesión expiró. Inicia sesión de nuevo."))
                 }
                 Result.failure(Exception(extractApiError(response, "No se pudo actualizar 2FA")))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+
+    suspend fun changePassword(currentPassword: String, newPassword: String): Result<String> {
+        return try {
+            val token = getToken() ?: return Result.failure(Exception("No autenticado"))
+            val response = apiService.changePassword(
+                "Bearer $token",
+                ChangePasswordRequest(
+                    currentPassword = currentPassword,
+                    newPassword = newPassword
+                )
+            )
+            if (response.isSuccessful) {
+                Result.success(response.body()?.message ?: "Contraseña actualizada correctamente")
+            } else {
+                if (response.code() == 401 || response.code() == 403) {
+                    logout()
+                    return Result.failure(Exception("Tu sesión expiró. Inicia sesión de nuevo."))
+                }
+                Result.failure(Exception(extractApiError(response, "No se pudo cambiar la contraseña")))
             }
         } catch (e: Exception) {
             Result.failure(e)

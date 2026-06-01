@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
 	checkUser,
+	changePassword,
 	completeInvitedUserRegistration,
 	deleteOwnAccount,
 	getTwoFactorStatus,
@@ -30,6 +31,7 @@ router.get("/me", getCurrentUser);
 router.post("/external-token", isAuthenticated, issueExternalToken);
 router.get("/2fa/status", isAuthenticated, getTwoFactorStatus);
 router.put("/2fa/status", isAuthenticated, updateTwoFactorStatus);
+router.put("/password", isAuthenticated, changePassword);
 router.delete("/account", isAuthenticated, deleteOwnAccount);
 
 router.post("/logout", logout);

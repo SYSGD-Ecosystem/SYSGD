@@ -26,6 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import cu.lazaroysr96.sysgdcont.viewmodel.AuthUiState
 import cu.lazaroysr96.sysgdcont.viewmodel.AuthViewModel
@@ -37,6 +38,9 @@ fun SecuritySettingsScreen(
     onContactSupport: () -> Unit,
 ) {
     var securityPassword by remember { mutableStateOf("") }
+    var currentPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmNewPassword by remember { mutableStateOf("") }
     var deletePassword by remember { mutableStateOf("") }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -106,6 +110,7 @@ fun SecuritySettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Confirma tu contraseña") },
                     singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -123,6 +128,53 @@ fun SecuritySettingsScreen(
                     ) {
                         Text("Desactivar")
                     }
+                }
+            }
+        }
+
+        Card {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Cambiar contraseña", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Actualiza la contraseña de tu cuenta. La nueva contraseña debe tener al menos 8 caracteres.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                OutlinedTextField(
+                    value = currentPassword,
+                    onValueChange = { currentPassword = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Contraseña actual") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                )
+                OutlinedTextField(
+                    value = newPassword,
+                    onValueChange = { newPassword = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Nueva contraseña") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                )
+                OutlinedTextField(
+                    value = confirmNewPassword,
+                    onValueChange = { confirmNewPassword = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Confirmar nueva contraseña") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                )
+                Button(
+                    onClick = {
+                        authViewModel.changePassword(
+                            currentPassword,
+                            newPassword,
+                            confirmNewPassword
+                        )
+                    },
+                    enabled = !authState.isSecuritySaving,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(if (authState.isSecuritySaving) "Actualizando..." else "Cambiar contraseña")
                 }
             }
         }
@@ -166,6 +218,7 @@ fun SecuritySettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Contraseña para eliminar") },
                     singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
                 )
                 Button(
                     onClick = { showDeleteDialog = true },
@@ -175,6 +228,22 @@ fun SecuritySettingsScreen(
                     Text("Eliminar mi cuenta")
                 }
             }
+        }
+
+        authState.infoMessage?.let { message ->
+            Text(
+                message,
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+
+        authState.error?.let { error ->
+            Text(
+                error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
