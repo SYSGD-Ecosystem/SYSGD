@@ -607,7 +607,7 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
             arrayOf(
                 CuentasContablesPorDefecto.ingresosVentas().id,
                 CuentasContablesPorDefecto.CODIGO_INGRESOS_VENTAS,
-                "Ingresos por ventas de bienes y servicios",
+                CuentasContablesPorDefecto.ingresosVentas().nombre,
                 NaturalezaCuenta.ACREEDORA,
                 TipoCuenta.INGRESO,
                 now,
@@ -623,7 +623,7 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
             arrayOf(
                 CuentasContablesPorDefecto.gastosActividad().id,
                 CuentasContablesPorDefecto.CODIGO_GASTOS_ACTIVIDAD,
-                "Gastos de la actividad",
+                CuentasContablesPorDefecto.gastosActividad().nombre,
                 NaturalezaCuenta.DEUDORA,
                 TipoCuenta.GASTO,
                 now,

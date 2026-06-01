@@ -50,9 +50,12 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,8 +79,24 @@ fun NomenclatorsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showFiltersSheet by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.operationMessage) {
+        uiState.operationMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            viewModel.clearOperationStatus()
+        }
+    }
+
+    LaunchedEffect(uiState.operationError) {
+        uiState.operationError?.let { error ->
+            snackbarHostState.showSnackbar(error)
+            viewModel.clearOperationStatus()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
@@ -150,7 +169,11 @@ fun NomenclatorsScreen(
                 if (uiState.selectedType == NomenclatorType.CNAE) {
                     CnaeResults(uiState.cnaeItems)
                 } else {
-                    AccountingResults(uiState.accountingItems)
+                    AccountingResults(
+                        items = uiState.accountingItems,
+                        operationalAccountCodes = uiState.operationalAccountCodes,
+                        onUseAccount = viewModel::useAccountingAccount
+                    )
                 }
             }
         }
@@ -437,7 +460,11 @@ private fun CnaeResults(items: List<CnaeItem>) {
 }
 
 @Composable
-private fun AccountingResults(items: List<AccountingItem>) {
+private fun AccountingResults(
+    items: List<AccountingItem>,
+    operationalAccountCodes: Set<String>,
+    onUseAccount: (AccountingItem) -> Unit
+) {
     if (items.isEmpty()) {
         EmptyResults("No se encontraron resultados contables.")
         return
@@ -459,6 +486,7 @@ private fun AccountingResults(items: List<AccountingItem>) {
         ) { item ->
             var expanded by remember { mutableStateOf(false) }
             var showDescription by remember { mutableStateOf(false) }
+            val isInOperationalCatalog = item.accountCode in operationalAccountCodes
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -520,13 +548,25 @@ private fun AccountingResults(items: List<AccountingItem>) {
                                 "Naturaleza de cuenta: ${item.accountNature}",
                                 style = MaterialTheme.typography.bodySmall
                             )
-                            if (item.accountDescription.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (item.accountDescription.isNotBlank()) {
+                                    TextButton(
+                                        onClick = { showDescription = true },
+                                        contentPadding = PaddingValues(0.dp)
+                                    ) {
+                                        Text("Ver descripcion")
+                                    }
+                                }
                                 TextButton(
-                                    onClick = { showDescription = true },
+                                    onClick = { onUseAccount(item) },
+                                    enabled = !isInOperationalCatalog,
                                     contentPadding = PaddingValues(0.dp)
                                 ) {
-                                    Text("Ver descripcion")
+                                    Text(if (isInOperationalCatalog) "Ya en uso" else "Utilizar")
                                 }
                             }
                             if (item.subaccounts.isNotEmpty()) {

@@ -90,22 +90,24 @@ fun CuentaContable.conUsoOperativoNormalizado(): CuentaContable =
     copy(usoOperativo = usoOperativoNormalizado())
 
 object CuentasContablesPorDefecto {
-    const val CODIGO_INGRESOS_VENTAS = "740"
-    const val CODIGO_GASTOS_ACTIVIDAD = "810"
+    const val CODIGO_INGRESOS_VENTAS = "900"
+    const val CODIGO_GASTOS_ACTIVIDAD = "814"
+    const val ID_INGRESOS_VENTAS_LEGACY = "cuenta_740_ingresos_ventas_bienes_servicios"
+    const val ID_GASTOS_ACTIVIDAD_LEGACY = "cuenta_810_gastos_actividad"
 
     fun ingresosVentas(): CuentaContable = CuentaContable(
-        id = "cuenta_740_ingresos_ventas_bienes_servicios",
+        id = "cuenta_900_ventas",
         codigo = CODIGO_INGRESOS_VENTAS,
-        nombre = "Ingresos por ventas de bienes y servicios",
+        nombre = "Ventas",
         tipo = TipoCuenta.INGRESO,
         usoOperativo = UsoOperativoCuenta.INGRESO,
         naturaleza = NaturalezaCuenta.ACREEDORA
     )
 
     fun gastosActividad(): CuentaContable = CuentaContable(
-        id = "cuenta_810_gastos_actividad",
+        id = "cuenta_814_costo_ventas",
         codigo = CODIGO_GASTOS_ACTIVIDAD,
-        nombre = "Gastos de la actividad",
+        nombre = "Costo de Ventas",
         tipo = TipoCuenta.GASTO,
         usoOperativo = UsoOperativoCuenta.GASTO,
         naturaleza = NaturalezaCuenta.DEUDORA

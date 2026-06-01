@@ -804,6 +804,24 @@ constructor(
                             gastoCuentaId = CuentasContablesPorDefecto.gastosActividad().id
                     )
             )
+        } else {
+            val ingresoCuentaId =
+                    if (actualConfig.ingresoCuentaId == CuentasContablesPorDefecto.ID_INGRESOS_VENTAS_LEGACY)
+                            CuentasContablesPorDefecto.ingresosVentas().id
+                    else actualConfig.ingresoCuentaId
+            val gastoCuentaId =
+                    if (actualConfig.gastoCuentaId == CuentasContablesPorDefecto.ID_GASTOS_ACTIVIDAD_LEGACY)
+                            CuentasContablesPorDefecto.gastosActividad().id
+                    else actualConfig.gastoCuentaId
+            if (ingresoCuentaId != actualConfig.ingresoCuentaId || gastoCuentaId != actualConfig.gastoCuentaId) {
+                posIntegrationConfigDao.insert(
+                        actualConfig.copy(
+                                ingresoCuentaId = ingresoCuentaId,
+                                gastoCuentaId = gastoCuentaId,
+                                updatedAt = System.currentTimeMillis()
+                        )
+                )
+            }
         }
 
         refreshAutoCalculatedTributos(modifiedByUser = false)
