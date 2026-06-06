@@ -129,8 +129,8 @@ fun InventarioScreen(
         }
     ) { padding ->
         when (uiState.currentTab) {
-            0 -> PuntoVentaContent(viewModel, padding)
-            1 -> PuntoCompraContent(viewModel, padding)
+            0 -> PuntoVentaContent(viewModel, padding, canUseProFeatures)
+            1 -> PuntoCompraContent(viewModel, padding, canUseProFeatures)
             3 -> if (canUseProFeatures) InventarioContent(viewModel, padding)
             2 -> HistorialContent(viewModel, facturaViewModel, padding, canUseProFeatures)
             4 -> MasContent(viewModel, padding)
@@ -225,23 +225,32 @@ fun InventarioScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingValues) {
+private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingValues, canUseProFeatures: Boolean) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
     val esHoy = uiState.fechaTrabajo == LocalDate.now()
     val productosFiltrados = remember(uiState.productos, uiState.selectedVentaAlmacenId) {
         uiState.productos.filter { it.almacenId == uiState.selectedVentaAlmacenId }
     }
+    val colorScheme = MaterialTheme.colorScheme
 
     Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
         Text("Punto de Venta", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
-        WarehouseSelectorCard(
+        if(canUseProFeatures){
+            WarehouseSelectorCard(
             label = "Almacén de salida",
             almacenes = uiState.almacenes,
             selectedId = uiState.selectedVentaAlmacenId,
             onSelected = viewModel::seleccionarAlmacenVenta
         )
+        }else{
+            Text(text = "Funciones limitadas para gestionar inventarios, almacenes, generar facturas e integrar ventas y compras con el registro de ingresos y gastos adquiera una licencia.",
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.onTertiaryContainer.copy(alpha = 0.78f)
+            )
+        }
+        
         Spacer(Modifier.height(12.dp))
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
             Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -282,23 +291,32 @@ private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingVa
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun PuntoCompraContent(viewModel: InventarioViewModel, padding: PaddingValues) {
+private fun PuntoCompraContent(viewModel: InventarioViewModel, padding: PaddingValues, canUseProFeatures: Boolean) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
     val esHoy = uiState.fechaTrabajo == LocalDate.now()
     val productosFiltrados = remember(uiState.productosCompra, uiState.selectedCompraAlmacenId) {
         uiState.productosCompra.filter { it.almacenDestinoId == uiState.selectedCompraAlmacenId }
     }
+    val colorScheme = MaterialTheme.colorScheme
 
     Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
         Text("Registro de Compras", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
+        if(canUseProFeatures){
         WarehouseSelectorCard(
             label = "Almacén de entrada",
             almacenes = uiState.almacenes,
             selectedId = uiState.selectedCompraAlmacenId,
             onSelected = viewModel::seleccionarAlmacenCompra
-        )
+        )    
+        }else{
+            Text(
+                text = "Funciones limitadas para gestionar inventarios, almacenes, generar facturas e integrar ventas y compras con el registro de ingresos y gastos adquiera una licencia.",
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.onTertiaryContainer.copy(alpha = 0.78f))
+        }
+        
         Spacer(Modifier.height(12.dp))
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
             Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {

@@ -119,15 +119,12 @@ import cu.lazaroysr96.sysgdcont.ui.main.screens.InventarioScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.NomenclatorsScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.DashboardScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.DocumentosScreen
-import cu.lazaroysr96.sysgdcont.ui.main.screens.LicenseCenterScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.ResumenScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.SecuritySettingsScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.TercerosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.TributosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.CatalogosScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.CajaBancoScreen
-import cu.lazaroysr96.sysgdcont.ui.fichacosto.FichaCostoScreen
-import cu.lazaroysr96.sysgdcont.ui.fichacosto.FichaCostoViewModel
 import cu.lazaroysr96.sysgdcont.ui.navigation.MainTab
 import cu.lazaroysr96.sysgdcont.ui.navigation.mainTabs
 import cu.lazaroysr96.sysgdcont.viewmodel.AuthViewModel
@@ -142,7 +139,6 @@ import kotlinx.coroutines.launch
 
 private const val ADMIN_PHONE = "5351158544"
 private const val ABOUT_ROUTE = "about"
-private const val LICENSES_ROUTE = "licenses"
 private const val HELP_ROUTE = "help"
 private const val RESOURCES_ROUTE = "resources"
 private const val BACKUP_ROUTE = "backup_json"
@@ -154,7 +150,6 @@ private const val TERCEROS_ROUTE = "terceros"
 private const val DOCUMENTOS_ROUTE = "documentos"
 private const val CATALOGOS_ROUTE = "catalogos"
 private const val CAJA_BANCO_ROUTE = "caja_banco"
-private const val FICHA_COSTO_ROUTE = "ficha_costo"
 
 private fun openWhatsAppContact(context: android.content.Context, message: String): Boolean {
     return try {
@@ -276,7 +271,7 @@ fun MainScreen(
         facturaViewModel: FacturaViewModel = hiltViewModel(),
         documentosViewModel: DocumentosViewModel = hiltViewModel(),
         planPurchaseViewModel: PlanPurchaseViewModel = hiltViewModel(),
-        fichaCostoViewModel: FichaCostoViewModel = hiltViewModel()
+        
 
 ) {
     val context = LocalContext.current
@@ -294,9 +289,13 @@ fun MainScreen(
     val drawerScope = rememberCoroutineScope()
     val currentTier = (planPurchaseState.currentPlan?.tier ?: "free").lowercase()
     val hasActiveLicense = planPurchaseState.currentPlan?.hasActivePlan == true && currentTier != "free"
-    val isFreemiumBuild = AppEdition.isFreemium
-    val canUseProFeatures = !isFreemiumBuild || currentTier == "pro" || currentTier == "vip"
-    val canUseVipFeatures = !isFreemiumBuild || currentTier == "vip"
+
+    val isFreemiumBuild = AppEdition.isFreemium || AppEdition.isReseller
+    val isResellerBuild = AppEdition.isReseller
+    
+
+    val canUseProFeatures = !isResellerBuild || !isFreemiumBuild || currentTier == "pro" || currentTier == "vip"
+    val canUseVipFeatures = !isResellerBuild || !isFreemiumBuild || currentTier == "vip"
     val workspaceLimitMessage =
         if (isFreemiumBuild && !canUseProFeatures) {
             "El plan Free solo permite un espacio de trabajo. Actualiza a Pro para crear varios negocios."
@@ -482,6 +481,7 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
+                            if (canUseProFeatures) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Divider()
                             Text(
@@ -503,6 +503,7 @@ fun MainScreen(
                                     }
                             )
 
+                            
                             Spacer(modifier = Modifier.height(8.dp))
                             Divider()
                             Text(
@@ -563,19 +564,6 @@ fun MainScreen(
                             )
                             }
 
-                            if (canUseProFeatures) {
-                            NavigationDrawerItem(
-                                    label = { Text("Ficha de costo") },
-                                    selected = currentRoute == FICHA_COSTO_ROUTE,
-                                    icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = null) },
-                                    onClick = {
-                                        navController.navigate(FICHA_COSTO_ROUTE) {
-                                            launchSingleTop = true
-                                        }
-                                        drawerScope.launch { drawerState.close() }
-                                    }
-                            )
-                            }
 
                             NavigationDrawerItem(
                                     label = { Text("Documentos") },
@@ -613,6 +601,8 @@ fun MainScreen(
                             )
                                 }
 
+                            }
+
                             Spacer(modifier = Modifier.height(12.dp))
                             Divider()
                             Text(
@@ -636,20 +626,8 @@ fun MainScreen(
                                     }
                             )
 
-                            NavigationDrawerItem(
-                                    label = { Text(licensesDrawerLabel) },
-                                    selected = currentRoute == LICENSES_ROUTE,
-                                    icon = {
-                                        Icon(Icons.Default.CreditCard, contentDescription = null)
-                                    },
-                                    onClick = {
-                                        planPurchaseViewModel.loadData(force = true)
-                                        navController.navigate(LICENSES_ROUTE) {
-                                            launchSingleTop = true
-                                        }
-                                        drawerScope.launch { drawerState.close() }
-                                    }
-                            )
+
+                            if (canUseProFeatures) {
 
                             NavigationDrawerItem(
                                     label = { Text("Respaldo y acceso") },
@@ -665,6 +643,8 @@ fun MainScreen(
                                     }
                             )
 
+                                }
+
                             NavigationDrawerItem(
                                     label = { Text("Acerca de") },
                                     selected = currentRoute == ABOUT_ROUTE,
@@ -676,6 +656,8 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
+
+                            if (canUseProFeatures) {
 
                             Spacer(modifier = Modifier.height(8.dp))
                             Divider()
@@ -712,6 +694,7 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
+                                }
 
                             Spacer(modifier = Modifier.height(16.dp))
                         }
@@ -744,7 +727,6 @@ fun MainScreen(
                                         when (currentRoute) {
                                             DASHBOARD_ROUTE -> "Gestor Contable TCP"
                                             ABOUT_ROUTE -> "Acerca de"
-                                            LICENSES_ROUTE -> if (hasActiveLicense) "Tu licencia" else "Comprar licencia"
                                             HELP_ROUTE -> "Ayuda de llenado"
                                             RESOURCES_ROUTE -> "Recursos útiles"
                                             BACKUP_ROUTE -> "Respaldo y acceso"
@@ -755,13 +737,13 @@ fun MainScreen(
                                             DOCUMENTOS_ROUTE -> "Documentos"
                                             CATALOGOS_ROUTE -> "Catálogos"
                                             CAJA_BANCO_ROUTE -> "Caja y banco"
-                                            FICHA_COSTO_ROUTE -> "Ficha de costo"
+                                            
                                             else -> "Gestor Contable TCP"
                                         }
                                 )
                             },
                             navigationIcon = {
-                                if (currentRoute == ABOUT_ROUTE || currentRoute == LICENSES_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE || currentRoute == NOMENCLATORS_ROUTE || currentRoute == TERCEROS_ROUTE || currentRoute == DOCUMENTOS_ROUTE || currentRoute == CATALOGOS_ROUTE || currentRoute == CAJA_BANCO_ROUTE || currentRoute == FICHA_COSTO_ROUTE) {
+                                if (currentRoute == ABOUT_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE || currentRoute == NOMENCLATORS_ROUTE || currentRoute == TERCEROS_ROUTE || currentRoute == DOCUMENTOS_ROUTE || currentRoute == CATALOGOS_ROUTE || currentRoute == CAJA_BANCO_ROUTE) {
                                     IconButton(onClick = { navController.popBackStack() }) {
                                         Icon(
                                                 Icons.Default.ArrowBack,
@@ -799,14 +781,7 @@ fun MainScreen(
                                         )
                                     }
                                 }
-                                if (currentRoute == FICHA_COSTO_ROUTE) {
-                                    IconButton(onClick = { fichaCostoViewModel.generatePDF(context)}) {
-                                        Icon(
-                                            Icons.Default.PictureAsPdf,
-                                            contentDescription = "Generar PDF"
-                                        )
-                                    }
-                                }
+                                
                                 if (currentRoute in syncRoutes) {
                                     if (ledgerState.hasLocalChanges && !ledgerState.isSyncing) {
                                         Icon(
@@ -871,6 +846,7 @@ fun MainScreen(
                         onSwitchWorkspace = ledgerViewModel::switchWorkspace,
                         onCreateWorkspace = ledgerViewModel::createWorkspace,
                         canCreateWorkspace = canUseProFeatures,
+                        canUseProFeatures,
                         workspaceLimitMessage = workspaceLimitMessage,
                         onOpenRegistro = {
                             navController.navigate(MainTab.Generales.route) {
@@ -895,6 +871,7 @@ fun MainScreen(
                                 launchSingleTop = true
                             }
                         },
+                        showCatalogosShortcut = canUseProFeatures,
                         onOpenTerceros = {
                             if (canUseProFeatures) {
                                 navController.navigate(TERCEROS_ROUTE) {
@@ -930,10 +907,6 @@ fun MainScreen(
         availableCredits = authState.availableCredits,
         currentTier = currentTier,
         hasActiveLicense = hasActiveLicense,
-        onNavigateToLicenses = {
-            planPurchaseViewModel.loadData(force = true)
-            navController.navigate(LICENSES_ROUTE) { launchSingleTop = true }
-        },
         onNavigateToSecurity = {
             navController.navigate(SECURITY_ROUTE) { launchSingleTop = true }
         },
@@ -950,7 +923,7 @@ fun MainScreen(
                 composable(MainTab.Resumen.route) {
                     ResumenScreen(
                         ledgerViewModel,
-                        experimentalFeaturesEnabled = ledgerState.experimentalFeaturesEnabled,
+                        experimentalFeaturesEnabled = canUseProFeatures,
                     )
                 }
                 composable(VENTAS_ROUTE) {
@@ -986,22 +959,7 @@ fun MainScreen(
                 composable(CAJA_BANCO_ROUTE) {
                     CajaBancoScreen()
                 }
-                composable(FICHA_COSTO_ROUTE) {
-                    FichaCostoScreen(
-                        vm = fichaCostoViewModel
-                    )
-                }
-                composable(LICENSES_ROUTE) {
-                    LicenseCenterScreen(
-                        experimentalFeaturesEnabled = ledgerState.experimentalFeaturesEnabled,
-                        uiState = planPurchaseState,
-                        onRefresh = { planPurchaseViewModel.loadData(force = true) },
-                        onSubmit = planPurchaseViewModel::submitOrder,
-                        onDismissError = planPurchaseViewModel::clearError,
-                        onDismissInfo = planPurchaseViewModel::clearInfoMessage,
-                        isProDistribution = !isFreemiumBuild
-                    )
-                }
+
                 composable(ABOUT_ROUTE) {
                     AboutScreen(
                             onContactWhatsApp = {
@@ -1030,6 +988,8 @@ fun MainScreen(
                             onExperimentalFeaturesChange = ledgerViewModel::setExperimentalFeaturesEnabled,
                             canUseExperimentalFeatures = canUseVipFeatures,
                             currentTier = currentTier,
+                            isReseller = isResellerBuild,
+                            resellerName = "Daniuska Posada"
                     )
                 }
                 composable(HELP_ROUTE) {
@@ -1449,9 +1409,12 @@ private fun AboutScreen(
     onExperimentalFeaturesChange: (Boolean) -> Unit,
     canUseExperimentalFeatures: Boolean,
     currentTier: String,
+    isReseller: Boolean,
+    resellerName: String
 ) {
     val context = LocalContext.current
     val appVersion = remember { getAppVersionName(context) }
+    val appDistribution = AppEdition.distribution
     val colorScheme = MaterialTheme.colorScheme
 
     Column(
@@ -1499,12 +1462,25 @@ private fun AboutScreen(
                         modifier = Modifier.padding(top = 2.dp)
                     ) {
                         Text(
-                            text = "v$appVersion",
+                            text = "Versión: $appVersion",
                             style = MaterialTheme.typography.labelSmall,
                             color = colorScheme.onSecondaryContainer,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                         )
                     }
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = colorScheme.secondaryContainer,
+                        modifier = Modifier.padding(top = 2.dp)
+                    ) {
+                        Text(
+                            text = "Distribución: $appDistribution",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colorScheme.onSecondaryContainer,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                        )
+                    }
+                    if(!isReseller){
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = "Lázaro Yunier Salazar Rodríguez",
@@ -1517,9 +1493,35 @@ private fun AboutScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = colorScheme.onSurfaceVariant
                     )
+                    }
                 }
             }
         }
+
+        if(isReseller){
+            AboutSectionCard(
+            icon = Icons.Default.ContactSupport,
+            iconBackground = colorScheme.tertiaryContainer,
+            iconTint = colorScheme.onTertiaryContainer,
+            title = "Equipo de desarrollo",
+        ) {
+            AboutLinkItem(
+                icon = Icons.Default.People,
+                label = "Lazaro Yunier Salazar Rodriguez",
+                sublabel = "Programación y desarrollo",
+                onClick = onContactWhatsApp
+            )
+
+            Divider(color = colorScheme.outlineVariant.copy(alpha = 0.5f))
+            AboutLinkItem(
+                icon = Icons.Default.People,
+                label = "Daniuska Posada",
+                sublabel = "Asesora Técnica en procedimientos de contabilidad y fianzas para trabajadores por cuenta propia",
+                onClick = { onOpenUrl("https://wa.me/+5352375492") }
+            )
+        }
+        }
+
 
         // ── Contacto ──────────────────────────────────────────────
         AboutSectionCard(
@@ -1552,7 +1554,7 @@ private fun AboutScreen(
         ) {
             AboutLinkItem(
                 icon = Icons.Default.Public,
-                label = "Web institucional",
+                label = "Página Web",
                 sublabel = "www.ecosysgd.com",
                 onClick = { onOpenUrl("https://www.ecosysgd.com") }
             )

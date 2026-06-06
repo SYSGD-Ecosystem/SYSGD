@@ -58,9 +58,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.res.painterResource
 import cu.lazaroysr96.sysgdcont.ui.components.producto.toProductoImagen
-import cu.lazaroysr96.sysgdcont.ui.fichacosto.FichaCostoProductoPreferences
-import cu.lazaroysr96.sysgdcont.ui.fichacosto.FichaCostoScreen
-import cu.lazaroysr96.sysgdcont.ui.fichacosto.FichaCostoViewModel
 
 private data class CuentaTreeNode(
     val cuenta: CuentaContable,
@@ -300,11 +297,9 @@ private fun ProductoDetalleDialog(
     val context = LocalContext.current
     var priceEditor by remember { mutableStateOf<String?>(null) }
     var stockEditorOpen by remember { mutableStateOf(false) }
-    var fichaCostoOpen by remember { mutableStateOf(false) }
+    
     var deleteConfirmOpen by remember { mutableStateOf(false) }
-    var fichaCostoExiste by remember(producto.id) {
-        mutableStateOf(FichaCostoProductoPreferences.hasFicha(context, producto.id))
-    }
+    
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -454,11 +449,6 @@ private fun ProductoDetalleDialog(
                         onEdit = { stockEditorOpen = true }
                     )
 
-                    FichaCostoProductActionCard(
-                        fichaExiste = fichaCostoExiste,
-                        onClick = { fichaCostoOpen = true }
-                    )
-
                     // Historial
                     if (historial.isNotEmpty()) {
                         Text(
@@ -519,16 +509,6 @@ private fun ProductoDetalleDialog(
         )
     }
 
-    if (fichaCostoOpen) {
-        ProductoFichaCostoDialog(
-            producto = producto,
-            onDismiss = { fichaCostoOpen = false },
-            onSaved = {
-                fichaCostoExiste = true
-                fichaCostoOpen = false
-            }
-        )
-    }
 
     priceEditor?.let { tipoPrecio ->
         EditPriceDialog(
@@ -640,120 +620,7 @@ private fun DeleteProductoConfirmDialog(
 }
 
 
-@Composable
-private fun FichaCostoProductActionCard(
-    fichaExiste: Boolean,
-    onClick: () -> Unit,
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = colorScheme.tertiaryContainer.copy(alpha = 0.45f),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text(
-                text = "Ficha de costo del producto",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = colorScheme.onTertiaryContainer
-            )
-            Text(
-                text = "La funcionalidad de generación de fichas de costo está en desarrollo. Por ahora, no se guarda en la base de datos, el modelo o la interfaz de usuario. Podría ser modificada en el tiempo.",
-                style = MaterialTheme.typography.bodySmall,
-                color = colorScheme.onTertiaryContainer.copy(alpha = 0.78f)
-            )
-            OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(if (fichaExiste) "Ver ficha de costos" else "Definir ficha de costo")
-            }
-        }
-    }
-}
 
-@Composable
-private fun ProductoFichaCostoDialog(
-    producto: Producto,
-    onDismiss: () -> Unit,
-    onSaved: () -> Unit,
-) {
-    val context = LocalContext.current
-    val vm = remember(producto.id) {
-        FichaCostoViewModel().apply {
-            inicializarParaProducto(
-                productoId = producto.id,
-                productoNombre = producto.nombre,
-                unidadMedida = producto.unidad,
-                fichaGuardada = FichaCostoProductoPreferences.loadFicha(context, producto.id)
-            )
-        }
-    }
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth(0.98f)
-                .fillMaxHeight(0.92f),
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp
-        ) {
-            Column(Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Ficha de costo",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = producto.nombre,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    TextButton(onClick = {vm.generatePDF(context)}) { Text("Generar PDF") }
-                }
-                Divider()
-                Box(modifier = Modifier.weight(1f)) {
-                    FichaCostoScreen(vm = vm)
-                }
-                Divider()
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(onClick = onDismiss) { Text("Cancelar") }
-                    Spacer(Modifier.width(8.dp))
-                    Button(onClick = {
-                        FichaCostoProductoPreferences.saveFicha(context, producto.id, vm.toPersistida())
-                        onSaved()
-                    }) {
-                        Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Guardar ficha")
-                    }
-                }
-            }
-        }
-    }
-}
 
 // ── Auxiliares ────────────────────────────────────────────────────────────────
 

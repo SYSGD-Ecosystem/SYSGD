@@ -105,12 +105,14 @@ fun DashboardScreen(
     onSwitchWorkspace: (String) -> Unit,
     onCreateWorkspace: (String) -> Unit,
     canCreateWorkspace: Boolean,
+    canUseProFeatures: Boolean,
     workspaceLimitMessage: String?,
     onOpenRegistro: () -> Unit,
     onOpenVentas: () -> Unit,
     onOpenNomencladores: () -> Unit,
     showNomencladoresShortcut: Boolean,
     onOpenCatalogos: () -> Unit,
+    showCatalogosShortcut: Boolean,
     onOpenTerceros: () -> Unit,
     showTercerosShortcut: Boolean,
     onOpenDocumentos: () -> Unit,
@@ -127,7 +129,6 @@ fun DashboardScreen(
     availableCredits: Int?,
     currentTier: String,
     hasActiveLicense: Boolean,
-    onNavigateToLicenses: () -> Unit,
     onNavigateToSecurity: () -> Unit,
     onContactWhatsApp: () -> Unit,
     viewModel: LedgerViewModel,
@@ -198,6 +199,7 @@ fun DashboardScreen(
         when (shortcut.title) {
             "Nomencladores" -> showNomencladoresShortcut
             "Terceros" -> showTercerosShortcut
+            "Catálogos" -> showCatalogosShortcut
             else -> true
         }
     }
@@ -218,6 +220,7 @@ fun DashboardScreen(
                     icon = { Icon(Icons.Default.Home, contentDescription = null) },
                     label = { Text("General") }
                 )
+                if(canUseProFeatures){
                 NavigationBarItem(
                     selected = selectedTab == DashboardTab.MODULOS,
                     onClick = { selectedTab = DashboardTab.MODULOS },
@@ -230,6 +233,7 @@ fun DashboardScreen(
                     icon = { Icon(Icons.Default.Widgets, contentDescription = null) },
                     label = { Text("Calculadora") }
                 )
+                }
                 NavigationBarItem(
                     selected = selectedTab == DashboardTab.CUENTA,
                     onClick = { selectedTab = DashboardTab.CUENTA },
@@ -269,6 +273,7 @@ fun DashboardScreen(
                     .padding(horizontal = 20.dp, vertical = 20.dp)
             ) {
                 Column {
+                    if(canUseProFeatures){
                     WorkspaceOverviewCard(
                     currentWorkspaceName = currentWorkspace?.nombre ?: "Negocio principal",
                     totalWorkspaces = workspaces.size,
@@ -285,6 +290,7 @@ fun DashboardScreen(
                         hasLocalChanges = hasLocalChanges,
                         isDarkTheme = isDarkTheme,
                     )
+                    }
                 }
             }
 
@@ -377,7 +383,6 @@ DashboardTab.MODULOS -> {
         availableCredits = availableCredits,
         currentTier = currentTier,
         hasActiveLicense = hasActiveLicense,
-        onNavigateToLicenses = onNavigateToLicenses,
         onNavigateToSecurity = onNavigateToSecurity,
         onContactWhatsApp = onContactWhatsApp,
         isDarkTheme = isDarkTheme,
@@ -949,7 +954,6 @@ private fun UserProfileTab(
     availableCredits: Int?,
     currentTier: String,
     hasActiveLicense: Boolean,
-    onNavigateToLicenses: () -> Unit,
     onNavigateToSecurity: () -> Unit,
     onContactWhatsApp: () -> Unit,
     isDarkTheme: Boolean,
@@ -1060,37 +1064,6 @@ private fun UserProfileTab(
                     tint = colorScheme.onSecondaryContainer.copy(alpha = 0.5f),
                     modifier = Modifier.size(40.dp)
                 )
-            }
-        }
-
-        // Estado de licencia
-        Card(
-            shape = RoundedCornerShape(18.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Licencia",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        if (hasActiveLicense) "Plan ${currentTier.uppercase()} activo"
-                        else "Sin licencia activa",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                TextButton(onClick = onNavigateToLicenses) {
-                    Text(if (hasActiveLicense) "Ver licencia" else "Comprar")
-                }
             }
         }
 
