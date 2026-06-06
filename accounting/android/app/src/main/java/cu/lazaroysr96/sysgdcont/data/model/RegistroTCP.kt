@@ -16,6 +16,7 @@ data class GeneralesData(
 
 data class DayAmountRow(
     val id: String = "",
+    val anio: Int = 2026,
     val dia: String = "",
     val importe: String = ""
 )
@@ -28,6 +29,7 @@ data class TributoRow(
     val anuncios: String = "",
     val css20: String = "",
     val css14: String = "",
+    val cssSubsidio: String = "",
     val otros: String = "",
     val restauracion: String = "",
     val arrendamiento: String = "",

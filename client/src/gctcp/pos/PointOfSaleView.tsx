@@ -18,21 +18,21 @@ const posSections: Array<{
 	{ id: "mas", label: "Mas", icon: <MoreHorizontal /> },
 ];
 
-export const PointOfSaleView: FC<{ workspace: CloudWorkspaceEntry }> = ({ workspace }) => {
+export const PointOfSaleView: FC<{ workspace: CloudWorkspaceEntry; selectedYear: number }> = ({ workspace, selectedYear }) => {
 	const [section, setSection] = useState<PosSection>("venta");
 
 	const renderSection = () => {
 		switch (section) {
 			case "venta":
-				return <SaleSection workspace={workspace} />;
+				return <SaleSection workspace={workspace} selectedYear={selectedYear} />;
 			case "compra":
-				return <PurchaseSection workspace={workspace} />;
+				return <PurchaseSection workspace={workspace} selectedYear={selectedYear} />;
 			case "almacen":
-				return <WarehouseSection workspace={workspace} />;
+				return <WarehouseSection workspace={workspace} selectedYear={selectedYear} />;
 			case "historial":
-				return <HistorySection workspace={workspace} />;
+				return <HistorySection workspace={workspace} selectedYear={selectedYear} />;
 			case "mas":
-				return <MoreSection workspace={workspace} />;
+				return <MoreSection workspace={workspace} selectedYear={selectedYear} />;
 			default:
 				return null;
 		}

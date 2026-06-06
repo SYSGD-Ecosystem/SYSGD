@@ -106,11 +106,51 @@ const buildRegistrationUserData = (
 ) => {
   const defaultUserData = createDefaultUserData();
 
-  if (registrationSource === "sysgd_cont_android" && distribution === "apklis") {
+  if (registrationSource === "sysgd_cont_android") {
+
+    if(distribution === "apklis"){
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const trialBilling = activatePlanBilling(defaultUserData.billing, "pro", 1, now);
+
     return {
       ...defaultUserData,
-      billing: activatePlanBilling(defaultUserData.billing, "pro", 12),
+      billing: {
+        ...trialBilling,
+        billing_cycle: {
+          ...trialBilling.billing_cycle,
+          next_reset: expiresAt,
+        },
+        plan_validity: trialBilling.plan_validity
+          ? {
+              ...trialBilling.plan_validity,
+              expires_at: expiresAt,
+            }
+          : trialBilling.plan_validity,
+      },
     };
+  }else{
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const trialBilling = activatePlanBilling(defaultUserData.billing, "pro", 1, now);
+
+    return {
+      ...defaultUserData,
+      billing: {
+        ...trialBilling,
+        billing_cycle: {
+          ...trialBilling.billing_cycle,
+          next_reset: expiresAt,
+        },
+        plan_validity: trialBilling.plan_validity
+          ? {
+              ...trialBilling.plan_validity,
+              expires_at: expiresAt,
+            }
+          : trialBilling.plan_validity,
+      },
+    };
+  }
   }
 
   return defaultUserData;
@@ -142,7 +182,7 @@ router.post("/register", registerIpRateLimit, async (req, res) => {
   const registrationUserData = buildRegistrationUserData(registrationSource, androidDistribution);
   const grantedPlan =
     registrationSource === "sysgd_cont_android" && androidDistribution === "apklis"
-      ? { tier: "pro", durationMonths: 12, reason: "android_apklis_bundle" }
+      ? { tier: "pro", durationDays: 30, reason: "android_apklis_trial" }
       : null;
 
   // Validar IP solo para sysgd-cont

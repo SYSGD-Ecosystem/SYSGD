@@ -27,6 +27,7 @@ const licenseStore = {
     if (!this.filePath) {
       this.filePath = path.join(app.getPath('userData'), 'license.json');
     }
+    console.log(this.filePath)
     return this.filePath;
   },
   read() {

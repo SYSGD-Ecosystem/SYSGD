@@ -1,5 +1,6 @@
 package cu.lazaroysr96.sysgdcont.ui.main.screens
 
+import cu.lazaroysr96.sysgdcont.data.model.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -49,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import cu.lazaroysr96.sysgdcont.BuildConfig
 
 @Composable
 fun CajaBancoMovimientosScreen(
@@ -56,7 +58,13 @@ fun CajaBancoMovimientosScreen(
     onMovimientoClick: (WalletMovimiento) -> Unit = {},
 ) {
     var subTab by remember { mutableIntStateOf(0) }
-    val subTabs = listOf("Movimientos", "Transferencias", "Conciliación")
+    val subTabs = remember {
+        if (BuildConfig.DEBUG) {
+            listOf("Movimientos", "Transferencias", "Conciliación")
+        } else {
+            listOf("Movimientos", "Transferencias")
+        }
+    }
 
     Column(Modifier.fillMaxSize()) {
         TabRow(
@@ -87,7 +95,7 @@ fun CajaBancoMovimientosScreen(
         when (subTab) {
             0 -> MovimientosTab(state, onMovimientoClick)
             1 -> TransferenciasTab(state, onMovimientoClick)
-            2 -> ConciliacionTab(state)
+            2 -> if (BuildConfig.DEBUG) ConciliacionTab(state)
         }
     }
 }

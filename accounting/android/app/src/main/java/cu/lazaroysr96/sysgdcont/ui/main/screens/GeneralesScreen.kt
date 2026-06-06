@@ -3,12 +3,15 @@ package cu.lazaroysr96.sysgdcont.ui.main.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cu.lazaroysr96.sysgdcont.data.model.GeneralesData
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
@@ -21,7 +24,7 @@ fun GeneralesScreen(viewModel: LedgerViewModel) {
 
     var nombre by remember(generales) { mutableStateOf(generales.nombre) }
     var nit by remember(generales) { mutableStateOf(generales.nit) }
-    var anio by remember(generales) { mutableStateOf(generales.anio.toString()) }
+    val selectedYear = generales.anio
     var actividad by remember(generales) { mutableStateOf(generales.actividad) }
     var codigo by remember(generales) { mutableStateOf(generales.codigo) }
     var fiscalCalle by remember(generales) { mutableStateOf(generales.fiscalCalle) }
@@ -61,12 +64,14 @@ fun GeneralesScreen(viewModel: LedgerViewModel) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             OutlinedTextField(
-                value = anio,
-                onValueChange = { anio = it.filter { c -> c.isDigit() }.take(4) },
+                value = selectedYear.toString(),
+                onValueChange = {},
+                readOnly = true,
                 label = { Text("Año") },
+                leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
+                supportingText = { Text("Se controla con el selector global de año.") },
                 modifier = Modifier.weight(1f),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                singleLine = true
             )
         }
 
@@ -106,20 +111,24 @@ fun GeneralesScreen(viewModel: LedgerViewModel) {
         Spacer(modifier = Modifier.height(8.dp))
 
         Row(modifier = Modifier.fillMaxWidth()) {
-            OutlinedTextField(
+            val fiscalMunicipios = municipiosByProvincia[fiscalProvincia] ?: emptyList()
+            DropdownTextField(
+                label = "Municipio",
                 value = fiscalMunicipio,
-                onValueChange = { fiscalMunicipio = it },
-                label = { Text("Municipio") },
+                options = fiscalMunicipios,
                 modifier = Modifier.weight(1f),
-                singleLine = true
+                onOptionSelected = { fiscalMunicipio = it }
             )
             Spacer(modifier = Modifier.width(8.dp))
-            OutlinedTextField(
+            DropdownTextField(
+                label = "Provincia",
                 value = fiscalProvincia,
-                onValueChange = { fiscalProvincia = it },
-                label = { Text("Provincia") },
+                options = provinciasCuba,
                 modifier = Modifier.weight(1f),
-                singleLine = true
+                onOptionSelected = {
+                    fiscalProvincia = it
+                    if (fiscalMunicipio !in (municipiosByProvincia[it] ?: emptyList())) fiscalMunicipio = ""
+                }
             )
         }
 
@@ -138,20 +147,24 @@ fun GeneralesScreen(viewModel: LedgerViewModel) {
         Spacer(modifier = Modifier.height(8.dp))
 
         Row(modifier = Modifier.fillMaxWidth()) {
-            OutlinedTextField(
+            val legalMunicipios = municipiosByProvincia[legalProvincia] ?: emptyList()
+            DropdownTextField(
+                label = "Municipio",
                 value = legalMunicipio,
-                onValueChange = { legalMunicipio = it },
-                label = { Text("Municipio") },
+                options = legalMunicipios,
                 modifier = Modifier.weight(1f),
-                singleLine = true
+                onOptionSelected = { legalMunicipio = it }
             )
             Spacer(modifier = Modifier.width(8.dp))
-            OutlinedTextField(
+            DropdownTextField(
+                label = "Provincia",
                 value = legalProvincia,
-                onValueChange = { legalProvincia = it },
-                label = { Text("Provincia") },
+                options = provinciasCuba,
                 modifier = Modifier.weight(1f),
-                singleLine = true
+                onOptionSelected = {
+                    legalProvincia = it
+                    if (legalMunicipio !in (municipiosByProvincia[it] ?: emptyList())) legalMunicipio = ""
+                }
             )
         }
 
@@ -163,7 +176,7 @@ fun GeneralesScreen(viewModel: LedgerViewModel) {
                     GeneralesData(
                         nombre = nombre,
                         nit = nit,
-                        anio = anio.toIntOrNull() ?: 2026,
+                        anio = selectedYear,
                         actividad = actividad,
                         codigo = codigo,
                         fiscalCalle = fiscalCalle,
@@ -181,3 +194,70 @@ fun GeneralesScreen(viewModel: LedgerViewModel) {
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DropdownTextField(
+    label: String,
+    value: String,
+    options: List<String>,
+    modifier: Modifier = Modifier,
+    onOptionSelected: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.menuAnchor().fillMaxWidth(),
+            singleLine = true
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    onClick = {
+                        onOptionSelected(option)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+private val provinciasCuba = listOf(
+    "Pinar del Río", "Artemisa", "La Habana", "Mayabeque", "Matanzas", "Cienfuegos",
+    "Villa Clara", "Sancti Spíritus", "Ciego de Ávila", "Camagüey", "Las Tunas",
+    "Granma", "Holguín", "Santiago de Cuba", "Guantánamo", "Isla de la Juventud",
+)
+
+private val municipiosByProvincia: Map<String, List<String>> = mapOf(
+    "Pinar del Río" to listOf("Consolación del Sur", "Guane", "La Palma", "Los Palacios", "Mantua", "Minas de Matahambre", "Pinar del Río", "San Juan y Martínez", "San Luis", "Sandino", "Viñales"),
+    "Artemisa" to listOf("Alquízar", "Artemisa", "Bauta", "Caimito", "Guanajay", "Güira de Melena", "Mariel", "Bahía Honda", "San Antonio de los Baños", "San Cristóbal"),
+    "La Habana" to listOf("Playa", "Plaza de la Revolución", "Centro Habana", "Habana Vieja", "Regla", "Habana del Este", "Guanabacoa", "San Miguel del Padrón", "Diez de Octubre", "Cerro", "Marianao", "La Lisa", "Boyeros", "Arroyo Naranjo", "Cotorro"),
+    "Mayabeque" to listOf("Batabanó", "Bejucal", "Güines", "Jaruco", "Madruga", "Melena del Sur", "Nueva Paz", "Quivicán", "San José de las Lajas", "San Nicolás de Bari", "Santa Cruz del Norte"),
+    "Matanzas" to listOf("Calimete", "Cárdenas", "Ciénaga de Zapata", "Colón", "Jagüey Grande", "Jovellanos", "Limonar", "Los Arabos", "Martí", "Matanzas", "Pedro Betancourt", "Perico", "Unión de Reyes"),
+    "Cienfuegos" to listOf("Abreus", "Aguada de Pasajeros", "Cienfuegos", "Cruces", "Cumanayagua", "Lajas", "Palmira", "Rodas"),
+    "Villa Clara" to listOf("Caibarién", "Camajuaní", "Cifuentes", "Corralillo", "Encrucijada", "Manicaragua", "Placetas", "Quemado de Güines", "Ranchuelo", "Remedios", "Sagua la Grande", "Santa Clara", "Santo Domingo"),
+    "Sancti Spíritus" to listOf("Cabaiguán", "Fomento", "Jatibonico", "La Sierpe", "Sancti Spíritus", "Taguasco", "Trinidad", "Yaguajay"),
+    "Ciego de Ávila" to listOf("Baraguá", "Bolivia", "Chambas", "Ciego de Ávila", "Ciro Redondo", "Florencia", "Majagua", "Morón", "Primero de Enero", "Venezuela"),
+    "Camagüey" to listOf("Camagüey", "Carlos Manuel de Céspedes", "Esmeralda", "Florida", "Guáimaro", "Jimaguayú", "Minas", "Najasa", "Nuevitas", "Santa Cruz del Sur", "Sibanicú", "Sierra de Cubitas", "Vertientes"),
+    "Las Tunas" to listOf("Amancio", "Colombia", "Jesús Menéndez", "Jobabo", "Las Tunas", "Majibacoa", "Manatí", "Puerto Padre"),
+    "Granma" to listOf("Bartolomé Masó", "Bayamo", "Buey Arriba", "Campechuela", "Cauto Cristo", "Guisa", "Jiguaní", "Manzanillo", "Media Luna", "Niquero", "Pilón", "Río Cauto", "Yara"),
+    "Holguín" to listOf("Antilla", "Báguanos", "Banes", "Cacocum", "Calixto García", "Cueto", "Frank País", "Gibara", "Holguín", "Mayarí", "Moa", "Rafael Freyre", "Sagua de Tánamo", "Urbano Noris"),
+    "Santiago de Cuba" to listOf("Contramaestre", "Guamá", "Mella", "Palma Soriano", "San Luis", "Santiago de Cuba", "Segundo Frente", "Songo-La Maya", "Tercer Frente"),
+    "Guantánamo" to listOf("Baracoa", "Caimanera", "El Salvador", "Guantánamo", "Imías", "Maisí", "Manuel Tames", "Niceto Pérez", "San Antonio del Sur", "Yateras"),
+    "Isla de la Juventud" to listOf("Isla de la Juventud"),
+)

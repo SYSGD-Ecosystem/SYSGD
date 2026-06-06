@@ -84,7 +84,7 @@ fun ResumenScreen(viewModel: LedgerViewModel, experimentalFeaturesEnabled: Boole
                     viewModel.downloadPdf()
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isDownloadingPdf && !uiState.isDownloadingOfflinePdf
+                enabled = !uiState.isDownloadingPdf && !uiState.isDownloadingOfflinePdf && experimentalFeaturesEnabled
             ) {
                 if (uiState.isDownloadingPdf) {
                     CircularProgressIndicator(
@@ -100,6 +100,12 @@ fun ResumenScreen(viewModel: LedgerViewModel, experimentalFeaturesEnabled: Boole
                     Text("Descargar PDF")
                 }
             }
+        }
+
+        if(!experimentalFeaturesEnabled){
+            item {
+                Text("Para generar la declaración jurada debe comprar una licencia")
+        }
         }
 
         if (experimentalFeaturesEnabled) {

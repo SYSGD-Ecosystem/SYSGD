@@ -6,7 +6,11 @@ import cu.lazaroysr96.sysgdcont.data.model.AccountingCategory
 import cu.lazaroysr96.sysgdcont.data.model.AccountingItem
 import cu.lazaroysr96.sysgdcont.data.model.AccountingSubcategory
 import cu.lazaroysr96.sysgdcont.data.model.CnaeItem
+import cu.lazaroysr96.sysgdcont.data.model.NaturalezaCuenta
 import cu.lazaroysr96.sysgdcont.data.model.NomenclatorType
+import cu.lazaroysr96.sysgdcont.data.model.TipoCuenta
+import cu.lazaroysr96.sysgdcont.data.model.UsoOperativoCuenta
+import cu.lazaroysr96.sysgdcont.data.repository.LedgerRepository
 import cu.lazaroysr96.sysgdcont.data.repository.NomenclatorRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -26,12 +30,16 @@ data class NomenclatorUiState(
     val selectedSubcategoryCode: String? = null,
     val cnaeItems: List<CnaeItem> = emptyList(),
     val accountingItems: List<AccountingItem> = emptyList(),
+    val operationalAccountCodes: Set<String> = emptySet(),
+    val operationMessage: String? = null,
+    val operationError: String? = null,
     val isLoading: Boolean = false
 )
 
 @HiltViewModel
 class NomenclatorViewModel @Inject constructor(
-    private val repository: NomenclatorRepository
+    private val repository: NomenclatorRepository,
+    private val ledgerRepository: LedgerRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(NomenclatorUiState())
     val uiState: StateFlow<NomenclatorUiState> = _uiState.asStateFlow()
@@ -47,6 +55,13 @@ class NomenclatorViewModel @Inject constructor(
                     accountingSubcategories = subcategories,
                     accountingItems = accountingItems
                 )
+            }
+        }
+        viewModelScope.launch {
+            ledgerRepository.cuentasContables.collect { cuentas ->
+                _uiState.update {
+                    it.copy(operationalAccountCodes = cuentas.map { cuenta -> cuenta.codigo }.toSet())
+                }
             }
         }
     }
@@ -90,6 +105,65 @@ class NomenclatorViewModel @Inject constructor(
             )
         }
         refresh()
+    }
+
+    fun useAccountingAccount(item: AccountingItem) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                ledgerRepository.crearCuentaContable(
+                    codigo = item.accountCode,
+                    nombre = item.accountName,
+                    naturaleza = item.toNaturalezaCuenta(),
+                    tipo = item.toTipoCuenta(),
+                    usoOperativo = item.toUsoOperativoCuenta()
+                )
+            }
+                .onSuccess {
+                    _uiState.update {
+                        it.copy(
+                            operationMessage = "Cuenta ${item.accountCode} agregada al catálogo operativo.",
+                            operationError = null
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            operationMessage = null,
+                            operationError =
+                                error.message ?: "No se pudo agregar la cuenta al catálogo operativo."
+                        )
+                    }
+                }
+        }
+    }
+
+    fun clearOperationStatus() {
+        _uiState.update { it.copy(operationMessage = null, operationError = null) }
+    }
+
+    private fun AccountingItem.toNaturalezaCuenta(): String = when {
+        accountNature.contains("acre", ignoreCase = true) -> NaturalezaCuenta.ACREEDORA
+        accountNature.contains("deud", ignoreCase = true) -> NaturalezaCuenta.DEUDORA
+        accountNature.contains("mixt", ignoreCase = true) -> NaturalezaCuenta.MIXTA
+        accountCode.startsWith("9") -> NaturalezaCuenta.ACREEDORA
+        accountCode.startsWith("8") -> NaturalezaCuenta.DEUDORA
+        else -> NaturalezaCuenta.MIXTA
+    }
+
+    private fun AccountingItem.toTipoCuenta(): String = when {
+        accountCode.startsWith("9") -> TipoCuenta.INGRESO
+        accountCode.startsWith("8") -> TipoCuenta.GASTO
+        accountCode.startsWith("1") -> TipoCuenta.ACTIVO
+        accountCode.startsWith("2") -> TipoCuenta.PASIVO
+        accountCode.startsWith("3") -> TipoCuenta.PATRIMONIO
+        else -> TipoCuenta.MIXTO
+    }
+
+    private fun AccountingItem.toUsoOperativoCuenta(): String = when (toTipoCuenta()) {
+        TipoCuenta.INGRESO -> UsoOperativoCuenta.INGRESO
+        TipoCuenta.GASTO -> UsoOperativoCuenta.GASTO
+        else -> UsoOperativoCuenta.MIXTO
     }
 
     private fun refresh() {

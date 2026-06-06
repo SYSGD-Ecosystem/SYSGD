@@ -40,7 +40,6 @@ import cu.lazaroysr96.sysgdcont.viewmodel.CompraCheckoutOptions
 import cu.lazaroysr96.sysgdcont.viewmodel.EstadoCobroOperacion
 import cu.lazaroysr96.sysgdcont.viewmodel.VentaCheckoutOptions
 import cu.lazaroysr96.sysgdcont.viewmodel.OperacionDetalleResumen
-// ─── Nuevos imports de componentes unificados ─────────────────────────────────
 import cu.lazaroysr96.sysgdcont.ui.components.producto.CatalogoItemRow
 import cu.lazaroysr96.sysgdcont.ui.components.producto.InventarioItemAvatar
 import cu.lazaroysr96.sysgdcont.ui.components.producto.ProductGridCard
@@ -49,7 +48,6 @@ import cu.lazaroysr96.sysgdcont.ui.components.producto.ProductoBaseItem
 import cu.lazaroysr96.sysgdcont.ui.components.producto.ProductoFormDialog
 import cu.lazaroysr96.sysgdcont.ui.components.producto.ProductoImagenAvatar
 import cu.lazaroysr96.sysgdcont.ui.components.producto.toBaseItem
-// ─────────────────────────────────────────────────────────────────────────────
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -58,10 +56,6 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
-
-// ─────────────────────────────────────────────────────────────────────────────
-// InventarioScreen
-// ─────────────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -135,8 +129,8 @@ fun InventarioScreen(
         }
     ) { padding ->
         when (uiState.currentTab) {
-            0 -> PuntoVentaContent(viewModel, padding)
-            1 -> PuntoCompraContent(viewModel, padding)
+            0 -> PuntoVentaContent(viewModel, padding, canUseProFeatures)
+            1 -> PuntoCompraContent(viewModel, padding, canUseProFeatures)
             3 -> if (canUseProFeatures) InventarioContent(viewModel, padding)
             2 -> HistorialContent(viewModel, facturaViewModel, padding, canUseProFeatures)
             4 -> MasContent(viewModel, padding)
@@ -231,23 +225,32 @@ fun InventarioScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingValues) {
+private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingValues, canUseProFeatures: Boolean) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
     val esHoy = uiState.fechaTrabajo == LocalDate.now()
     val productosFiltrados = remember(uiState.productos, uiState.selectedVentaAlmacenId) {
         uiState.productos.filter { it.almacenId == uiState.selectedVentaAlmacenId }
     }
+    val colorScheme = MaterialTheme.colorScheme
 
     Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
         Text("Punto de Venta", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
-        WarehouseSelectorCard(
+        if(canUseProFeatures){
+            WarehouseSelectorCard(
             label = "Almacén de salida",
             almacenes = uiState.almacenes,
             selectedId = uiState.selectedVentaAlmacenId,
             onSelected = viewModel::seleccionarAlmacenVenta
         )
+        }else{
+            Text(text = "Funciones limitadas para gestionar inventarios, almacenes, generar facturas e integrar ventas y compras con el registro de ingresos y gastos adquiera una licencia.",
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.onTertiaryContainer.copy(alpha = 0.78f)
+            )
+        }
+        
         Spacer(Modifier.height(12.dp))
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
             Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -288,23 +291,32 @@ private fun PuntoVentaContent(viewModel: InventarioViewModel, padding: PaddingVa
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun PuntoCompraContent(viewModel: InventarioViewModel, padding: PaddingValues) {
+private fun PuntoCompraContent(viewModel: InventarioViewModel, padding: PaddingValues, canUseProFeatures: Boolean) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val dateFormatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
     val esHoy = uiState.fechaTrabajo == LocalDate.now()
     val productosFiltrados = remember(uiState.productosCompra, uiState.selectedCompraAlmacenId) {
         uiState.productosCompra.filter { it.almacenDestinoId == uiState.selectedCompraAlmacenId }
     }
+    val colorScheme = MaterialTheme.colorScheme
 
     Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
         Text("Registro de Compras", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
+        if(canUseProFeatures){
         WarehouseSelectorCard(
             label = "Almacén de entrada",
             almacenes = uiState.almacenes,
             selectedId = uiState.selectedCompraAlmacenId,
             onSelected = viewModel::seleccionarAlmacenCompra
-        )
+        )    
+        }else{
+            Text(
+                text = "Funciones limitadas para gestionar inventarios, almacenes, generar facturas e integrar ventas y compras con el registro de ingresos y gastos adquiera una licencia.",
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.onTertiaryContainer.copy(alpha = 0.78f))
+        }
+        
         Spacer(Modifier.height(12.dp))
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
             Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -1004,22 +1016,87 @@ data class VinculadoTemp(val productoId: String, val ratio: Double)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun VinculadoItemRow(vinculado: VinculadoTemp, productosCompra: List<ProductoCompra>, productosVinculados: List<String>, onProductoCambiado: (String) -> Unit, onRatioCambiado: (Double) -> Unit, onEliminar: () -> Unit) {
+private fun VinculadoItemRow(
+    vinculado: VinculadoTemp,
+    productosCompra: List<ProductoCompra>,
+    productosVinculados: List<String>,
+    onProductoCambiado: (String) -> Unit,
+    onRatioCambiado: (Double) -> Unit,
+    onEliminar: () -> Unit
+) {
     var dropdownExpanded by remember { mutableStateOf(false) }
     var ratioInput by remember { mutableStateOf(if (vinculado.ratio > 0) vinculado.ratio.toString() else "1") }
-    val productosDisponibles = productosCompra.filter { p -> p.id == vinculado.productoId || !productosVinculados.contains(p.id) }
+    val productoSeleccionado = productosCompra.find { it.id == vinculado.productoId }
+    val productosDisponibles = productosCompra.filter { producto ->
+        producto.id == vinculado.productoId || !productosVinculados.contains(producto.id)
+    }
+
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(8.dp)) {
-            ExposedDropdownMenuBox(expanded = dropdownExpanded, onExpandedChange = { dropdownExpanded = it }) {
-                OutlinedTextField(value = productosCompra.find { it.id == vinculado.productoId }?.nombre ?: "Seleccionar", onValueChange = {}, readOnly = true, label = { Text("Producto") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(dropdownExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
-                ExposedDropdownMenu(expanded = dropdownExpanded, onDismissRequest = { dropdownExpanded = false }) {
-                    productosDisponibles.forEach { p -> DropdownMenuItem(text = { Text("${p.emoji} ${p.nombre}") }, onClick = { onProductoCambiado(p.id); dropdownExpanded = false }) }
+            ExposedDropdownMenuBox(
+                expanded = dropdownExpanded,
+                onExpandedChange = { dropdownExpanded = it }
+            ) {
+                OutlinedTextField(
+                    value = productoSeleccionado?.nombre ?: "Seleccionar",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Producto") },
+                    leadingIcon = {
+                        ProductoImagenAvatar(
+                            rawEmoji = productoSeleccionado?.emoji.orEmpty(),
+                            size = 32.dp,
+                            cornerRadius = 8.dp
+                        )
+                    },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(dropdownExpanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = dropdownExpanded,
+                    onDismissRequest = { dropdownExpanded = false }
+                ) {
+                    productosDisponibles.forEach { producto ->
+                        DropdownMenuItem(
+                            text = { Text(producto.nombre) },
+                            leadingIcon = {
+                                ProductoImagenAvatar(
+                                    rawEmoji = producto.emoji,
+                                    size = 32.dp,
+                                    cornerRadius = 8.dp
+                                )
+                            },
+                            onClick = {
+                                onProductoCambiado(producto.id)
+                                dropdownExpanded = false
+                            }
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(4.dp))
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                OutlinedTextField(value = ratioInput, onValueChange = { ratioInput = it.replace(',', '.'); it.replace(',', '.').toDoubleOrNull()?.let { r -> onRatioCambiado(r) } }, label = { Text("Cantidad a descontar") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true, modifier = Modifier.weight(1f))
-                IconButton(onClick = onEliminar) { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                OutlinedTextField(
+                    value = ratioInput,
+                    onValueChange = {
+                        val normalized = it.replace(',', '.')
+                        ratioInput = normalized
+                        normalized.toDoubleOrNull()?.let { ratio -> onRatioCambiado(ratio) }
+                    },
+                    label = { Text("Cantidad a descontar") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onEliminar) {
+                    Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)
+                }
             }
         }
     }
@@ -1710,8 +1787,29 @@ private fun MasContent(viewModel: InventarioViewModel, padding: PaddingValues) {
     LazyColumn(modifier = Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { Text("Más", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold); Text("Configuración, resumen y reportes del módulo de ventas", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
         item { Card { Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { Row(modifier = Modifier.fillMaxWidth().clickable { integracionExpanded = !integracionExpanded }, horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) { Text("Integración contable", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("Totaliza diariamente ventas y compras del punto de venta hacia el registro contable.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Icon(if (integracionExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null) }; AnimatedVisibility(visible = integracionExpanded, enter = expandVertically(), exit = shrinkVertically()) { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { Spacer(Modifier.height(4.dp)); Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) { Text("Activar integración"); Text("Usa cuentas contables para registrar automáticamente ventas y compras del día.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Switch(checked = integracionActiva, onCheckedChange = { integracionActiva = it }) }; CuentaContableSelector("Cuenta para ventas", "Selecciona una cuenta acreedora", uiState.cuentasIngresoContables, cuentaIngresoSeleccionada) { cuentaIngresoSeleccionada = it }; CuentaContableSelector("Cuenta para compras", "Selecciona una cuenta deudora", uiState.cuentasGastoContables, cuentaGastoSeleccionada) { cuentaGastoSeleccionada = it }; Button(onClick = { viewModel.actualizarIntegracionContable(integracionActiva, cuentaIngresoSeleccionada, cuentaGastoSeleccionada) }, modifier = Modifier.align(Alignment.End), enabled = !integracionActiva || (!cuentaIngresoSeleccionada.isNullOrBlank() && !cuentaGastoSeleccionada.isNullOrBlank())) { Icon(Icons.Default.Save, null); Spacer(Modifier.width(8.dp)); Text("Guardar") } } } } } }
+
         item { Card { Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { Text("Productos archivados", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("Consulta los productos retirados del almacén y su motivo.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant); OutlinedButton(onClick = { showArchivedDialog = true }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Inventory2, null); Spacer(Modifier.width(8.dp)); Text("Ver productos archivados") } } } }
-        item { Card { Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { Row(modifier = Modifier.fillMaxWidth().clickable { facturaExpanded = !facturaExpanded }, horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) { Text("Datos de facturación", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("Empresa, vendedor y recursos visuales para las facturas.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Icon(if (facturaExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null) }; AnimatedVisibility(visible = facturaExpanded, enter = expandVertically(), exit = shrinkVertically()) { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { Spacer(Modifier.height(4.dp)); OutlinedTextField(uiState.nombreEmpresaFactura, viewModel::updateNombreEmpresaFactura, label = { Text("Nombre de la empresa o negocio") }, modifier = Modifier.fillMaxWidth(), singleLine = true); OutlinedTextField(uiState.nombreVendedorFactura, viewModel::updateNombreVendedorFactura, label = { Text("Nombre del vendedor") }, modifier = Modifier.fillMaxWidth(), singleLine = true); OutlinedTextField(uiState.correoVendedorFactura, viewModel::updateCorreoVendedorFactura, label = { Text("Correo electrónico") }, modifier = Modifier.fillMaxWidth(), singleLine = true); OutlinedTextField(uiState.telefonoVendedorFactura, viewModel::updateTelefonoVendedorFactura, label = { Text("Teléfono") }, modifier = Modifier.fillMaxWidth(), singleLine = true); OutlinedTextField(uiState.direccionVendedorFactura, viewModel::updateDireccionVendedorFactura, label = { Text("Dirección") }, modifier = Modifier.fillMaxWidth()); DocumentoAdjuntoField("Logo de la empresa", "Opcional. Se ajusta automáticamente en la factura.", uiState.logoFacturaUri, { logoPicker.launch(arrayOf("image/*")) }) { viewModel.updateLogoFacturaUri(null) }; DocumentoAdjuntoField("Firma del vendedor", "Opcional. Usa una imagen clara sobre fondo simple.", uiState.firmaVendedorFacturaUri, { firmaVendedorPicker.launch(arrayOf("image/*")) }) { viewModel.updateFirmaVendedorFacturaUri(null) }; Button(onClick = viewModel::guardarConfiguracionFacturacion, modifier = Modifier.align(Alignment.End)) { Icon(Icons.Default.Save, null); Spacer(Modifier.width(8.dp)); Text("Guardar") } } } } } }
+
+        item { Card { Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { Row(modifier = Modifier.fillMaxWidth().clickable { facturaExpanded = !facturaExpanded }, horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) { Text("Datos de facturación", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("Empresa, vendedor y recursos visuales para las facturas.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Icon(if (facturaExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null) }; AnimatedVisibility(visible = facturaExpanded, enter = expandVertically(), exit = shrinkVertically()) { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { Spacer(Modifier.height(4.dp)); 
+            
+            OutlinedTextField(uiState.nombreEmpresaFactura, viewModel::updateNombreEmpresaFactura, label = { Text("Nombre de la empresa o negocio") }, modifier = Modifier.fillMaxWidth(), singleLine = true); 
+            
+            OutlinedTextField(uiState.nombreVendedorFactura, viewModel::updateNombreVendedorFactura, label = { Text("Nombre del vendedor") }, modifier = Modifier.fillMaxWidth(), singleLine = true); 
+
+            OutlinedTextField(uiState.nitVendedorFactura, viewModel::updateNitVendedorFactura, label = { Text("NIT") }, modifier = Modifier.fillMaxWidth(), singleLine = true); 
+            
+            OutlinedTextField(uiState.correoVendedorFactura, viewModel::updateCorreoVendedorFactura, label = { Text("Correo electrónico") }, modifier = Modifier.fillMaxWidth(), singleLine = true); 
+            
+            OutlinedTextField(uiState.telefonoVendedorFactura, viewModel::updateTelefonoVendedorFactura, label = { Text("Teléfono") }, modifier = Modifier.fillMaxWidth(), singleLine = true); 
+            
+            OutlinedTextField(uiState.direccionVendedorFactura, viewModel::updateDireccionVendedorFactura, label = { Text("Dirección") }, modifier = Modifier.fillMaxWidth()); 
+            
+            DocumentoAdjuntoField("Logo de la empresa", "Opcional. Se ajusta automáticamente en la factura.", uiState.logoFacturaUri, { logoPicker.launch(arrayOf("image/*")) }) { viewModel.updateLogoFacturaUri(null) }; 
+            
+            DocumentoAdjuntoField("Firma del vendedor", "Opcional. Usa una imagen clara sobre fondo simple.", uiState.firmaVendedorFacturaUri, { firmaVendedorPicker.launch(arrayOf("image/*")) }) { viewModel.updateFirmaVendedorFacturaUri(null) }; 
+            
+            Button(onClick = viewModel::guardarConfiguracionFacturacion, modifier = Modifier.align(Alignment.End)) { Icon(Icons.Default.Save, null); Spacer(Modifier.width(8.dp)); Text("Guardar") } } } } } }
+
         item { Card { Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { Text("Resumen rápido", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); ResumenOperacionRow("Ventas del día", "%.2f CUP".format(uiState.totalHoy)); ResumenOperacionRow("Compras del día", "%.2f CUP".format(uiState.totalComprasHoy)); ResumenOperacionRow("Ventas del mes", "%.2f CUP".format(uiState.totalVentasMes)); ResumenOperacionRow("Compras del mes", "%.2f CUP".format(uiState.totalComprasMes)); ResumenOperacionRow("Cantidad de ventas", uiState.cantidadVentasMes.toString()); ResumenOperacionRow("Cantidad de compras", uiState.cantidadComprasMes.toString()); Divider(); ResumenOperacionRow("Balance mensual", "%.2f CUP".format(resumenBalanceMes), destacado = true) } } }
         item { Card { Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { Text("Reportes PDF", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("Selecciona el periodo y genera un documento con todas las operaciones registradas.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant); Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) { Box(modifier = Modifier.weight(1f)) { DateField("Desde", uiState.reporteDesde, viewModel::setReporteDesde) }; Box(modifier = Modifier.weight(1f)) { DateField("Hasta", uiState.reporteHasta, viewModel::setReporteHasta) } }; Button(onClick = viewModel::generarReporteVentasPdf, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.PictureAsPdf, null); Spacer(Modifier.width(8.dp)); Text("Generar reporte de ventas") }; OutlinedButton(onClick = viewModel::generarReporteComprasPdf, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.ReceiptLong, null); Spacer(Modifier.width(8.dp)); Text("Generar reporte de compras") } } } }
     }
@@ -1733,7 +1831,7 @@ private fun DateField(label: String, fecha: LocalDate, onFechaChange: (LocalDate
 private fun FacturaDialog(lineas: List<LineaVenta>, datosClientePrefill: cu.lazaroysr96.sysgdcont.data.repository.DatosClienteFactura?, formaPagoPrefill: FormaPago, idTransaccionPrefill: String?, notaPrefill: String, onDismiss: () -> Unit, onConfirm: (String, String, String, String, String, FormaPago, String?, String, String?) -> Unit) { val context = LocalContext.current; var nombre by remember(datosClientePrefill) { mutableStateOf(datosClientePrefill?.nombre.orEmpty()) }; var ci by remember(datosClientePrefill) { mutableStateOf(datosClientePrefill?.ci.orEmpty()) }; var correo by remember(datosClientePrefill) { mutableStateOf(datosClientePrefill?.correo.orEmpty()) }; var direccion by remember(datosClientePrefill) { mutableStateOf(datosClientePrefill?.direccion.orEmpty()) }; var telefono by remember(datosClientePrefill) { mutableStateOf(datosClientePrefill?.telefono.orEmpty()) }; var formaPago by remember(formaPagoPrefill) { mutableStateOf(formaPagoPrefill) }; var idTransaccion by remember(idTransaccionPrefill) { mutableStateOf(idTransaccionPrefill.orEmpty()) }; var nota by remember(notaPrefill) { mutableStateOf(notaPrefill) }; var firmaClienteUri by remember { mutableStateOf<String?>(null) }; var formaPagoExpanded by remember { mutableStateOf(false) }; val firmaClientePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { tomarPermisoLecturaPersistente(context, it) }; firmaClienteUri = uri?.toString() }; AlertDialog(onDismissRequest = onDismiss, title = { Text("Generar Factura") }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.verticalScroll(rememberScrollState())) { OutlinedTextField(nombre, { nombre = it }, label = { Text("Nombre del cliente") }, singleLine = true, modifier = Modifier.fillMaxWidth()); OutlinedTextField(ci, { ci = it }, label = { Text("NIT") }, singleLine = true, modifier = Modifier.fillMaxWidth()); OutlinedTextField(correo, { correo = it }, label = { Text("Correo electrónico") }, singleLine = true, modifier = Modifier.fillMaxWidth()); OutlinedTextField(direccion, { direccion = it }, label = { Text("Dirección") }, modifier = Modifier.fillMaxWidth()); OutlinedTextField(telefono, { telefono = it }, label = { Text("Teléfono") }, singleLine = true, modifier = Modifier.fillMaxWidth()); ExposedDropdownMenuBox(expanded = formaPagoExpanded, onExpandedChange = { formaPagoExpanded = it }) { OutlinedTextField(value = if (formaPago == FormaPago.EFECTIVO) "Efectivo" else "Tarjeta", onValueChange = {}, readOnly = true, label = { Text("Forma de pago") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(formaPagoExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor()); ExposedDropdownMenu(expanded = formaPagoExpanded, onDismissRequest = { formaPagoExpanded = false }) { DropdownMenuItem(text = { Text("Efectivo") }, onClick = { formaPago = FormaPago.EFECTIVO; formaPagoExpanded = false }); DropdownMenuItem(text = { Text("Tarjeta") }, onClick = { formaPago = FormaPago.TARJETA; formaPagoExpanded = false }) } }; if (formaPago == FormaPago.TARJETA) OutlinedTextField(idTransaccion, { idTransaccion = it }, label = { Text("ID de transacción") }, singleLine = true, modifier = Modifier.fillMaxWidth()); DocumentoAdjuntoField("Firma del cliente", "Opcional. Si no se agrega, se deja el espacio para firmar.", firmaClienteUri, { firmaClientePicker.launch(arrayOf("image/*")) }) { firmaClienteUri = null }; OutlinedTextField(nota, { nota = it }, label = { Text("Nota en la factura") }, modifier = Modifier.fillMaxWidth(), minLines = 3, maxLines = 5); if (lineas.isNotEmpty()) Text("Productos: ${lineas.size}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }, confirmButton = { TextButton(onClick = { onConfirm(nombre.trim(), ci.trim(), correo.trim(), direccion.trim(), telefono.trim(), formaPago, idTransaccion.trim().ifBlank { null }, nota.trim(), firmaClienteUri) }, enabled = nombre.isNotBlank() && ci.isNotBlank()) { Text("Generar") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }) }
 
 // ─── Helpers privados ─────────────────────────────────────────────────────────
-private fun permiteFraccion(unidad: String) = unidad.trim().lowercase(Locale.ROOT) in setOf("kg", "g", "libra", "litro", "ml")
+private fun permiteFraccion(unidad: String) = unidad.trim().lowercase(Locale.ROOT) in setOf("kg", "g", "libra", "lb", "litro", "lt", "ml")
 private fun esEntradaCantidadValida(valor: String, permiteFraccion: Boolean): Boolean { val n = valor.replace(',', '.'); return if (permiteFraccion) Regex("^\\d*(\\.\\d{0,2})?$").matches(n) else Regex("^\\d*$").matches(n) }
 private fun parseCantidad(valor: String, permiteFraccion: Boolean): Double? { val n = valor.replace(',', '.').trim(); if (n.isEmpty()) return null; val num = n.toDoubleOrNull() ?: return null; return if (permiteFraccion) num else if (num % 1.0 == 0.0) num else null }
 private fun formatCantidad(cantidad: Double, permiteFraccion: Boolean): String = if (!permiteFraccion || cantidad % 1.0 == 0.0) cantidad.toInt().toString() else "%.2f".format(cantidad).trimEnd('0').trimEnd('.')

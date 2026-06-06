@@ -143,6 +143,7 @@ export type AccountingWorkspaceState = {
   monedas?: Moneda[];
   monedaTasas?: MonedaTasa[];
   monedaTasaHistorial?: MonedaTasaHistorial[];
+  libroDiario?: LibroDiario
 };
 
 export type Almacen = {
@@ -351,11 +352,18 @@ export type TributoRow = {
   cuotaMensual: string;
 };
 
+export type RegistroAnualTCP = {
+  ingresos: MonthEntries;
+  gastos: MonthEntries;
+  tributos: TributoRow[];
+};
+
 export type RegistroTCP = {
   generales: GeneralesData;
   ingresos: MonthEntries;
   gastos: MonthEntries;
   tributos: TributoRow[];
+  registrosPorAnio?: Record<string, RegistroAnualTCP>;
   inventario: InventarioRegistro;
   terceros: TercerosRegistro;
 };
@@ -421,3 +429,23 @@ export type AnnualReport = {
   impuestoEstimado: number;
   monthly: MonthlyTotals[];
 };
+
+export type LibroDiarioOperation = {
+id: string
+operation_id: string
+type: "Parcial" | "Debito" | "Haber" 
+cuenta_id: string
+importe: number
+moneda_id: string
+}
+
+export type LibroDiarioListOperations = {
+  id: string
+  fecha: string
+  explication: string
+  operations: LibroDiarioOperation[]
+}
+
+export type LibroDiario = {
+operations: LibroDiarioListOperations[]
+}

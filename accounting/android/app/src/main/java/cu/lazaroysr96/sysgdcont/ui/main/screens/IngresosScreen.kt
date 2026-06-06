@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 fun IngresosScreen(viewModel: LedgerViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val cuentasPorId = remember(uiState.cuentasContables) { uiState.cuentasContables.associateBy { it.id } }
+    val selectedYear = uiState.registro.generales.anio
     var showDialog by remember { mutableStateOf(false) }
     var isEditMode by remember { mutableStateOf(false) }
     var editEntry by remember { mutableStateOf<Pair<String, DayAmountRow>?>(null) }
@@ -57,7 +58,7 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            Text("Ingresos", style = MaterialTheme.typography.titleLarge)
+            Text("Ingresos ${selectedYear}", style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(8.dp))
 
             val totalIngresos = uiState.annualReport?.totalIngresos ?: 0.0
@@ -67,7 +68,8 @@ fun IngresosScreen(viewModel: LedgerViewModel) {
 
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(LedgerConstants.MONTHS) { month ->
-                    val entries = uiState.registro.ingresos[month] ?: emptyList()
+                    val entries = (uiState.registro.ingresos[month] ?: emptyList())
+                        .filter { it.anio == selectedYear }
                     val total = entries.sumOf { it.importe.toDoubleOrNull() ?: 0.0 }
                     val isExpanded = expandedMonths.contains(month)
 

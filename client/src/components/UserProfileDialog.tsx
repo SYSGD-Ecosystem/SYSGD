@@ -38,6 +38,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import api from "@/lib/api";
 import useCurrentUser from "../hooks/connection/useCurrentUser";
 import useBillingData from "@/hooks/connection/useBillingData";
+import SecuritySettingsSection from "@/components/SecuritySettingsSection";
 
 interface UserProfileDialogProps {
   trigger?: React.ReactNode;
@@ -169,9 +170,10 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
   const ProfileContent = () => {
     if (!user || !billing) return <LoadingContent />;
 
-    const creditsPercentage = billing.limits.max_projects === -1 
-      ? 100 
-      : Math.min((billing.ai_task_credits / 100) * 100, 100);
+    const creditsPercentage =
+      billing.limits.max_projects === -1
+        ? 100
+        : Math.min((billing.ai_task_credits / 100) * 100, 100);
 
     return (
       <>
@@ -191,7 +193,8 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
             <div className="flex gap-2">
               <Badge className={getPrivilegeColor(user.privileges)}>
                 <Shield className="h-3 w-3 mr-1" />
-                {user.privileges.charAt(0).toUpperCase() + user.privileges.slice(1)}
+                {user.privileges.charAt(0).toUpperCase() +
+                  user.privileges.slice(1)}
               </Badge>
               <Badge className={getTierColor(billing.tier)}>
                 {getTierIcon(billing.tier)}
@@ -204,10 +207,11 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
         </DialogHeader>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2 gap-1 sm:grid-cols-4">
             <TabsTrigger value="overview">General</TabsTrigger>
             <TabsTrigger value="usage">Uso</TabsTrigger>
             <TabsTrigger value="billing">Billing</TabsTrigger>
+            <TabsTrigger value="security">Seguridad</TabsTrigger>
           </TabsList>
 
           {/* Tab: General Overview */}
@@ -242,7 +246,11 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
                   )}
                   {(billing.bonus_credits ?? []).length > 0 && (
                     <p className="text-xs text-muted-foreground">
-                      {(billing.bonus_credits ?? []).reduce((acc, item) => acc + item.amount, 0)} créditos bono
+                      {(billing.bonus_credits ?? []).reduce(
+                        (acc, item) => acc + item.amount,
+                        0,
+                      )}{" "}
+                      créditos bono
                     </p>
                   )}
                 </div>
@@ -266,11 +274,7 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
             )}
 
             <div className="space-y-2">
-              <Button
-                className="w-full"
-                variant="default"
-                asChild
-              >
+              <Button className="w-full" variant="default" asChild>
                 <Link to="/billing/purchase" onClick={() => setOpen(false)}>
                   <Wallet className="h-4 w-4 mr-2" />
                   Comprar Créditos
@@ -278,11 +282,7 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
               </Button>
 
               {billing.tier === "free" && (
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  asChild
-                >
+                <Button className="w-full" variant="outline" asChild>
                   <Link to="/billing/upgrade" onClick={() => setOpen(false)}>
                     <TrendingUp className="h-4 w-4 mr-2" />
                     Actualizar Plan
@@ -356,25 +356,45 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span>GitHub Integration</span>
-                        <Badge variant={billing.limits.github_integration ? "default" : "secondary"}>
+                        <Badge
+                          variant={
+                            billing.limits.github_integration
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
                           {billing.limits.github_integration ? "✓" : "✗"}
                         </Badge>
                       </div>
                       <div className="flex justify-between">
                         <span>Bank Ideas</span>
-                        <Badge variant={billing.limits.bank_ideas ? "default" : "secondary"}>
+                        <Badge
+                          variant={
+                            billing.limits.bank_ideas ? "default" : "secondary"
+                          }
+                        >
                           {billing.limits.bank_ideas ? "✓" : "✗"}
                         </Badge>
                       </div>
                       <div className="flex justify-between">
                         <span>Chat</span>
-                        <Badge variant={billing.limits.chat ? "default" : "secondary"}>
+                        <Badge
+                          variant={
+                            billing.limits.chat ? "default" : "secondary"
+                          }
+                        >
                           {billing.limits.chat ? "✓" : "✗"}
                         </Badge>
                       </div>
                       <div className="flex justify-between">
                         <span>Priority Support</span>
-                        <Badge variant={billing.limits.priority_support ? "default" : "secondary"}>
+                        <Badge
+                          variant={
+                            billing.limits.priority_support
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
                           {billing.limits.priority_support ? "✓" : "✗"}
                         </Badge>
                       </div>
@@ -395,7 +415,8 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
               <CardHeader>
                 <CardTitle className="text-sm">Plan Actual</CardTitle>
                 <CardDescription>
-                  {billing.tier === "free" && "Plan gratuito con límites básicos"}
+                  {billing.tier === "free" &&
+                    "Plan gratuito con límites básicos"}
                   {billing.tier === "pro" && "Plan Pro con features avanzados"}
                   {billing.tier === "vip" && "Plan VIP con todo ilimitado"}
                 </CardDescription>
@@ -405,25 +426,33 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
                   <div className="flex justify-between">
                     <span>Proyectos</span>
                     <span className="font-medium">
-                      {billing.limits.max_projects === -1 ? "∞" : billing.limits.max_projects}
+                      {billing.limits.max_projects === -1
+                        ? "∞"
+                        : billing.limits.max_projects}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Documentos</span>
                     <span className="font-medium">
-                      {billing.limits.max_documents === -1 ? "∞" : billing.limits.max_documents}
+                      {billing.limits.max_documents === -1
+                        ? "∞"
+                        : billing.limits.max_documents}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Tareas por proyecto</span>
                     <span className="font-medium">
-                      {billing.limits.max_task_per_projects === -1 ? "∞" : billing.limits.max_task_per_projects}
+                      {billing.limits.max_task_per_projects === -1
+                        ? "∞"
+                        : billing.limits.max_task_per_projects}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Miembros de equipo</span>
                     <span className="font-medium">
-                      {billing.limits.max_team_members === -1 ? "∞" : billing.limits.max_team_members}
+                      {billing.limits.max_team_members === -1
+                        ? "∞"
+                        : billing.limits.max_team_members}
                     </span>
                   </div>
                 </div>
@@ -447,12 +476,24 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
             </div>
           </TabsContent>
 
+          {/* Tab: Security */}
+          <TabsContent value="security" className="space-y-4">
+            <SecuritySettingsSection
+              onAccountDeleted={() => {
+                setOpen(false);
+              }}
+            />
+          </TabsContent>
         </Tabs>
 
         <Separator />
 
         <div className="space-y-2">
-          <Button variant="destructive" className="w-full" onClick={handleLogout}>
+          <Button
+            variant="destructive"
+            className="w-full"
+            onClick={handleLogout}
+          >
             <LogOut className="h-4 w-4 mr-2" />
             Cerrar sesión
           </Button>
@@ -476,11 +517,17 @@ const UserProfileDialog: FC<UserProfileDialogProps> = ({ trigger }) => {
         )}
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogDescription className="sr-only">
           Información del perfil del usuario, sus créditos y uso del plan.
         </DialogDescription>
-        {loading ? <LoadingContent /> : !user ? <NoUserContent /> : <ProfileContent />}
+        {loading ? (
+          <LoadingContent />
+        ) : !user ? (
+          <NoUserContent />
+        ) : (
+          <ProfileContent />
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -50,6 +50,9 @@ interface ProductoDao {
     @Query("UPDATE productos SET activo = 1 WHERE id = :id")
     suspend fun activate(id: String)
 
+    @Query("DELETE FROM productos WHERE id = :id")
+    suspend fun delete(id: String)
+
     @Query("DELETE FROM productos")
     suspend fun deleteAll()
 }
@@ -87,6 +90,9 @@ interface CatalogoVentaDao {
 
     @Query("UPDATE catalogo_ventas SET activo = 0 WHERE id = :catalogoId")
     suspend fun deactivateById(catalogoId: String)
+
+    @Query("SELECT COUNT(*) FROM catalogo_ventas WHERE productoId = :productoId AND activo = 1")
+    suspend fun countActivoByProductoId(productoId: String): Int
 
     @Query("DELETE FROM catalogo_ventas")
     suspend fun deleteAll()
@@ -126,6 +132,9 @@ interface CatalogoCompraDao {
 
     @Query("UPDATE catalogo_compras SET activo = 0 WHERE id = :catalogoId")
     suspend fun deactivateById(catalogoId: String)
+
+    @Query("SELECT COUNT(*) FROM catalogo_compras WHERE productoId = :productoId AND activo = 1")
+    suspend fun countActivoByProductoId(productoId: String): Int
 
     @Query("DELETE FROM catalogo_compras")
     suspend fun deleteAll()
@@ -357,6 +366,9 @@ interface ItemInventarioDao {
     @Query("UPDATE items_inventario SET stockDisponible = stockDisponible - :cantidad, ultimaActualizacion = :fecha WHERE id = :id")
     suspend fun descontarStockPorId(id: String, cantidad: Double, fecha: String)
 
+    @Query("SELECT COUNT(*) FROM items_inventario WHERE productoId = :productoId AND archivado = 0")
+    suspend fun countActivoByProductoId(productoId: String): Int
+
     @Query("UPDATE items_inventario SET archivado = 1, motivoArchivado = :motivo, fechaArchivado = :fecha WHERE id = :id")
     suspend fun archiveById(id: String, motivo: String, fecha: String)
 
@@ -383,6 +395,9 @@ interface InventarioVinculoDao {
 
     @Query("DELETE FROM inventario_vinculos WHERE itemInventarioId = :itemInventarioId")
     suspend fun deleteByItemInventarioId(itemInventarioId: String)
+
+    @Query("SELECT COUNT(*) FROM inventario_vinculos WHERE productoComponenteId = :productoId")
+    suspend fun countByProductoComponenteId(productoId: String): Int
 
     @Query("DELETE FROM inventario_vinculos")
     suspend fun deleteAll()

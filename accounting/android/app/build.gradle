@@ -11,11 +11,11 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId "cu.lazaroysr96.sysgdcont.freemium"
+        applicationId "cu.lazaroysr96.sysgdcont.daniventas"
         minSdk 24
         targetSdk 34
-        versionCode 22
-        versionName "2.2.8 (contabilidad)"
+        versionCode 23
+        versionName "2.2.9 (contabilidad)"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

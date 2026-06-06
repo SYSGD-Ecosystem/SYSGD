@@ -67,8 +67,8 @@ const PurchaseCredits: FC<{
       </div>
 
       {!isConnected && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
+        <Alert className="flex gap-2 items-center justify-center">
+          <div><AlertCircle className="h-4 w-4" /></div>
           <AlertDescription>
             Conecta tu wallet para poder realizar compras
           </AlertDescription>

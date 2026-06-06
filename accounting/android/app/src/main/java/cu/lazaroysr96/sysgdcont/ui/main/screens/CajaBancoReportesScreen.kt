@@ -1,5 +1,6 @@
 package cu.lazaroysr96.sysgdcont.ui.main.screens
 
+import cu.lazaroysr96.sysgdcont.data.model.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable

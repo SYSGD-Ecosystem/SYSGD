@@ -10,6 +10,7 @@ import { AdminTwoFactorService } from "../services/adminTwoFactor.service";
 import { LoginSecurityService } from "../services/loginSecurity.service";
 import { normalizeClientSource, type ClientSource } from "../utils/client-source";
 import { EmailVerificationService } from "../services/emailVerification.service";
+import { AuthAccountError, changeOwnPassword } from "../services/authAccount.service";
 
 dotenv.config();
 
@@ -466,6 +467,37 @@ export const updateTwoFactorStatus = async (req: Request, res: Response) => {
 	} catch (error) {
 		console.error("Error updating 2FA status:", error);
 		res.status(500).json({ message: "Error al actualizar seguridad" });
+	}
+};
+
+export const changePassword = async (req: Request, res: Response) => {
+	const authUser = req.user as UserPayload | undefined;
+	const { currentPassword, newPassword } = req.body as {
+		currentPassword?: string;
+		newPassword?: string;
+	};
+
+	if (!authUser?.id) {
+		res.status(401).json({ message: "No autorizado" });
+		return;
+	}
+
+	try {
+		const result = await changeOwnPassword({
+			userId: authUser.id,
+			currentPassword: currentPassword ?? "",
+			newPassword: newPassword ?? "",
+		});
+
+		res.json(result);
+	} catch (error) {
+		if (error instanceof AuthAccountError) {
+			res.status(error.statusCode).json({ message: error.message });
+			return;
+		}
+
+		console.error("Error changing password:", error);
+		res.status(500).json({ message: "Error al cambiar la contraseña" });
 	}
 };
 

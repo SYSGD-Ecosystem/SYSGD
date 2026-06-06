@@ -59,6 +59,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -117,7 +119,6 @@ import cu.lazaroysr96.sysgdcont.ui.main.screens.InventarioScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.NomenclatorsScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.DashboardScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.DocumentosScreen
-import cu.lazaroysr96.sysgdcont.ui.main.screens.LicenseCenterScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.ResumenScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.SecuritySettingsScreen
 import cu.lazaroysr96.sysgdcont.ui.main.screens.TercerosScreen
@@ -138,7 +139,6 @@ import kotlinx.coroutines.launch
 
 private const val ADMIN_PHONE = "5351158544"
 private const val ABOUT_ROUTE = "about"
-private const val LICENSES_ROUTE = "licenses"
 private const val HELP_ROUTE = "help"
 private const val RESOURCES_ROUTE = "resources"
 private const val BACKUP_ROUTE = "backup_json"
@@ -172,6 +172,44 @@ private fun openExternalUrl(context: android.content.Context, url: String): Bool
 }
 
 @Composable
+private fun FiscalYearSelector(
+        selectedYear: Int,
+        onYearSelected: (Int) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val currentYear = remember { java.time.Year.now().value }
+    val yearOptions = remember(selectedYear, currentYear) {
+        ((currentYear - 2)..(currentYear + 2)).toMutableSet()
+                .apply { add(selectedYear) }
+                .sortedDescending()
+    }
+
+    Box {
+        TextButton(onClick = { expanded = true }) {
+            Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(selectedYear.toString())
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            yearOptions.forEach { year ->
+                DropdownMenuItem(
+                        text = { Text(year.toString()) },
+                        onClick = {
+                            expanded = false
+                            if (year != selectedYear) onYearSelected(year)
+                        },
+                        leadingIcon = {
+                            if (year == selectedYear) {
+                                Icon(Icons.Default.Check, contentDescription = null)
+                            }
+                        }
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun FeatureUnavailableScreen(message: String) {
     Box(
         modifier = Modifier
@@ -198,6 +236,29 @@ private fun getAppVersionName(context: android.content.Context): String {
     }
 }
 
+private fun buildLedgerBugReportMessage(
+        context: android.content.Context,
+        errorMessage: String,
+        currentRoute: String?,
+        fiscalYear: Int
+): String {
+    val manufacturer = android.os.Build.MANUFACTURER.orEmpty().ifBlank { "Desconocido" }
+    val model = android.os.Build.MODEL.orEmpty().ifBlank { "Desconocido" }
+    val androidVersion = android.os.Build.VERSION.RELEASE.orEmpty().ifBlank { "Desconocida" }
+    return """
+        Hola, deseo reportar un error en SYSGD Cont Android.
+
+        Pantalla: ${currentRoute ?: "desconocida"}
+        Año fiscal: $fiscalYear
+        Versión de la app: ${getAppVersionName(context)}
+        Dispositivo: $manufacturer $model
+        Android: $androidVersion (SDK ${android.os.Build.VERSION.SDK_INT})
+
+        Error mostrado:
+        $errorMessage
+    """.trimIndent()
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
@@ -209,7 +270,9 @@ fun MainScreen(
         tarjetaViewModel: TarjetaViewModel = hiltViewModel(),
         facturaViewModel: FacturaViewModel = hiltViewModel(),
         documentosViewModel: DocumentosViewModel = hiltViewModel(),
-        planPurchaseViewModel: PlanPurchaseViewModel = hiltViewModel()
+        planPurchaseViewModel: PlanPurchaseViewModel = hiltViewModel(),
+        
+
 ) {
     val context = LocalContext.current
     // val configuration = LocalConfiguration.current
@@ -218,6 +281,7 @@ fun MainScreen(
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
     val ledgerState by ledgerViewModel.uiState.collectAsStateWithLifecycle()
+    val inventarioState by inventarioViewModel.uiState.collectAsStateWithLifecycle()
     val planPurchaseState by planPurchaseViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val drawerState =
@@ -225,9 +289,13 @@ fun MainScreen(
     val drawerScope = rememberCoroutineScope()
     val currentTier = (planPurchaseState.currentPlan?.tier ?: "free").lowercase()
     val hasActiveLicense = planPurchaseState.currentPlan?.hasActivePlan == true && currentTier != "free"
-    val isFreemiumBuild = AppEdition.isFreemium
-    val canUseProFeatures = !isFreemiumBuild || currentTier == "pro" || currentTier == "vip"
-    val canUseVipFeatures = !isFreemiumBuild || currentTier == "vip"
+
+    val isFreemiumBuild = AppEdition.isFreemium || AppEdition.isReseller
+    val isResellerBuild = AppEdition.isReseller
+    
+
+    val canUseProFeatures = !isResellerBuild || !isFreemiumBuild || currentTier == "pro" || currentTier == "vip"
+    val canUseVipFeatures = !isResellerBuild || !isFreemiumBuild || currentTier == "vip"
     val workspaceLimitMessage =
         if (isFreemiumBuild && !canUseProFeatures) {
             "El plan Free solo permite un espacio de trabajo. Actualiza a Pro para crear varios negocios."
@@ -245,6 +313,7 @@ fun MainScreen(
         )
     }
     val syncRoutes = remember { accountingRoutes + DASHBOARD_ROUTE }
+    val fiscalYearRoutes = remember { accountingRoutes + VENTAS_ROUTE }
     var showCreditsInfoDialog by remember { mutableStateOf(false) }
     var showVentasHelpDialog by remember { mutableStateOf(false) }
     var showAccessKeyPasswordDialog by remember { mutableStateOf(false) }
@@ -412,6 +481,7 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
+                            if (canUseProFeatures) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Divider()
                             Text(
@@ -433,6 +503,7 @@ fun MainScreen(
                                     }
                             )
 
+                            
                             Spacer(modifier = Modifier.height(8.dp))
                             Divider()
                             Text(
@@ -441,17 +512,7 @@ fun MainScreen(
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
-                            NavigationDrawerItem(
-                                    label = { Text("Caja y banco") },
-                                    selected = currentRoute == CAJA_BANCO_ROUTE,
-                                    icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = null) },
-                                    onClick = {
-                                        navController.navigate(CAJA_BANCO_ROUTE) {
-                                            launchSingleTop = true
-                                        }
-                                        drawerScope.launch { drawerState.close() }
-                                    }
-                            )
+                            
                             NavigationDrawerItem(
                                     label = { Text("Punto de Venta") },
                                     selected = currentRoute == VENTAS_ROUTE,
@@ -489,6 +550,21 @@ fun MainScreen(
                                         }
                                 )
                             }
+                            if (canUseProFeatures) {
+                            NavigationDrawerItem(
+                                    label = { Text("Caja y banco") },
+                                    selected = currentRoute == CAJA_BANCO_ROUTE,
+                                    icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = null) },
+                                    onClick = {
+                                        navController.navigate(CAJA_BANCO_ROUTE) {
+                                            launchSingleTop = true
+                                        }
+                                        drawerScope.launch { drawerState.close() }
+                                    }
+                            )
+                            }
+
+
                             NavigationDrawerItem(
                                     label = { Text("Documentos") },
                                     selected = currentRoute == DOCUMENTOS_ROUTE,
@@ -502,7 +578,7 @@ fun MainScreen(
                             )
 
                           
-
+                            if (canUseProFeatures) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Divider()
                             Text(
@@ -523,6 +599,9 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
+                                }
+
+                            }
 
                             Spacer(modifier = Modifier.height(12.dp))
                             Divider()
@@ -547,20 +626,8 @@ fun MainScreen(
                                     }
                             )
 
-                            NavigationDrawerItem(
-                                    label = { Text(licensesDrawerLabel) },
-                                    selected = currentRoute == LICENSES_ROUTE,
-                                    icon = {
-                                        Icon(Icons.Default.CreditCard, contentDescription = null)
-                                    },
-                                    onClick = {
-                                        planPurchaseViewModel.loadData(force = true)
-                                        navController.navigate(LICENSES_ROUTE) {
-                                            launchSingleTop = true
-                                        }
-                                        drawerScope.launch { drawerState.close() }
-                                    }
-                            )
+
+                            if (canUseProFeatures) {
 
                             NavigationDrawerItem(
                                     label = { Text("Respaldo y acceso") },
@@ -576,6 +643,8 @@ fun MainScreen(
                                     }
                             )
 
+                                }
+
                             NavigationDrawerItem(
                                     label = { Text("Acerca de") },
                                     selected = currentRoute == ABOUT_ROUTE,
@@ -587,6 +656,8 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
+
+                            if (canUseProFeatures) {
 
                             Spacer(modifier = Modifier.height(8.dp))
                             Divider()
@@ -623,6 +694,7 @@ fun MainScreen(
                                         drawerScope.launch { drawerState.close() }
                                     }
                             )
+                                }
 
                             Spacer(modifier = Modifier.height(16.dp))
                         }
@@ -655,7 +727,6 @@ fun MainScreen(
                                         when (currentRoute) {
                                             DASHBOARD_ROUTE -> "Gestor Contable TCP"
                                             ABOUT_ROUTE -> "Acerca de"
-                                            LICENSES_ROUTE -> if (hasActiveLicense) "Tu licencia" else "Comprar licencia"
                                             HELP_ROUTE -> "Ayuda de llenado"
                                             RESOURCES_ROUTE -> "Recursos útiles"
                                             BACKUP_ROUTE -> "Respaldo y acceso"
@@ -666,12 +737,13 @@ fun MainScreen(
                                             DOCUMENTOS_ROUTE -> "Documentos"
                                             CATALOGOS_ROUTE -> "Catálogos"
                                             CAJA_BANCO_ROUTE -> "Caja y banco"
+                                            
                                             else -> "Gestor Contable TCP"
                                         }
                                 )
                             },
                             navigationIcon = {
-                                if (currentRoute == ABOUT_ROUTE || currentRoute == LICENSES_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE || currentRoute == NOMENCLATORS_ROUTE || currentRoute == TERCEROS_ROUTE || currentRoute == DOCUMENTOS_ROUTE || currentRoute == CATALOGOS_ROUTE || currentRoute == CAJA_BANCO_ROUTE) {
+                                if (currentRoute == ABOUT_ROUTE || currentRoute == HELP_ROUTE || currentRoute == RESOURCES_ROUTE || currentRoute == BACKUP_ROUTE || currentRoute == SECURITY_ROUTE || currentRoute == VENTAS_ROUTE || currentRoute == NOMENCLATORS_ROUTE || currentRoute == TERCEROS_ROUTE || currentRoute == DOCUMENTOS_ROUTE || currentRoute == CATALOGOS_ROUTE || currentRoute == CAJA_BANCO_ROUTE) {
                                     IconButton(onClick = { navController.popBackStack() }) {
                                         Icon(
                                                 Icons.Default.ArrowBack,
@@ -687,6 +759,20 @@ fun MainScreen(
                                 }
                             },
                             actions = {
+                                if (currentRoute in fiscalYearRoutes) {
+                                    FiscalYearSelector(
+                                            selectedYear = ledgerState.registro.generales.anio,
+                                            onYearSelected = { year ->
+                                                ledgerViewModel.selectFiscalYear(year)
+                                                if (currentRoute == VENTAS_ROUTE) {
+                                                    val adjustedDate = runCatching {
+                                                        inventarioState.fechaTrabajo.withYear(year)
+                                                    }.getOrDefault(inventarioState.fechaTrabajo)
+                                                    inventarioViewModel.setFechaTrabajo(adjustedDate)
+                                                }
+                                            }
+                                    )
+                                }
                                 if (currentRoute == VENTAS_ROUTE) {
                                     IconButton(onClick = { showVentasHelpDialog = true }) {
                                         Icon(
@@ -695,6 +781,7 @@ fun MainScreen(
                                         )
                                     }
                                 }
+                                
                                 if (currentRoute in syncRoutes) {
                                     if (ledgerState.hasLocalChanges && !ledgerState.isSyncing) {
                                         Icon(
@@ -759,6 +846,7 @@ fun MainScreen(
                         onSwitchWorkspace = ledgerViewModel::switchWorkspace,
                         onCreateWorkspace = ledgerViewModel::createWorkspace,
                         canCreateWorkspace = canUseProFeatures,
+                        canUseProFeatures,
                         workspaceLimitMessage = workspaceLimitMessage,
                         onOpenRegistro = {
                             navController.navigate(MainTab.Generales.route) {
@@ -783,6 +871,7 @@ fun MainScreen(
                                 launchSingleTop = true
                             }
                         },
+                        showCatalogosShortcut = canUseProFeatures,
                         onOpenTerceros = {
                             if (canUseProFeatures) {
                                 navController.navigate(TERCEROS_ROUTE) {
@@ -809,7 +898,8 @@ fun MainScreen(
                                 ingresoCuentaId = ingresoCuentaId.orEmpty(),
                                 gasto = gasto,
                                 gastoCuentaId = gastoCuentaId.orEmpty(),
-                                nota = nota
+                                nota = nota,
+                                year = fecha.year
                             )
                         },
                                 userName = authState.currentUser?.name ?: "Usuario",
@@ -817,10 +907,6 @@ fun MainScreen(
         availableCredits = authState.availableCredits,
         currentTier = currentTier,
         hasActiveLicense = hasActiveLicense,
-        onNavigateToLicenses = {
-            planPurchaseViewModel.loadData(force = true)
-            navController.navigate(LICENSES_ROUTE) { launchSingleTop = true }
-        },
         onNavigateToSecurity = {
             navController.navigate(SECURITY_ROUTE) { launchSingleTop = true }
         },
@@ -837,7 +923,7 @@ fun MainScreen(
                 composable(MainTab.Resumen.route) {
                     ResumenScreen(
                         ledgerViewModel,
-                        experimentalFeaturesEnabled = ledgerState.experimentalFeaturesEnabled,
+                        experimentalFeaturesEnabled = canUseProFeatures,
                     )
                 }
                 composable(VENTAS_ROUTE) {
@@ -873,17 +959,7 @@ fun MainScreen(
                 composable(CAJA_BANCO_ROUTE) {
                     CajaBancoScreen()
                 }
-                composable(LICENSES_ROUTE) {
-                    LicenseCenterScreen(
-                        experimentalFeaturesEnabled = ledgerState.experimentalFeaturesEnabled,
-                        uiState = planPurchaseState,
-                        onRefresh = { planPurchaseViewModel.loadData(force = true) },
-                        onSubmit = planPurchaseViewModel::submitOrder,
-                        onDismissError = planPurchaseViewModel::clearError,
-                        onDismissInfo = planPurchaseViewModel::clearInfoMessage,
-                        isProDistribution = !isFreemiumBuild
-                    )
-                }
+
                 composable(ABOUT_ROUTE) {
                     AboutScreen(
                             onContactWhatsApp = {
@@ -912,6 +988,8 @@ fun MainScreen(
                             onExperimentalFeaturesChange = ledgerViewModel::setExperimentalFeaturesEnabled,
                             canUseExperimentalFeatures = canUseVipFeatures,
                             currentTier = currentTier,
+                            isReseller = isResellerBuild,
+                            resellerName = "Daniuska Posada"
                     )
                 }
                 composable(HELP_ROUTE) {
@@ -1037,6 +1115,50 @@ fun MainScreen(
             snackbarHostState.showSnackbar(error)
             ledgerViewModel.clearBackupStatus()
         }
+    }
+
+
+    ledgerState.errorMessage?.let { errorMessage ->
+        AlertDialog(
+                onDismissRequest = { ledgerViewModel.clearErrorMessage() },
+                title = { Text("No se pudo guardar el registro") },
+                text = {
+                    Text(
+                            "Ocurrió un error al procesar el ingreso o gasto. " +
+                                    "Puedes enviar un reporte por WhatsApp al desarrollador con los detalles técnicos.\n\n" +
+                                    errorMessage
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                            onClick = {
+                                val opened = openWhatsAppContact(
+                                        context,
+                                        buildLedgerBugReportMessage(
+                                                context = context,
+                                                errorMessage = errorMessage,
+                                                currentRoute = currentRoute,
+                                                fiscalYear = ledgerState.registro.generales.anio
+                                        )
+                                )
+                                if (!opened) {
+                                    drawerScope.launch {
+                                        snackbarHostState.showSnackbar(
+                                                "No se pudo abrir WhatsApp en este dispositivo"
+                                        )
+                                    }
+                                }
+                            }
+                    ) {
+                        Text("Enviar por WhatsApp")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { ledgerViewModel.clearErrorMessage() }) {
+                        Text("Cerrar")
+                    }
+                }
+        )
     }
 
     ledgerState.pendingSyncDecision?.let { decision ->
@@ -1287,9 +1409,12 @@ private fun AboutScreen(
     onExperimentalFeaturesChange: (Boolean) -> Unit,
     canUseExperimentalFeatures: Boolean,
     currentTier: String,
+    isReseller: Boolean,
+    resellerName: String
 ) {
     val context = LocalContext.current
     val appVersion = remember { getAppVersionName(context) }
+    val appDistribution = AppEdition.distribution
     val colorScheme = MaterialTheme.colorScheme
 
     Column(
@@ -1337,12 +1462,25 @@ private fun AboutScreen(
                         modifier = Modifier.padding(top = 2.dp)
                     ) {
                         Text(
-                            text = "v$appVersion",
+                            text = "Versión: $appVersion",
                             style = MaterialTheme.typography.labelSmall,
                             color = colorScheme.onSecondaryContainer,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                         )
                     }
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = colorScheme.secondaryContainer,
+                        modifier = Modifier.padding(top = 2.dp)
+                    ) {
+                        Text(
+                            text = "Distribución: $appDistribution",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colorScheme.onSecondaryContainer,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                        )
+                    }
+                    if(!isReseller){
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = "Lázaro Yunier Salazar Rodríguez",
@@ -1355,9 +1493,35 @@ private fun AboutScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = colorScheme.onSurfaceVariant
                     )
+                    }
                 }
             }
         }
+
+        if(isReseller){
+            AboutSectionCard(
+            icon = Icons.Default.ContactSupport,
+            iconBackground = colorScheme.tertiaryContainer,
+            iconTint = colorScheme.onTertiaryContainer,
+            title = "Equipo de desarrollo",
+        ) {
+            AboutLinkItem(
+                icon = Icons.Default.People,
+                label = "Lazaro Yunier Salazar Rodriguez",
+                sublabel = "Programación y desarrollo",
+                onClick = onContactWhatsApp
+            )
+
+            Divider(color = colorScheme.outlineVariant.copy(alpha = 0.5f))
+            AboutLinkItem(
+                icon = Icons.Default.People,
+                label = "Daniuska Posada",
+                sublabel = "Asesora Técnica en procedimientos de contabilidad y fianzas para trabajadores por cuenta propia",
+                onClick = { onOpenUrl("https://wa.me/+5352375492") }
+            )
+        }
+        }
+
 
         // ── Contacto ──────────────────────────────────────────────
         AboutSectionCard(
@@ -1390,7 +1554,7 @@ private fun AboutScreen(
         ) {
             AboutLinkItem(
                 icon = Icons.Default.Public,
-                label = "Web institucional",
+                label = "Página Web",
                 sublabel = "www.ecosysgd.com",
                 onClick = { onOpenUrl("https://www.ecosysgd.com") }
             )

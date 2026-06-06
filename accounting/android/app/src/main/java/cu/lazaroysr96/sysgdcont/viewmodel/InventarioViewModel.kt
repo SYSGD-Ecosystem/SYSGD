@@ -16,6 +16,7 @@ import cu.lazaroysr96.sysgdcont.data.model.FormaPago
 import cu.lazaroysr96.sysgdcont.data.model.RolTercero
 import cu.lazaroysr96.sysgdcont.data.model.TerceroListItem
 import cu.lazaroysr96.sysgdcont.data.model.TipoCuentaTercero
+import cu.lazaroysr96.sysgdcont.data.model.TipoPrecio
 import cu.lazaroysr96.sysgdcont.data.model.TipoProductoInv
 import cu.lazaroysr96.sysgdcont.data.model.ModoStock
 import cu.lazaroysr96.sysgdcont.data.model.MovimientoInventario
@@ -104,6 +105,7 @@ data class InventarioUiState(
     val nombreItemArchivando: String = "",
     val nombreEmpresaFactura: String = "",
     val nombreVendedorFactura: String = "",
+    val nitVendedorFactura: String = "",
     val correoVendedorFactura: String = "",
     val telefonoVendedorFactura: String = "",
     val direccionVendedorFactura: String = "",
@@ -243,6 +245,7 @@ class InventarioViewModel @Inject constructor(
                     it.copy(
                         nombreEmpresaFactura = config.nombreEmpresa,
                         nombreVendedorFactura = config.nombreVendedor,
+                        nitVendedorFactura = config.nitVendedor,
                         correoVendedorFactura = config.correoVendedor,
                         telefonoVendedorFactura = config.telefonoVendedor,
                         direccionVendedorFactura = config.direccionVendedor,
@@ -424,6 +427,10 @@ class InventarioViewModel @Inject constructor(
         _uiState.update { it.copy(nombreVendedorFactura = nombre) }
     }
 
+    fun updateNitVendedorFactura(nit: String) {
+        _uiState.update { it.copy(nitVendedorFactura = nit) }
+    }
+
     fun updateCorreoVendedorFactura(correo: String) {
         _uiState.update { it.copy(correoVendedorFactura = correo) }
     }
@@ -452,6 +459,7 @@ class InventarioViewModel @Inject constructor(
                     ConfiguracionFacturacion(
                         nombreEmpresa = state.nombreEmpresaFactura,
                         nombreVendedor = state.nombreVendedorFactura,
+                        nitVendedor = state.nitVendedorFactura,
                         correoVendedor = state.correoVendedorFactura,
                         telefonoVendedor = state.telefonoVendedorFactura,
                         direccionVendedor = state.direccionVendedorFactura,
@@ -701,6 +709,43 @@ class InventarioViewModel @Inject constructor(
 
     suspend fun obtenerHistorialPreciosProducto(productoId: String): List<PrecioProductoDetalle> =
         repo.getHistorialPreciosProducto(productoId)
+
+
+
+    fun actualizarPrecioProductoCatalogo(productoId: String, tipoPrecio: String, precio: Double, almacenId: String) {
+        viewModelScope.launch {
+            try {
+                repo.actualizarPrecioCatalogoProducto(productoId, tipoPrecio, precio, almacenId)
+                val etiqueta = if (tipoPrecio == TipoPrecio.VENTA) "venta" else "compra"
+                _uiState.update { it.copy(snackbarMessage = "Precio de $etiqueta actualizado en Cuentas y Productos") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al actualizar precio") }
+            }
+        }
+    }
+
+    fun ajustarInventarioProductoCatalogo(productoId: String, almacenId: String, cantidad: Double, modo: ModoStock) {
+        viewModelScope.launch {
+            try {
+                repo.ajustarInventarioProductoCatalogo(productoId, almacenId, cantidad, modo)
+                _uiState.update { it.copy(snackbarMessage = "Inventario actualizado en Cuentas y Productos") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al actualizar inventario") }
+            }
+        }
+    }
+
+
+    fun deleteProductoBase(id: String) {
+        viewModelScope.launch {
+            try {
+                repo.deleteProductoBase(id)
+                _uiState.update { it.copy(snackbarMessage = "Producto eliminado permanentemente") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackbarMessage = e.message ?: "Error al eliminar producto") }
+            }
+        }
+    }
 
     fun eliminarProducto(id: String) {
         viewModelScope.launch {

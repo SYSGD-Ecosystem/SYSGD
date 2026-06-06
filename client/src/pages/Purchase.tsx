@@ -13,6 +13,7 @@ import {
 	AlertCircle,
 	Zap,
 	CreditCard,
+	Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -113,10 +114,10 @@ const Purchase: FC = () => {
 	}, [isConnected, address, loadOrders]);
 
 	const navItems = [
-		{ id: "manual-payments", label: "Pago Nacional", icon: CreditCard },
+		{ id: "manual-payments", label: "Ofertas dentro de Cuba", icon: CreditCard },
 		{ id: "credits", label: "Comprar Créditos", icon: Zap },
 		{ id: "plans", label: "Planes Suscripción", icon: Package },
-		{ id: "licenses", label: "SYSGD Store", icon: Package },
+		{ id: "licenses", label: "SYSGD Desktop", icon: Monitor },
 		{ id: "transactions", label: "Historial", icon: History },
 		{ id: "categories", label: "Uso de Créditos", icon: LayoutDashboard },
 	];
@@ -309,8 +310,10 @@ const Purchase: FC = () => {
 							activeSection !== "manual-payments" &&
 							activeSection !== "transactions" &&
 							activeSection !== "categories" && (
-								<Alert className="mt-8">
-									<AlertCircle className="h-4 w-4" />
+								<Alert className="flex gap-2 items-center justify-center mt-8">
+									<div>
+										<AlertCircle className="h-4 w-4" />
+									</div>
 									<AlertDescription>
 										Conecta tu wallet para ver precios y realizar compras con
 										USDT.

@@ -10,6 +10,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.google.gson.Gson
 import cu.lazaroysr96.sysgdcont.data.api.ApiService
 import cu.lazaroysr96.sysgdcont.data.model.AuthUser
+import cu.lazaroysr96.sysgdcont.data.model.ChangePasswordRequest
 import cu.lazaroysr96.sysgdcont.data.model.DeleteAccountRequest
 import cu.lazaroysr96.sysgdcont.data.model.LoginRequest
 import cu.lazaroysr96.sysgdcont.data.model.PasswordResetRequest
@@ -309,6 +310,31 @@ class AuthRepository @Inject constructor(
         }
     }
 
+
+    suspend fun changePassword(currentPassword: String, newPassword: String): Result<String> {
+        return try {
+            val token = getToken() ?: return Result.failure(Exception("No autenticado"))
+            val response = apiService.changePassword(
+                "Bearer $token",
+                ChangePasswordRequest(
+                    currentPassword = currentPassword,
+                    newPassword = newPassword
+                )
+            )
+            if (response.isSuccessful) {
+                Result.success(response.body()?.message ?: "Contraseña actualizada correctamente")
+            } else {
+                if (response.code() == 401 || response.code() == 403) {
+                    logout()
+                    return Result.failure(Exception("Tu sesión expiró. Inicia sesión de nuevo."))
+                }
+                Result.failure(Exception(extractApiError(response, "No se pudo cambiar la contraseña")))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun deleteOwnAccount(password: String): Result<String> {
         return try {
             val token = getToken() ?: return Result.failure(Exception("No autenticado"))
@@ -403,6 +429,7 @@ class AuthRepository @Inject constructor(
         val userName: String,
         val userEmail: String,
         val userPrivileges: String,
+        val userPlan: String,
         val createdAt: String
     )
 
@@ -414,6 +441,8 @@ class AuthRepository @Inject constructor(
             val userName = prefs[USER_NAME_KEY] ?: ""
             val userEmail = prefs[USER_EMAIL_KEY] ?: ""
             val userPrivileges = prefs[USER_PRIVILEGES_KEY] ?: ""
+            val userPlan = prefs[PLAN_CACHE_KEY] ?: ""
+
 
             val payload = AccessKeyPayload(
                 token = token,
@@ -421,6 +450,7 @@ class AuthRepository @Inject constructor(
                 userName = userName,
                 userEmail = userEmail,
                 userPrivileges = userPrivileges,
+                userPlan = userPlan,
                 createdAt = java.time.Instant.now().toString()
             )
 
@@ -459,6 +489,7 @@ class AuthRepository @Inject constructor(
                 prefs[USER_NAME_KEY] = payload.userName
                 prefs[USER_EMAIL_KEY] = payload.userEmail
                 prefs[USER_PRIVILEGES_KEY] = payload.userPrivileges
+                prefs[PLAN_CACHE_KEY] = payload.userPlan
             }
 
             Result.success(AuthUser(

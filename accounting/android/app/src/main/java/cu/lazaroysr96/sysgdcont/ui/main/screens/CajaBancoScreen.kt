@@ -26,99 +26,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-
-// ---------------------------------------------------------------------------
-// Tipos de dominio
-// ---------------------------------------------------------------------------
-
-enum class WalletTipo { EFECTIVO, BANCO, MOVIL, MERCANCIA, OTRO }
-enum class WalletMovimientoTipo { ENTRADA, SALIDA, TRANSFERENCIA }
-enum class WalletReferenciaTipo { INGRESO, GASTO, OPERACION_POS, MANUAL }
-
-data class MonedaTasa(
-    val id: String,
-    val nombre: String,
-    val tasa: Double,
-    val createdAt: Long = 0L,
-    val updatedAt: Long = 0L,
-)
-
-data class Moneda(
-    val id: String,
-    val nombre: String,
-    val tipo: String, // "CUP" | "USD" | "EUR" | "MLC" | ...
-    val tasaId: String,
-    val createdAt: Long = 0L,
-    val updatedAt: Long = 0L,
-)
-
-data class MonedaTasaHistorial(
-    val id: String,
-    val monedaId: String,
-    val tasa: Double,
-    val createdAt: Long = 0L,
-)
-
-data class Wallet2(
-    val id: String,
-    val nombre: String,
-    val tipo: WalletTipo,
-    val saldoInicial: Double,
-    val monedaId: String,
-    val activo: Boolean = true,
-    val createdAt: Long = 0L,
-    val updatedAt: Long = 0L,
-)
-
-
-data class WalletMovimiento(
-    val id: String,
-    val walletOrigenId: String?,
-    val walletDestinoId: String?,
-    val monto: Double,
-    val tasaAlMomento: Double = 1.0,
-    val monedaId: String,
-    val tipo: WalletMovimientoTipo,
-    val referenciaId: String? = null,
-    val referenciaTipo: WalletReferenciaTipo? = null,
-    val nota: String = "",
-    val fecha: String,
-    val createdAt: Long = 0L,
-)
-
-// ---------------------------------------------------------------------------
-// Datos dummy (reemplazar con ViewModel + Room)
-// ---------------------------------------------------------------------------
-
-val dummyMonedaTasas = listOf(
-    MonedaTasa("t1", "Tasa CUP", 1.0),
-    MonedaTasa("t2", "Tasa USD", 350.0),
-    MonedaTasa("t3", "Tasa MLC", 280.0),
-)
-
-val dummyMonedas = listOf(
-    Moneda("c1", "Peso Cubano", "CUP", "t1"),
-    Moneda("c2", "Dólar Estadounidense", "USD", "t2"),
-    Moneda("c3", "Moneda Libremente Convertible", "MLC", "t3"),
-)
-
-val dummyWallets2 = listOf(
-    Wallet2("w1", "Caja efectivo", WalletTipo.EFECTIVO, 2300.0, "c1"),
-    Wallet2("w2", "BPA 9201", WalletTipo.BANCO, 12490.0, "c1"),
-    Wallet2("w3", "Saldo móvil", WalletTipo.MOVIL, 540.0, "c1"),
-)
-
-val dummyMovimientos2 = listOf(
-    WalletMovimiento("m1", null, "w1", 1200.0, 1.0, "c1", WalletMovimientoTipo.ENTRADA, referenciaTipo = WalletReferenciaTipo.OPERACION_POS, nota = "Cobro venta POS", fecha = "2026-05-01"),
-    WalletMovimiento("m2", "w1", null, 800.0, 1.0, "c1", WalletMovimientoTipo.SALIDA, referenciaTipo = WalletReferenciaTipo.GASTO, nota = "Pago proveedor", fecha = "2026-05-02"),
-    WalletMovimiento("m3", null, "w2", 10.0, 350.0, "c2", WalletMovimientoTipo.ENTRADA, referenciaTipo = WalletReferenciaTipo.INGRESO, nota = "Cobro cliente (USD)", fecha = "2026-05-02"),
-    WalletMovimiento("m4", "w2", null, 680.0, 1.0, "c1", WalletMovimientoTipo.SALIDA, referenciaTipo = WalletReferenciaTipo.GASTO, nota = "Pago de servicios", fecha = "2026-05-02"),
-    WalletMovimiento("m5", null, "w1", 950.0, 1.0, "c1", WalletMovimientoTipo.ENTRADA, referenciaTipo = WalletReferenciaTipo.OPERACION_POS, nota = "Venta mostrador", fecha = "2026-05-03"),
-    WalletMovimiento("m6", "w2", "w1", 500.0, 1.0, "c1", WalletMovimientoTipo.TRANSFERENCIA, referenciaTipo = WalletReferenciaTipo.MANUAL, nota = "Retiro para caja", fecha = "2026-05-01"),
-    WalletMovimiento("m7", "w1", "w3", 200.0, 1.0, "c1", WalletMovimientoTipo.TRANSFERENCIA, referenciaTipo = WalletReferenciaTipo.MANUAL, nota = "Recarga móvil", fecha = "2026-05-02"),
-    WalletMovimiento("m8", "w3", null, 120.0, 1.0, "c1", WalletMovimientoTipo.SALIDA, referenciaTipo = WalletReferenciaTipo.GASTO, nota = "Pago Transfermóvil", fecha = "2026-05-03"),
-    WalletMovimiento("m9", null, "w2", 5000.0, 1.0, "c1", WalletMovimientoTipo.ENTRADA, referenciaTipo = WalletReferenciaTipo.INGRESO, nota = "Depósito bancario", fecha = "2026-05-03"),
-)
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import cu.lazaroysr96.sysgdcont.BuildConfig
+import cu.lazaroysr96.sysgdcont.data.model.Moneda
+import cu.lazaroysr96.sysgdcont.data.model.MonedaTasa
+import cu.lazaroysr96.sysgdcont.data.model.Wallet2
+import cu.lazaroysr96.sysgdcont.data.model.WalletMovimiento
+import cu.lazaroysr96.sysgdcont.data.model.WalletMovimientoTipo
+import cu.lazaroysr96.sysgdcont.data.model.WalletReferenciaTipo
+import cu.lazaroysr96.sysgdcont.data.model.WalletTipo
+import cu.lazaroysr96.sysgdcont.viewmodel.CajaBancoViewModel
 
 // ---------------------------------------------------------------------------
 // Helpers globales
@@ -189,14 +107,14 @@ fun refLabel(ref: WalletReferenciaTipo): String = when (ref) {
 }
 
 // ---------------------------------------------------------------------------
-// Estado compuesto del módulo (reemplazar con ViewModel)
+// Estado compuesto del módulo
 // ---------------------------------------------------------------------------
 
 data class CajaBancoState(
-    val monedas: List<Moneda> = dummyMonedas,
-    val monedaTasas: List<MonedaTasa> = dummyMonedaTasas,
-    val wallets: List<Wallet2> = dummyWallets2,
-    val movimientos: List<WalletMovimiento> = dummyMovimientos2,
+    val monedas: List<Moneda> = emptyList(),
+    val monedaTasas: List<MonedaTasa> = emptyList(),
+    val wallets: List<Wallet2> = emptyList(),
+    val movimientos: List<WalletMovimiento> = emptyList(),
 ) {
     fun saldoWallet(walletId: String): Double {
         val w = wallets.find { it.id == walletId } ?: return 0.0
@@ -253,96 +171,77 @@ private enum class CajaBancoTab(val label: String, val icon: ImageVector) {
     REPORTES("Reportes", Icons.Outlined.Description),
 }
 
+private fun cajaBancoTabsForBuild(): List<CajaBancoTab> =
+    if (BuildConfig.DEBUG) CajaBancoTab.entries else CajaBancoTab.entries.filter { it != CajaBancoTab.REPORTES }
+
 // ---------------------------------------------------------------------------
 // Screen raíz
 // ---------------------------------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CajaBancoScreen(modifier: Modifier = Modifier) {
+fun CajaBancoScreen(
+    modifier: Modifier = Modifier,
+    viewModel: CajaBancoViewModel = hiltViewModel(),
+) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
-    var state by remember { mutableStateOf(CajaBancoState()) }
+    val availableTabs = remember { cajaBancoTabsForBuild() }
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
     var sheetActivo by remember { mutableStateOf<SheetActivo?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    fun nuevoId() = System.currentTimeMillis().toString()
-
-    // ---------- Monedas ----------
     fun crearMonedaBase() {
-        val tasa = MonedaTasa(nuevoId(), "Tasa CUP", 1.0)
-        state = state.copy(
-            monedaTasas = state.monedaTasas + tasa,
-            monedas = state.monedas + Moneda(nuevoId(), "Peso Cubano", "CUP", tasa.id),
-        )
+        viewModel.crearMonedaBase()
         sheetActivo = null
     }
 
     fun crearMoneda(nombre: String, tipo: String, tasaValor: Double) {
-        val tasa = MonedaTasa(nuevoId(), "Tasa $tipo", tasaValor)
-        state = state.copy(
-            monedaTasas = state.monedaTasas + tasa,
-            monedas = state.monedas + Moneda(nuevoId(), nombre, tipo.uppercase(), tasa.id),
-        )
+        viewModel.crearMoneda(nombre, tipo, tasaValor)
         sheetActivo = null
     }
 
     fun actualizarTasa(moneda: Moneda, nuevaTasa: Double) {
-        state = state.copy(
-            monedaTasas = state.monedaTasas.map {
-                if (it.id == moneda.tasaId) it.copy(tasa = nuevaTasa) else it
-            },
-        )
+        viewModel.actualizarTasa(moneda, nuevaTasa)
         sheetActivo = null
     }
 
     fun eliminarMoneda(moneda: Moneda) {
-        state = state.copy(
-            monedas = state.monedas.filter { it.id != moneda.id },
-            monedaTasas = state.monedaTasas.filter { it.id != moneda.tasaId },
-        )
+        viewModel.eliminarMoneda(moneda)
         sheetActivo = null
     }
 
-    // ---------- Wallets ----------
     fun crearWallet(nombre: String, tipo: WalletTipo, saldo: Double, monedaId: String) {
-        state = state.copy(wallets = state.wallets + Wallet2(nuevoId(), nombre, tipo, saldo, monedaId))
+        viewModel.crearWallet(nombre, tipo, saldo, monedaId)
         sheetActivo = null
     }
 
     fun editarWallet(orig: Wallet2, nombre: String, tipo: WalletTipo, saldo: Double, monedaId: String) {
-        state = state.copy(wallets = state.wallets.map {
-            if (it.id == orig.id) it.copy(nombre = nombre, tipo = tipo, saldoInicial = saldo, monedaId = monedaId) else it
-        })
+        viewModel.editarWallet(orig, nombre, tipo, saldo, monedaId)
         sheetActivo = null
     }
 
     fun eliminarWallet(wallet: Wallet2) {
-        state = state.copy(wallets = state.wallets.filter { it.id != wallet.id })
+        viewModel.eliminarWallet(wallet)
         sheetActivo = null
     }
 
-    // ---------- Movimientos ----------
     fun registrar(
         tipo: WalletMovimientoTipo,
         wOrig: String?, wDest: String?,
         monto: Double, monedaId: String, tasa: Double,
         ref: WalletReferenciaTipo, nota: String, fecha: String,
     ) {
-        state = state.copy(movimientos = listOf(
-            WalletMovimiento(nuevoId(), wOrig, wDest, monto, tasa, monedaId, tipo, referenciaTipo = ref, nota = nota, fecha = fecha)
-        ) + state.movimientos)
+        viewModel.registrar(tipo, wOrig, wDest, monto, monedaId, tasa, ref, nota, fecha)
         sheetActivo = null
     }
 
     fun editarNota(movId: String, nota: String) {
-        state = state.copy(movimientos = state.movimientos.map {
-            if (it.id == movId) it.copy(nota = nota) else it
-        })
+        viewModel.editarNota(movId, nota)
         sheetActivo = null
     }
 
     fun eliminarMov(movId: String) {
-        state = state.copy(movimientos = state.movimientos.filter { it.id != movId })
+        viewModel.eliminarMovimiento(movId)
         sheetActivo = null
     }
 
@@ -419,7 +318,7 @@ fun CajaBancoScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         bottomBar = {
             NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                CajaBancoTab.entries.forEachIndexed { i, tab ->
+                availableTabs.forEachIndexed { i, tab ->
                     NavigationBarItem(
                         selected = selectedTab == i,
                         onClick = { selectedTab = i },
@@ -460,9 +359,11 @@ fun CajaBancoScreen(modifier: Modifier = Modifier) {
                         onEditarTasa = { sheetActivo = SheetActivo.EditarTasa(it) },
                         onEliminarMoneda = { sheetActivo = SheetActivo.EliminarMoneda(it) },
                     )
-                    3 -> CajaBancoReportesScreen(wallets = state.wallets.map {
-                        Wallet2(it.id, it.nombre, it.tipo, it.saldoInicial, "CUP", it.activo)
-                    })
+                    3 -> if (BuildConfig.DEBUG) {
+                        CajaBancoReportesScreen(wallets = state.wallets.map {
+                            Wallet2(it.id, it.nombre, it.tipo, it.saldoInicial, it.monedaId, it.activo)
+                        })
+                    }
                 }
             }
         }

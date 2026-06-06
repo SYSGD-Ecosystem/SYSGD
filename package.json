@@ -20,7 +20,8 @@
 		"cont:install-dev": "npm run cont-dev && /home/yunior/android-sdk/platform-tools/adb install -r accounting/android/app/build/outputs/apk/debug/app-debug.apk",
 		"cont:install": "npm run cont && /home/yunior/android-sdk/platform-tools/adb install -r accounting/android/app/build/outputs/apk/release/app-release.apk",
 		"cont:install-app": "/home/yunior/android-sdk/platform-tools/adb install -r accounting/android/app/build/outputs/apk/release/app-release.apk",
-		"cont:log": "/home/yunior/android-sdk/platform-tools/adb logcat | rg --line-buffered \"AndroidRuntime|FATAL EXCEPTION|cu\\\\.lazaroysr96\\\\.sysgdcont|Room|Migration|SQLite|IllegalStateException|RuntimeException\""
+		"cont:log": "/home/yunior/android-sdk/platform-tools/adb logcat | rg --line-buffered \"AndroidRuntime|FATAL EXCEPTION|cu\\\\.lazaroysr96\\\\.sysgdcont|Room|Migration|SQLite|IllegalStateException|RuntimeException\"",
+		"electron": "cd client && npm run build-electron && cd electron && npm run dist"
 	},
 	"devDependencies": {
 		"biome": "^0.3.3",

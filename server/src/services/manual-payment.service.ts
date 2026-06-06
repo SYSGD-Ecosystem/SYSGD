@@ -9,8 +9,12 @@ import type {
 } from "../types/manualPayment";
 import { UserService } from "./userService";
 
-const RECEIVER_CARD = "9238-1299-7124-1767";
-const CONFIRMATION_PHONE = "51158544";
+// const RECEIVER_CARD = "9238-1299-7124-1767";
+// const CONFIRMATION_PHONE = "51158544";
+
+const RECEIVER_CARD = "9212-9598-7255-8673";
+const CONFIRMATION_PHONE = "52375492";
+
 const userService = new UserService();
 
 const MANUAL_PAYMENT_PRODUCTS: ManualPaymentProduct[] = [
@@ -19,7 +23,7 @@ const MANUAL_PAYMENT_PRODUCTS: ManualPaymentProduct[] = [
 		tier: "pro",
 		duration_months: 1,
 		name: "Plan Pro por 1 mes",
-		price_cup: 50,
+		price_cup: 250,
 		discount_percent: 0,
 		description: "Acceso Pro mensual para la plataforma principal.",
 		features: [
@@ -33,9 +37,9 @@ const MANUAL_PAYMENT_PRODUCTS: ManualPaymentProduct[] = [
 		tier: "pro",
 		duration_months: 3,
 		name: "Plan Pro por 3 meses",
-		price_cup: 135,
-		discount_percent: 10,
-		description: "Ahorra 10 por ciento respecto al pago mensual.",
+		price_cup: 650,
+		discount_percent: 13.33,
+		description: "Ahorra 13.33 por ciento respecto al pago mensual.",
 		features: [
 			"Generacion de facturas",
 			"Funciones premium del plan Pro",
@@ -47,7 +51,7 @@ const MANUAL_PAYMENT_PRODUCTS: ManualPaymentProduct[] = [
 		tier: "pro",
 		duration_months: 12,
 		name: "Plan Pro por 1 año",
-		price_cup: 480,
+		price_cup: 2400,
 		discount_percent: 20,
 		description: "Ahorra 20 por ciento respecto al pago mensual.",
 		features: [
@@ -55,7 +59,7 @@ const MANUAL_PAYMENT_PRODUCTS: ManualPaymentProduct[] = [
 			"Funciones premium del plan Pro",
 			"Base para futuras funciones Pro",
 		],
-	},
+	}/*,
 	{
 		id: "tm_vip_1m",
 		tier: "vip",
@@ -97,7 +101,7 @@ const MANUAL_PAYMENT_PRODUCTS: ManualPaymentProduct[] = [
 			"Funciones experimentales",
 			"Prioridad para funciones avanzadas",
 		],
-	},
+	},*/
 ];
 
 const toNormalizedPhone = (value: string) => value.replace(/\D/g, "");
@@ -149,7 +153,8 @@ export const getManualPaymentInstructions = () => ({
 	receiverCard: RECEIVER_CARD,
 	confirmationPhone: CONFIRMATION_PHONE,
 	importantNotes: [
-			"Debes confirmar el numero 51158544 en Transfermovil.",
+			// "Debes confirmar el numero 51158544 en Transfermovil.",
+			"Debes confirmar el numero 52375492 en Transfermovil.",
 			'Debes marcar la opcion "El destinatario recibe mi numero de movil".',
 			"Si no compartes tu numero movil, la verificacion puede retrasarse o perderse.",
 		],

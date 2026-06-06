@@ -71,6 +71,7 @@ object TributoKeys {
     const val ANUNCIOS = "anuncios"
     const val CSS20 = "css20"
     const val CSS14 = "css14"
+    const val CSS_SUBSIDIO = "cssSubsidio"
     const val OTROS = "otros"
     const val RESTAURACION = "restauracion"
     const val ARRENDAMIENTO = "arrendamiento"
@@ -119,7 +120,7 @@ object TributoConfigsPorDefecto {
         ),
         TributoDefinition(
             key = TributoKeys.CSS20,
-            nombre = "Contribución a la seguridad social 20%",
+            nombre = "Contribución Especial a la seguridad social 20%",
             categoria = TributoCategorias.TRIBUTO,
             porcentaje = 20.0,
             incluido = false,
@@ -128,12 +129,21 @@ object TributoConfigsPorDefecto {
         ),
         TributoDefinition(
             key = TributoKeys.CSS14,
-            nombre = "Contribución a la seguridad social 14%",
+            nombre = "Contribución a la seguridad social 12.5%",
             categoria = TributoCategorias.TRIBUTO,
-            porcentaje = 14.0,
+            porcentaje = 12.5,
             incluido = false,
             autocalcular = false,
             orden = 5
+        ),
+        TributoDefinition(
+            key = TributoKeys.CSS_SUBSIDIO,
+            nombre = "CSS - Retención Para pago de subsidios a trabajadores 1.5%",
+            categoria = TributoCategorias.TRIBUTO,
+            porcentaje = 1.5,
+            incluido = false,
+            autocalcular = false,
+            orden = 6
         ),
         TributoDefinition(
             key = TributoKeys.OTROS,
@@ -142,7 +152,7 @@ object TributoConfigsPorDefecto {
             porcentaje = 0.0,
             incluido = false,
             autocalcular = false,
-            orden = 6
+            orden = 7
         ),
         TributoDefinition(
             key = TributoKeys.RESTAURACION,
@@ -151,7 +161,7 @@ object TributoConfigsPorDefecto {
             porcentaje = 0.0,
             incluido = false,
             autocalcular = false,
-            orden = 7
+            orden = 8
         ),
         TributoDefinition(
             key = TributoKeys.ARRENDAMIENTO,
@@ -160,7 +170,7 @@ object TributoConfigsPorDefecto {
             porcentaje = 0.0,
             incluido = false,
             autocalcular = false,
-            orden = 8
+            orden = 9
         ),
         TributoDefinition(
             key = TributoKeys.EXONERADO,
@@ -169,7 +179,7 @@ object TributoConfigsPorDefecto {
             porcentaje = 0.0,
             incluido = false,
             autocalcular = false,
-            orden = 9
+            orden = 10
         ),
         TributoDefinition(
             key = TributoKeys.OTROS_MFP,
@@ -178,16 +188,16 @@ object TributoConfigsPorDefecto {
             porcentaje = 0.0,
             incluido = false,
             autocalcular = false,
-            orden = 10
+            orden = 11
         ),
         TributoDefinition(
             key = TributoKeys.CUOTA_MENSUAL,
-            nombre = "Cuota mensual",
+            nombre = "Cuota mensual 5%",
             categoria = TributoCategorias.OTRO_DEDUCIBLE,
             porcentaje = 5.0,
             incluido = false,
             autocalcular = false,
-            orden = 11
+            orden = 12
         )
     )
 

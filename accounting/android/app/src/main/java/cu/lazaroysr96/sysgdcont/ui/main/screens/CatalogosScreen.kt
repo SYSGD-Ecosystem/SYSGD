@@ -23,42 +23,40 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import cu.lazaroysr96.sysgdcont.data.model.Almacen
 import cu.lazaroysr96.sysgdcont.data.model.CuentaContable
+import cu.lazaroysr96.sysgdcont.data.model.ItemInventario
+import cu.lazaroysr96.sysgdcont.data.model.ModoStock
 import cu.lazaroysr96.sysgdcont.data.model.NaturalezaCuenta
 import cu.lazaroysr96.sysgdcont.data.model.PrecioProductoDetalle
 import cu.lazaroysr96.sysgdcont.data.model.TipoPrecio
 import cu.lazaroysr96.sysgdcont.data.model.TipoCuenta
+import cu.lazaroysr96.sysgdcont.data.model.UsoOperativoCuenta
 import cu.lazaroysr96.sysgdcont.data.model.Producto
+import cu.lazaroysr96.sysgdcont.data.model.ProductoCompra
+import cu.lazaroysr96.sysgdcont.data.model.ProductoVenta
 import cu.lazaroysr96.sysgdcont.viewmodel.InventarioViewModel
 import cu.lazaroysr96.sysgdcont.viewmodel.LedgerViewModel
 import cu.lazaroysr96.sysgdcont.ui.components.producto.ChevronTrailing
 import cu.lazaroysr96.sysgdcont.ui.components.producto.ProductoFormDialog
 import cu.lazaroysr96.sysgdcont.ui.components.producto.ProductoItem
-
 import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.Brush
 import java.io.File
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
-
-// Shapes y layout
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Color
-
-// Dialog
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-
-// Imagen
 import androidx.compose.ui.res.painterResource
-
-// ProductoImagen — ajusta el paquete según donde esté definida en tu proyecto
 import cu.lazaroysr96.sysgdcont.ui.components.producto.toProductoImagen
 
 private data class CuentaTreeNode(
@@ -80,8 +78,17 @@ fun CatalogosScreen(
     var selectedTab    by remember { mutableStateOf(0) }
     val productosState by inventarioViewModel.uiState.collectAsStateWithLifecycle()
     val ledgerState    by ledgerViewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    LaunchedEffect(productosState.snackbarMessage) {
+        productosState.snackbarMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            inventarioViewModel.clearSnackbar()
+        }
+    }
+
+    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
+    Column(modifier = Modifier.fillMaxSize().padding(padding)) {
         TabRow(selectedTabIndex = selectedTab) {
             listOf("Cuentas", "Productos").forEachIndexed { index, title ->
                 Tab(
@@ -106,11 +113,19 @@ fun CatalogosScreen(
             )
             1 -> ProductosTab(
                 productos        = productosState.productosBase,
+                productosVenta   = productosState.productos,
+                productosCompra  = productosState.productosCompra,
+                almacenes        = productosState.almacenes,
+                itemsInventario  = (productosState.itemsInventarioVenta + productosState.itemsInventarioCompra).distinctBy { it.id },
                 onAddProduct     = inventarioViewModel::agregarProductoBase,
                 onEditProduct    = inventarioViewModel::actualizarProductoBase,
+                onDeleteProduct  = inventarioViewModel::deleteProductoBase,
+                onUpdatePrice    = inventarioViewModel::actualizarPrecioProductoCatalogo,
+                onUpdateStock    = inventarioViewModel::ajustarInventarioProductoCatalogo,
                 loadPriceHistory = inventarioViewModel::obtenerHistorialPreciosProducto
             )
         }
+    }
     }
 }
 
@@ -121,11 +136,18 @@ fun CatalogosScreen(
 @Composable
 private fun ProductosTab(
     productos: List<Producto>,
+    productosVenta: List<ProductoVenta>,
+    productosCompra: List<ProductoCompra>,
+    almacenes: List<Almacen>,
+    itemsInventario: List<ItemInventario>,
     onAddProduct:  (nombre: String, imagenJson: String, unidad: String, descripcion: String) -> Unit,
     onEditProduct: (id: String, nombre: String, imagenJson: String, unidad: String, descripcion: String) -> Unit,
+    onDeleteProduct: (id: String) -> Unit,
+    onUpdatePrice: (productoId: String, tipoPrecio: String, precio: Double, almacenId: String) -> Unit,
+    onUpdateStock: (productoId: String, almacenId: String, cantidad: Double, modo: ModoStock) -> Unit,
     loadPriceHistory: suspend (String) -> List<PrecioProductoDetalle>
 ) {
-    var productoDetalle by remember { mutableStateOf<Producto?>(null) }
+    var productoDetalle  by remember { mutableStateOf<Producto?>(null) }
     var productoEditando by remember { mutableStateOf<Producto?>(null) }
     var showAddDialog    by remember { mutableStateOf(false) }
     var searchQuery      by remember { mutableStateOf("") }
@@ -204,13 +226,33 @@ private fun ProductosTab(
     }
 
     productoDetalle?.let { producto ->
+        val productoItems = itemsInventario.filter { it.productoId == producto.id }
+        val deleteAvailability = remember(producto.id, productoItems, productosVenta, productosCompra, itemsInventario) {
+            buildProductoDeleteAvailability(
+                producto = producto,
+                itemsInventario = productoItems,
+                productosVenta = productosVenta,
+                productosCompra = productosCompra,
+                allItemsInventario = itemsInventario
+            )
+        }
+
         ProductoDetalleDialog(
             producto = producto,
+            almacenes = almacenes,
+            itemsInventario = productoItems,
+            deleteAvailability = deleteAvailability,
             loadPriceHistory = loadPriceHistory,
+            onUpdatePrice = onUpdatePrice,
+            onUpdateStock = onUpdateStock,
             onDismiss = { productoDetalle = null },
             onEdit = {
                 productoDetalle = null
                 productoEditando = producto
+            },
+            onDelete = {
+                onDeleteProduct(producto.id)
+                productoDetalle = null
             }
         )
     }
@@ -228,94 +270,19 @@ private fun ProductosTab(
     }
 }
 
-// @Composable
-// private fun ProductoDetalleDialog(
-//     producto: Producto,
-//     loadPriceHistory: suspend (String) -> List<PrecioProductoDetalle>,
-//     onDismiss: () -> Unit,
-//     onEdit: () -> Unit
-// ) {
-//     val historial by produceState<List<PrecioProductoDetalle>>(initialValue = emptyList(), key1 = producto.id) {
-//         value = runCatching { loadPriceHistory(producto.id) }.getOrDefault(emptyList())
-//     }
-//     val preciosVenta = remember(historial) { historial.filter { it.tipoPrecio == TipoPrecio.VENTA && it.activo } }
-//     val preciosCompra = remember(historial) { historial.filter { it.tipoPrecio == TipoPrecio.COMPRA && it.activo } }
-
-//     AlertDialog(
-//         onDismissRequest = onDismiss,
-//         title = { Text(producto.nombre) },
-//         text = {
-//             Column(
-//                 modifier = Modifier
-//                     .fillMaxWidth()
-//                     .verticalScroll(rememberScrollState()),
-//                 verticalArrangement = Arrangement.spacedBy(12.dp)
-//             ) {
-//                 ProductoDetalleDato("Unidad", producto.unidad)
-//                 if (producto.descripcion.isNotBlank()) {
-//                     ProductoDetalleDato("Descripcion", producto.descripcion)
-//                 }
-//                 ProductoPrecioVigenteBlock("Precio de venta vigente", preciosVenta)
-//                 ProductoPrecioVigenteBlock("Precio de compra vigente", preciosCompra)
-//                 Divider()
-//                 Text("Historial de precios", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-//                 if (historial.isEmpty()) {
-//                     Text(
-//                         "Todavia no hay cambios de precio registrados para este producto.",
-//                         style = MaterialTheme.typography.bodyMedium,
-//                         color = MaterialTheme.colorScheme.onSurfaceVariant
-//                     )
-//                 } else {
-//                     historial.forEach { item ->
-//                         ElevatedCard(
-//                             colors = CardDefaults.elevatedCardColors(
-//                                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-//                             )
-//                         ) {
-//                             Column(
-//                                 modifier = Modifier
-//                                     .fillMaxWidth()
-//                                     .padding(12.dp),
-//                                 verticalArrangement = Arrangement.spacedBy(4.dp)
-//                             ) {
-//                                 Text(
-//                                     "${TipoPrecio.label(item.tipoPrecio)} • ${item.almacenNombre ?: "Almacen"}",
-//                                     style = MaterialTheme.typography.labelLarge,
-//                                     fontWeight = FontWeight.SemiBold
-//                                 )
-//                                 Text(
-//                                     "${"%.2f".format(item.precio)} ${item.moneda}",
-//                                     style = MaterialTheme.typography.titleSmall
-//                                 )
-//                                 Text(
-//                                     if (item.activo) "Vigente desde ${item.fechaDesde}" else "${item.fechaDesde} → ${item.fechaHasta ?: "sin cierre"}",
-//                                     style = MaterialTheme.typography.bodySmall,
-//                                     color = MaterialTheme.colorScheme.onSurfaceVariant
-//                                 )
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-//         },
-//         confirmButton = {
-//             Button(onClick = onEdit) { Text("Editar") }
-//         },
-//         dismissButton = {
-//             TextButton(onClick = onDismiss) { Text("Cerrar") }
-//         }
-//     )
-// }
-
-
-
 
 @Composable
 private fun ProductoDetalleDialog(
     producto: Producto,
+    almacenes: List<Almacen>,
+    itemsInventario: List<ItemInventario>,
+    deleteAvailability: ProductoDeleteAvailability,
     loadPriceHistory: suspend (String) -> List<PrecioProductoDetalle>,
+    onUpdatePrice: (productoId: String, tipoPrecio: String, precio: Double, almacenId: String) -> Unit,
+    onUpdateStock: (productoId: String, almacenId: String, cantidad: Double, modo: ModoStock) -> Unit,
     onDismiss: () -> Unit,
-    onEdit: () -> Unit
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     val historial by produceState<List<PrecioProductoDetalle>>(
         initialValue = emptyList(),
@@ -327,6 +294,12 @@ private fun ProductoDetalleDialog(
     val preciosCompra = remember(historial) { historial.filter { it.tipoPrecio == TipoPrecio.COMPRA && it.activo } }
     val imagen = remember(producto.emoji) { producto.emoji.toProductoImagen() }
     val colorScheme = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    var priceEditor by remember { mutableStateOf<String?>(null) }
+    var stockEditorOpen by remember { mutableStateOf(false) }
+    
+    var deleteConfirmOpen by remember { mutableStateOf(false) }
+    
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -335,12 +308,12 @@ private fun ProductoDetalleDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.95f)
-                .wrapContentHeight(),
+                .fillMaxHeight(0.92f),
             shape = RoundedCornerShape(24.dp),
             color = colorScheme.surface,
             tonalElevation = 6.dp
         ) {
-            Column {
+            Column(Modifier.fillMaxHeight()) {
 
                 // ── Hero ─────────────────────────────────────────────────────
                 Box(
@@ -356,7 +329,18 @@ private fun ProductoDetalleDialog(
                         )
                         .padding(24.dp),
                 ) {
+                    IconButton(
+                        onClick = { deleteConfirmOpen = true },
+                        modifier = Modifier.align(Alignment.TopEnd)
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Eliminar producto",
+                            tint = colorScheme.error
+                        )
+                    }
                     Row(
+                        // modifier = Modifier.padding(start = 44.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
@@ -430,6 +414,7 @@ private fun ProductoDetalleDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .weight(1f)
                         .verticalScroll(rememberScrollState())
                         .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -445,16 +430,24 @@ private fun ProductoDetalleDialog(
                             precios = preciosVenta,
                             containerColor = colorScheme.primaryContainer,
                             contentColor = colorScheme.onPrimaryContainer,
-                            modifier = Modifier.weight(1f).fillMaxHeight()
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            onEdit = { priceEditor = TipoPrecio.VENTA }
                         )
                         PrecioVigenteCard(
                             titulo = "Compra",
                             precios = preciosCompra,
                             containerColor = colorScheme.secondaryContainer,
                             contentColor = colorScheme.onSecondaryContainer,
-                            modifier = Modifier.weight(1f).fillMaxHeight()
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            onEdit = { priceEditor = TipoPrecio.COMPRA }
                         )
                     }
+
+                    InventoryAvailabilitySection(
+                        items = itemsInventario,
+                        almacenes = almacenes,
+                        onEdit = { stockEditorOpen = true }
+                    )
 
                     // Historial
                     if (historial.isNotEmpty()) {
@@ -503,7 +496,131 @@ private fun ProductoDetalleDialog(
             }
         }
     }
+
+    if (deleteConfirmOpen) {
+        DeleteProductoConfirmDialog(
+            producto = producto,
+            deleteAvailability = deleteAvailability,
+            onDismiss = { deleteConfirmOpen = false },
+            onConfirmDelete = {
+                deleteConfirmOpen = false
+                onDelete()
+            }
+        )
+    }
+
+
+    priceEditor?.let { tipoPrecio ->
+        EditPriceDialog(
+            producto = producto,
+            tipoPrecio = tipoPrecio,
+            almacenes = almacenes,
+            currentPrice = (if (tipoPrecio == TipoPrecio.VENTA) preciosVenta else preciosCompra).firstOrNull(),
+            onDismiss = { priceEditor = null },
+            onConfirm = { almacenId, precio ->
+                onUpdatePrice(producto.id, tipoPrecio, precio, almacenId)
+                priceEditor = null
+            }
+        )
+    }
+
+    if (stockEditorOpen) {
+        EditStockDialog(
+            producto = producto,
+            almacenes = almacenes,
+            items = itemsInventario,
+            onDismiss = { stockEditorOpen = false },
+            onConfirm = { almacenId, cantidad, modo ->
+                onUpdateStock(producto.id, almacenId, cantidad, modo)
+                stockEditorOpen = false
+            }
+        )
+    }
 }
+
+private data class ProductoDeleteAvailability(
+    val canDelete: Boolean,
+    val blockers: List<String>,
+)
+
+private fun buildProductoDeleteAvailability(
+    producto: Producto,
+    itemsInventario: List<ItemInventario>,
+    productosVenta: List<ProductoVenta>,
+    productosCompra: List<ProductoCompra>,
+    allItemsInventario: List<ItemInventario>,
+): ProductoDeleteAvailability {
+    val blockers = buildList {
+        if (productosVenta.any { it.id == producto.id }) add("está en el catálogo de ventas")
+        if (productosCompra.any { it.id == producto.id }) add("está en el catálogo de compras")
+        if (itemsInventario.isNotEmpty()) add("tiene inventario/stock activo")
+        if (allItemsInventario.any { item -> item.productosVinculadosIds.contains("\"${producto.id}\"") }) {
+            add("está vinculado como componente de otro producto")
+        }
+    }
+    return ProductoDeleteAvailability(canDelete = blockers.isEmpty(), blockers = blockers)
+}
+
+@Composable
+private fun DeleteProductoConfirmDialog(
+    producto: Producto,
+    deleteAvailability: ProductoDeleteAvailability,
+    onDismiss: () -> Unit,
+    onConfirmDelete: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                Icons.Default.Delete,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error
+            )
+        },
+        title = { Text(if (deleteAvailability.canDelete) "Eliminar producto" else "No se puede eliminar") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    if (deleteAvailability.canDelete) {
+                        "Puedes eliminar \"${producto.nombre}\" porque no tiene usos activos en catálogos, inventario ni vínculos conocidos."
+                    } else {
+                        "No puedes eliminar \"${producto.nombre}\" todavía porque:"
+                    }
+                )
+                if (!deleteAvailability.canDelete) {
+                    deleteAvailability.blockers.forEach { reason ->
+                        Text("• $reason", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Text(
+                        "Retíralo primero de esas secciones y vuelve a intentarlo.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (deleteAvailability.canDelete) {
+                Button(
+                    onClick = onConfirmDelete,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Sí, eliminar")
+                }
+            } else {
+                TextButton(onClick = onDismiss) { Text("Entendido") }
+            }
+        },
+        dismissButton = {
+            if (deleteAvailability.canDelete) {
+                TextButton(onClick = onDismiss) { Text("Cancelar") }
+            }
+        }
+    )
+}
+
+
+
 
 // ── Auxiliares ────────────────────────────────────────────────────────────────
 
@@ -514,6 +631,7 @@ private fun PrecioVigenteCard(
     containerColor: Color,
     contentColor: Color,
     modifier: Modifier = Modifier,
+    onEdit: () -> Unit = {}
 ) {
     Surface(
         modifier = modifier,
@@ -524,11 +642,20 @@ private fun PrecioVigenteCard(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(
-                text = titulo,
-                style = MaterialTheme.typography.labelMedium,
-                color = contentColor.copy(alpha = 0.75f)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = titulo,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = contentColor.copy(alpha = 0.75f)
+                )
+                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Edit, contentDescription = "Editar precio", tint = contentColor)
+                }
+            }
             if (precios.isEmpty()) {
                 Text(
                     text = "Sin precio",
@@ -637,6 +764,166 @@ private fun HistorialPrecioItem(item: PrecioProductoDetalle) {
 
 
 
+@Composable
+private fun InventoryAvailabilitySection(
+    items: List<ItemInventario>,
+    almacenes: List<Almacen>,
+    onEdit: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Inventario disponible", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                TextButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Modificar")
+                }
+            }
+            if (items.isEmpty()) {
+                Text("Sin inventario registrado", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                items.forEach { item ->
+                    val almacen = almacenes.firstOrNull { it.id == item.almacenId }?.nombre ?: item.almacenId
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(almacen, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = if (item.modoStock == ModoStock.ILIMITADO.name) "Ilimitado" else "${"%.2f".format(item.stockDisponible)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditPriceDialog(
+    producto: Producto,
+    tipoPrecio: String,
+    almacenes: List<Almacen>,
+    currentPrice: PrecioProductoDetalle?,
+    onDismiss: () -> Unit,
+    onConfirm: (String, Double) -> Unit
+) {
+    val defaultAlmacen = currentPrice?.almacenId ?: almacenes.firstOrNull()?.id.orEmpty()
+    var almacenId by remember(defaultAlmacen) { mutableStateOf(defaultAlmacen) }
+    var precioText by remember(currentPrice) { mutableStateOf(currentPrice?.precio?.toString().orEmpty()) }
+    val precio = precioText.replace(',', '.').toDoubleOrNull()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Editar precio de ${TipoPrecio.label(tipoPrecio).lowercase()}") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(producto.nombre, style = MaterialTheme.typography.titleSmall)
+                AlmacenSelector(almacenes = almacenes, selectedId = almacenId, onSelected = { almacenId = it })
+                OutlinedTextField(
+                    value = precioText,
+                    onValueChange = { precioText = it },
+                    label = { Text("Precio") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = almacenId.isNotBlank() && precio != null && precio >= 0.0,
+                onClick = { onConfirm(almacenId, precio ?: 0.0) }
+            ) { Text("Guardar") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditStockDialog(
+    producto: Producto,
+    almacenes: List<Almacen>,
+    items: List<ItemInventario>,
+    onDismiss: () -> Unit,
+    onConfirm: (String, Double, ModoStock) -> Unit
+) {
+    val defaultItem = items.firstOrNull()
+    val defaultAlmacen = defaultItem?.almacenId ?: almacenes.firstOrNull()?.id.orEmpty()
+    var almacenId by remember(defaultAlmacen) { mutableStateOf(defaultAlmacen) }
+    val selectedItem = items.firstOrNull { it.almacenId == almacenId }
+    var cantidadText by remember(selectedItem) { mutableStateOf((selectedItem?.stockDisponible ?: 0.0).toString()) }
+    var modo by remember(selectedItem) { mutableStateOf(runCatching { ModoStock.valueOf(selectedItem?.modoStock ?: ModoStock.MANUAL.name) }.getOrDefault(ModoStock.MANUAL)) }
+    val cantidad = cantidadText.replace(',', '.').toDoubleOrNull()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Modificar inventario") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(producto.nombre, style = MaterialTheme.typography.titleSmall)
+                AlmacenSelector(almacenes = almacenes, selectedId = almacenId, onSelected = { almacenId = it })
+                OutlinedTextField(
+                    value = cantidadText,
+                    onValueChange = { cantidadText = it },
+                    label = { Text("Cantidad disponible") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(ModoStock.MANUAL, ModoStock.ILIMITADO).forEach { option ->
+                        FilterChip(
+                            selected = modo == option,
+                            onClick = { modo = option },
+                            label = { Text(option.name.lowercase().replaceFirstChar { it.uppercase() }) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = almacenId.isNotBlank() && cantidad != null && cantidad >= 0.0,
+                onClick = { onConfirm(almacenId, cantidad ?: 0.0, modo) }
+            ) { Text("Guardar") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
+}
+
+@Composable
+private fun AlmacenSelector(
+    almacenes: List<Almacen>,
+    selectedId: String,
+    onSelected: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedName = almacenes.firstOrNull { it.id == selectedId }?.nombre ?: "Seleccionar almacén"
+    Box {
+        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+            Text(selectedName, modifier = Modifier.weight(1f))
+            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            almacenes.forEach { almacen ->
+                DropdownMenuItem(
+                    text = { Text(if (almacen.principal) "${almacen.nombre} (principal)" else almacen.nombre) },
+                    onClick = {
+                        onSelected(almacen.id)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
 
 @Composable
 private fun ProductoDetalleDato(label: String, valor: String) {
@@ -678,7 +965,7 @@ private fun ProductoPrecioVigenteBlock(
 private fun CuentasTab(
     cuentas: List<CuentaContable>,
     saldoPorCuentaId: Map<String, Double>,
-    onAddCuenta: (codigo: String, nombre: String, naturaleza: String, tipo: String) -> Unit
+    onAddCuenta: (codigo: String, nombre: String, naturaleza: String, tipo: String, usoOperativo: String) -> Unit
 ) {
     var showAddDialog      by remember { mutableStateOf(false) }
     var search             by remember { mutableStateOf("") }
@@ -744,8 +1031,8 @@ private fun CuentasTab(
     if (showAddDialog) {
         AddCuentaDialog(
             onDismiss = { showAddDialog = false },
-            onConfirm = { codigo, nombre, naturaleza, tipo ->
-                onAddCuenta(codigo, nombre, naturaleza, tipo)
+            onConfirm = { codigo, nombre, naturaleza, tipo, usoOperativo ->
+                onAddCuenta(codigo, nombre, naturaleza, tipo, usoOperativo)
                 showAddDialog = false
             }
         )
@@ -834,14 +1121,16 @@ private fun CuentaTreeCard(
 @Composable
 private fun AddCuentaDialog(
     onDismiss: () -> Unit,
-    onConfirm: (codigo: String, nombre: String, naturaleza: String, tipo: String) -> Unit
+    onConfirm: (codigo: String, nombre: String, naturaleza: String, tipo: String, usoOperativo: String) -> Unit
 ) {
     var codigo             by remember { mutableStateOf("") }
     var nombre             by remember { mutableStateOf("") }
     var naturaleza         by remember { mutableStateOf("ACREEDORA") }
     var tipo               by remember { mutableStateOf("INGRESO") }
+    var usoOperativo       by remember { mutableStateOf(UsoOperativoCuenta.INGRESO) }
     var expandedNaturaleza by remember { mutableStateOf(false) }
     var expandedTipo       by remember { mutableStateOf(false) }
+    var expandedUso        by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -854,8 +1143,8 @@ private fun AddCuentaDialog(
                 ExposedDropdownMenuBox(expanded = expandedNaturaleza, onExpandedChange = { expandedNaturaleza = !expandedNaturaleza }) {
                     OutlinedTextField(value = naturaleza, onValueChange = {}, readOnly = true, label = { Text("Naturaleza") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedNaturaleza) }, modifier = Modifier.menuAnchor().fillMaxWidth())
                     ExposedDropdownMenu(expanded = expandedNaturaleza, onDismissRequest = { expandedNaturaleza = false }) {
-                        listOf("ACREEDORA", "DEUDORA").forEach { nat ->
-                            DropdownMenuItem(text = { Text(if (nat == "ACREEDORA") "Acreedora" else "Deudora") }, onClick = { naturaleza = nat; expandedNaturaleza = false })
+                        NaturalezaCuenta.todos.forEach { nat ->
+                            DropdownMenuItem(text = { Text(NaturalezaCuenta.label(nat)) }, onClick = { naturaleza = nat; expandedNaturaleza = false })
                         }
                     }
                 }
@@ -863,14 +1152,30 @@ private fun AddCuentaDialog(
                 ExposedDropdownMenuBox(expanded = expandedTipo, onExpandedChange = { expandedTipo = !expandedTipo }) {
                     OutlinedTextField(value = tipo, onValueChange = {}, readOnly = true, label = { Text("Tipo") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedTipo) }, modifier = Modifier.menuAnchor().fillMaxWidth())
                     ExposedDropdownMenu(expanded = expandedTipo, onDismissRequest = { expandedTipo = false }) {
-                        listOf("ACTIVO", "PASIVO", "PATRIMONIO", "INGRESO", "GASTO").forEach { t ->
-                            DropdownMenuItem(text = { Text(t) }, onClick = { tipo = t; expandedTipo = false })
+                        TipoCuenta.todos.forEach { t ->
+                            DropdownMenuItem(
+                                text = { Text(TipoCuenta.label(t)) },
+                                onClick = {
+                                    tipo = t
+                                    expandedTipo = false
+                                }
+                            )
                         }
                     }
                 }
+
+                ExposedDropdownMenuBox(expanded = expandedUso, onExpandedChange = { expandedUso = !expandedUso }) {
+                    OutlinedTextField(value = UsoOperativoCuenta.label(usoOperativo), onValueChange = {}, readOnly = true, label = { Text("Uso operativo") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedUso) }, modifier = Modifier.menuAnchor().fillMaxWidth())
+                    ExposedDropdownMenu(expanded = expandedUso, onDismissRequest = { expandedUso = false }) {
+                        UsoOperativoCuenta.todos.forEach { uso ->
+                            DropdownMenuItem(text = { Text(UsoOperativoCuenta.label(uso)) }, onClick = { usoOperativo = uso; expandedUso = false })
+                        }
+                    }
+                }
+
             }
         },
-        confirmButton = { TextButton(onClick = { onConfirm(codigo, nombre, naturaleza, tipo) }, enabled = codigo.isNotBlank() && nombre.isNotBlank()) { Text("Guardar") } },
+        confirmButton = { TextButton(onClick = { onConfirm(codigo, nombre, naturaleza, tipo, usoOperativo) }, enabled = codigo.isNotBlank() && nombre.isNotBlank()) { Text("Guardar") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
     )
 }

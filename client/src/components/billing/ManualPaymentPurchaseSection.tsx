@@ -345,7 +345,7 @@ const ManualPaymentPurchaseSection = () => {
 							/>
 							<div className="space-y-1">
 								<Label htmlFor="confirmationPhoneAcknowledged" className="cursor-pointer">
-									Confirme el numero 51158544 en Transfermovil.
+									Confirme el numero 52375492 en Transfermovil.
 								</Label>
 								<p className="text-sm text-muted-foreground">
 									Si no confirmas ese numero, la verificacion puede retrasarse.

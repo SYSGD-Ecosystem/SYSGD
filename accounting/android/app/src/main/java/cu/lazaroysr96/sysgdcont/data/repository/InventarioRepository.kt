@@ -305,6 +305,32 @@ class InventarioRepository @Inject constructor(
         markLocalModified()
     }
 
+    suspend fun deleteProductoBase(id: String) {
+        val existente = productoDao.getById(id)
+            ?: throw IllegalStateException("No existe el producto")
+
+        val enVentas = catalogoVentaDao.countActivoByProductoId(id) > 0
+        val enCompras = catalogoCompraDao.countActivoByProductoId(id) > 0
+        val enStock = itemInventarioDao.countActivoByProductoId(id) > 0
+        val esComponente = inventarioVinculoDao.countByProductoComponenteId(id) > 0
+
+        val usos = buildList {
+            if (enVentas) add("catálogo de ventas")
+            if (enCompras) add("catálogo de compras")
+            if (enStock) add("inventario (stock activo)")
+            if (esComponente) add("vinculado como componente de otro producto")
+        }
+
+        if (usos.isNotEmpty()) {
+            throw IllegalStateException(
+                "No se puede eliminar \"${existente.nombre}\": está en uso en ${usos.joinToString(", ")}."
+            )
+        }
+
+        productoDao.delete(id)
+        markLocalModified()
+    }
+
     suspend fun agregarProducto(
         nombre: String,
         precio: Double,
@@ -536,6 +562,73 @@ class InventarioRepository @Inject constructor(
                 )
             )
             registrarHistoricoPrecio(productoId, TipoPrecio.COMPRA, precio, almacen.id)
+        }
+        markLocalModified()
+    }
+
+
+    suspend fun actualizarPrecioCatalogoProducto(
+        productoId: String,
+        tipoPrecio: String,
+        precio: Double,
+        almacenId: String? = null
+    ) {
+        require(precio >= 0.0) { "El precio no puede ser negativo" }
+        val almacen = almacenId?.let { requireAlmacenActivo(it) } ?: ensureDefaultAlmacen()
+        productoDao.getById(productoId)
+            ?: throw IllegalStateException("No existe el producto seleccionado")
+        appDatabase.withTransaction {
+            when (tipoPrecio) {
+                TipoPrecio.VENTA -> upsertCatalogoVenta(productoId, precio, almacen.id)
+                TipoPrecio.COMPRA -> upsertCatalogoCompra(productoId, precio, almacen.id)
+                else -> throw IllegalArgumentException("Tipo de precio no soportado")
+            }
+            registrarHistoricoPrecio(productoId, tipoPrecio, precio, almacen.id)
+        }
+        markLocalModified()
+    }
+
+    suspend fun ajustarInventarioProductoCatalogo(
+        productoId: String,
+        almacenId: String,
+        cantidad: Double,
+        modo: ModoStock
+    ) {
+        require(cantidad >= 0.0) { "La cantidad no puede ser negativa" }
+        requireAlmacenActivo(almacenId)
+        productoDao.getById(productoId)
+            ?: throw IllegalStateException("No existe el producto seleccionado")
+        val fecha = LocalDate.now().toString()
+        appDatabase.withTransaction {
+            val existente = itemInventarioDao.getByProductoId(productoId, almacenId)
+            val item = existente ?: ItemInventario(
+                id = "stock_${almacenId}_$productoId",
+                productoId = productoId,
+                almacenId = almacenId,
+                tipoProducto = TipoProductoInv.VENTA.name,
+                stockDisponible = 0.0,
+                modoStock = modo.name,
+                ultimaActualizacion = fecha,
+                visibleEnVentas = true
+            ).also { itemInventarioDao.insert(it) }
+            if (item.archivado) {
+                itemInventarioDao.restoreById(item.id, fecha)
+            }
+            itemInventarioDao.actualizarStockYModo(item.id, cantidad, modo.name, fecha)
+            if (modo != ModoStock.VINCULADO) {
+                inventarioVinculoDao.deleteByItemInventarioId(item.id)
+            }
+            registrarMovimiento(
+                tipoMovimiento = TipoMovimientoInventario.AJUSTE,
+                productoId = productoId,
+                cantidad = kotlin.math.abs(cantidad - item.stockDisponible),
+                fecha = fecha,
+                almacenDestinoId = almacenId,
+                stockDestinoAntes = item.stockDisponible,
+                stockDestinoDespues = cantidad,
+                referenciaId = item.id,
+                nota = "Ajuste desde Cuentas y Productos"
+            )
         }
         markLocalModified()
     }
