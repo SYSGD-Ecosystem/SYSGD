@@ -79,6 +79,15 @@ function AppCard({
 const apps: AppCardProps[] = [
 	{
 		icon: "/ic_gestor_contable_tcp.png",
+		iconAlt: "Gestor Contable TCP Pro",
+		name: "Gestor Contable TCP Pro",
+		description:
+			"Gestiona tu negocio de forma eficiente desde tu móvil. Permite registrar gastos e ingresos, administrar compras y ventas en puntos de venta, y consultar el nomenclador CNAE integrado.",
+		price: "Pro",
+		installUrl: "https://github.com/lazaroysr96/gestor-contable-tcp-releases/releases/download/2.2.10/app-release.apk",
+	},
+	{
+		icon: "/ic_gestor_contable_tcp.png",
 		iconAlt: "Gestor Contable TCP",
 		name: "Gestor Contable TCP",
 		description:
@@ -97,6 +106,8 @@ const apps: AppCardProps[] = [
 			"https://www.apklis.cu/application/cu.lazaroysr96.nomesclaturacnae.pro",
 	},
 ];
+
+
 
 export default function AppsPage() {
 	return (
