@@ -129,7 +129,7 @@ if (shouldInitDB) {
 		.then(() => {
 			initSocketIO(httpServer);
 			httpServer.listen(PORT, () => {
-				console.log(`🚀 SYSGD corriendo en http://localhost:${PORT}`);
+				console.log(`🚀 SYSGD Ecosystem corriendo en http://localhost:${PORT}`);
 			});
 		})
 		.catch((error) => {
