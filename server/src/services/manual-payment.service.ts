@@ -38,7 +38,7 @@ const MANUAL_PAYMENT_PRODUCTS: ManualPaymentProduct[] = [
 		duration_months: 3,
 		name: "Plan Pro por 3 meses",
 		price_cup: 650,
-		discount_percent: 13.33,
+		discount_percent: 13,
 		description: "Ahorra 13.33 por ciento respecto al pago mensual.",
 		features: [
 			"Generacion de facturas",
@@ -278,14 +278,24 @@ export const createManualPaymentOrder = async (
 	return rows[0];
 };
 
+// export const listAllManualPaymentOrders = async (): Promise<ManualPaymentOrder[]> => {
+// 	const { rows } = await pool.query<ManualPaymentOrder>(
+// 		`SELECT id, user_id, product_id, plan_tier, duration_months, expected_amount_cup,
+// 		        status, payer_phone, sms_message, sms_transaction_id, sms_amount_cup,
+// 		        sms_payment_date, confirmation_phone_acknowledged, receiver_phone_shared,
+// 		        receiver_card, confirmation_phone, grace_expires_at, reviewed_at,
+// 		        reviewed_by, review_notes, created_at, updated_at
+// 		   FROM manual_payment_orders
+// 		  ORDER BY created_at DESC`,
+// 	);
+
+// 	return rows;
+// };
+
 export const listAllManualPaymentOrders = async (): Promise<ManualPaymentOrder[]> => {
 	const { rows } = await pool.query<ManualPaymentOrder>(
-		`SELECT id, user_id, product_id, plan_tier, duration_months, expected_amount_cup,
-		        status, payer_phone, sms_message, sms_transaction_id, sms_amount_cup,
-		        sms_payment_date, confirmation_phone_acknowledged, receiver_phone_shared,
-		        receiver_card, confirmation_phone, grace_expires_at, reviewed_at,
-		        reviewed_by, review_notes, created_at, updated_at
-		   FROM manual_payment_orders
+		`SELECT o.*, users.name AS user_name, users.email AS user_email 
+		   FROM manual_payment_orders o LEFT JOIN users ON o.user_id = users.id
 		  ORDER BY created_at DESC`,
 	);
 

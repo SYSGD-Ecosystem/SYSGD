@@ -40,7 +40,7 @@ const formatDate = (value: string | null) => {
 }
 
 const durationLabel = (months: 1 | 3 | 12) => {
-	if (months === 12) return "1 ano"
+	if (months === 12) return "1 año"
 	if (months === 3) return "3 meses"
 	return "1 mes"
 }
@@ -169,6 +169,8 @@ export default function ManualPaymentsPage() {
 											</Badge>
 										</div>
 										<div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
+											<p>Nombre: {order.user_name}</p>
+											<p>Correo: {order.user_email}</p>
 											<p>Monto esperado: {Number(order.expected_amount_cup).toFixed(2)} CUP</p>
 											<p>Telefono: {order.payer_phone}</p>
 											<p>Transaccion: {order.sms_transaction_id || "No detectada"}</p>

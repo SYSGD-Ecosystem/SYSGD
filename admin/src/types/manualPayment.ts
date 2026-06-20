@@ -23,6 +23,8 @@ export interface ManualPaymentOrder {
 	reviewed_by: string | null
 	review_notes: string | null
 	created_at: string
+	user_name: string
+	user_email: string
 }
 
 export interface ManualPaymentOrdersResponse {

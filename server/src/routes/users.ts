@@ -110,7 +110,7 @@ const buildRegistrationUserData = (
 
     if(distribution === "apklis"){
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
     const trialBilling = activatePlanBilling(defaultUserData.billing, "pro", 1, now);
 
     return {
@@ -613,6 +613,46 @@ router.put("/:id/password", async (req, res) => {
     res.status(500).json({ error: "Error al actualizar contraseña" });
   }
 });
+
+// router.get("/:id", async (req, res) => {
+
+//   const userId = req.params.id;
+//   const currentUser = getCurrentUserData(req);
+
+//   if (!userId) {
+//     res.status(400).json({ error: "ID inválido" });
+//     return;
+//   }
+
+//   if (!currentUser?.id) {
+//     res.status(401).json({ error: "Usuario no autenticado" });
+//     return;
+//   }
+
+//   if (currentUser.privileges !== "admin" && currentUser.id !== userId) {
+//     res.status(403).json({ error: "No autorizado para ver este usuario" });
+//     return;
+//   }
+
+//   try {
+//     const { rows } = await pool.query(
+//       "SELECT email, name FROM users WHERE id = $1",
+//       [userId]
+//     );
+
+//     if (rows.length === 0) {
+//       res.status(404).json({ error: "Datos de usuario no encontrados" });
+//       return;
+//     }
+
+//     const userData = rows[0].user_data || DEFAULT_USER_DATA;
+//     const billing = maybeRenewPlanCredits(normalizeBillingState(userData.billing));
+//     res.json({ ...userData, billing });
+//   } catch (error) {
+//     console.error("Error al obtener datos de usuario:", error);
+//     res.status(500).json({ error: "Error al obtener datos de usuario" });
+//   }
+// });
 
 router.delete("/:id", async (req, res) => {
   const userId = req.params.id;
