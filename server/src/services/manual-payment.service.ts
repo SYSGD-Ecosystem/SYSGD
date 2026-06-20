@@ -38,7 +38,7 @@ const MANUAL_PAYMENT_PRODUCTS: ManualPaymentProduct[] = [
 		duration_months: 3,
 		name: "Plan Pro por 3 meses",
 		price_cup: 650,
-		discount_percent: 13.33,
+		discount_percent: 13,
 		description: "Ahorra 13.33 por ciento respecto al pago mensual.",
 		features: [
 			"Generacion de facturas",
