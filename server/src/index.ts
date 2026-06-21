@@ -123,7 +123,7 @@ app.get("/", (_req, res) => {
 	// 	}
 	// });
 });
-console.log("test");
+// console.log("test");
 if (shouldInitDB) {
 	initDatabase()
 		.then(() => {
