@@ -32,6 +32,7 @@ import adminRoutes from "./admin.routes";
 import statsRoutes from "./stats.routes";
 import notificationsRoutes from "./notifications.routes";
 import licenseRoutes from "./license.routes";
+import descubre from "./descubre";
 
 const router = Router();
 
@@ -69,6 +70,7 @@ router.use(updates);
 router.use(statsRoutes);
 router.use(notificationsRoutes);
 router.use("/licenses", licenseRoutes);
+router.use("/descubre", descubre);
 
 
 // others (document registers, classification, etc.) remain in docApi
