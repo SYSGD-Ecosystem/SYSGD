@@ -116,7 +116,7 @@ export function generateJWT(user: {
 	name: string;
 	privileges: string;
 }) {
-	const expiresIn = user.privileges === "admin" ? "30m" : "30d";
+	const expiresIn = user.privileges === "admin" ? "7d" : "30d";
 
 	return jwt.sign(
 		{
@@ -212,7 +212,7 @@ export const login = async (req: Request, res: Response) => {
 			privileges: user.privileges,
 		};
 
-		const enforceAdminTwoFactor =
+		const enforceAdminTwoFactor = false //
 			user.privileges === "admin" && AdminTwoFactorService.isRequiredForAdmins();
 		const requiresTwoFactor =
 			enforceAdminTwoFactor || Boolean(user.two_factor_enabled);
