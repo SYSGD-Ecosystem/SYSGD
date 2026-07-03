@@ -212,8 +212,7 @@ export const login = async (req: Request, res: Response) => {
 			privileges: user.privileges,
 		};
 
-		const enforceAdminTwoFactor = false //
-			user.privileges === "admin" && AdminTwoFactorService.isRequiredForAdmins();
+		const enforceAdminTwoFactor = false && user.privileges === "admin" && AdminTwoFactorService.isRequiredForAdmins();
 		const requiresTwoFactor =
 			enforceAdminTwoFactor || Boolean(user.two_factor_enabled);
 
