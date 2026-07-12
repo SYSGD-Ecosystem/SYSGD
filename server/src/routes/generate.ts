@@ -69,6 +69,56 @@ router.post("/", isAuthenticated, checkAICredits, async (req, res) => {
   }
 });
 
+
+router.post("/text", isAuthenticated, checkAICredits, async (req, res) => {
+
+  const { prompt, model } = req.body;
+
+  if (!prompt) {
+    res.status(400).json({ error: "Falta el prompt" });
+    return;
+  }
+
+  try {
+    const useCustomToken = (req as any).useCustomToken;
+    const customToken = (req as any).customToken;
+
+    const result = await geminiAgent({
+      prompt,
+      forse_text_response: true,
+      model: model || "gemini-2.5-flash",
+      customToken: useCustomToken ? customToken : undefined
+    });
+
+    if (!useCustomToken) {
+      await consumeAICredits(req, res, () => {
+        res.json({
+          ...result,
+          billing: {
+            used_custom_token: false,
+            credits_consumed: 1
+          }
+        });
+      });
+    } else {
+      res.json({
+        ...result,
+        billing: {
+          used_custom_token: true,
+          credits_consumed: 0
+        }
+      });
+    }
+  } catch (err) {
+    console.error("❌ Error en Gemini Agent:", err);
+    res.status(500).json({
+      error: "Error interno del agente",
+      details: err instanceof Error ? err.message : "Error desconocido",
+    });
+  }
+});
+
+
 /**
  * Endpoint de análisis para debugging
  * Permite analizar un prompt sin consumir créditos
