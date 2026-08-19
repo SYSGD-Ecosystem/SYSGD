@@ -16,7 +16,7 @@ export class ApiError extends Error {
 }
 
 function getBaseUrl() {
-	return import.meta.env.VITE_SERVER_URL || "http://localhost:3000"
+	return "https://sysgd-production.up.railway.app" //import.meta.env.VITE_SERVER_URL || "http://localhost:3000"
 }
 
 export async function apiFetchPublic<T>(path: string, init: RequestInit = {}): Promise<T> {
