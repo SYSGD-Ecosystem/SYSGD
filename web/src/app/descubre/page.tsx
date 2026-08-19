@@ -203,6 +203,17 @@ function PostsList({ posts, totalPages, currentPage, onPageChange, totalItems }:
 					</button>
 				</div>
 			)}
+			<div className="mt-16 max-w-3xl mx-auto text-center border-t border-gray-200 dark:border-gray-800 pt-8 px-4">
+  <p className="text-xs text-muted-foreground leading-relaxed">
+    <strong>Aviso sobre el contenido:</strong> Las publicaciones presentadas en esta sección son creadas y gestionadas de forma independiente por los usuarios de la comunidad. SYSGD actúa únicamente como proveedor tecnológico y no se responsabiliza por la veracidad o legalidad del contenido de terceros. Si detectas alguna publicación fraudulenta, inapropiada o que vulnere derechos, repórtala de inmediato a{" "}
+    <a 
+      href="mailto:legal@ecosysgd.com" 
+      className="text-blue-600 dark:text-blue-400 underline font-medium hover:text-blue-700"
+    >
+      legal@ecosysgd.com
+    </a>.
+  </p>
+</div>
 		</div>
 	)
 }
