@@ -8,6 +8,7 @@ const navigation = [
   { name: "Inicio", href: "/" },
   { name: "Roadmap", href: "/roadmap" },
   { name: "Novedades", href: "/updates" },
+  { name: "Descubre", href: "/descubre" },
   { name: "Servicios", href: "/services" },
   { name: "Aplicaciones", href: "/apps" },
   // { name: "API y Precios", href: "/api" },
