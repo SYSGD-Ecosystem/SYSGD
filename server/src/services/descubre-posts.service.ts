@@ -283,3 +283,37 @@ export const listDescubrePosts = async (limit = 30, cursorCreatedAt?: string): P
 	}
 	return rows.map(toDescubrePostOutput);
 };
+
+export interface AdminDescubrePostOutput extends DescubrePostOutput {
+	status: string;
+	expiresAt: string;
+}
+
+export const listAllDescubrePostsForAdmin = async (limit = 100): Promise<AdminDescubrePostOutput[]> => {
+	const { rows } = await pool.query<DescubrePostRow>(
+		`
+		SELECT p.id, p.user_id, u.name AS user_name, p.title, p.description,
+			p.category, p.precio, p.moneda, p.province,
+			p.contact_number, p.image_url, p.credits_spent, p.boost_credits,
+			p.boosted_at, p.status, p.expires_at, p.created_at
+		FROM descubre_posts p
+		LEFT JOIN users u ON u.id = p.user_id
+		ORDER BY p.created_at DESC
+		LIMIT $1
+		`,
+		[limit],
+	);
+	return rows.map((row) => ({
+		...toDescubrePostOutput(row),
+		status: row.status,
+		expiresAt: row.expires_at,
+	}));
+};
+
+export const deleteDescubrePost = async (postId: string): Promise<boolean> => {
+	const { rowCount } = await pool.query(
+		"DELETE FROM descubre_posts WHERE id = $1",
+		[postId],
+	);
+	return (rowCount ?? 0) > 0;
+};

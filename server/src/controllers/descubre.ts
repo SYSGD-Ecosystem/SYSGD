@@ -1,7 +1,13 @@
 // controllers/descubre.ts
 import type { Request, Response } from "express";
 import { getCurrentUserData } from "./users";
-import { createDescubrePost, listDescubrePosts, getWelcomePosts } from "../services/descubre-posts.service";
+import {
+	createDescubrePost,
+	deleteDescubrePost,
+	listAllDescubrePostsForAdmin,
+	listDescubrePosts,
+	getWelcomePosts,
+} from "../services/descubre-posts.service";
 
 export const listDescubrePostsController = async (req: Request, res: Response) => {
 	const cursor = typeof req.query.cursor === "string" ? req.query.cursor : undefined;
@@ -51,4 +57,36 @@ export const createDescubrePostController = async (req: Request, res: Response) 
 	}
 
 	res.status(201).json({ post: result.post, remainingCredits: result.remainingCredits });
+};
+
+export const listAllDescubrePostsAdminController = async (req: Request, res: Response) => {
+	const limitParam = typeof req.query.limit === "string" ? Number(req.query.limit) : NaN;
+	const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 500) : 100;
+	try {
+		const posts = await listAllDescubrePostsForAdmin(limit);
+		res.json(posts);
+	} catch (err) {
+		console.error("Error listando descubre posts (admin):", err);
+		res.status(500).json({ message: "Error al obtener las publicaciones" });
+	}
+};
+
+export const deleteDescubrePostAdminController = async (req: Request, res: Response) => {
+	const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+	if (!id) {
+		res.status(400).json({ message: "Falta el id de la publicación" });
+		return;
+	}
+
+	try {
+		const deleted = await deleteDescubrePost(id);
+		if (!deleted) {
+			res.status(404).json({ message: "Publicación no encontrada" });
+			return;
+		}
+		res.json({ message: "Publicación eliminada", id });
+	} catch (err) {
+		console.error("Error eliminando descubre post:", err);
+		res.status(500).json({ message: "Error al eliminar la publicación" });
+	}
 };

@@ -8,6 +8,7 @@ import LoginPage from "./app/login/page.tsx";
 import UsersPage from "./app/admin/usuarios/page.tsx";
 import AdminAnalyticsPage from "./app/admin/analytics/page.tsx";
 import ManualPaymentsPage from "./app/admin/pagos/page.tsx";
+import DescubreModerationPage from "./app/admin/descubre/page.tsx";
 
 import AdminLayout from "./components/layouts/AdminLayout.tsx";
 import ProtectedRoute from "./components/routing/ProtectedRoute.tsx";
@@ -29,6 +30,7 @@ createRoot(document.getElementById("root")!).render(
 					<Route path="analytics" element={<AdminAnalyticsPage />} />
 					<Route path="usuarios" element={<UsersPage />} />
 					<Route path="pagos" element={<ManualPaymentsPage />} />
+					<Route path="descubre" element={<DescubreModerationPage />} />
 					<Route path="updates" element={<UpdatesPage />} />
 				</Route>
 			</Routes>

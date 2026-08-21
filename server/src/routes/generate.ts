@@ -1,9 +1,74 @@
 import express from "express";
+import { pool } from "../db";
 import { geminiAgent, analyzeRequest } from "../geminiAgent";
 import { isAuthenticated } from "../middlewares/auth-jwt";
 import { checkAICredits, consumeAICredits } from "../middlewares/usageLimits.middleware";
 
 const router = express.Router();
+
+/**
+ * Modelo por defecto configurable por entorno.
+ * Si Google retira gemini-2.5-flash basta con definir AI_DEFAULT_MODEL
+ * en las variables de entorno sin tocar código.
+ */
+const DEFAULT_AI_MODEL = process.env.AI_DEFAULT_MODEL || "gemini-2.5-flash";
+
+interface CachedAiPayload {
+	prompt: string;
+	result: Record<string, unknown>;
+}
+
+/**
+ * Extrae un mensaje legible de cualquier tipo de error (Error, string,
+ * objeto con message, respuesta HTTP, etc.) para no perder la causa del fallo.
+ */
+function extractErrorMessage(err: unknown): string {
+	if (err instanceof Error) return err.message;
+	if (typeof err === "string") return err;
+	if (err && typeof err === "object" && "message" in err) {
+		const message = (err as { message?: unknown }).message;
+		if (typeof message === "string" && message.trim()) return message;
+	}
+	try {
+		return JSON.stringify(err);
+	} catch {
+		return "Error desconocido";
+	}
+}
+
+/**
+ * Busca en ai_request_cache una respuesta previa para el mismo requestId.
+ * Solo se considera válida si el prompt almacenado coincide con el actual.
+ */
+async function getCachedAiResponse(requestId: string, prompt: string): Promise<Record<string, unknown> | null> {
+	const { rows } = await pool.query<{ response_body: CachedAiPayload | null }>(
+		"SELECT response_body FROM ai_request_cache WHERE request_id = $1",
+		[requestId],
+	);
+
+	const body = rows[0]?.response_body;
+	if (!body || typeof body !== "object" || !body.result) return null;
+	if (body.prompt !== prompt) return null;
+
+	return body.result;
+}
+
+/**
+ * Guarda temporalmente la respuesta asociada al requestId del cliente.
+ * La tabla se autolimpia con el trigger clean_old_ai_requests (>24h).
+ */
+async function saveCachedAiResponse(
+	requestId: string,
+	prompt: string,
+	result: unknown,
+): Promise<void> {
+	await pool.query(
+		`INSERT INTO ai_request_cache (request_id, response_body)
+		 VALUES ($1, $2::jsonb)
+		 ON CONFLICT (request_id) DO UPDATE SET response_body = EXCLUDED.response_body`,
+		[requestId, JSON.stringify({ prompt, result })],
+	);
+}
 
 /**
  * Endpoint principal del agente Gemini
@@ -34,7 +99,7 @@ router.post("/", isAuthenticated, checkAICredits, async (req, res) => {
       audio: audio || undefined,
       video: video || undefined,
       file: file || undefined,
-      model: model || "gemini-2.5-flash",
+      model: model || DEFAULT_AI_MODEL,
       customToken: useCustomToken ? customToken : undefined
     });
 
@@ -64,7 +129,7 @@ router.post("/", isAuthenticated, checkAICredits, async (req, res) => {
     console.error("❌ Error en Gemini Agent:", err);
     res.status(500).json({
       error: "Error interno del agente",
-      details: err instanceof Error ? err.message : "Error desconocido",
+      details: extractErrorMessage(err),
     });
   }
 });
@@ -72,7 +137,12 @@ router.post("/", isAuthenticated, checkAICredits, async (req, res) => {
 
 router.post("/text", isAuthenticated, checkAICredits, async (req, res) => {
 
-  // TODO: Aquí se debe de intentar obtener un id para evitar repetir una misma peticion a la IA, investigar si ya existe una tabla creada en la base de datos para guardado temporal de mensagen, ver en supabase.
+  // El cliente puede enviar requestId (o request_id) para deduplicar peticiones.
+  // Si no se envía id, no hay caché y siempre se consulta a la IA.
+  const rawRequestId = req.body?.requestId ?? req.body?.request_id;
+  const requestId =
+    typeof rawRequestId === "string" && rawRequestId.trim() ? rawRequestId.trim() : null;
+
   const { prompt, model } = req.body;
 
   if (!prompt) {
@@ -80,21 +150,48 @@ router.post("/text", isAuthenticated, checkAICredits, async (req, res) => {
     return;
   }
 
-  // TODO: Consultar la base de datos para investigar si ya existe una peticion similar guardada, en cuyo caso retirnamos esa rspuesta, comparar los valores para prompt e id para asegurarse de que coincida
+  const useCustomToken = (req as any).useCustomToken;
+  const customToken = (req as any).customToken;
+
+  // Consultar si ya existe una respuesta guardada para este id + prompt.
+  // Un acierto de caché no vuelve a consumir créditos ni llama a la IA.
+  if (requestId) {
+    try {
+      const cachedResult = await getCachedAiResponse(requestId, prompt);
+      if (cachedResult) {
+        console.log("⚡ Respuesta servida desde ai_request_cache:", requestId);
+        res.json({
+          ...cachedResult,
+          billing: {
+            used_custom_token: Boolean(useCustomToken),
+            credits_consumed: 0,
+            cached: true,
+          },
+        });
+        return;
+      }
+    } catch (cacheErr) {
+      // Un fallo de caché no debe interrumpir la petición
+      console.error("⚠️ No se pudo leer ai_request_cache:", cacheErr);
+    }
+  }
 
   try {
-    const useCustomToken = (req as any).useCustomToken;
-    const customToken = (req as any).customToken;
-
     const result = await geminiAgent({
       prompt,
       forse_text_response: true,
-      // TODO: El modelo gemini-2.5-flash podria estar a punto de desaparecer, investigar cual es sus sustituto en google.
-      model: model || "gemini-2.5-flash",
+      model: model || DEFAULT_AI_MODEL,
       customToken: useCustomToken ? customToken : undefined
     });
 
-    // TODO: Si la respuesta es positiva aqui se podria guardar de form temporal asociado al id enviado por el cliente, no es obligatorio enviar el id, si no se envia no se guardara.
+    // Guardar la respuesta de forma temporal asociada al id enviado por el cliente
+    if (requestId) {
+      try {
+        await saveCachedAiResponse(requestId, prompt, result);
+      } catch (cacheErr) {
+        console.error("⚠️ No se pudo guardar en ai_request_cache:", cacheErr);
+      }
+    }
 
     if (!useCustomToken) {
       await consumeAICredits(req, res, () => {
@@ -119,8 +216,7 @@ router.post("/text", isAuthenticated, checkAICredits, async (req, res) => {
     console.error("❌ Error en Gemini Agent:", err);
     res.status(500).json({
       error: "Error interno del agente",
-      // TODO: Es posible que aqui se pierda eml mensaje de error si no es del tipo Error, entonces no se podria saber por que fallo una peticion determinada
-      details: err instanceof Error ? err.message : "Error desconocido",
+      details: extractErrorMessage(err),
     });
   }
 });
@@ -152,33 +248,3 @@ router.post("/analyze", isAuthenticated, async (req, res) => {
 });
 
 export default router;
-// TODO: Esta fue la tabla creada en el servidor de bases de datos de supabase
-/**
- -- 1. Crear la tabla de idempotencia/caché
-CREATE TABLE public.ai_request_cache (
-    request_id TEXT PRIMARY KEY,
-    response_body JSONB NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Habilitar acceso de lectura/escritura (Si no usas RLS estricto para consumo interno)
-ALTER TABLE public.ai_request_cache ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Permitir todo a la clave de servicio" ON public.ai_request_cache 
-    FOR ALL USING (true) WITH CHECK (true);
-
--- 2. Crear una función que elimina registros con más de 24 horas
-CREATE OR REPLACE FUNCTION public.clean_old_ai_requests()
-RETURNS TRIGGER AS $$
-BEGIN
-    DELETE FROM public.ai_request_cache 
-    WHERE created_at < NOW() - INTERVAL '24 hours';
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- 3. Crear un disparador que ejecute la limpieza ANTES de insertar cualquier fila nueva
-CREATE OR REPLACE TRIGGER trigger_clean_ai_requests
-BEFORE INSERT ON public.ai_request_cache
-FOR EACH STATEMENT
-EXECUTE FUNCTION public.clean_old_ai_requests();
- */

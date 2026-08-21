@@ -11,6 +11,7 @@ import {
 	Sun,
 	ChartColumnIncreasing,
 	ReceiptText,
+	Compass,
 } from "lucide-react";
 
 import { useState } from "react";
@@ -23,6 +24,7 @@ const navigation = [
 	{ name: "Analítica", href: "/admin/analytics", icon: ChartColumnIncreasing },
 	{ name: "Usuarios", href: "/admin/usuarios", icon: Users },
 	{ name: "Pagos", href: "/admin/pagos", icon: ReceiptText },
+	{ name: "Descubre", href: "/admin/descubre", icon: Compass },
 	{ name: "Updates", href: "/admin/updates", icon: FileText },
 ];
 
