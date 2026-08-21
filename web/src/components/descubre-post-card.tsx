@@ -1,9 +1,10 @@
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Calendar, MapPin, MessageCircle, User } from "lucide-react"
-import ReactMarkdown from "react-markdown"
+import { ArrowRight, Calendar, MapPin, MessageCircle, User } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 import type { DescubrePost } from "@/hooks/useDescubrePosts"
+import { buildPreview, toPublicSupabaseUrl } from "@/lib/format"
 
 interface DescubrePostCardProps {
 	post: DescubrePost
@@ -22,24 +23,32 @@ function formatWhatsAppUrl(contactNumber: string): string {
 }
 
 export function DescubrePostCard({ post }: DescubrePostCardProps) {
+	const navigate = useNavigate()
 	const formattedDate = new Date(post.date).toLocaleDateString("es-ES", {
 		year: "numeric",
 		month: "long",
 		day: "numeric",
 	})
 
-	const featuredImage = post.imageUrls?.[0]
+	const featuredImage = toPublicSupabaseUrl(post.imageUrls?.[0])
 	const whatsAppUrl = formatWhatsAppUrl(post.contactNumber)
 	const priceLabel = formatPrice(post.precio, post.moneda)
+	const preview = buildPreview(post.description)
+
+	const openDetail = () => navigate(`/descubre/post/${post.id}`)
 
 	return (
-		<Card className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col h-full">
+		<Card
+			onClick={openDetail}
+			className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col h-full cursor-pointer group"
+		>
 			{featuredImage && (
 				<div className="relative aspect-[16/9] overflow-hidden bg-muted">
 					<img
 						src={featuredImage}
 						alt={post.title}
-						className="w-full h-full object-cover"
+						loading="lazy"
+						className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
 					/>
 				</div>
 			)}
@@ -58,21 +67,38 @@ export function DescubrePostCard({ post }: DescubrePostCardProps) {
 					</Badge>
 				</div>
 
-				<h3 className="text-xl md:text-2xl font-bold text-balance">{post.title}</h3>
+				<h3 className="text-xl md:text-2xl font-bold text-balance line-clamp-2">
+					{post.title}
+				</h3>
 
-				<div className="text-muted-foreground leading-relaxed text-sm md:text-base prose prose-sm dark:prose-invert max-w-none">
-					<ReactMarkdown>{post.description}</ReactMarkdown>
-				</div>
+				{preview && (
+					<p className="text-muted-foreground leading-relaxed text-sm md:text-base line-clamp-4">
+						{preview}
+					</p>
+				)}
 
-				<div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mt-auto pt-4 border-t border-border/50">
+				<Button
+					variant="outline"
+					size="sm"
+					className="w-fit mt-auto"
+					onClick={(e) => {
+						e.stopPropagation()
+						openDetail()
+					}}
+				>
+					Leer más
+					<ArrowRight className="w-4 h-4" />
+				</Button>
+
+				<div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground pt-4 border-t border-border/50">
 					{post.userName && (
-						<div className="flex items-center gap-1.5">
-							<User className="w-4 h-4" />
-							<span>{post.userName}</span>
+						<div className="flex items-center gap-1.5 min-w-0">
+							<User className="w-4 h-4 shrink-0" />
+							<span className="truncate">{post.userName}</span>
 						</div>
 					)}
 					{post.province && (
-						<div className="flex items-center gap-1.5">
+						<div className="flex items-center gap-1.5 shrink-0">
 							<MapPin className="w-4 h-4" />
 							<span>{post.province}</span>
 						</div>
@@ -80,7 +106,12 @@ export function DescubrePostCard({ post }: DescubrePostCardProps) {
 				</div>
 
 				{whatsAppUrl && (
-					<Button asChild className="w-full sm:w-auto mt-2">
+					<Button
+						asChild
+						variant="secondary"
+						className="w-full sm:w-auto"
+						onClick={(e) => e.stopPropagation()}
+					>
 						<a href={whatsAppUrl} target="_blank" rel="noopener noreferrer">
 							<MessageCircle className="w-4 h-4 mr-2" />
 							Contactar por WhatsApp

@@ -13,6 +13,7 @@ import RoadmapPage from "./app/roadmap/page.tsx";
 import ServicesPage from "./app/services/Page.tsx";
 import AppsPage from "./app/apps/AppsPage.tsx";
 import DescubrePage from "./app/descubre/page.tsx";
+import DescubrePostDetailPage from "./app/descubre/detail-page.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -27,6 +28,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/philosophy" element={<PhilosophyPage />} />
             <Route path="/updates" element={<UpdatesPage />} />
             <Route path="/descubre" element={<DescubrePage />} />
+            <Route path="/descubre/post/:id" element={<DescubrePostDetailPage />} />
             <Route path="/roadmap" element={<RoadmapPage />} />
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/apps" element={<AppsPage />} />
