@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button"
-import { Menu, X } from "lucide-react"
+import { LogIn, LogOut, Menu, UserRound, X } from "lucide-react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/useAuth"
+import { LoginDialog } from "@/components/login-dialog"
 
 const navigation = [
   { name: "Inicio", href: "/" },
@@ -17,8 +19,37 @@ const navigation = [
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [loginOpen, setLoginOpen] = useState(false)
   const pathname = window.location.pathname
-  
+  const { user, logout } = useAuth()
+
+  const handleLogout = () => {
+    logout()
+    setMobileMenuOpen(false)
+  }
+
+  const authButtons = (
+    <>
+      {user ? (
+        <div className="flex items-center gap-2">
+          <span className="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground max-w-[160px]">
+            <UserRound className="w-4 h-4 shrink-0" />
+            <span className="truncate">{user.name || user.email}</span>
+          </span>
+          <Button variant="outline" size="sm" onClick={handleLogout}>
+            <LogOut className="w-4 h-4" />
+            Salir
+          </Button>
+        </div>
+      ) : (
+        <Button variant="outline" size="sm" onClick={() => setLoginOpen(true)}>
+          <LogIn className="w-4 h-4" />
+          Iniciar sesión
+        </Button>
+      )}
+    </>
+  )
+
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
@@ -49,6 +80,7 @@ export function Header() {
               GitHub
             </a>
           </Button>
+          {authButtons}
         </div>
 
         {/* Mobile Menu Button */}
@@ -79,9 +111,12 @@ export function Header() {
                 GitHub
               </a>
             </Button>
+            <div className="pt-2">{authButtons}</div>
           </div>
         </div>
       )}
+
+      <LoginDialog open={loginOpen} onClose={() => setLoginOpen(false)} />
     </header>
   )
 }

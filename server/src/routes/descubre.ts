@@ -1,18 +1,26 @@
 // routes/descubre.ts
 import { Router } from "express";
-import { isAuthenticated } from "../middlewares/auth-jwt";
+import { isAuthenticated, optionalAuth } from "../middlewares/auth-jwt";
 import { isAdmin } from "../middlewares/auth";
 import {
 	listDescubrePostsController,
 	createDescubrePostController,
+	updateDescubrePostController,
+	deleteOwnDescubrePostController,
+	toggleDescubrePostVoteController,
 	listAllDescubrePostsAdminController,
 	deleteDescubrePostAdminController,
 } from "../controllers/descubre";
 
 const router = Router();
 
-router.get("/posts", listDescubrePostsController); // público, no requiere login para ver
+router.get("/posts", optionalAuth, listDescubrePostsController); // público; enriquecido si hay token
 router.post("/posts", isAuthenticated, createDescubrePostController);
+
+// Gestión por el dueño de la publicación
+router.put("/posts/:id", isAuthenticated, updateDescubrePostController);
+router.delete("/posts/:id", isAuthenticated, deleteOwnDescubrePostController);
+router.post("/posts/:id/vote", isAuthenticated, toggleDescubrePostVoteController);
 
 // Gestión de moderación (solo admins)
 router.get("/admin/posts", isAuthenticated, isAdmin, listAllDescubrePostsAdminController);

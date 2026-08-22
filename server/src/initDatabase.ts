@@ -665,6 +665,29 @@ await pool.query(`
   CREATE INDEX IF NOT EXISTS idx_manual_payment_orders_status ON manual_payment_orders(status);
 `);
 
+  // ==============================
+  // Descubre: votos de publicaciones
+  // ==============================
+  await pool.query(`
+    ALTER TABLE descubre_posts
+    ADD COLUMN IF NOT EXISTS votes_count INTEGER NOT NULL DEFAULT 0;
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS descubre_post_votes (
+      post_id UUID NOT NULL REFERENCES descubre_posts(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (post_id, user_id)
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_descubre_post_votes_user
+    ON descubre_post_votes(user_id);
+  `);
+
+
 await pool.query(`
   ALTER TABLE manual_payment_orders
   ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;

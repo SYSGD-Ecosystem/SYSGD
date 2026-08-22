@@ -48,3 +48,35 @@ export const isAuthenticated = (
 		res.status(403).json({ message: "Token inválido o expirado" });
 	}
 };
+
+/**
+ * Igual que isAuthenticated pero no falla si no hay token:
+ * decodifica el usuario si el token es válido y continúa siempre.
+ * Útil para endpoints públicos que enriquecen la respuesta para usuarios logueados.
+ */
+export const optionalAuth = (
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) => {
+	const authHeader = req.headers.authorization;
+
+	const tokenFromHeader = authHeader?.startsWith("Bearer ")
+		? authHeader.split(" ")[1]
+		: null;
+
+	const token = tokenFromHeader || req.cookies?.token;
+
+	if (!token) {
+		next();
+		return;
+	}
+
+	try {
+		const decoded = jwt.verify(token, JWT_SECRET);
+		req.user = decoded;
+	} catch {
+		// Token inválido o expirado: se trata como anónimo
+	}
+	next();
+};

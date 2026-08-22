@@ -19,11 +19,23 @@ function getBaseUrl() {
 	return "https://sysgd-production.up.railway.app" //import.meta.env.VITE_SERVER_URL || "http://localhost:3000"
 }
 
+export function getAuthToken(): string | null {
+	try {
+		return localStorage.getItem("sysgd_token")
+	} catch {
+		return null
+	}
+}
+
 export async function apiFetchPublic<T>(path: string, init: RequestInit = {}): Promise<T> {
 	const baseUrl = getBaseUrl()
 	const headers = new Headers(init.headers)
 	if (!headers.has("Content-Type") && init.body) {
 		headers.set("Content-Type", "application/json")
+	}
+	const token = getAuthToken()
+	if (token) {
+		headers.set("Authorization", `Bearer ${token}`)
 	}
 
 	const res = await fetch(`${baseUrl}${path}`, {

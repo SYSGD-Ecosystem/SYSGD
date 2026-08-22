@@ -1,13 +1,26 @@
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Calendar, MapPin, MessageCircle, User } from "lucide-react"
+import { VoteButton } from "@/components/vote-button"
+import {
+	ArrowRight,
+	Calendar,
+	MapPin,
+	MessageCircle,
+	Pencil,
+	Trash2,
+	User,
+} from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import type { DescubrePost } from "@/hooks/useDescubrePosts"
 import { buildPreview, toPublicSupabaseUrl } from "@/lib/format"
 
 interface DescubrePostCardProps {
 	post: DescubrePost
+	currentUserId?: string | null
+	onVote?: (post: DescubrePost) => void
+	onEdit?: (post: DescubrePost) => void
+	onDelete?: (post: DescubrePost) => void
 }
 
 function formatPrice(precio: string, moneda: string): string {
@@ -22,7 +35,13 @@ function formatWhatsAppUrl(contactNumber: string): string {
 	return `https://wa.me/${digits}`
 }
 
-export function DescubrePostCard({ post }: DescubrePostCardProps) {
+export function DescubrePostCard({
+	post,
+	currentUserId,
+	onVote,
+	onEdit,
+	onDelete,
+}: DescubrePostCardProps) {
 	const navigate = useNavigate()
 	const formattedDate = new Date(post.date).toLocaleDateString("es-ES", {
 		year: "numeric",
@@ -34,6 +53,7 @@ export function DescubrePostCard({ post }: DescubrePostCardProps) {
 	const whatsAppUrl = formatWhatsAppUrl(post.contactNumber)
 	const priceLabel = formatPrice(post.precio, post.moneda)
 	const preview = buildPreview(post.description)
+	const isOwner = !!currentUserId && currentUserId === post.userId
 
 	const openDetail = () => navigate(`/descubre/post/${post.id}`)
 
@@ -56,6 +76,13 @@ export function DescubrePostCard({ post }: DescubrePostCardProps) {
 			<div className="p-6 md:p-8 flex flex-col flex-1 gap-4">
 				<div className="flex items-start justify-between gap-3 flex-wrap">
 					<div className="flex items-center gap-2 flex-wrap">
+						{onVote && (
+							<VoteButton
+								votesCount={post.votesCount ?? 0}
+								voted={!!post.viewerVoted}
+								onVote={() => onVote(post)}
+							/>
+						)}
 						{post.category && <Badge variant="secondary">{post.category}</Badge>}
 						<div className="flex items-center gap-2 text-sm text-muted-foreground">
 							<Calendar className="w-4 h-4" />
@@ -90,17 +117,50 @@ export function DescubrePostCard({ post }: DescubrePostCardProps) {
 					<ArrowRight className="w-4 h-4" />
 				</Button>
 
-				<div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground pt-4 border-t border-border/50">
-					{post.userName && (
-						<div className="flex items-center gap-1.5 min-w-0">
-							<User className="w-4 h-4 shrink-0" />
-							<span className="truncate">{post.userName}</span>
-						</div>
-					)}
-					{post.province && (
-						<div className="flex items-center gap-1.5 shrink-0">
-							<MapPin className="w-4 h-4" />
-							<span>{post.province}</span>
+				<div className="flex flex-wrap items-center justify-between gap-4 text-sm text-muted-foreground pt-4 border-t border-border/50">
+					<div className="flex flex-wrap items-center gap-4 min-w-0">
+						{post.userName && (
+							<div className="flex items-center gap-1.5 min-w-0">
+								<User className="w-4 h-4 shrink-0" />
+								<span className="truncate">{post.userName}</span>
+							</div>
+						)}
+						{post.province && (
+							<div className="flex items-center gap-1.5 shrink-0">
+								<MapPin className="w-4 h-4" />
+								<span>{post.province}</span>
+							</div>
+						)}
+					</div>
+
+					{isOwner && (
+						<div className="flex items-center gap-1 shrink-0">
+							{onEdit && (
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									title="Editar publicación"
+									onClick={(e) => {
+										e.stopPropagation()
+										onEdit(post)
+									}}
+								>
+									<Pencil className="w-4 h-4" />
+								</Button>
+							)}
+							{onDelete && (
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									title="Eliminar publicación"
+									onClick={(e) => {
+										e.stopPropagation()
+										onDelete(post)
+									}}
+								>
+									<Trash2 className="w-4 h-4 text-destructive" />
+								</Button>
+							)}
 						</div>
 					)}
 				</div>

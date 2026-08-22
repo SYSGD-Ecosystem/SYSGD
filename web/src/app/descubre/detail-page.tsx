@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useState } from "react"
-import { Link, useParams } from "react-router-dom"
+import { Link, useNavigate, useParams } from "react-router-dom"
 import ReactMarkdown from "react-markdown"
+import { Button } from "@/components/ui/button"
 import { DescubrePostCard } from "@/components/descubre-post-card"
 import { ShareButtons } from "@/components/share-buttons"
-import useDescubrePosts, { type DescubrePost } from "@/hooks/useDescubrePosts"
+import { LoginDialog } from "@/components/login-dialog"
+import { PostEditDialog } from "@/components/post-edit-dialog"
+import { VoteButton } from "@/components/vote-button"
+import useDescubrePosts, {
+	type DescubrePost,
+	type DescubrePostInput,
+} from "@/hooks/useDescubrePosts"
+import { useAuth } from "@/hooks/useAuth"
 import { useSeo } from "@/hooks/useSeo"
 import { buildPreview, toPublicSupabaseUrls } from "@/lib/format"
 import {
@@ -15,13 +23,20 @@ import {
 	Inbox,
 	MapPin,
 	MessageCircle,
+	Pencil,
 	RefreshCw,
+	Trash2,
 	User,
 } from "lucide-react"
 
 export default function DescubrePostDetailPage() {
 	const { id } = useParams<{ id: string }>()
-	const { posts, loading, error, refetch } = useDescubrePosts()
+	const navigate = useNavigate()
+	const { user } = useAuth()
+	const { posts, loading, error, refetch, votePost, updatePost, deletePost } =
+		useDescubrePosts()
+	const [loginOpen, setLoginOpen] = useState(false)
+	const [editingPost, setEditingPost] = useState<DescubrePost | null>(null)
 
 	useEffect(() => {
 		window.scrollTo(0, 0)
@@ -40,7 +55,55 @@ export default function DescubrePostDetailPage() {
 	if (error) return <ErrorState onRetry={refetch} />
 	if (!post) return <NotFoundState />
 
-	return <PostDetail post={post} posts={posts} />
+	function requireLogin(): boolean {
+		if (user) return true
+		setLoginOpen(true)
+		return false
+	}
+
+	async function handleVote(target: DescubrePost) {
+		if (!requireLogin()) return
+		await votePost(target.id)
+	}
+
+	function handleDelete(target: DescubrePost) {
+		if (
+			window.confirm(
+				`¿Eliminar tu publicación "${target.title}"? Esta acción no se puede deshacer.`,
+			)
+		) {
+			void deletePost(target.id).then((deleted) => {
+				if (deleted) navigate("/descubre")
+			})
+		}
+	}
+
+	async function handleSaveEdit(
+		postId: string,
+		input: DescubrePostInput,
+	): Promise<DescubrePost | null> {
+		return updatePost(postId, input)
+	}
+
+	return (
+		<>
+			<PostDetail
+				post={post}
+				posts={posts}
+				currentUserId={user?.id ?? null}
+				onVote={handleVote}
+				onEdit={(target) => requireLogin() && setEditingPost(target)}
+				onDelete={handleDelete}
+			/>
+			<LoginDialog open={loginOpen} onClose={() => setLoginOpen(false)} />
+			<PostEditDialog
+				key={editingPost?.id ?? "none"}
+				post={editingPost}
+				onClose={() => setEditingPost(null)}
+				onSave={handleSaveEdit}
+			/>
+		</>
+	)
 }
 
 function formatPrice(precio: string, moneda: string): string {
@@ -57,7 +120,23 @@ function formatWhatsAppUrl(contactNumber: string): string {
 	)}`
 }
 
-function PostDetail({ post, posts }: { post: DescubrePost; posts: DescubrePost[] }) {
+interface PostDetailProps {
+	post: DescubrePost
+	posts: DescubrePost[]
+	currentUserId?: string | null
+	onVote: (post: DescubrePost) => void
+	onEdit: (post: DescubrePost) => void
+	onDelete: (post: DescubrePost) => void
+}
+
+function PostDetail({
+	post,
+	posts,
+	currentUserId,
+	onVote,
+	onEdit,
+	onDelete,
+}: PostDetailProps) {
 	const images = useMemo(() => toPublicSupabaseUrls(post.imageUrls), [post.imageUrls])
 	const [currentImage, setCurrentImage] = useState(0)
 
@@ -72,6 +151,7 @@ function PostDetail({ post, posts }: { post: DescubrePost; posts: DescubrePost[]
 		month: "long",
 		day: "numeric",
 	})
+	const isOwner = !!currentUserId && currentUserId === post.userId
 
 	const relatedPosts = useMemo(
 		() =>
@@ -198,6 +278,11 @@ function PostDetail({ post, posts }: { post: DescubrePost; posts: DescubrePost[]
 
 						<div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-gray-200 dark:border-gray-800">
 							<div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+								<VoteButton
+									votesCount={post.votesCount ?? 0}
+									voted={!!post.viewerVoted}
+									onVote={() => onVote(post)}
+								/>
 								{post.userName && (
 									<span className="inline-flex items-center gap-1.5">
 										<User className="w-4 h-4" />
@@ -212,11 +297,34 @@ function PostDetail({ post, posts }: { post: DescubrePost; posts: DescubrePost[]
 								)}
 							</div>
 
-							<ShareButtons
-								url={shareUrl}
-								title={post.title}
-								text={buildPreview(post.description, 100)}
-							/>
+							<div className="flex flex-wrap items-center gap-2">
+								{isOwner && (
+									<>
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={() => onEdit(post)}
+										>
+											<Pencil className="w-4 h-4" />
+											Editar
+										</Button>
+										<Button
+											variant="outline"
+											size="sm"
+											className="text-destructive hover:text-destructive"
+											onClick={() => onDelete(post)}
+										>
+											<Trash2 className="w-4 h-4" />
+											Eliminar
+										</Button>
+									</>
+								)}
+								<ShareButtons
+									url={shareUrl}
+									title={post.title}
+									text={buildPreview(post.description, 100)}
+								/>
+							</div>
 						</div>
 
 						<div className="py-8 prose prose-gray dark:prose-invert max-w-none leading-relaxed text-base md:text-lg">
@@ -251,7 +359,14 @@ function PostDetail({ post, posts }: { post: DescubrePost; posts: DescubrePost[]
 							<h2 className="text-2xl font-bold mb-8">También te puede interesar</h2>
 							<div className="grid gap-6 md:grid-cols-3">
 								{relatedPosts.map((item) => (
-									<DescubrePostCard key={item.id} post={item} />
+									<DescubrePostCard
+										key={item.id}
+										post={item}
+										currentUserId={currentUserId}
+										onVote={onVote}
+										onEdit={onEdit}
+										onDelete={onDelete}
+									/>
 								))}
 							</div>
 						</section>

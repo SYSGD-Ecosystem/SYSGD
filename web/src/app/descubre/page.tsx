@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { DescubrePostCard } from "@/components/descubre-post-card";
-import useDescubrePosts from "@/hooks/useDescubrePosts";
+import { LoginDialog } from "@/components/login-dialog";
+import { PostEditDialog } from "@/components/post-edit-dialog";
+import useDescubrePosts, {
+  type DescubrePost,
+  type DescubrePostInput,
+} from "@/hooks/useDescubrePosts";
+import { useAuth } from "@/hooks/useAuth";
 import {
   AlertCircle,
   ChevronLeft,
@@ -13,8 +19,12 @@ import {
 const ITEMS_PER_PAGE = 9;
 
 export default function DescubrePage() {
-  const { posts, loading, error, refetch } = useDescubrePosts();
+  const { posts, loading, error, refetch, votePost, updatePost, deletePost } =
+    useDescubrePosts();
+  const { user } = useAuth();
   const [currentPage, setCurrentPage] = useState(1);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [editingPost, setEditingPost] = useState<DescubrePost | null>(null);
 
   const safePosts = Array.isArray(posts) ? posts : [];
   const totalPages = Math.ceil(safePosts.length / ITEMS_PER_PAGE);
@@ -23,6 +33,34 @@ export default function DescubrePage() {
     startIndex,
     startIndex + ITEMS_PER_PAGE,
   );
+
+  function requireLogin(): boolean {
+    if (user) return true;
+    setLoginOpen(true);
+    return false;
+  }
+
+  async function handleVote(post: DescubrePost) {
+    if (!requireLogin()) return;
+    await votePost(post.id);
+  }
+
+  function handleDelete(post: DescubrePost) {
+    if (
+      window.confirm(
+        `¿Eliminar tu publicación "${post.title}"? Esta acción no se puede deshacer.`,
+      )
+    ) {
+      void deletePost(post.id);
+    }
+  }
+
+  async function handleSaveEdit(
+    postId: string,
+    input: DescubrePostInput,
+  ): Promise<DescubrePost | null> {
+    return updatePost(postId, input);
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950">
@@ -56,10 +94,22 @@ export default function DescubrePage() {
               currentPage={currentPage}
               onPageChange={setCurrentPage}
               totalItems={safePosts.length}
+              currentUserId={user?.id ?? null}
+              onVote={handleVote}
+              onEdit={(post) => setEditingPost(post)}
+              onDelete={handleDelete}
             />
           )}
         </div>
       </div>
+
+      <LoginDialog open={loginOpen} onClose={() => setLoginOpen(false)} />
+      <PostEditDialog
+        key={editingPost?.id ?? "none"}
+        post={editingPost}
+        onClose={() => setEditingPost(null)}
+        onSave={handleSaveEdit}
+      />
     </div>
   );
 }
@@ -152,6 +202,10 @@ type PostsListProps = {
   currentPage: number;
   onPageChange: (page: number) => void;
   totalItems: number;
+  currentUserId?: string | null;
+  onVote?: (post: DescubrePost) => void;
+  onEdit?: (post: DescubrePost) => void;
+  onDelete?: (post: DescubrePost) => void;
 };
 
 function PostsList({
@@ -160,6 +214,10 @@ function PostsList({
   currentPage,
   onPageChange,
   totalItems,
+  currentUserId,
+  onVote,
+  onEdit,
+  onDelete,
 }: PostsListProps) {
   const startItem = (currentPage - 1) * ITEMS_PER_PAGE + 1;
   const endItem = Math.min(currentPage * ITEMS_PER_PAGE, totalItems);
@@ -180,7 +238,13 @@ function PostsList({
             className="animate-fade-in-up"
             style={{ animationDelay: `${index * 80}ms` }}
           >
-            <DescubrePostCard post={post} />
+            <DescubrePostCard
+              post={post}
+              currentUserId={currentUserId}
+              onVote={onVote}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
           </div>
         ))}
       </div>

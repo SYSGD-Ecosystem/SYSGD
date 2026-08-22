@@ -57,7 +57,9 @@ interface DescubrePostRow {
 	status: string;
 	expires_at: string;
 	created_at: string;
+	votes_count?: number;
 	user_name?: string;
+	viewer_voted?: boolean;
 }
 
 export interface DescubrePostOutput {
@@ -75,6 +77,8 @@ export interface DescubrePostOutput {
 	imageUrls: string[];
 	creditsSpent: number;
 	boostCredits: number;
+	votesCount: number;
+	viewerVoted?: boolean;
 }
 
 export type CreateDescubrePostResult =
@@ -106,6 +110,8 @@ function toDescubrePostOutput(row: DescubrePostRow): DescubrePostOutput {
 		imageUrls,
 		creditsSpent: row.credits_spent,
 		boostCredits: row.boost_credits,
+		votesCount: row.votes_count ?? 0,
+		viewerVoted: row.viewer_voted,
 	};
 }
 
@@ -216,6 +222,7 @@ const WELCOME_POSTS: DescubrePostOutput[] = [
 		imageUrls: [],
 		creditsSpent: 0,
 		boostCredits: 0,
+		votesCount: 0,
 	},
 	{
 		id: "welcome-2",
@@ -232,6 +239,7 @@ const WELCOME_POSTS: DescubrePostOutput[] = [
 		imageUrls: [],
 		creditsSpent: 0,
 		boostCredits: 0,
+		votesCount: 0,
 	},
 	{
 		id: "welcome-3",
@@ -248,6 +256,7 @@ const WELCOME_POSTS: DescubrePostOutput[] = [
 		imageUrls: [],
 		creditsSpent: 0,
 		boostCredits: 0,
+		votesCount: 0,
 	},
 ];
 
@@ -255,20 +264,147 @@ export function getWelcomePosts(): DescubrePostOutput[] {
 	return WELCOME_POSTS.map(p => ({ ...p, date: new Date().toISOString() }));
 }
 
-export const listDescubrePosts = async (limit = 30, cursorCreatedAt?: string): Promise<DescubrePostOutput[]> => {
-	const cursorClause = cursorCreatedAt ? "AND p.created_at < $2" : "";
-	const params: unknown[] = cursorCreatedAt ? [limit, cursorCreatedAt] : [limit];
+export type ToggleVoteResult =
+	| { ok: true; voted: boolean; votesCount: number }
+	| { ok: false; reason: "not_found" };
+
+export const toggleDescubrePostVote = async (
+	postId: string,
+	userId: string,
+): Promise<ToggleVoteResult> => {
+	const client = await pool.connect();
+	try {
+		await client.query("BEGIN");
+
+		const { rows: postRows } = await client.query<{ id: string }>(
+			"SELECT id FROM descubre_posts WHERE id = $1 AND status = 'active' AND expires_at > NOW() FOR UPDATE",
+			[postId],
+		);
+		if (postRows.length === 0) {
+			await client.query("ROLLBACK");
+			return { ok: false, reason: "not_found" };
+		}
+
+		const { rows: existing } = await client.query<{ user_id: string }>(
+			"SELECT user_id FROM descubre_post_votes WHERE post_id = $1 AND user_id = $2",
+			[postId, userId],
+		);
+
+		let voted: boolean;
+		if (existing.length > 0) {
+			await client.query(
+				"DELETE FROM descubre_post_votes WHERE post_id = $1 AND user_id = $2",
+				[postId, userId],
+			);
+			voted = false;
+		} else {
+			await client.query(
+				"INSERT INTO descubre_post_votes (post_id, user_id) VALUES ($1, $2)",
+				[postId, userId],
+			);
+			voted = true;
+		}
+
+		const { rows: updated } = await client.query<{ votes_count: number }>(
+			`UPDATE descubre_posts
+			 SET votes_count = GREATEST(
+				 (SELECT COUNT(*) FROM descubre_post_votes WHERE post_id = $1),
+			 0)
+			 WHERE id = $1
+			 RETURNING votes_count`,
+			[postId],
+		);
+
+		await client.query("COMMIT");
+		return { ok: true, voted, votesCount: updated[0]?.votes_count ?? 0 };
+	} catch (error) {
+		await client.query("ROLLBACK");
+		throw error;
+	} finally {
+		client.release();
+	}
+};
+
+export const updateDescubrePost = async (
+	userId: string,
+	postId: string,
+	input: CreateDescubrePostInput,
+): Promise<DescubrePostOutput | null> => {
+	const imageUrlJson = input.imageUrls?.length ? JSON.stringify(input.imageUrls) : null;
+
+	const { rows } = await pool.query<DescubrePostRow>(
+		`UPDATE descubre_posts p
+		 SET title = $3, description = $4, category = $5, precio = $6,
+			 moneda = $7, province = $8, contact_number = $9, image_url = $10
+		 FROM users u
+		 WHERE p.id = $1 AND p.user_id = $2 AND u.id = p.user_id
+		 RETURNING p.id, p.user_id, u.name AS user_name, p.title, p.description,
+			p.category, p.precio, p.moneda, p.province, p.contact_number, p.image_url,
+			p.credits_spent, p.boost_credits, p.boosted_at, p.status, p.expires_at,
+			p.created_at, p.votes_count`,
+		[
+			postId,
+			userId,
+			input.title,
+			input.description,
+			input.category ?? null,
+			input.precio ?? null,
+			input.moneda ?? null,
+			input.province ?? null,
+			input.contactNumber,
+			imageUrlJson,
+		],
+	);
+
+	if (rows.length === 0) return null;
+	return toDescubrePostOutput(rows[0]);
+};
+
+export const deleteOwnDescubrePost = async (
+	userId: string,
+	postId: string,
+): Promise<boolean> => {
+	const { rowCount } = await pool.query(
+		"DELETE FROM descubre_posts WHERE id = $1 AND user_id = $2",
+		[postId, userId],
+	);
+	return (rowCount ?? 0) > 0;
+};
+
+export const listDescubrePosts = async (
+	limit = 30,
+	cursorCreatedAt?: string,
+	viewerId?: string,
+): Promise<DescubrePostOutput[]> => {
+	const params: unknown[] = [limit];
+	let cursorClause = "";
+	if (cursorCreatedAt) {
+		cursorClause = "AND p.created_at < $2";
+		params.push(cursorCreatedAt);
+	}
+	const viewerParamIndex = params.length + 1;
+	const viewerClause = viewerId
+		? `EXISTS (SELECT 1 FROM descubre_post_votes v WHERE v.post_id = p.id AND v.user_id = $${viewerParamIndex}::uuid)`
+		: "false";
+	if (viewerId) {
+		params.push(viewerId);
+	}
 
 	const { rows } = await pool.query(
 		`
 		SELECT p.id, p.user_id, u.name AS user_name, p.title, p.description,
 			p.category, p.precio, p.moneda, p.province,
 			p.contact_number, p.image_url, p.credits_spent, p.boost_credits,
-			p.boosted_at, p.status, p.expires_at, p.created_at,
-			(p.boost_credits + 1) /
+			p.boosted_at, p.status, p.expires_at, p.created_at, p.votes_count,
+			${viewerClause} AS viewer_voted,
+			-- Ranking estilo Hacker News con gravedad suavizada (1.15):
+			-- los votos ("energía") suman al numerador y la antigüedad decae en el denominador.
+			-- Balance: un post de ~6h empata con uno nuevo con ~4 votos,
+			-- uno de 24h con ~18 votos y uno de 3 días con ~60 votos.
+			(p.boost_credits + COALESCE(p.votes_count, 0) + 1) /
 				POWER(
 					EXTRACT(EPOCH FROM (NOW() - COALESCE(p.boosted_at, p.created_at))) / 3600 + 2,
-					1.6
+					1.15
 				) AS score
 		FROM descubre_posts p
 		LEFT JOIN users u ON u.id = p.user_id
