@@ -77,7 +77,7 @@ const TIER_LIMITS = {
   }
 };
 
-type AndroidDistribution = "freemium" | "apklis" | "unknown";
+type AndroidDistribution = "freemium" | "apklis" | "tienda" | "unknown";
 
 const normalizeAndroidDistribution = (
   rawDistribution: unknown,
@@ -95,9 +95,50 @@ const normalizeAndroidDistribution = (
     typeof packageName === "string" ? packageName.split(",")[0].trim().toLowerCase() : "";
 
   if (normalizedPackage.endsWith(".freemium")) return "freemium";
-  if (normalizedPackage.startsWith("cu.lazaroysr96.sysgdcont")) return "apklis";
+  if (normalizedPackage.startsWith("cu.lazaroysr96.sysgdcont")) {
+    // La variante de Apklis NO lleva sufijo ".pro"; la de tienda sí.
+    return normalizedPackage.endsWith(".pro") ? "tienda" : "apklis";
+  }
 
   return "unknown";
+};
+
+/** Días de regalo según canal de distribución: Apklis 30, resto 7. */
+const DIAS_PRUEBA_POR_DISTRIBUCION: Record<string, number> = {
+  apklis: 30,
+  tienda: 7,
+  freemium: 7,
+  unknown: 7,
+};
+
+/**
+ * Activa un plan promocional de prueba HONESTO: tier pro pero marcado como
+ * prueba, con duración real en días (no meses) para que el cliente pueda
+ * mostrarle al usuario que está en un período de prueba.
+ */
+const construirPrueba = (baseUserData: ReturnType<typeof createDefaultUserData>, dias: number) => {
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + dias * 24 * 60 * 60 * 1000).toISOString();
+  const pruebaBilling = activatePlanBilling(baseUserData.billing, "pro", 1, now);
+
+  return {
+    ...baseUserData,
+    billing: {
+      ...pruebaBilling,
+      billing_cycle: {
+        ...pruebaBilling.billing_cycle,
+        next_reset: expiresAt,
+      },
+      plan_validity: pruebaBilling.plan_validity
+        ? {
+            ...pruebaBilling.plan_validity,
+            expires_at: expiresAt,
+            duration_days: dias,
+            source: "trial",
+          }
+        : pruebaBilling.plan_validity,
+    },
+  };
 };
 
 const buildRegistrationUserData = (
@@ -107,53 +148,13 @@ const buildRegistrationUserData = (
   const defaultUserData = createDefaultUserData();
 
   if (registrationSource === "sysgd_cont_android") {
-
-    if(distribution === "apklis"){
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    const trialBilling = activatePlanBilling(defaultUserData.billing, "pro", 1, now);
-
-    return {
-      ...defaultUserData,
-      billing: {
-        ...trialBilling,
-        billing_cycle: {
-          ...trialBilling.billing_cycle,
-          next_reset: expiresAt,
-        },
-        plan_validity: trialBilling.plan_validity
-          ? {
-              ...trialBilling.plan_validity,
-              expires_at: expiresAt,
-            }
-          : trialBilling.plan_validity,
-      },
-    };
-  }else{
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    const trialBilling = activatePlanBilling(defaultUserData.billing, "pro", 1, now);
-
-    return {
-      ...defaultUserData,
-      billing: {
-        ...trialBilling,
-        billing_cycle: {
-          ...trialBilling.billing_cycle,
-          next_reset: expiresAt,
-        },
-        plan_validity: trialBilling.plan_validity
-          ? {
-              ...trialBilling.plan_validity,
-              expires_at: expiresAt,
-            }
-          : trialBilling.plan_validity,
-      },
-    };
-  }
+    const dias =
+      DIAS_PRUEBA_POR_DISTRIBUCION[distribution as string] ?? DIAS_PRUEBA_POR_DISTRIBUCION.unknown;
+    return construirPrueba(defaultUserData, dias);
   }
 
-  return defaultUserData;
+  // Cuentas creadas desde el cliente principal (web): misma prueba de 7 días.
+  return construirPrueba(defaultUserData, DIAS_PRUEBA_POR_DISTRIBUCION.unknown);
 };
 
 // ============================================
@@ -325,6 +326,8 @@ router.get("/plan", async (req, res) => {
             startedAt: billing.plan_validity.started_at,
             expiresAt: billing.plan_validity.expires_at,
             durationMonths: billing.plan_validity.duration_months,
+            durationDays: (billing.plan_validity as { duration_days?: number }).duration_days ?? null,
+            source: (billing.plan_validity as { source?: string }).source ?? null,
           }
         : null,
       limits: billing.limits || TIER_LIMITS.free,

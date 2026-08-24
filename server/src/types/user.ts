@@ -167,6 +167,10 @@ export interface BillingData {
     started_at: string;
     expires_at: string;
     duration_months: 1 | 3 | 12;
+    /** Pruebas promocionales: duración real en días. */
+    duration_days?: number;
+    /** "trial" = regalo/prueba; "purchase" = compra real. */
+    source?: "trial" | "purchase";
   } | null;
 }
 
