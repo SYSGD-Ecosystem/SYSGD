@@ -491,6 +491,46 @@ CREATE TABLE IF NOT EXISTS message_reads (
   PRIMARY KEY (conversation_id, user_id)
 );`);
 
+  // ==============================
+  // Espacios de trabajo contables colaborativos
+  // Cada workspace es una fila independiente con su propio blob cifrado;
+  // la membresía vive en resource_access/invitations con resource_type='workspace'.
+  // La tabla personal cont_ledger_records NO se toca (migración aditiva).
+  // ==============================
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS cont_workspaces (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      registro JSONB NOT NULL DEFAULT '{}'::jsonb,
+      conversation_id UUID REFERENCES conversations(id) ON DELETE SET NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_cont_workspaces_owner ON cont_workspaces(owner_id);
+  `);
+
+  // Ampliar los CHECK polimórficos para admitir 'workspace'.
+  // DROP+ADD idempotente: barato en tablas pequeñas y autocurante ante drift.
+  await pool.query(`
+    ALTER TABLE invitations
+      DROP CONSTRAINT IF EXISTS invitations_resource_type_check;
+    ALTER TABLE invitations
+      ADD CONSTRAINT invitations_resource_type_check
+      CHECK (resource_type IN ('project', 'archive', 'workspace'));
+  `);
+
+  await pool.query(`
+    ALTER TABLE resource_access
+      DROP CONSTRAINT IF EXISTS resource_access_resource_type_check;
+    ALTER TABLE resource_access
+      ADD CONSTRAINT resource_access_resource_type_check
+      CHECK (resource_type IN ('project', 'archive', 'workspace'));
+  `);
+
   await pool.query(`
 CREATE TABLE IF NOT EXISTS conversation_invitations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

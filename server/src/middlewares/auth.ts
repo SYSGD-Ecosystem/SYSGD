@@ -23,6 +23,55 @@ export function isAdmin(req: Request, res: Response, next: NextFunction) {
 	next();
 }
 
+export async function hasWorkspaceAccess(
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) {
+	const workspaceId = req.params.id || req.params.workspaceId;
+	const user = getCurrentUserData(req);
+	const userId = user?.id;
+
+	if (!workspaceId) {
+		res.status(400).json({ error: "ID de workspace requerido" });
+		return;
+	}
+
+	if (!userId) {
+		res.status(401).json({ error: "Usuario no autenticado" });
+		return;
+	}
+
+	try {
+		if (user?.privileges === "admin") {
+			next();
+			return;
+		}
+
+		const result = await pool.query(
+			`
+			SELECT 1 FROM cont_workspaces w
+			LEFT JOIN resource_access ra ON w.id = ra.resource_id
+				AND ra.resource_type = 'workspace'
+				AND ra.user_id = $2
+			WHERE w.id = $1
+				AND (w.owner_id = $2 OR ra.user_id IS NOT NULL)
+		`,
+			[workspaceId, userId],
+		);
+
+		if (result.rows.length === 0) {
+			res.status(403).json({ error: "No tienes acceso a este espacio de trabajo" });
+			return;
+		}
+
+		next();
+	} catch (error) {
+		console.error("Error verificando acceso al workspace:", error);
+		res.status(500).json({ error: "Error interno del servidor" });
+	}
+}
+
 export async function hasProjectAccess(
 	req: Request,
 	res: Response,
