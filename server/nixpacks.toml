@@ -1,0 +1,7 @@
+# Asegura que las devDependencies (typescript) estén presentes en el build.
+# Sin esto, npm ci omite devDeps cuando NODE_ENV=production y falla `tsc`.
+[phases.install]
+cmds = ["npm ci --include=dev"]
+
+[start]
+cmd = "node dist/index.js"
