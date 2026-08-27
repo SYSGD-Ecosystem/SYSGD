@@ -2,39 +2,49 @@ import { useEffect, useState, useCallback } from "react"
 
 import { apiFetchPublic } from "../lib/api"
 
-type UpdateItem = {
+export type UpdateItem = {
 	id: string
 	date: string
 	title: string
 	description: string
 	category: string
+	youtube_url?: string | null
+	screenshots?: string[]
+}
+
+function isUpdateItem(obj: unknown): obj is UpdateItem {
+	if (!obj || typeof obj !== "object") return false
+	const item = obj as Record<string, unknown>
+	return typeof item.id === "string" && typeof item.title === "string"
 }
 
 function normalizeUpdatesResponse(data: unknown): UpdateItem[] {
-	if (Array.isArray(data)) return data
+	if (Array.isArray(data)) {
+		return data.filter(isUpdateItem)
+	}
 
 	if (data && typeof data === "object") {
-		const obj = data as any
+		const obj = data as Record<string, unknown>
 
 		// Caso directo: { updates: [...] }
 		if (Array.isArray(obj.updates)) {
-			return obj.updates
+			return obj.updates.filter(isUpdateItem)
 		}
 
 		// Caso típico de API: { result: { updates: [...] } }
 		if (obj.result && typeof obj.result === "object") {
-			const result = obj.result as any
+			const result = obj.result as Record<string, unknown>
 			if (Array.isArray(result.updates)) {
-				return result.updates
+				return result.updates.filter(isUpdateItem)
 			}
 			if (Array.isArray(result.data)) {
-				return result.data
+				return result.data.filter(isUpdateItem)
 			}
 		}
 
 		// Fallback genérico: { data: [...] }
 		if (Array.isArray(obj.data)) {
-			return obj.data
+			return obj.data.filter(isUpdateItem)
 		}
 	}
 
@@ -49,51 +59,25 @@ export default function useUpdates() {
 	const fetchUpdates = useCallback(async () => {
 		setLoading(true)
 		setError(null)
-		
+
 		try {
 			const data = await apiFetchPublic<unknown>("/api/updates")
-			console.log("Fetched updates:", data)
 			setUpdates(normalizeUpdatesResponse(data))
-		} catch (e: any) {
-			setError(e?.message || "Error al obtener actualizaciones")
+		} catch (e: unknown) {
+			setError(e instanceof Error ? e.message : "Error al obtener actualizaciones")
 			setUpdates([])
 		} finally {
 			setLoading(false)
 		}
 	}, [])
 
-	// Función de refetch expuesta
 	const refetch = useCallback(() => {
 		fetchUpdates()
 	}, [fetchUpdates])
 
 	useEffect(() => {
-		let cancelled = false
-
-		async function run() {
-			try {
-				const data = await apiFetchPublic<unknown>("/api/updates")
-				if (!cancelled) {
-					setUpdates(normalizeUpdatesResponse(data))
-					setError(null)
-				}
-			} catch (e: any) {
-				if (!cancelled) {
-					setError(e?.message || "Error al obtener actualizaciones")
-				}
-			} finally {
-				if (!cancelled) {
-					setLoading(false)
-				}
-			}
-		}
-
-		run()
-		
-		return () => {
-			cancelled = true
-		}
-	}, [])
+		fetchUpdates()
+	}, [fetchUpdates])
 
 	return { updates, loading, error, refetch }
 }

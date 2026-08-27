@@ -10,6 +10,7 @@ import { AuthProvider } from "./hooks/useAuth.tsx";
 import APIPage from "./app/api/page.tsx";
 import PhilosophyPage from "./app/philosophy/page.tsx";
 import UpdatesPage from "./app/updates/page.tsx";
+import UpdatesDetailPage from "./app/updates/detail-page.tsx";
 import RoadmapPage from "./app/roadmap/page.tsx";
 import ServicesPage from "./app/services/Page.tsx";
 import AppsPage from "./app/apps/AppsPage.tsx";
@@ -29,6 +30,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/api" element={<APIPage />} />
               <Route path="/philosophy" element={<PhilosophyPage />} />
               <Route path="/updates" element={<UpdatesPage />} />
+            <Route path="/updates/:id" element={<UpdatesDetailPage />} />
               <Route path="/descubre" element={<DescubrePage />} />
               <Route path="/descubre/post/:id" element={<DescubrePostDetailPage />} />
               <Route path="/roadmap" element={<RoadmapPage />} />
