@@ -94,7 +94,7 @@ app.get(
 			maxAge: 1000 * 60 * 60 * 24,
 		});
 
-		// console.log("Redirigiendo a cliente con token:", token);
+		console.log("Redirigiendo a cliente con token:", token);
 
 		res.redirect(
 			`${process.env.CLIENT_HOST}/login?token=${token}` || `http://localhost:5173/login?token=${token}`,
