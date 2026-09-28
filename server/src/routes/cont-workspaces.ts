@@ -14,6 +14,7 @@ import {
 	listWorkspaceMembers,
 	inviteWorkspaceMember,
 	removeWorkspaceMember,
+	setWorkspaceMemberRole,
 } from "../services/cont-workspaces.service";
 
 const router = Router();
@@ -22,6 +23,19 @@ type AuthedRequest = Request & { user?: { id: string; privileges?: string } };
 
 function userIdDe(req: Request): string | undefined {
 	return (req as AuthedRequest).user?.id;
+}
+
+/** Acepta solo el shape `{ sección: string }` (metadatos de versión por sección). */
+function sectionsValidas(value: unknown): Record<string, string> | undefined {
+	if (value === undefined || value === null) return undefined;
+	if (typeof value !== "object" || Array.isArray(value)) return undefined;
+	const limpias: Record<string, string> = {};
+	for (const [clave, valor] of Object.entries(value)) {
+		if (typeof valor === "string" && clave.length <= 64) {
+			limpias[clave] = valor;
+		}
+	}
+	return limpias;
 }
 
 // Límite blando de espacios propios; ajustar cuando se integre con planes.
@@ -149,7 +163,7 @@ router.get("/:id/ledger", async (req, res) => {
 	}
 });
 
-// PUT /api/cont-workspaces/:id/ledger — escritura optimista {registro, expectedVersion?}
+// PUT /api/cont-workspaces/:id/ledger — escritura optimista {registro, sections?, expectedVersion?}
 router.put("/:id/ledger", async (req, res) => {
 	try {
 		const registro = req.body?.registro;
@@ -161,11 +175,14 @@ router.put("/:id/ledger", async (req, res) => {
 			typeof req.body?.expectedVersion === "string"
 				? req.body.expectedVersion
 				: undefined;
+		const sections =
+			sectionsValidas(req.body?.sections);
 
 		const result = await saveWorkspaceLedger(
 			req.params.id,
 			registro,
 			expectedVersion,
+			sections,
 		);
 		res.json(result);
 	} catch (error) {
@@ -225,6 +242,30 @@ router.post("/:id/members/invite", async (req, res) => {
 	} catch (error) {
 		console.error("Error invitando miembro:", error);
 		res.status(500).json({ error: "Error al invitar al usuario" });
+	}
+});
+
+// PATCH /api/cont-workspaces/:id/members/:userId {role} — cambiar rol de miembro (owner/admin)
+router.patch("/:id/members/:userId", async (req, res) => {
+	try {
+		const user = (req as AuthedRequest).user;
+		const workspace = await getWorkspaceForUser(req.params.id, user!.id);
+		if (!workspace || !["owner", "admin"].includes(workspace.role)) {
+			res.status(403).json({ error: "Solo el dueño o un admin puede cambiar roles" });
+			return;
+		}
+		const role = typeof req.body?.role === "string" ? req.body.role.trim().toLowerCase() : "";
+		if (!role) {
+			res.status(400).json({ error: "El rol es obligatorio" });
+			return;
+		}
+		await setWorkspaceMemberRole(req.params.id, req.params.userId, role);
+		res.json({ message: "Rol actualizado" });
+	} catch (error) {
+		const status = (error as { statusCode?: number })?.statusCode ?? 500;
+		res.status(status).json({
+			error: (error as Error)?.message ?? "Error interno del servidor",
+		});
 	}
 });
 

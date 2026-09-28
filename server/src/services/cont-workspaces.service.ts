@@ -19,7 +19,7 @@ export class WorkspaceConflictError extends Error {
 	}
 }
 
-const ROLES_VALIDOS = ["admin", "member", "viewer"];
+const ROLES_VALIDOS = ["admin", "member", "viewer", "vendedor"];
 
 /**
  * Espacios propios (owner) + compartidos vía resource_access.
@@ -139,9 +139,9 @@ export const deleteWorkspace = async (workspaceId: string): Promise<void> => {
 
 export const getWorkspaceLedger = async (
 	workspaceId: string,
-): Promise<{ registro: unknown; version: string } | null> => {
+): Promise<{ registro: unknown; sections: Record<string, string>; version: string } | null> => {
 	const { rows } = await pool.query(
-		`SELECT registro, updated_at FROM cont_workspaces WHERE id = $1`,
+		`SELECT registro, sections, updated_at FROM cont_workspaces WHERE id = $1`,
 		[workspaceId],
 	);
 	if (rows.length === 0) return null;
@@ -159,7 +159,7 @@ export const getWorkspaceLedger = async (
 		registro = raw;
 	}
 
-	return { registro, version: rows[0].updated_at };
+	return { registro, sections: rows[0].sections ?? {}, version: rows[0].updated_at };
 };
 
 /**
@@ -172,6 +172,7 @@ export const saveWorkspaceLedger = async (
 	workspaceId: string,
 	registro: unknown,
 	expectedVersion?: string,
+	sections?: Record<string, string>,
 ): Promise<{ version: string }> => {
 	const client = await pool.connect();
 	try {
@@ -197,10 +198,12 @@ export const saveWorkspaceLedger = async (
 		const encrypted = LedgerEncryptionService.encryptLedger(registro);
 		const updated = await client.query<{ updated_at: string }>(
 			`UPDATE cont_workspaces
-			 SET registro = $2::jsonb, updated_at = NOW()
+			 SET registro = $2::jsonb,
+			     sections = $3::jsonb,
+			     updated_at = NOW()
 			 WHERE id = $1
 			 RETURNING updated_at`,
-			[workspaceId, JSON.stringify(encrypted)],
+			[workspaceId, JSON.stringify(encrypted), JSON.stringify(sections ?? {})],
 		);
 
 		await client.query("COMMIT");
@@ -304,4 +307,43 @@ export const removeWorkspaceMember = async (
 		 WHERE resource_type = 'workspace' AND resource_id = $1 AND user_id = $2`,
 		[workspaceId, memberUserId],
 	);
+};
+
+/**
+ * Cambia el rol de un miembro del workspace (p.ej. miembro -> vendedor).
+ * Si el usuario aún tiene una invitación pendiente (no ha aceptado), se
+ * actualiza el rol de la invitación; en caso contrario se actualiza (o crea
+ * si faltara) su fila de resource_access. Valida el rol contra ROLES_VALIDOS.
+ */
+export const setWorkspaceMemberRole = async (
+	workspaceId: string,
+	memberUserId: string,
+	role: string,
+): Promise<void> => {
+	if (!ROLES_VALIDOS.includes(role)) {
+		const err = new Error(`Rol inválido: ${role}`) as Error & { statusCode?: number };
+		err.statusCode = 400;
+		throw err;
+	}
+
+	const access = await pool.query(
+		`UPDATE resource_access
+		 SET role = $3
+		 WHERE resource_type = 'workspace' AND resource_id = $1 AND user_id = $2`,
+		[workspaceId, memberUserId, role],
+	);
+	if ((access.rowCount ?? 0) > 0) return;
+
+	const invitation = await pool.query(
+		`UPDATE invitations
+		 SET role = $3
+		 WHERE resource_type = 'workspace' AND resource_id = $1
+		   AND receiver_id = $2 AND status = 'pending'`,
+		[workspaceId, memberUserId, role],
+	);
+	if ((invitation.rowCount ?? 0) > 0) return;
+
+	const err = new Error("El usuario no es miembro de este espacio") as Error & { statusCode?: number };
+	err.statusCode = 404;
+	throw err;
 };
