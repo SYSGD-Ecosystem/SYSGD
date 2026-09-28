@@ -13,6 +13,7 @@ import qwen from "./qwen";
 import gema from "./gema";
 import openrouterai from "./openrouterai.routes";
 import openrouter from "./openrouter"; // new route for OpenRouter Agent
+import aiRoutes from "./ai"; // endpoint limpio: el cliente elige provider + model + systemPrompt
 import docApi from "./api"; // existing large router with document-management endpoints
 import chat  from "./chat";
 import agents from "./agents";
@@ -48,6 +49,7 @@ router.use("/qwen", qwen);
 router.use("/gema", gema);
 router.use("/openrouterai", openrouterai);
 router.use("/openrouter", openrouter);
+router.use("/ai", aiRoutes);
 router.use("/ideas", ideas);
 router.use("/", notes);
 router.use("/auth", authRoutes);

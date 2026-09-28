@@ -166,6 +166,7 @@ export interface AgentRequest {
 	model?: string;
 	customToken?: string; // ← Agregar esta línea
 	forse_text_response?: boolean; // ← Agregar esta línea
+	systemPrompt?: string; // ← System prompt personalizado enviado por el cliente
 }
 
 // Interface para las respuestas del agente
@@ -228,11 +229,12 @@ export async function generateTextResponse(
 	prompt: string,
 	model: string = "gemini-2.5-flash",
  	customToken?: string,
+ 	systemPrompt?: string,
 ): Promise<string> {
 	const genAI = getGeminiClient(customToken);
 	const genModel = genAI.getGenerativeModel({
 		model: model,
-		systemInstruction: SYSTEM_PROMPTS.text,
+		systemInstruction: systemPrompt || SYSTEM_PROMPTS.text,
 	});
 
 	const result = await genModel.generateContent(prompt);
@@ -341,7 +343,7 @@ const generateImageFromReveCreate = async (prompt: string): Promise<string> => {
 export async function processAgentRequest(
 	request: AgentRequest,
 ): Promise<AgentResponse> {
-	const { prompt, model, forse_text_response, customToken } = request;
+	const { prompt, model, forse_text_response, customToken, systemPrompt } = request;
 
 	if (!prompt) {
 		throw new Error("El prompt es requerido");
@@ -371,6 +373,7 @@ export async function processAgentRequest(
 				prompt,
 				model || "gemini-2.5-flash",
 				customToken,
+				systemPrompt,
 			);
 			responseType = "text";
 			attachment_type = null;

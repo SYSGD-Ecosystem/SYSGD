@@ -166,6 +166,7 @@ export async function processAgentRequest(
 		let respuesta: string;
 		let attachment_type: "image" | null = null;
 		let attachment_url: string | null = null;
+		let usedModel = "openai/gpt-oss-120b:free";
 
 		// Detecta si pide imagen (puedes mejorar esta lógica con análisis como en geminiAgent)
 		if (
@@ -176,8 +177,11 @@ export async function processAgentRequest(
 			respuesta = "Aquí tienes la imagen generada:";
 			attachment_type = "image";
 			attachment_url = imageUrl;
+			usedModel = model || "google/gemini-2.5-flash-image-preview";
 		} else {
-			respuesta = await callOpenRouterChat(prompt, "openai/gpt-oss-120b:free", systemPrompt, customToken); // Puedes cambiar el modelo aquí
+			const resolvedModel = model || "openai/gpt-oss-120b:free";
+			respuesta = await callOpenRouterChat(prompt, resolvedModel, systemPrompt, customToken); // El modelo viene del cliente o usa el default
+			usedModel = resolvedModel;
 		}
 
 		return {
@@ -186,9 +190,7 @@ export async function processAgentRequest(
 			attachment_url,
 			metadata: {
 				type: attachment_type ? "image" : "text",
-				model: attachment_type
-					? "openrouter-image"
-					: "openai/gpt-oss-120b:free",
+				model: usedModel,
 				confidence: 0.9,
 				reasoning: "Ruteado vía OpenRouter",
 			},

@@ -15,6 +15,7 @@ const DEFAULT_AI_MODEL = process.env.AI_DEFAULT_MODEL || "gemini-2.5-flash";
 
 interface CachedAiPayload {
 	prompt: string;
+	systemPrompt?: string | null;
 	result: Record<string, unknown>;
 }
 
@@ -40,7 +41,7 @@ function extractErrorMessage(err: unknown): string {
  * Busca en ai_request_cache una respuesta previa para el mismo requestId.
  * Solo se considera válida si el prompt almacenado coincide con el actual.
  */
-async function getCachedAiResponse(requestId: string, prompt: string): Promise<Record<string, unknown> | null> {
+async function getCachedAiResponse(requestId: string, prompt: string, systemPrompt?: string | null): Promise<Record<string, unknown> | null> {
 	const { rows } = await pool.query<{ response_body: CachedAiPayload | null }>(
 		"SELECT response_body FROM ai_request_cache WHERE request_id = $1",
 		[requestId],
@@ -49,6 +50,7 @@ async function getCachedAiResponse(requestId: string, prompt: string): Promise<R
 	const body = rows[0]?.response_body;
 	if (!body || typeof body !== "object" || !body.result) return null;
 	if (body.prompt !== prompt) return null;
+	if (body.systemPrompt !== systemPrompt) return null;
 
 	return body.result;
 }
@@ -60,13 +62,14 @@ async function getCachedAiResponse(requestId: string, prompt: string): Promise<R
 async function saveCachedAiResponse(
 	requestId: string,
 	prompt: string,
+	systemPrompt: string | undefined,
 	result: unknown,
 ): Promise<void> {
 	await pool.query(
 		`INSERT INTO ai_request_cache (request_id, response_body)
 		 VALUES ($1, $2::jsonb)
 		 ON CONFLICT (request_id) DO UPDATE SET response_body = EXCLUDED.response_body`,
-		[requestId, JSON.stringify({ prompt, result })],
+		[requestId, JSON.stringify({ prompt, systemPrompt, result })],
 	);
 }
 
@@ -80,7 +83,7 @@ async function saveCachedAiResponse(
 router.post("/", isAuthenticated, checkAICredits, async (req, res) => {
   console.log("🔄 Nueva petición a Gemini Agent:", req.body);
 
-  const { prompt, image, audio, video, file, model } = req.body;
+  const { prompt, image, audio, video, file, model, systemPrompt } = req.body;
 
   if (!prompt) {
     res.status(400).json({ error: "Falta el prompt" });
@@ -100,6 +103,7 @@ router.post("/", isAuthenticated, checkAICredits, async (req, res) => {
       video: video || undefined,
       file: file || undefined,
       model: model || DEFAULT_AI_MODEL,
+      systemPrompt,
       customToken: useCustomToken ? customToken : undefined
     });
 
@@ -143,7 +147,7 @@ router.post("/text", isAuthenticated, checkAICredits, async (req, res) => {
   const requestId =
     typeof rawRequestId === "string" && rawRequestId.trim() ? rawRequestId.trim() : null;
 
-  const { prompt, model } = req.body;
+  const { prompt, model, systemPrompt } = req.body;
 
   if (!prompt) {
     res.status(400).json({ error: "Falta el prompt" });
@@ -157,7 +161,7 @@ router.post("/text", isAuthenticated, checkAICredits, async (req, res) => {
   // Un acierto de caché no vuelve a consumir créditos ni llama a la IA.
   if (requestId) {
     try {
-      const cachedResult = await getCachedAiResponse(requestId, prompt);
+const cachedResult = await getCachedAiResponse(requestId, prompt, systemPrompt);
       if (cachedResult) {
         console.log("⚡ Respuesta servida desde ai_request_cache:", requestId);
         res.json({
@@ -181,13 +185,14 @@ router.post("/text", isAuthenticated, checkAICredits, async (req, res) => {
       prompt,
       forse_text_response: true,
       model: model || DEFAULT_AI_MODEL,
+      systemPrompt,
       customToken: useCustomToken ? customToken : undefined
     });
 
     // Guardar la respuesta de forma temporal asociada al id enviado por el cliente
     if (requestId) {
       try {
-        await saveCachedAiResponse(requestId, prompt, result);
+        await saveCachedAiResponse(requestId, prompt, systemPrompt, result);
       } catch (cacheErr) {
         console.error("⚠️ No se pudo guardar en ai_request_cache:", cacheErr);
       }
