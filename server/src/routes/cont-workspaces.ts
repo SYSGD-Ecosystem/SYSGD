@@ -15,6 +15,9 @@ import {
 	inviteWorkspaceMember,
 	removeWorkspaceMember,
 	setWorkspaceMemberRole,
+	listWorkspaceVendedorLinks,
+	linkWorkspaceVendedor,
+	unlinkWorkspaceVendedor,
 } from "../services/cont-workspaces.service";
 
 const router = Router();
@@ -286,6 +289,67 @@ router.delete("/:id/members/:userId", async (req, res) => {
 		res.json({ message: "Miembro removido" });
 	} catch (error) {
 		console.error("Error quitando miembro:", error);
+		res.status(500).json({ error: "Error interno del servidor" });
+	}
+});
+
+// ── Vínculo vendedor local <-> miembro ──────────────────────────
+
+// GET /api/cont-workspaces/:id/vendedores/links — vínculos del espacio
+// (se usa en el POS del vendedor para resolver "mi vendedor" al aterrizar).
+router.get("/:id/vendedores/links", async (req, res) => {
+	try {
+		const links = await listWorkspaceVendedorLinks(req.params.id);
+		res.json(links);
+	} catch (error) {
+		console.error("Error listando vínculos de vendedores:", error);
+		res.status(500).json({ error: "Error interno del servidor" });
+	}
+});
+
+// PUT /api/cont-workspaces/:id/vendedores/:vendedorId/link {memberUserId, almacenId?}
+// Vincula el vendedor local a un miembro y fija su rol 'vendedor'.
+router.put("/:id/vendedores/:vendedorId/link", async (req, res) => {
+	try {
+		const user = (req as AuthedRequest).user;
+		const workspace = await getWorkspaceForUser(req.params.id, user!.id);
+		if (!workspace || !["owner", "admin"].includes(workspace.role)) {
+			res.status(403).json({ error: "Solo el dueño o un admin puede vincular vendedores" });
+			return;
+		}
+		const memberUserId =
+			typeof req.body?.memberUserId === "string" ? req.body.memberUserId.trim() : "";
+		if (!memberUserId) {
+			res.status(400).json({ error: "Falta memberUserId" });
+			return;
+		}
+		const almacenId =
+			typeof req.body?.almacenId === "string" && req.body.almacenId.trim() !== ""
+				? req.body.almacenId.trim()
+				: undefined;
+		await linkWorkspaceVendedor(req.params.id, req.params.vendedorId, memberUserId, almacenId);
+		res.json({ message: "Vendedor vinculado al miembro" });
+	} catch (error) {
+		const status = (error as { statusCode?: number })?.statusCode ?? 500;
+		res.status(status).json({
+			error: (error as Error)?.message ?? "Error interno del servidor",
+		});
+	}
+});
+
+// DELETE /api/cont-workspaces/:id/vendedores/:vendedorId/link — desvincula
+router.delete("/:id/vendedores/:vendedorId/link", async (req, res) => {
+	try {
+		const user = (req as AuthedRequest).user;
+		const workspace = await getWorkspaceForUser(req.params.id, user!.id);
+		if (!workspace || !["owner", "admin"].includes(workspace.role)) {
+			res.status(403).json({ error: "Solo el dueño o un admin puede desvincular vendedores" });
+			return;
+		}
+		await unlinkWorkspaceVendedor(req.params.id, req.params.vendedorId);
+		res.json({ message: "Vendedor desvinculado" });
+	} catch (error) {
+		console.error("Error desvinculando vendedor:", error);
 		res.status(500).json({ error: "Error interno del servidor" });
 	}
 });

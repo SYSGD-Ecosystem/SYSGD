@@ -347,3 +347,126 @@ export const setWorkspaceMemberRole = async (
 	err.statusCode = 404;
 	throw err;
 };
+
+// ── Vínculo vendedor local <-> miembro ──────────────────────────
+
+export interface WorkspaceVendedorLink {
+	vendedorId: string;
+	memberUserId: string;
+	memberEmail: string;
+	memberName: string;
+	almacenId: string | null;
+	role: string;
+	createdAt: string;
+}
+
+export const listWorkspaceVendedorLinks = async (
+	workspaceId: string,
+): Promise<WorkspaceVendedorLink[]> => {
+	const { rows } = await pool.query(
+		`SELECT l.vendedor_id, l.member_user_id, u.email, u.name, l.almacen_id,
+		        COALESCE(ra.role, 'vendedor') AS role, l.created_at::text AS created_at
+		 FROM cont_workspace_vendedor_links l
+		 JOIN users u ON u.id = l.member_user_id
+		 LEFT JOIN resource_access ra
+		   ON ra.resource_type = 'workspace' AND ra.resource_id = l.workspace_id
+		   AND ra.user_id = l.member_user_id
+		 WHERE l.workspace_id = $1
+		 ORDER BY u.name`,
+		[workspaceId],
+	);
+	return rows.map((r) => ({
+		vendedorId: r.vendedor_id,
+		memberUserId: r.member_user_id,
+		memberEmail: r.email,
+		memberName: r.name,
+		almacenId: r.almacen_id,
+		role: r.role,
+		createdAt: r.created_at,
+	}));
+};
+
+/** Miembro activo o invitación pendiente del workspace. */
+const esMiembroDelWorkspace = async (workspaceId: string, userId: string): Promise<boolean> => {
+	const { rows } = await pool.query(
+		`SELECT 1 FROM cont_workspaces WHERE id = $1 AND owner_id = $2
+		 UNION
+		 SELECT 1 FROM resource_access
+		 WHERE resource_type = 'workspace' AND resource_id = $1 AND user_id = $2
+		 UNION
+		 SELECT 1 FROM invitations
+		 WHERE resource_type = 'workspace' AND resource_id = $1
+		   AND receiver_id = $2 AND status = 'pending'`,
+		[workspaceId, userId],
+	);
+	return rows.length > 0;
+};
+
+/**
+ * Vincula el vendedor local (UUID generado por el dispositivo) con un miembro
+ * del workspace. Al vincular fija el rol 'vendedor' del miembro — idempotente,
+ * no baja el rol si el miembro ya era admin/member. Un miembro solo puede tener
+ * un vendedor; si ya estaba vinculado a otro, se reasigna.
+ */
+export const linkWorkspaceVendedor = async (
+	workspaceId: string,
+	vendedorId: string,
+	memberUserId: string,
+	almacenId?: string | null,
+): Promise<void> => {
+	if (!(await esMiembroDelWorkspace(workspaceId, memberUserId))) {
+		const err = new Error("El miembro no pertenece a este espacio") as Error & { statusCode?: number };
+		err.statusCode = 404;
+		throw err;
+	}
+
+	const client = await pool.connect();
+	try {
+		await client.query("BEGIN");
+		// Un miembro -> un solo vendedor vinculado.
+		await client.query(
+			`DELETE FROM cont_workspace_vendedor_links
+			 WHERE workspace_id = $1 AND member_user_id = $3 AND vendedor_id <> $2`,
+			[workspaceId, vendedorId, memberUserId],
+		);
+		await client.query(
+			`INSERT INTO cont_workspace_vendedor_links (workspace_id, vendedor_id, member_user_id, almacen_id)
+			 VALUES ($1, $2, $3, $4)
+			 ON CONFLICT (workspace_id, vendedor_id)
+			 DO UPDATE SET member_user_id = EXCLUDED.member_user_id,
+			               almacen_id = COALESCE(EXCLUDED.almacen_id, cont_workspace_vendedor_links.almacen_id)`,
+			[workspaceId, vendedorId, memberUserId, almacenId ?? null],
+		);
+		// Rol 'vendedor': activo como miembro o vía invitación pendiente.
+		await client.query(
+			`UPDATE resource_access
+			 SET role = 'vendedor'
+			 WHERE resource_type = 'workspace' AND resource_id = $1 AND user_id = $2`,
+			[workspaceId, memberUserId],
+		);
+		await client.query(
+			`UPDATE invitations
+			 SET role = 'vendedor'
+			 WHERE resource_type = 'workspace' AND resource_id = $1
+			   AND receiver_id = $2 AND status = 'pending'`,
+			[workspaceId, memberUserId],
+		);
+		await client.query("COMMIT");
+	} catch (error) {
+		try { await client.query("ROLLBACK"); } catch { /* ya en rollback */ }
+		throw error;
+	} finally {
+		client.release();
+	}
+};
+
+export const unlinkWorkspaceVendedor = async (
+	workspaceId: string,
+	vendedorId: string,
+): Promise<void> => {
+	await pool.query(
+		`DELETE FROM cont_workspace_vendedor_links
+		 WHERE workspace_id = $1 AND vendedor_id = $2`,
+		[workspaceId, vendedorId],
+	);
+};
