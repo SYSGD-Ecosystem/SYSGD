@@ -2,7 +2,7 @@ name: Sincronización Nocturna Inteligente
 
 on:
   schedule:
-    - cron: '0 1 * * *' # 01:00 UTC
+    - cron: '0 3 * * *' # 03:00 UTC (bien dentro de la ventana nocturna de Railway)
   workflow_dispatch:
 
 permissions:
