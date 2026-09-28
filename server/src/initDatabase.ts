@@ -593,6 +593,11 @@ CREATE TABLE IF NOT EXISTS agents (
 );
 `);
 
+  // Asegurar que conversations tenga agent_id (tabla agents ya existe aquí)
+  await pool.query(`
+  ALTER TABLE conversations ADD COLUMN IF NOT EXISTS agent_id UUID REFERENCES agents(id) ON DELETE SET NULL;
+`);
+
   await pool.query(`
 CREATE TABLE IF NOT EXISTS agent_conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

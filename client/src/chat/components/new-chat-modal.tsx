@@ -10,6 +10,7 @@ import {
 	UserPlus,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { isAxiosError } from "axios";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -24,13 +25,21 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePublicUsers } from "@/hooks/connection/usePublicUsers";
 import type { PublicUser } from "@/types/user";
-import { useChat } from "../hooks/useChat";
+import { useChat, type Conversation } from "../hooks/useChat";
 import useCurrentUser from "@/hooks/connection/useCurrentUser";
+
+const getServerErrorMessage = (err: unknown, fallback: string) => {
+	if (isAxiosError(err)) {
+		const data = err.response?.data as { error?: string; message?: string } | undefined;
+		return data?.error || data?.message || err.message || fallback;
+	}
+	return err instanceof Error ? err.message : fallback;
+};
 
 interface NewChatModalProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	onSelectContact: (contact: Contact) => void;
+	onSelectContact: (conversation: Conversation) => void;
 }
 
 export interface Contact {
@@ -57,6 +66,12 @@ export function NewChatModal({
 	const [generating, setGenerating] = useState(false);
 	const [sendingInvite, setSendingInvite] = useState(false);
 	const [verifying, setVerifying] = useState(false);
+	const [groupTitle, setGroupTitle] = useState("");
+	const [selectedGroupMembers, setSelectedGroupMembers] = useState<
+		string[]
+	>([]);
+	const [creatingGroup, setCreatingGroup] = useState(false);
+	const [groupSearch, setGroupSearch] = useState("");
 
 	const { publicUsers: users } = usePublicUsers();
 	const {
@@ -95,16 +110,53 @@ export function NewChatModal({
 	// Seleccionar contacto público -> crear/conseguir conversación privada con ese user
 	const handleSelectContact = async (contact: Contact) => {
 		try {
-			/*const conv = */ await createConversation({
+			const conv = await createConversation({
 				contactemail: contact.email,
 			});
 			await fetchConversations();
-			onSelectContact(contact);
+			onSelectContact(conv);
 			setSearchQuery("");
 			onOpenChange(false);
-		} catch (err) {
+		} catch (err: unknown) {
 			console.error("Error al crear/obtener conversación:", err);
-			alert("No se pudo crear la conversación. Revisa la consola.");
+			alert(getServerErrorMessage(err, "No se pudo crear la conversación."));
+		}
+	};
+
+	// Crear grupo con selección múltiple de usuarios públicos
+	const toggleGroupMember = (email: string) => {
+		setSelectedGroupMembers((prev) =>
+			prev.includes(email) ? prev.filter((e) => e !== email) : [...prev, email],
+		);
+	};
+
+	const handleCreateGroup = async () => {
+		if (!groupTitle.trim()) {
+			alert("Ingresa un nombre para el grupo");
+			return;
+		}
+		if (selectedGroupMembers.length < 2) {
+			alert("Selecciona al menos 2 usuarios para crear el grupo");
+			return;
+		}
+		setCreatingGroup(true);
+		try {
+			const conv = await createConversation({
+				members: selectedGroupMembers.map((email) => email),
+				title: groupTitle.trim(),
+				type: "group",
+			});
+			await fetchConversations();
+			setGroupTitle("");
+			setSelectedGroupMembers([]);
+			setGroupSearch("");
+			onSelectContact(conv);
+			onOpenChange(false);
+		} catch (err: unknown) {
+			console.error("Error al crear grupo:", err);
+			alert(getServerErrorMessage(err, "No se pudo crear el grupo."));
+		} finally {
+			setCreatingGroup(false);
 		}
 	};
 
@@ -144,15 +196,7 @@ export function NewChatModal({
 			if (emailFromLink) {
 				const conv = await createConversation({ contactemail: emailFromLink });
 				await fetchConversations();
-				// devolver información de contacto mínima al selector
-				onSelectContact({
-					id: conv?.created_by ?? 0,
-					name: emailFromLink,
-					email: emailFromLink,
-					type: "user",
-					avatar: "👤",
-					online: false,
-				});
+				onSelectContact(conv);
 				setPasteInviteLink("");
 				onOpenChange(false);
 				return;
@@ -178,14 +222,7 @@ export function NewChatModal({
 								contactemail: info.email,
 							});
 							await fetchConversations();
-							onSelectContact({
-								id: conv?.created_by ?? 0,
-								name: info.email,
-								email: info.email,
-								type: "user",
-								avatar: "👤",
-								online: false,
-							});
+							onSelectContact(conv);
 							setPasteInviteLink("");
 							onOpenChange(false);
 							return;
@@ -202,16 +239,7 @@ export function NewChatModal({
 							const joined =
 								convs?.find((c: any) => c.id === info.conversation_id) ||
 								convs?.[0];
-							onSelectContact({
-								id:
-									joined?.members?.find((m: any) => m.email !== undefined)
-										?.id ?? 0,
-								name: joined?.title ?? "Conversación",
-								email: joined?.members?.[0]?.email ?? "unknown",
-								type: "user",
-								avatar: "👤",
-								online: false,
-							});
+							onSelectContact(joined);
 							setPasteInviteLink("");
 							onOpenChange(false);
 							return;
@@ -339,12 +367,13 @@ export function NewChatModal({
 					</DialogDescription>
 				</DialogHeader>
 
-				<Tabs defaultValue="public" className="w-full">
-					<TabsList className="grid w-full grid-cols-3">
-						<TabsTrigger value="public">Usuarios Públicos</TabsTrigger>
-						<TabsTrigger value="invite">Usar Link</TabsTrigger>
-						<TabsTrigger value="generate">Generar / Enviar</TabsTrigger>
-					</TabsList>
+<Tabs defaultValue="public" className="w-full">
+				<TabsList className="grid w-full grid-cols-4">
+					<TabsTrigger value="public">Usuarios Públicos</TabsTrigger>
+					<TabsTrigger value="group">Crear Grupo</TabsTrigger>
+					<TabsTrigger value="invite">Usar Link</TabsTrigger>
+					<TabsTrigger value="generate">Generar / Enviar</TabsTrigger>
+				</TabsList>
 
 					<TabsContent value="public" className="space-y-4">
 						<div className="relative">
@@ -407,6 +436,106 @@ export function NewChatModal({
 								)}
 							</div>
 						</ScrollArea>
+					</TabsContent>
+
+					<TabsContent value="group" className="space-y-4">
+						<div className="space-y-3">
+							<div className="space-y-2">
+								<Label htmlFor="group-title">Nombre del grupo</Label>
+								<Input
+									id="group-title"
+									placeholder="Ej: Equipo de Desarrollo"
+									value={groupTitle}
+									onChange={(e) => setGroupTitle(e.target.value)}
+								/>
+							</div>
+
+							<div className="space-y-2">
+								<Label>Selecciona miembros (mínimo 2)</Label>
+								<div className="relative">
+									<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+									<Input
+										placeholder="Buscar usuarios para el grupo..."
+										value={groupSearch}
+										onChange={(e) => setGroupSearch(e.target.value)}
+										className="pl-9"
+									/>
+								</div>
+
+								<div className="bg-muted/50 rounded-lg p-2 text-sm text-muted-foreground">
+									{selectedGroupMembers.length} seleccionados
+								</div>
+
+								<ScrollArea className="h-[240px] pr-4">
+									<div className="space-y-1">
+										{publicUsers
+											.filter(
+												(contact) =>
+													user?.email === undefined ||
+													contact.email !== user.email,
+											)
+											.filter(
+												(contact) =>
+													!groupSearch.trim() ||
+													contact.name
+														.toLowerCase()
+														.includes(groupSearch.toLowerCase()) ||
+													contact.email
+														.toLowerCase()
+														.includes(groupSearch.toLowerCase()),
+											)
+											.map((contact) => {
+												const selected = selectedGroupMembers.includes(
+													contact.email,
+												);
+												return (
+													<button
+														type="button"
+														key={contact.id}
+														onClick={() =>
+															toggleGroupMember(contact.email)
+														}
+														className={`w-full p-3 rounded-lg transition-colors text-left flex items-center gap-3 ${
+															selected
+																? "bg-primary/10 ring-1 ring-primary/40"
+																: "hover:bg-accent"
+														}`}
+													>
+														<div className="w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0">
+															{selected && (
+																<Check className="h-3 w-3 text-primary" />
+															)}
+														</div>
+														<div className="flex-1 min-w-0">
+															<h4 className="font-medium text-sm truncate">
+																{contact.name}
+															</h4>
+															<p className="text-xs text-muted-foreground truncate">
+																{contact.email}
+															</p>
+														</div>
+													</button>
+												);
+											})}
+									</div>
+								</ScrollArea>
+							</div>
+
+							<Button
+								onClick={handleCreateGroup}
+								className="w-full"
+								disabled={
+									creatingGroup ||
+									!groupTitle.trim() ||
+									selectedGroupMembers.length < 2
+								}
+							>
+								<UserPlus className="h-4 w-4 mr-2" />
+								{creatingGroup
+									? "Creando grupo..."
+									: "Crear grupo"}
+							</Button>
+						</div>
 					</TabsContent>
 
 					<TabsContent value="invite" className="space-y-4">

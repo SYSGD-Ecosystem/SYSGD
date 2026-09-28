@@ -281,7 +281,9 @@ export function ChatSidebar({ selectedChat, onSelectChat }: ChatSidebarProps) {
 			<NewChatModal
 				open={isNewChatModalOpen}
 				onOpenChange={setIsNewChatModalOpen}
-				onSelectContact={() => {}}
+				onSelectContact={(conversation) => {
+					onSelectChat(conversation);
+				}}
 			/>
 		</div>
 	);
