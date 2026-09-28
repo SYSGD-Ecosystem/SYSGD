@@ -103,8 +103,13 @@ export function ChatConversation({
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const { user } = useCurrentUser();
 	const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+	const [typingUserId, setTypingUserId] = useState<string | null>(null);
+	const [isPeerTyping, setIsPeerTyping] = useState(false);
+	const typingResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const stopTypingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-	const { joinConversation, leaveConversation } = useSocketContext();
+	const { joinConversation, leaveConversation, sendTyping } =
+		useSocketContext();
 
 	useSocketEvents({
 		onNewMessage: (message) => {
@@ -113,11 +118,53 @@ export function ChatConversation({
 				setMessagesForConversation(chat.id, [...currentHookMsgs, message]);
 			}
 		},
+		onUserTyping: (data) => {
+			if (data.conversationId !== chat.id) return;
+			if (data.userId === currentUserId) return;
+			setTypingUserId(data.userId);
+			setIsPeerTyping(data.isTyping);
+			if (data.isTyping) {
+				if (typingResetRef.current) clearTimeout(typingResetRef.current);
+				typingResetRef.current = setTimeout(() => {
+					setIsPeerTyping(false);
+					setTypingUserId(null);
+				}, 4000);
+			} else {
+				if (typingResetRef.current) clearTimeout(typingResetRef.current);
+			}
+		},
 	});
 
 	useEffect(() => {
 		setCurrentUserId(user?.id ?? null);
 	}, [user]);
+
+	useEffect(() => {
+		setIsPeerTyping(false);
+		setTypingUserId(null);
+		if (stopTypingRef.current) {
+			clearTimeout(stopTypingRef.current);
+			stopTypingRef.current = null;
+		}
+	}, [chat?.id]);
+
+	const handleTyping = useCallback(() => {
+		if (!chat?.id) return;
+		sendTyping(chat.id, true);
+		if (stopTypingRef.current) clearTimeout(stopTypingRef.current);
+		stopTypingRef.current = setTimeout(() => {
+			sendTyping(chat.id, false);
+			stopTypingRef.current = null;
+		}, 2500);
+	}, [chat?.id, sendTyping]);
+
+	const stopTyping = useCallback(() => {
+		if (stopTypingRef.current) {
+			clearTimeout(stopTypingRef.current);
+			stopTypingRef.current = null;
+		}
+		if (chat?.id) sendTyping(chat.id, false);
+	}, [chat?.id, sendTyping]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	useEffect(() => {
@@ -423,6 +470,7 @@ export function ChatConversation({
 			setAttachment(null);
 			setAttachmentPreview(null);
 			setReplyingTo(null);
+			stopTyping();
 			if (fileInputRef.current) {
 				if (!anErrorOcurred) {
 					fileInputRef.current.value = "";
@@ -547,6 +595,28 @@ export function ChatConversation({
 						/>
 					))}
 				</div>
+
+				{isPeerTyping && (
+					<div className="px-4 pt-1 max-w-4xl mx-auto">
+						<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+							<div className="flex space-x-0.5">
+								<span
+									className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce"
+									style={{ animationDelay: "0ms" }}
+								/>
+								<span
+									className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce"
+									style={{ animationDelay: "150ms" }}
+								/>
+								<span
+									className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce"
+									style={{ animationDelay: "300ms" }}
+								/>
+							</div>
+							<span>Escribiendo...</span>
+						</div>
+					</div>
+				)}
 			</ScrollArea>
 
 			<AlertDialog
@@ -653,7 +723,10 @@ export function ChatConversation({
 							<Textarea
 								placeholder="Escribe un mensaje..."
 								value={newMessage}
-								onChange={(e) => setNewMessage(e.target.value)}
+								onChange={(e) => {
+									setNewMessage(e.target.value);
+									handleTyping();
+								}}
 								onKeyPress={handleKeyPress}
 								className="pr-10 min-h-11 resize-none font-sans text-base border-none no-scrollbar"
 							/>
