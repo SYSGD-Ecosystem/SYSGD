@@ -18,7 +18,7 @@ export function useUsers(): UseUsersReturn {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
-	// GET: Obtener lista de usuarios
+	// GET: Obtener lista de usuarios (solo admin; el endpoint responde 403 a los demás)
 	const fetchUsers = useCallback(async () => {
 		setLoading(true);
 		try {
@@ -26,6 +26,12 @@ export function useUsers(): UseUsersReturn {
 			setUsers(res.data);
 			setError(null);
 		} catch (err: any) {
+			// 403 = este usuario no es admin: la lista no aplica, no es un error que mostrar.
+			if (err?.response?.status === 403) {
+				setUsers([]);
+				setError(null);
+				return;
+			}
 			setError(err.response?.data?.message || "Error al obtener usuarios");
 		} finally {
 			setLoading(false);

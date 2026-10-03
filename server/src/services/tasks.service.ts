@@ -175,18 +175,34 @@ export class TasksService {
 	}
 
 	public static async updateTask(taskId: string, input: UpdateTaskInput) {
-		const {
-			title,
-			description,
-			priority,
-			type,
-			status,
-			assignees = [],
-		} = input;
+		const campos: string[] = [];
+		const valores: unknown[] = [];
 
-		if (!title) {
-			throw new TasksServiceError(400, { error: "El título es obligatorio" });
+		const agregar = (columna: string, valor: unknown) => {
+			if (valor === undefined) return;
+			valores.push(valor);
+			campos.push(`${columna} = $${valores.length}`);
+		};
+
+		if (input.title !== undefined && !input.title) {
+			throw new TasksServiceError(400, { error: "El título no puede quedar vacío" });
 		}
+
+		agregar("title", input.title);
+		agregar("description", input.description);
+		agregar("priority", input.priority);
+		agregar("type", input.type);
+		agregar("status", input.status);
+
+		if (campos.length === 0) {
+			throw new TasksServiceError(400, {
+				error: "No se envió ningún campo para actualizar",
+			});
+		}
+
+		const { assignees } = input;
+
+		valores.push(taskId);
 
 		const client = await pool.connect();
 		try {
@@ -194,10 +210,10 @@ export class TasksService {
 
 			const updatedTaskResult = await client.query(
 				`UPDATE tasks
-         SET title = $1, description = $2, priority = $3, type = $4, status = $5
-         WHERE id = $6
+         SET ${campos.join(", ")}
+         WHERE id = $${valores.length}
          RETURNING *;`,
-				[title, description, priority, type, status, taskId],
+				valores,
 			);
 
 			if (updatedTaskResult.rowCount === 0) {
@@ -205,16 +221,20 @@ export class TasksService {
 				throw new TasksServiceError(404, { error: "Tarea no encontrada" });
 			}
 
-			await client.query("DELETE FROM task_assignees WHERE task_id = $1", [taskId]);
+			if (Array.isArray(assignees)) {
+				await client.query("DELETE FROM task_assignees WHERE task_id = $1", [
+					taskId,
+				]);
 
-			for (const assignee of assignees) {
-				const assigneeId = toAssigneeId(assignee);
-				if (!assigneeId) continue;
+				for (const assignee of assignees) {
+					const assigneeId = toAssigneeId(assignee);
+					if (!assigneeId) continue;
 
-				await client.query(
-					"INSERT INTO task_assignees (task_id, user_id) VALUES ($1, $2)",
-					[taskId, assigneeId],
-				);
+					await client.query(
+						"INSERT INTO task_assignees (task_id, user_id) VALUES ($1, $2)",
+						[taskId, assigneeId],
+					);
+				}
 			}
 
 			await client.query("COMMIT");

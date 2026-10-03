@@ -12,8 +12,8 @@ import type {
 	TaskStateIconName,
 } from "@/components/projects/task-management/hooks/useTaskConfig";
 
-const resolveIconNameFromStatus = (status: string): TaskStateIconName => {
-	switch (status.trim().toLowerCase()) {
+const resolveIconNameFromStatus = (status?: string | null): TaskStateIconName => {
+	switch ((status ?? "").trim().toLowerCase()) {
 		case "completado":
 		case "completada":
 			return "check-circle";
@@ -55,8 +55,13 @@ const renderIcon = (iconName: TaskStateIconName, color?: string) => {
 	}
 };
 
-export const getStatusIcon = (status: string, taskConfig?: TaskConfig | null) => {
-	const stateConfig = taskConfig?.states?.find((state) => state.name === status);
+export const getStatusIcon = (
+	status?: string | null,
+	taskConfig?: TaskConfig | null,
+) => {
+	const stateConfig = taskConfig?.states?.find(
+		(state) => state.name === status,
+	);
 
 	if (stateConfig) {
 		const iconName = stateConfig.icon || resolveIconNameFromStatus(stateConfig.name);

@@ -43,15 +43,28 @@ export const createProject = async (req: Request, res: Response) => {
             [name, description, created_by, visibility || "privado"]
         );
 
-        console.log("Project result",{result},result.rows[0])
-
         const project_id = result.rows[0].id
 
         const project_config = await client.query(
             `INSERT INTO projects_config (project_id, created_by) VALUES ($1, $2) RETURNING *`, [project_id, created_by]
         );
 
-        console.log("Project result config",project_config.rows[0])
+        // Todo proyecto nace con su conversación: el cliente web la necesita para abrirlo.
+        const convResult = await client.query(
+            `INSERT INTO conversations (title, type, created_by, created_at) VALUES ($1, 'channel', $2, NOW()) RETURNING id`,
+            [name, created_by]
+        );
+        const conversation_id = convResult.rows[0].id;
+
+        await client.query(
+            `INSERT INTO conversation_members (conversation_id, user_id, role, joined_at) VALUES ($1, $2, 'admin', NOW()) ON CONFLICT DO NOTHING`,
+            [conversation_id, created_by]
+        );
+
+        await client.query(
+            `UPDATE projects SET conversation_id = $1 WHERE id = $2`,
+            [conversation_id, project_id]
+        );
 
         await client.query("COMMIT");
 
