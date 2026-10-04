@@ -167,8 +167,21 @@ router.get("/:id/ledger", async (req, res) => {
 });
 
 // PUT /api/cont-workspaces/:id/ledger — escritura optimista {registro, sections?, expectedVersion?}
+// Solo el dueño o un admin escriben el ledger. Los miembros con rol 'vendedor'
+// sí pueden leerlo (descargan el espacio para trabajar con copia local), pero no
+// publicarlo: si pudieran, una sesión de vendedor podría pisar el libro entero
+// del negocio. Lo que el vendedor produce (turnos, ventas, caja) se sincroniza
+// más adelante con un merge por sección initiated por el dueño.
 router.put("/:id/ledger", async (req, res) => {
 	try {
+		const userId = userIdDe(req);
+		const workspace = await getWorkspaceForUser(req.params.id, userId!);
+		if (!workspace || !["owner", "admin"].includes(workspace.role)) {
+			res.status(403).json({
+				error: "Solo el dueño o un admin pueden actualizar el ledger del espacio",
+			});
+			return;
+		}
 		const registro = req.body?.registro;
 		if (typeof registro === "undefined") {
 			res.status(400).json({ error: "Falta el campo registro" });
