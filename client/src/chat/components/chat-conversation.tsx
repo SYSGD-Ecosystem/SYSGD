@@ -103,7 +103,6 @@ export function ChatConversation({
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const { user } = useCurrentUser();
 	const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-	const [typingUserId, setTypingUserId] = useState<string | null>(null);
 	const [isPeerTyping, setIsPeerTyping] = useState(false);
 	const typingResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const stopTypingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -121,13 +120,11 @@ export function ChatConversation({
 		onUserTyping: (data) => {
 			if (data.conversationId !== chat.id) return;
 			if (data.userId === currentUserId) return;
-			setTypingUserId(data.userId);
 			setIsPeerTyping(data.isTyping);
 			if (data.isTyping) {
 				if (typingResetRef.current) clearTimeout(typingResetRef.current);
 				typingResetRef.current = setTimeout(() => {
 					setIsPeerTyping(false);
-					setTypingUserId(null);
 				}, 4000);
 			} else {
 				if (typingResetRef.current) clearTimeout(typingResetRef.current);
@@ -141,7 +138,6 @@ export function ChatConversation({
 
 	useEffect(() => {
 		setIsPeerTyping(false);
-		setTypingUserId(null);
 		if (stopTypingRef.current) {
 			clearTimeout(stopTypingRef.current);
 			stopTypingRef.current = null;
