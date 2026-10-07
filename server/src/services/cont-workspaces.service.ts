@@ -1,4 +1,5 @@
 import { pool } from "../db";
+import { EmailService } from "./emailService";
 import { LedgerEncryptionService, type EncryptedData } from "./ledger-encryption.service";
 
 export interface ContWorkspaceMeta {
@@ -296,6 +297,64 @@ export const inviteWorkspaceMember = async (
 		 VALUES ($1, $2, $3, 'workspace', $4, $5)`,
 		[senderId, receiverId, email, workspaceId, rolFinal],
 	);
+
+	// El vendedor solo se entera de que lo invitaron si recibe un correo:
+	// sin esto, la invitación es invisible hasta que abre la app y entra a
+	// Espacios en la nube. El fallo de email NO deshace la invitación.
+	await notificarInvitacionWorkspace({ workspaceId, senderId, email, rol: rolFinal });
+};
+
+/**
+ * Envía el correo de invitación a un espacio de trabajo y lo registra en
+ * `email_notifications`. Nunca lanza: la invitación ya está creada y un
+ * fallo de Resend no debe devolverle un 500 al dueño.
+ */
+const notificarInvitacionWorkspace = async (params: {
+	workspaceId: string;
+	senderId: string;
+	email: string;
+	rol: string;
+}): Promise<void> => {
+	const { workspaceId, senderId, email, rol } = params;
+	try {
+		const datos = await pool.query<{
+			ws_name: string;
+			sender_name: string | null;
+		}>(
+			`SELECT w.name AS ws_name, u.name AS sender_name
+			 FROM cont_workspaces w
+			 LEFT JOIN users u ON u.id = w.owner_id
+			 WHERE w.id = $1`,
+			[workspaceId],
+		);
+		const wsName = datos.rows[0]?.ws_name ?? "un espacio de trabajo";
+		const senderName = datos.rows[0]?.sender_name ?? "Un usuario de SYSGD";
+		const etiquetaRol = rol === "vendedor" ? "vendedor" : "miembro";
+		const appUrl = process.env.APP_URL || "https://www.ecosysgd.com";
+		const subject = `${senderName} te invitó a colaborar como ${etiquetaRol} en ${wsName}`;
+		const html = `
+			<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1f2937">
+				<h2 style="margin:0 0 12px">Invitación a ${wsName}</h2>
+				<p style="margin:0 0 8px"><strong>${senderName}</strong> te invitó a participar
+				como <strong>${etiquetaRol}</strong> en el espacio de trabajo
+				<strong>${wsName}</strong> de SYSGD Ecosystem.</p>
+				<p style="margin:0 0 20px;color:#6b7280">Abre la app SYSGD Cont y entra a
+				<strong>Espacios en la nube</strong> para aceptar la invitación.</p>
+				<p style="margin:0"><a href="${appUrl}/apps"
+					style="background:#2563eb;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Abrir SYSGD</a></p>
+				<p style="margin:20px 0 0;color:#9ca3af;font-size:12px">Si no esperabas esta invitación, ignora este mensaje.</p>
+			</div>`;
+
+		const sent = await EmailService.sendEmail({ to: email, subject, html });
+		await pool.query(
+			`INSERT INTO email_notifications (user_id, recipient_email, subject, type, status, sent_at)
+			 VALUES ($1, $2, $3, 'workspace_invitation', $4, NOW())`,
+			[null, email, subject, sent ? "sent" : "failed"],
+		);
+		if (!sent) console.error("Invitación de workspace: email no enviado a", email);
+	} catch (error) {
+		console.error("Error enviando invitación de workspace:", error);
+	}
 };
 
 export const removeWorkspaceMember = async (
