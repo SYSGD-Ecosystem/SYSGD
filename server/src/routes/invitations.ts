@@ -11,8 +11,8 @@ router.get("/", isAuthenticated, async (req: Request, res: Response) => {
 	const user = getCurrentUserData(req);
 	const user_id = user?.id;
 	try {
-			const result = await pool.query(
-				`SELECT i.id, i.resource_id, i.resource_type, i.role, i.receiver_email,
+		const result = await pool.query(
+			`SELECT i.id, i.resource_id, i.resource_type, i.role, i.receiver_email,
                 i.created_at, u.name as sender_name, u.email as sender_email,
                 p.name as project_name,
                 COALESCE(p.name, w.name) AS resource_name
@@ -21,8 +21,8 @@ router.get("/", isAuthenticated, async (req: Request, res: Response) => {
          LEFT JOIN projects p ON i.resource_id = p.id AND i.resource_type = 'project'
          LEFT JOIN cont_workspaces w ON i.resource_id = w.id AND i.resource_type = 'workspace'
          WHERE i.receiver_id = $1 AND i.status = 'pending'`,
-				[user_id],
-			);
+			[user_id],
+		);
 		res.json(result.rows);
 	} catch (err) {
 		console.log(err);
