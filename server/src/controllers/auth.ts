@@ -2,7 +2,12 @@ import type { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
-import { findUserByemail, logUserLogin } from "../services/authService";
+import {
+	findUserByemail,
+	findAuthUserById,
+	logUserLogin,
+} from "../services/authService";
+import { getAuthSubject } from "../middlewares/auth-jwt";
 import { pool } from "../db";
 import { createDefaultUserData } from "../utils/billing";
 import { getClientIp, isIpFromCuba } from "../utils/ip";
@@ -53,7 +58,9 @@ interface UserPayload {
 	privileges: string;
 }
 
-interface PendingTwoFactorPayload extends UserPayload {
+/** Formato del token pendiente de 2FA: solo identifica, sin PII. */
+interface PendingTwoFactorPayload {
+	id: string;
 	purpose: "login-2fa";
 }
 
@@ -131,10 +138,7 @@ const sendAuthSuccess = async (
 const createPendingTwoFactorToken = (user: UserPayload) =>
 	jwt.sign(
 		{
-			id: user.id,
-			email: user.email,
-			name: user.name,
-			privileges: user.privileges,
+			sub: user.id,
 			purpose: "login-2fa",
 		},
 		JWT_SECRET as string,
@@ -145,11 +149,25 @@ const parsePendingTwoFactorToken = (
 	token: string,
 ): PendingTwoFactorPayload | null => {
 	try {
-		const decoded = jwt.verify(token, JWT_SECRET as string) as PendingTwoFactorPayload;
+		const decoded = jwt.verify(
+			token,
+			JWT_SECRET as string,
+		) as { sub?: unknown; id?: unknown; purpose?: unknown };
 		if (decoded.purpose !== "login-2fa") {
 			return null;
 		}
-		return decoded;
+		// `sub` es el formato actual; `id` cubre tokens pendientes
+		// emitidos antes de minimizar el payload.
+		const subject =
+			typeof decoded.sub === "string" && decoded.sub.length > 0
+				? decoded.sub
+				: typeof decoded.id === "string" && decoded.id.length > 0
+					? decoded.id
+					: null;
+		if (!subject) {
+			return null;
+		}
+		return { id: subject, purpose: "login-2fa" };
 	} catch (error) {
 		console.error("Invalid pending 2FA token:", error);
 		return null;
@@ -164,12 +182,11 @@ export function generateJWT(user: {
 }) {
 	const expiresIn = user.privileges === "admin" ? "7d" : "30d";
 
+	// El token solo identifica al sujeto (sub). Email, nombre y privilegios
+	// se hidratan desde la base de datos en cada request (isAuthenticated).
 	return jwt.sign(
 		{
-			id: user.id,
-			email: user.email,
-			name: user.name,
-			privileges: user.privileges,
+			sub: user.id,
 		},
 		JWT_SECRET as string,
 		{ expiresIn },
@@ -319,7 +336,13 @@ export const verifyAdminTwoFactor = async (req: Request, res: Response) => {
 	}
 
 	try {
-		const result = await AdminTwoFactorService.verifyCode(pending.id, code);
+		const user = await findAuthUserById(pending.id);
+		if (!user) {
+			res.status(401).json({ message: "Usuario no encontrado" });
+			return;
+		}
+
+		const result = await AdminTwoFactorService.verifyCode(user.id, code);
 		if (!result.success) {
 			res.status(401).json({
 				message: result.error || "Codigo de verificacion invalido",
@@ -328,22 +351,12 @@ export const verifyAdminTwoFactor = async (req: Request, res: Response) => {
 			return;
 		}
 
-		const token = generateJWT({
-			id: pending.id,
-			email: pending.email,
-			name: pending.name,
-			privileges: pending.privileges,
-		});
+		const token = generateJWT(user);
 
 		await sendAuthSuccess(
 			req,
 			res,
-			{
-				id: pending.id,
-				email: pending.email,
-				name: pending.name,
-				privileges: pending.privileges,
-			},
+			user,
 			token,
 			normalizeClientSource(req.headers["x-app-source"], "unknown"),
 		);
@@ -367,10 +380,16 @@ export const resendAdminTwoFactor = async (req: Request, res: Response) => {
 	}
 
 	try {
+		const user = await findAuthUserById(pending.id);
+		if (!user) {
+			res.status(401).json({ message: "Usuario no encontrado" });
+			return;
+		}
+
 		const result = await AdminTwoFactorService.issueCode({
-			id: pending.id,
-			email: pending.email,
-			name: pending.name,
+			id: user.id,
+			email: user.email,
+			name: user.name,
 		});
 
 		if (!result.success) {
@@ -657,26 +676,52 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 	const token = tokenFromHeader || req.cookies?.token;
 
 	if (!token) {
-		console.log("No token found");
 		res.status(401).json({ message: "No autorizado" });
 		return;
 	}
 
+	let decoded: unknown;
 	try {
-		const decoded = jwt.verify(token, JWT_SECRET as string) as UserPayload;
-
-		res.json({
-			id: decoded.id,
-			name: decoded.name,
-			email: decoded.email,
-			privileges: decoded.privileges,
-		});
-		console.log("User :", decoded.name);
-
-		await recordUserActivity(req, decoded.id, "app_start");
+		decoded = jwt.verify(token, JWT_SECRET as string);
 	} catch (err) {
 		console.error("JWT verification error:", err);
 		res.status(401).json({ message: "Sesión inválida o expirada" });
+		return;
+	}
+
+	// El token solo identifica (sub). Los datos del usuario se leen de la DB
+	// para que la respuesta siempre refleje el estado real de la cuenta.
+	const subject = getAuthSubject(decoded);
+	if (!subject) {
+		res.status(401).json({ message: "Sesión inválida o expirada" });
+		return;
+	}
+
+	let user: UserPayload | null;
+	try {
+		user = await findAuthUserById(subject);
+	} catch (err) {
+		console.error("Error cargando usuario:", err);
+		res.status(500).json({ message: "Error interno del servidor" });
+		return;
+	}
+
+	if (!user) {
+		res.status(401).json({ message: "Sesión inválida o expirada" });
+		return;
+	}
+
+	res.json({
+		id: user.id,
+		name: user.name,
+		email: user.email,
+		privileges: user.privileges,
+	});
+
+	try {
+		await recordUserActivity(req, user.id, "app_start");
+	} catch (err) {
+		console.error("Error registrando actividad:", err);
 	}
 };
 

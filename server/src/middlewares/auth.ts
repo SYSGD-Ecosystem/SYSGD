@@ -2,6 +2,8 @@ import type { Request, Response, NextFunction } from "express";
 import { pool } from "../db";
 import jwt from "jsonwebtoken";
 import { getCurrentUserData } from "../controllers/users";
+import { getAuthSubject } from "./auth-jwt";
+import { findAuthUserById } from "../services/authService";
 
 if (!process.env.JWT_SECRET) {
 	throw new Error("Falta definir JWT_SECRET en variables de entorno");
@@ -179,28 +181,45 @@ export async function hasProjectAccessFromNote(
 	}
 }
 
-// Middleware para verificar el JWT
-export const isAuthenticate = (
+// Middleware para verificar el JWT (legacy; las rutas usan isAuthenticated
+// de auth-jwt.ts). Hidrata el usuario desde la DB igual que ese.
+export const isAuthenticate = async (
 	req: Request,
 	res: Response,
 	next: NextFunction,
 ) => {
 	const authHeader = req.headers.authorization;
 	if (!authHeader) {
-		return res.status(401).json({ message: "Token no proporcionado" });
+		res.status(401).json({ message: "Token no proporcionado" });
+		return;
 	}
 
 	const token = authHeader.split(" ")[1];
-	jwt.verify(token, JWT_SECRET, (err, decoded) => {
-		if (err) {
-			return res.status(403).json({ message: "Token inválido" });
-		}
 
-		req.user = decoded as {
-			id: string;
-			email: string;
-			privileges: string;
-		};
+	let decoded: unknown;
+	try {
+		decoded = jwt.verify(token, JWT_SECRET);
+	} catch {
+		res.status(403).json({ message: "Token inválido" });
+		return;
+	}
+
+	const subject = getAuthSubject(decoded);
+	if (!subject) {
+		res.status(403).json({ message: "Token inválido" });
+		return;
+	}
+
+	try {
+		const user = await findAuthUserById(subject);
+		if (!user) {
+			res.status(401).json({ message: "Usuario no encontrado" });
+			return;
+		}
+		req.user = user;
 		next();
-	});
+	} catch (error) {
+		console.error("Error hidratando usuario:", error);
+		res.status(500).json({ message: "Error interno de autenticación" });
+	}
 };

@@ -46,6 +46,26 @@ export const findUserByemail = async (email: string) => {
 	return result.rows[0] || null;
 };
 
+/**
+ * Usuario autenticado hidratado desde la base de datos.
+ * El JWT solo contiene el sujeto (sub); email, nombre y privilegios
+ * se leen aquí en cada request para que estén siempre frescos.
+ */
+export interface AuthUser {
+	id: string;
+	email: string;
+	name: string;
+	privileges: string;
+}
+
+export const findAuthUserById = async (id: string): Promise<AuthUser | null> => {
+	const result = await pool.query<AuthUser>(
+		"SELECT id, email, name, privileges FROM users WHERE id = $1",
+		[id],
+	);
+	return result.rows[0] ?? null;
+};
+
 export const logUserLogin = async (
 	userId: string,
 	ip: string,

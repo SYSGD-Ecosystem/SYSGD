@@ -1,7 +1,8 @@
 import { Server as SocketIOServer } from "socket.io";
 import type { Server as HTTPServer } from "http";
 import { pool } from "./db";
-import { verifyToken } from "./middlewares/auth-jwt";
+import { verifyToken, getAuthSubject } from "./middlewares/auth-jwt";
+import { findAuthUserById } from "./services/authService";
 
 let io: SocketIOServer | null = null;
 
@@ -17,8 +18,6 @@ export function initSocketIO(httpServer: HTTPServer): SocketIOServer {
     const token =
       socket.handshake.auth.token || socket.handshake.headers.authorization?.replace("Bearer ", "");
 
-    console.log("Socket handshake auth:", socket.handshake.auth);
-    console.log("Socket handshake headers:", socket.handshake.headers);
     console.log("Token extracted:", token ? "present" : "missing");
 
     if (!token) {
@@ -27,17 +26,27 @@ export function initSocketIO(httpServer: HTTPServer): SocketIOServer {
     }
 
     try {
-      const decoded = verifyToken(token) as { id: string; email: string } | null;
-      if (!decoded) {
+      // El token solo identifica (sub); el usuario se hidrata desde la DB
+      // y NO se registran los datos del handshake (contienen el token).
+      const decoded = verifyToken(token);
+      const subject = decoded ? getAuthSubject(decoded) : null;
+      if (!subject) {
         console.log("Token verification failed");
         return next(new Error("Invalid token"));
       }
-      socket.data.userId = decoded.id;
-      socket.data.email = decoded.email;
-      console.log("User authenticated:", decoded.email);
+
+      const user = await findAuthUserById(subject);
+      if (!user) {
+        console.log("Token subject not found in DB");
+        return next(new Error("Invalid token"));
+      }
+
+      socket.data.userId = user.id;
+      socket.data.email = user.email;
+      console.log("User authenticated:", user.email);
       next();
     } catch (err) {
-      console.error("Token verification error:", err);
+      console.error("Socket authentication error:", err);
       next(new Error("Authentication error"));
     }
   });

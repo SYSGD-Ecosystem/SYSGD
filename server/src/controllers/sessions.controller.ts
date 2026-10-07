@@ -43,10 +43,7 @@ interface UserPayload {
 export const generateAccessToken = (user: UserPayload) =>
 	jwt.sign(
 		{
-			id: user.id,
-			email: user.email,
-			name: user.name,
-			privileges: user.privileges,
+			sub: user.id,
 		},
 		JWT_SECRET as string,
 		{ expiresIn: `${ACCESS_TOKEN_MINUTES}m` },
