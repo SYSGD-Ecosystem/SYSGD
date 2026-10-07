@@ -8,5 +8,7 @@
     "skipLibCheck": true,
     "rootDir": "src",
     "outDir": "dist"
-  }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "pruebas"]
 }

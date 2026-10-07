@@ -12,6 +12,12 @@ import { normalizeClientSource, type ClientSource } from "../utils/client-source
 import { EmailVerificationService } from "../services/emailVerification.service";
 import { AuthAccountError, changeOwnPassword } from "../services/authAccount.service";
 import { recordUserActivity } from "../services/activity.service";
+import {
+	HEADER_SESIONES,
+	crearSesion,
+	generateAccessToken,
+	generarRefreshToken,
+} from "./sessions.controller";
 
 dotenv.config();
 
@@ -76,11 +82,50 @@ const sendAuthSuccess = async (
 
 	setAuthCookie(res, token, 1000 * 60 * 60 * 24 * 7);
 
-	res.status(201).json({
-		message: "Login correcto",
-		token,
-		user,
-	});
+	// La app actual NO envia este header: recibe exactamente lo de siempre,
+	// mismo token de 7/30 dias y nada mas. Es lo que garantiza que los 470
+	// usuarios actuales sigan entrando sin enterarse de nada.
+	//
+	// La app nueva si lo envia y entra al flujo con refresh token.
+	if (req.headers[HEADER_SESIONES] !== "v1") {
+		res.status(201).json({
+			message: "Login correcto",
+			token,
+			user,
+		});
+		return;
+	}
+
+	const refreshToken = generarRefreshToken();
+
+	try {
+		const sessionId = await crearSesion({
+			userId: user.id,
+			refreshToken,
+			deviceId: (req.body?.deviceId as string) || null,
+			deviceNombre: (req.body?.deviceName as string) || null,
+			ip: req.ip || null,
+			userAgent: req.headers["user-agent"] || null,
+		});
+
+		res.status(201).json({
+			message: "Login correcto",
+			// Access corto. La app nueva lo refresca cada 15 min.
+			token: generateAccessToken(user),
+			refreshToken,
+			sessionId,
+			user,
+		});
+	} catch (err) {
+		// Si falla la sesion, no se cae el login: se devuelve el token viejo y
+		// la app funciona, solo que sin revocacion hasta que se reintente.
+		console.error("No se pudo crear la sesion, se devuelve token simple:", err);
+		res.status(201).json({
+			message: "Login correcto",
+			token,
+			user,
+		});
+	}
 };
 
 const createPendingTwoFactorToken = (user: UserPayload) =>
@@ -713,12 +758,5 @@ export const issueExternalToken = async (req: Request, res: Response) => {
 	});
 };
 
-export const logout = async (req: Request, res: Response) => {
-	res.clearCookie("token", {
-		httpOnly: true,
-		secure: process.env.NODE_ENV === "production",
-		sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-	});
-
-	res.status(200).json({ message: "Sesión cerrada" });
-};
+// El logout que revoca de verdad vive en sessions.controller.ts y se importa
+// en auth.routes.ts. Este no revocaba nada, solo borraba la cookie.

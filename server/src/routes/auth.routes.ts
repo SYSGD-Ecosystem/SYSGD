@@ -8,11 +8,17 @@ import {
 	getCurrentUser,
 	issueExternalToken,
 	login,
-	logout,
 	resendAdminTwoFactor,
 	updateTwoFactorStatus,
 	verifyAdminTwoFactor,
 } from "../controllers/auth";
+import {
+	cerrarOtrasSesiones,
+	cerrarSesion,
+	listarDispositivos,
+	logout,
+	refresh,
+} from "../controllers/sessions.controller";
 import { isAuthenticated } from "../middlewares/auth-jwt";
 
 
@@ -35,5 +41,15 @@ router.put("/password", isAuthenticated, changePassword);
 router.delete("/account", isAuthenticated, deleteOwnAccount);
 
 router.post("/logout", logout);
+
+// --- Sesiones ---
+// refresh NO lleva isAuthenticated a proposito: el access token puede estar
+// expirado, que es justo cuando se necesita renovar.
+router.post("/refresh", refresh);
+
+// Estas si requieren access token valido: son acciones del propio usuario.
+router.get("/sessions", isAuthenticated, listarDispositivos);
+router.delete("/sessions/:id", isAuthenticated, cerrarSesion);
+router.post("/sessions/revoke-others", isAuthenticated, cerrarOtrasSesiones);
 
 export default router;
