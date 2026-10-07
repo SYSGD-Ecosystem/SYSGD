@@ -20,6 +20,14 @@ export interface EmailOptions {
   text?: string;
 }
 
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 export class EmailService {
   /**
    * Determina el tipo de email basado en el subject
@@ -30,6 +38,7 @@ export class EmailService {
     if (subject.includes('invitó a colaborar')) return '👥 Invitación a Proyecto';
     if (subject.includes('Nueva tarea')) return '✅ Asignación de Tarea';
     if (subject.includes('Bienvenido')) return '🎉 Email de Bienvenida';
+    if (subject.includes('Soporte')) return '🎧 Soporte al Usuario';
     return '📬 Notificación General';
   }
 
@@ -695,5 +704,64 @@ Si no creaste una cuenta, puedes ignorar este email.
     expiresInMinutes: number
   ): Promise<boolean> {
     return this.sendLoginTwoFactorCode(email, userName, code, expiresInMinutes);
+  }
+
+  /**
+   * Envía un correo de soporte abierto por un administrador
+   */
+  static async sendSupportEmail(
+    email: string,
+    userName: string,
+    subject: string,
+    message: string
+  ): Promise<boolean> {
+    const safeName = userName.trim() ? escapeHtml(userName) : 'Hola';
+    const safeSubject = escapeHtml(subject);
+    const safeMessage = escapeHtml(message).replace(/\r?\n/g, '<br>');
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${safeSubject}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+          .container { background: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 40px; }
+          .logo h1 { color: #3b82f6; text-align: center; margin-bottom: 24px; }
+          .badge { display: inline-block; background: #eff6ff; color: #2563eb; font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; }
+          .message { background: #f9fafb; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0; border-radius: 4px; white-space: pre-wrap; word-break: break-word; }
+          .button { display: inline-block; background-color: #3b82f6; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: 600; margin: 20px 0; }
+          .footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 14px; color: #6b7280; text-align: center; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="logo"><h1>${APP_NAME}</h1></div>
+          <span class="badge">Soporte ${APP_NAME}</span>
+          <h2>${safeSubject}</h2>
+          <p>Hola ${safeName},</p>
+          <div class="message">${safeMessage}</div>
+          <center>
+            <a href="${APP_URL}" class="button">Ir a ${APP_NAME}</a>
+          </center>
+          <div class="footer">
+            <p>Si tienes dudas, simplemente responde a este correo y nuestro equipo te ayudará.</p>
+            <p>&copy; ${new Date().getFullYear()} ${APP_NAME}. Todos los derechos reservados.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `Soporte ${APP_NAME} - ${subject}\n\n${message}\n\nResponde a este correo si necesitas ayuda.`;
+
+    return this.sendEmail({
+      to: email,
+      subject: `Soporte ${APP_NAME}: ${subject}`,
+      html,
+      text,
+    });
   }
 }

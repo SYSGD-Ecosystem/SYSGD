@@ -12,6 +12,7 @@ import {
 	ChartColumnIncreasing,
 	ReceiptText,
 	Compass,
+	LifeBuoy,
 } from "lucide-react";
 
 import { useState } from "react";
@@ -26,6 +27,7 @@ const navigation = [
 	{ name: "Pagos", href: "/admin/pagos", icon: ReceiptText },
 	{ name: "Descubre", href: "/admin/descubre", icon: Compass },
 	{ name: "Updates", href: "/admin/updates", icon: FileText },
+	{ name: "Soporte", href: "/admin/soporte", icon: LifeBuoy },
 ];
 
 export function AdminSidebar() {

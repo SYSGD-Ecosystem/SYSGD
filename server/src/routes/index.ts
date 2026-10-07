@@ -32,6 +32,7 @@ import contTurnos from "./cont-turnos";
 import accountingDocuments from "./accounting-documents.routes";
 import nomenclators from "./nomenclators.routes";
 import adminRoutes from "./admin.routes";
+import supportRoutes from "./support.routes";
 import statsRoutes from "./stats.routes";
 import notificationsRoutes from "./notifications.routes";
 import licenseRoutes from "./license.routes";
@@ -71,6 +72,7 @@ router.use("/cont-turnos", contTurnos);
 router.use("/accounting-documents", accountingDocuments);
 router.use("/nomenclators", nomenclators);
 router.use("/admin", adminRoutes);
+router.use("/admin/support", supportRoutes);
 
 router.use(updates);
 router.use(statsRoutes);
