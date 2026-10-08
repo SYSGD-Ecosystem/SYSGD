@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/select";
 import {
 	type AdminAnalyticsUser,
-	type AnalyticsPoint,
 	type AnalyticsPeriod,
 	useAdminAnalytics,
 } from "@/hooks/connection/useAdminAnalytics";
