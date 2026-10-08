@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState } from "react"
 
 import { Input } from "../../../components/ui/input"
 import { Label } from "../../../components/ui/label"
@@ -47,17 +47,24 @@ import { Avatar, AvatarFallback } from "../../../components/ui/avatar"
 import { 
   ChevronLeft, 
   ChevronRight, 
-  Crown, 
+  CreditCard, 
   Edit, 
+  Gem, 
   Search, 
   Shield, 
+  Sparkles, 
   Trash2, 
   User, 
   UserPlus, 
-  Users 
+  UserX, 
+  Users, 
+  X, 
+  Zap 
 } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 import { Button } from "../../../components/ui/button"
 import { useUsers } from "../../../hooks/connection/useUsers"
+import type { UserSegment } from "../../../types/user"
 
 // Tipos basados en la estructura existente de SYSGD
 interface UserData {
@@ -94,7 +101,9 @@ export default function UsersPage() {
     totalPages,
     summary,
     search,
+    segment,
     setSearch,
+    setSegment,
     setPage,
     setPageSize,
     createUser,
@@ -116,13 +125,67 @@ export default function UsersPage() {
     planDurationMonths: 1 as 1 | 3 | 12,
   })
 
-  const stats = useMemo(() => {
-    return {
-      totalUsers: summary.total,
-      adminUsers: summary.admins,
-      regularUsers: summary.regular,
-    }
-  }, [summary])
+  interface SegmentCard {
+    segment: UserSegment | null
+    title: string
+    value: number
+    icon: LucideIcon
+    hint: string
+  }
+
+  const segmentCards: SegmentCard[] = [
+    {
+      segment: null,
+      title: "Total de Usuarios",
+      value: summary.total,
+      icon: Users,
+      hint: `${summary.admins} admins · ${summary.regular} regulares`,
+    },
+    {
+      segment: "free",
+      title: "Free",
+      value: summary.free,
+      icon: User,
+      hint: "plan gratuito",
+    },
+    {
+      segment: "pro",
+      title: "Pro",
+      value: summary.pro,
+      icon: Zap,
+      hint: "plan pro vigente",
+    },
+    {
+      segment: "vip",
+      title: "VIP",
+      value: summary.vip,
+      icon: Gem,
+      hint: "plan vip vigente",
+    },
+    {
+      segment: "trial_pro",
+      title: "Trial Pro",
+      value: summary.trialProActive,
+      icon: Sparkles,
+      hint: "en periodo de prueba",
+    },
+    {
+      segment: "manual_license",
+      title: "Licencia Manual",
+      value: summary.manualLicenseBuyers,
+      icon: CreditCard,
+      hint: "compra Transfermóvil aprobada",
+    },
+    {
+      segment: "inactive_1y",
+      title: "Inactivos 1+ año",
+      value: summary.inactiveOverYear,
+      icon: UserX,
+      hint: "sin actividad en 365 días",
+    },
+  ]
+
+  const activeSegmentCard = segmentCards.find((card) => card.segment === segment)
 
   const getInitials = (name: string) => {
     return name
@@ -276,50 +339,32 @@ export default function UsersPage() {
         </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="border-border">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total de Usuarios
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUsers}</div>
-            <p className="text-xs text-muted-foreground">
-              usuarios registrados
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Administradores
-            </CardTitle>
-            <Crown className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.adminUsers}</div>
-            <p className="text-xs text-muted-foreground">
-              con privilegios de admin
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Usuarios Regulares
-            </CardTitle>
-            <User className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.regularUsers}</div>
-            <p className="text-xs text-muted-foreground">usuarios estándar</p>
-          </CardContent>
-        </Card>
+      {/* Segment Cards (clicables para filtrar la tabla) */}
+      <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        {segmentCards.map((card) => {
+          const Icon = card.icon
+          const isActive = card.segment === segment
+          return (
+            <Card
+              key={card.title}
+              className={`border-border cursor-pointer transition-colors hover:border-primary/50 ${
+                isActive ? "border-primary bg-primary/5" : ""
+              }`}
+              onClick={() => setSegment(card.segment === segment && card.segment !== null ? null : card.segment)}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {card.title}
+                </CardTitle>
+                <Icon className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{card.value}</div>
+                <p className="text-xs text-muted-foreground">{card.hint}</p>
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
 
       {/* Users Table */}
@@ -332,14 +377,27 @@ export default function UsersPage() {
                 Lista completa de todos los usuarios registrados
               </CardDescription>
             </div>
-            <div className="relative w-72">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nombre o email..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
+            <div className="flex items-center gap-2">
+              {segment && activeSegmentCard && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSegment(null)}
+                  className="gap-1 text-primary hover:text-primary"
+                >
+                  Filtro: {activeSegmentCard.title}
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+              <div className="relative w-72">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nombre o email..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
           </div>
         </CardHeader>

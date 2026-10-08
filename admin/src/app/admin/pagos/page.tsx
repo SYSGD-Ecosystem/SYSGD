@@ -2,6 +2,8 @@ import { useMemo, useState } from "react"
 import { CheckCircle2, Search, XCircle } from "lucide-react"
 
 import { useManualPayments } from "../../../hooks/connection/useManualPayments"
+import { useRevenue } from "../../../hooks/connection/useRevenue"
+import { MiniBarChart } from "../../../components/charts/MiniBarChart"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card"
 import { Input } from "../../../components/ui/input"
 import { Badge } from "../../../components/ui/badge"
@@ -45,8 +47,20 @@ const durationLabel = (months: 1 | 3 | 12) => {
 	return "1 mes"
 }
 
+const MONTH_SHORT = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+
+const formatCup = (value: number) =>
+	value.toLocaleString("es-CU", { maximumFractionDigits: 0 })
+
+const monthLabel = (key: string) => {
+	const year = key.slice(0, 4)
+	const month = Number(key.slice(5, 7)) - 1
+	return `${MONTH_SHORT[month] ?? key} ${year}`
+}
+
 export default function ManualPaymentsPage() {
 	const { orders, loading, reviewOrder } = useManualPayments()
+	const { revenue, loading: revenueLoading, error: revenueError } = useRevenue(12)
 	const [searchTerm, setSearchTerm] = useState("")
 	const [selectedOrder, setSelectedOrder] = useState<ManualPaymentOrder | null>(null)
 	const [reviewNotes, setReviewNotes] = useState("")
@@ -130,6 +144,90 @@ export default function ManualPaymentsPage() {
 				</Card>
 			</div>
 
+			{/* Ingresos mensuales */}
+			<Card>
+				<CardHeader>
+					<div>
+						<CardTitle>Ingresos mensuales</CardTitle>
+						<CardDescription>
+							Órdenes aprobadas de Transfermóvil en CUP · últimos 12 meses
+						</CardDescription>
+					</div>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					{revenueError && (
+						<p className="text-sm text-destructive">{revenueError}</p>
+					)}
+					{revenueLoading ? (
+						<p className="text-sm text-muted-foreground">Cargando ingresos...</p>
+					) : revenue ? (
+						<>
+							<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+								<Card>
+									<CardHeader className="pb-2">
+										<CardTitle className="text-sm font-medium">Mes actual</CardTitle>
+									</CardHeader>
+									<CardContent>
+										<div className="text-2xl font-bold">
+											{formatCup(revenue.kpis.currentMonth)} <span className="text-sm font-medium text-muted-foreground">CUP</span>
+										</div>
+									</CardContent>
+								</Card>
+								<Card>
+									<CardHeader className="pb-2">
+										<CardTitle className="text-sm font-medium">Mes anterior</CardTitle>
+									</CardHeader>
+									<CardContent>
+										<div className="text-2xl font-bold">
+											{formatCup(revenue.kpis.previousMonth)} <span className="text-sm font-medium text-muted-foreground">CUP</span>
+										</div>
+									</CardContent>
+								</Card>
+								<Card>
+									<CardHeader className="pb-2">
+										<CardTitle className="text-sm font-medium">Total 12 meses</CardTitle>
+									</CardHeader>
+									<CardContent>
+										<div className="text-2xl font-bold">
+											{formatCup(revenue.kpis.total)} <span className="text-sm font-medium text-muted-foreground">CUP</span>
+										</div>
+										<p className="text-xs text-muted-foreground">
+											{revenue.kpis.orders} órdenes aprobadas
+										</p>
+									</CardContent>
+								</Card>
+								<Card>
+									<CardHeader className="pb-2">
+										<CardTitle className="text-sm font-medium">Ticket promedio</CardTitle>
+									</CardHeader>
+									<CardContent>
+										<div className="text-2xl font-bold">
+											{formatCup(revenue.kpis.avgTicket)} <span className="text-sm font-medium text-muted-foreground">CUP</span>
+										</div>
+									</CardContent>
+								</Card>
+							</div>
+							<MiniBarChart
+								data={revenue.series.map((month) => ({
+									key: month.month,
+									label: monthLabel(month.month),
+									value: month.revenue,
+									axisLabel: MONTH_SHORT[Number(month.month.slice(5, 7)) - 1] ?? month.month,
+									extra: month.orders > 0 ? `${month.orders} orden(es) · ${month.buyers} comprador(es)` : "sin ventas",
+								}))}
+								colorClass="bg-emerald-500/80"
+								emptyLabel="Sin ingresos en este rango"
+								formatValue={(value) => `${formatCup(value)} CUP`}
+								showAxisLabels
+							/>
+						</>
+					) : (
+						<p className="text-sm text-muted-foreground">No hay datos de ingresos.</p>
+					)}
+				</CardContent>
+			</Card>
+
+			{/* Lista de solicitudes */}
 			<Card>
 				<CardHeader>
 					<div className="flex items-center justify-between gap-4">

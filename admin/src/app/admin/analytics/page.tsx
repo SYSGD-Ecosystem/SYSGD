@@ -24,70 +24,9 @@ import {
 	type AnalyticsPeriod,
 	useAdminAnalytics,
 } from "@/hooks/connection/useAdminAnalytics";
+import { MiniBarChart } from "@/components/charts/MiniBarChart";
 
 type ModuleFilter = "all" | "projects" | "accounting" | "both" | "inactive";
-
-function MiniBarChart({
-	data,
-	colorClass,
-	emptyLabel,
-}: {
-	data: AnalyticsPoint[];
-	colorClass: string;
-	emptyLabel: string;
-}) {
-	const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-	const maxValue = Math.max(...data.map((item) => item.value), 1);
-	const hasValues = data.some((item) => item.value > 0);
-
-	if (data.length === 0) {
-		return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
-	}
-
-	if (!hasValues) {
-		return (
-			<div className="h-44 flex items-center justify-center text-sm text-muted-foreground">
-				Sin valores en este rango
-			</div>
-		);
-	}
-
-	const hoveredItem = hoveredIndex !== null ? data[hoveredIndex] : null;
-	const tooltipLeft =
-		hoveredIndex === null || data.length <= 1
-			? 50
-			: (hoveredIndex / (data.length - 1)) * 100;
-
-	return (
-		<div>
-			<div className="relative h-44 flex items-stretch gap-1.5">
-				{hoveredItem && (
-					<div
-						className="pointer-events-none absolute top-0 z-20 -translate-x-1/2 -translate-y-1 rounded-md bg-slate-900 px-2 py-1 text-xs text-white shadow-lg"
-						style={{ left: `${tooltipLeft}%` }}
-					>
-						<div className="font-medium">{hoveredItem.label}</div>
-						<div>{hoveredItem.value}</div>
-					</div>
-				)}
-				{data.map((item, index) => (
-					<div
-						key={item.key}
-						className="h-full flex-1 min-w-0 flex flex-col items-center justify-end gap-2"
-						onMouseEnter={() => setHoveredIndex(index)}
-						onMouseLeave={() => setHoveredIndex(null)}
-					>
-						<div
-							className={`w-full min-h-1 rounded-t-sm ${colorClass}`}
-							style={{ height: `${Math.max((item.value / maxValue) * 100, 4)}%` }}
-							aria-label={`${item.label}: ${item.value}`}
-						/>
-					</div>
-				))}
-			</div>
-		</div>
-	);
-}
 
 function SourceBars({
 	title,

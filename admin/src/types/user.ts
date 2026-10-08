@@ -2,6 +2,26 @@ export type UserTier = "free" | "pro" | "vip"
 export type UserPrivileges = "user" | "admin"
 export type UserStatus = "active" | "invited" | "suspended" | "banned"
 
+export type UserSegment =
+	| "free"
+	| "pro"
+	| "vip"
+	| "manual_license"
+	| "trial_pro"
+	| "inactive_1y"
+
+export interface UserSegments {
+	total: number
+	admins: number
+	regular: number
+	free: number
+	pro: number
+	vip: number
+	manualLicenseBuyers: number
+	trialProActive: number
+	inactiveOverYear: number
+}
+
 export interface UserData {
 	billing: {
 		tier: UserTier
@@ -35,11 +55,7 @@ export interface AdminUsersPage {
 	page: number
 	pageSize: number
 	totalPages: number
-	summary: {
-		total: number
-		admins: number
-		regular: number
-	}
+	summary: UserSegments
 }
 
 export interface CreateUserData {

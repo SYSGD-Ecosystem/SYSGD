@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from "react"
 
 import { apiFetch } from "../../lib/api"
-import type { AdminUsersPage, CreateUserData, UpdateUserData, UpdateUserPlanData, User } from "../../types/user"
-
-type UsersSummary = {
-	total: number
-	admins: number
-	regular: number
-}
+import type {
+	AdminUsersPage,
+	CreateUserData,
+	UpdateUserData,
+	UpdateUserPlanData,
+	User,
+	UserSegment,
+	UserSegments,
+} from "../../types/user"
 
 type UseUsersReturn = {
 	users: User[]
@@ -17,9 +19,11 @@ type UseUsersReturn = {
 	pageSize: number
 	total: number
 	totalPages: number
-	summary: UsersSummary
+	summary: UserSegments
 	search: string
+	segment: UserSegment | null
 	setSearch: (value: string) => void
+	setSegment: (value: UserSegment | null) => void
 	setPage: (page: number) => void
 	setPageSize: (size: number) => void
 	refetch: () => void
@@ -30,7 +34,17 @@ type UseUsersReturn = {
 	toggleUserPublic: (isPublic: boolean) => Promise<void>
 }
 
-const EMPTY_SUMMARY: UsersSummary = { total: 0, admins: 0, regular: 0 }
+const EMPTY_SUMMARY: UserSegments = {
+	total: 0,
+	admins: 0,
+	regular: 0,
+	free: 0,
+	pro: 0,
+	vip: 0,
+	manualLicenseBuyers: 0,
+	trialProActive: 0,
+	inactiveOverYear: 0,
+}
 
 export function useUsers(initialPageSize: number = 20): UseUsersReturn {
 	const [users, setUsers] = useState<User[]>([])
@@ -39,9 +53,10 @@ export function useUsers(initialPageSize: number = 20): UseUsersReturn {
 	const [page, setPage] = useState(1)
 	const [pageSize, setPageSize] = useState(initialPageSize)
 	const [search, setSearch] = useState("")
+	const [segment, setSegmentState] = useState<UserSegment | null>(null)
 	const [total, setTotal] = useState(0)
 	const [totalPages, setTotalPages] = useState(1)
-	const [summary, setSummary] = useState<UsersSummary>(EMPTY_SUMMARY)
+	const [summary, setSummary] = useState<UserSegments>(EMPTY_SUMMARY)
 
 	const fetchUsers = useCallback(async () => {
 		setLoading(true)
@@ -51,6 +66,9 @@ export function useUsers(initialPageSize: number = 20): UseUsersReturn {
 			params.set("pageSize", String(pageSize))
 			if (search.trim()) {
 				params.set("q", search.trim())
+			}
+			if (segment) {
+				params.set("segment", segment)
 			}
 			const data = await apiFetch<AdminUsersPage>(`/api/admin/users?${params.toString()}`)
 			setUsers(data.users)
@@ -64,7 +82,7 @@ export function useUsers(initialPageSize: number = 20): UseUsersReturn {
 		} finally {
 			setLoading(false)
 		}
-	}, [page, pageSize, search])
+	}, [page, pageSize, search, segment])
 
 	useEffect(() => {
 		const timeoutId = setTimeout(() => {
@@ -75,6 +93,11 @@ export function useUsers(initialPageSize: number = 20): UseUsersReturn {
 
 	const handleSearchChange = (value: string) => {
 		setSearch(value)
+		setPage(1)
+	}
+
+	const handleSegmentChange = (value: UserSegment | null) => {
+		setSegmentState(value)
 		setPage(1)
 	}
 
@@ -126,7 +149,9 @@ export function useUsers(initialPageSize: number = 20): UseUsersReturn {
 		totalPages,
 		summary,
 		search,
+		segment,
 		setSearch: handleSearchChange,
+		setSegment: handleSegmentChange,
 		setPage,
 		setPageSize,
 		refetch: fetchUsers,

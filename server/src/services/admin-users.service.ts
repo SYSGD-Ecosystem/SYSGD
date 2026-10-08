@@ -1,4 +1,10 @@
 import { pool } from "../db";
+import {
+	getUserSegments,
+	normalizeSegment,
+	segmentCondition,
+	type UserSegments,
+} from "./admin-segments.service";
 
 export interface AdminUserListItem {
 	id: string;
@@ -19,11 +25,8 @@ export interface AdminUsersPage {
 	page: number;
 	pageSize: number;
 	totalPages: number;
-	summary: {
-		total: number;
-		admins: number;
-		regular: number;
-	};
+	/** Contadores globales de segmentos (sin filtros) para las tarjetas. */
+	summary: UserSegments;
 }
 
 interface AdminUserRow {
@@ -39,12 +42,6 @@ interface AdminUserRow {
 	last_activity_at: string | null;
 }
 
-interface AdminUsersCountRow {
-	total: string;
-	admins: string;
-	regular: string;
-}
-
 const clampInt = (value: unknown, fallback: number, min: number, max: number): number => {
 	const parsed = typeof value === "string" ? Number.parseInt(value, 10) : Number.NaN;
 	if (!Number.isFinite(parsed)) return fallback;
@@ -55,15 +52,23 @@ export async function listAdminUsersPage(input?: {
 	page?: unknown;
 	pageSize?: unknown;
 	q?: unknown;
+	segment?: unknown;
 }): Promise<AdminUsersPage> {
 	const page = clampInt(input?.page, 1, 1, Number.MAX_SAFE_INTEGER);
 	const pageSize = clampInt(input?.pageSize, 20, 1, 100);
 	const searchTerm =
 		typeof input?.q === "string" && input.q.trim() ? input.q.trim().slice(0, 100) : null;
+	const segment = normalizeSegment(input?.segment);
 
 	const offset = (page - 1) * pageSize;
 
-	const [usersResult, countResult] = await Promise.all([
+	const conditions = [`($1::text IS NULL OR u.name ILIKE '%' || $1 || '%' OR u.email ILIKE '%' || $1 || '%')`];
+	if (segment) {
+		conditions.push(segmentCondition(segment));
+	}
+	const whereSql = conditions.join(" AND ");
+
+	const [usersResult, countResult, segments] = await Promise.all([
 		pool.query<AdminUserRow>(
 			`SELECT
 				u.id,
@@ -78,24 +83,22 @@ export async function listAdminUsersPage(input?: {
 				MAX(ua.created_at) AS last_activity_at
 			FROM users u
 			LEFT JOIN user_activity ua ON ua.user_id = u.id
-			WHERE ($1::text IS NULL OR u.name ILIKE '%' || $1 || '%' OR u.email ILIKE '%' || $1 || '%')
+			WHERE ${whereSql}
 			GROUP BY u.id
 			ORDER BY u.created_at DESC
 			LIMIT $2 OFFSET $3`,
 			[searchTerm, pageSize, offset],
 		),
-		pool.query<AdminUsersCountRow>(
-			`SELECT
-				COUNT(*) AS total,
-				COUNT(*) FILTER (WHERE privileges = 'admin') AS admins,
-				COUNT(*) FILTER (WHERE privileges = 'user') AS regular
-			FROM users
-			WHERE ($1::text IS NULL OR name ILIKE '%' || $1 || '%' OR email ILIKE '%' || $1 || '%')`,
+		pool.query<{ total: string }>(
+			`SELECT COUNT(*) AS total
+			 FROM users u
+			 WHERE ${whereSql}`,
 			[searchTerm],
 		),
+		getUserSegments(),
 	]);
 
-	const countRow = countResult.rows[0];
+	const total = Number(countResult.rows[0]?.total ?? "0");
 
 	const users: AdminUserListItem[] = usersResult.rows.map((row) => ({
 		id: row.id,
@@ -110,18 +113,12 @@ export async function listAdminUsersPage(input?: {
 		last_activity_at: row.last_activity_at ?? null,
 	}));
 
-	const total = Number(countRow?.total ?? "0");
-
 	return {
 		users,
 		total,
 		page,
 		pageSize,
 		totalPages: Math.max(Math.ceil(total / pageSize), 1),
-		summary: {
-			total,
-			admins: Number(countRow?.admins ?? "0"),
-			regular: Number(countRow?.regular ?? "0"),
-		},
+		summary: segments,
 	};
 }
