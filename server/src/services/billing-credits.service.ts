@@ -11,10 +11,27 @@ export interface BonusCreditItem {
 	source?: string;
 }
 
+export interface ApklisValidity {
+	uuid: string;
+	name: string;
+	days: number;
+	license: string;
+	username: string;
+}
+
 export interface PlanValidity {
 	started_at: string;
 	expires_at: string;
-	duration_months: PlanDurationMonths;
+	/** Meses (1/3/12) o `null` cuando la vigencia se pactó en días (Apklis). */
+	duration_months: PlanDurationMonths | null;
+	/** Duración real en días (pruebas y licencias Apklis). */
+	duration_days?: number | null;
+	/** "trial" = regalo/prueba; "purchase" = compra real. */
+	source?: string | null;
+	/** Producto que originó la vigencia (p. ej. "contability_tcp"). */
+	product?: string | null;
+	/** Datos de la licencia Apklis que activó el plan, si aplica. */
+	apklis?: ApklisValidity | null;
 }
 
 export interface BillingState {
@@ -121,12 +138,31 @@ export const normalizeBillingState = (billingRaw: unknown): BillingState => {
 	const planValidity =
 		rawValidity &&
 		typeof rawValidity.started_at === "string" &&
-		typeof rawValidity.expires_at === "string" &&
-		isValidPlanDuration(rawValidity.duration_months)
+		typeof rawValidity.expires_at === "string"
 			? {
 					started_at: rawValidity.started_at,
 					expires_at: rawValidity.expires_at,
-					duration_months: rawValidity.duration_months,
+					duration_months: isValidPlanDuration(rawValidity.duration_months)
+						? rawValidity.duration_months
+						: null,
+					duration_days:
+						typeof rawValidity.duration_days === "number"
+							? rawValidity.duration_days
+							: null,
+					source:
+						typeof rawValidity.source === "string" ? rawValidity.source : null,
+					product:
+						typeof rawValidity.product === "string" ? rawValidity.product : null,
+					apklis:
+						rawValidity.apklis && typeof rawValidity.apklis === "object"
+							? {
+									uuid: String(rawValidity.apklis.uuid ?? ""),
+									name: String(rawValidity.apklis.name ?? ""),
+									days: Number(rawValidity.apklis.days ?? 0),
+									license: String(rawValidity.apklis.license ?? ""),
+									username: String(rawValidity.apklis.username ?? ""),
+								}
+							: null,
 				}
 			: null;
 

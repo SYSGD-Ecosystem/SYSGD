@@ -228,6 +228,27 @@ export async function initDatabase() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_crypto_payment_fulfillments_user_id ON crypto_payment_fulfillments(user_id);
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS apklis_licence_activations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      apklis_license TEXT NOT NULL,
+      apklis_licence_uuid TEXT NOT NULL,
+      apklis_licence_name TEXT NOT NULL,
+      apklis_licence_days INTEGER NOT NULL,
+      apklis_username TEXT,
+      package_name TEXT,
+      purchased_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, apklis_license)
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_apklis_licence_activations_user_id ON apklis_licence_activations(user_id);
+  `);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS updates (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
