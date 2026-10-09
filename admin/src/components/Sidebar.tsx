@@ -1,6 +1,7 @@
 import { Button } from "./ui/button";
 import {
 	Shield,
+	ShieldAlert,
 	Users,
 	FileText,
 	LayoutDashboard,
@@ -27,6 +28,7 @@ const navigation = [
 	{ name: "Pagos", href: "/admin/pagos", icon: ReceiptText },
 	{ name: "Descubre", href: "/admin/descubre", icon: Compass },
 	{ name: "Updates", href: "/admin/updates", icon: FileText },
+	{ name: "Seguridad", href: "/admin/seguridad", icon: ShieldAlert },
 	{ name: "Soporte", href: "/admin/soporte", icon: LifeBuoy },
 ];
 
