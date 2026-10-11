@@ -11,6 +11,7 @@ import { registerIpRateLimit } from "../middlewares/rate-limit";
 import { isContabilidadSource, normalizeClientSource } from "../utils/client-source";
 import { EmailVerificationService } from "../services/emailVerification.service";
 import { createDefaultUserData } from "../utils/billing";
+import { isSuperadminEmail } from "../utils/superadmin";
 
 const router = Router();
 
@@ -519,7 +520,32 @@ router.put("/:id/plan", updateAdminUserPlan);
 router.post("/:id/credits", async (req, res) => {
   const { amount, isPurchase = false, isBonus = false, bonusExpiresAt } = req.body;
   const userId = req.params.id;
-  
+
+  // Solo admin; los créditos del superadmin solo los toca el superadmin.
+  const caller = getCurrentUserData(req);
+  if (!caller || caller.privileges !== "admin") {
+    res.status(403).json({ error: "No autorizado" });
+    return;
+  }
+  try {
+    const { rows: targetRows } = await pool.query<{ email: string }>(
+      "SELECT email FROM users WHERE id = $1",
+      [userId],
+    );
+    if (
+      targetRows.length > 0 &&
+      isSuperadminEmail(targetRows[0].email) &&
+      !isSuperadminEmail(caller.email)
+    ) {
+      res.status(403).json({ error: "La cuenta superadmin no puede ser modificada" });
+      return;
+    }
+  } catch (error) {
+    console.error("Error en verificación de permisos:", error);
+    res.status(500).json({ error: "Error en verificación de permisos" });
+    return;
+  }
+
   if (typeof amount !== 'number' || amount <= 0) {
     res.status(400).json({ error: "Cantidad de créditos inválida" });
     return;
@@ -673,6 +699,26 @@ router.delete("/:id", async (req, res) => {
 
   if (currentUser.privileges !== "admin" && currentUser.id !== userId) {
     res.status(403).json({ error: "No autorizado para eliminar este usuario" });
+    return;
+  }
+
+  // Ni siquiera un admin puede eliminar al superadmin.
+  try {
+    const { rows: targetRows } = await pool.query<{ email: string }>(
+      "SELECT email FROM users WHERE id = $1",
+      [userId],
+    );
+    if (
+      targetRows.length > 0 &&
+      isSuperadminEmail(targetRows[0].email) &&
+      !isSuperadminEmail(currentUser.email)
+    ) {
+      res.status(403).json({ error: "La cuenta superadmin no puede ser eliminada" });
+      return;
+    }
+  } catch (error) {
+    console.error("Error en verificación de permisos:", error);
+    res.status(500).json({ error: "Error en verificación de permisos" });
     return;
   }
 

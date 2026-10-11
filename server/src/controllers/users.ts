@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import { normalizeClientSource } from "../utils/client-source";
 import { UserService } from "../services/userService";
 import type { UpdatePlanData, UpdateUserData } from "../types/user";
+import { isSuperadminEmail } from "../utils/superadmin";
 
 
 export const register = async (req: Request, res: Response) => {
@@ -104,6 +105,39 @@ export const updateAdminUser = async (req: Request, res: Response) => {
         return;
     }
 
+    // Solo admin. Sin esto, cualquier usuario autenticado podía cambiar
+    // privilegios (escalada a admin). Solo el superadmin toca privilegios y
+    // nadie salvo él toca la cuenta superadmin (resuelve en código, no en BD).
+    const caller = getCurrentUserData(req);
+    if (!caller || caller.privileges !== "admin") {
+        res.status(403).json({ error: "No autorizado" });
+        return;
+    }
+    try {
+        const { rows: targetRows } = await pool.query<{ email: string }>(
+            "SELECT email FROM users WHERE id = $1",
+            [userId],
+        );
+        if (targetRows.length === 0) {
+            res.status(404).json({ error: "Usuario no encontrado" });
+            return;
+        }
+        const targetIsSuperadmin = isSuperadminEmail(targetRows[0].email);
+        const callerIsSuperadmin = isSuperadminEmail(caller.email);
+        if (targetIsSuperadmin && !callerIsSuperadmin) {
+            res.status(403).json({ error: "La cuenta superadmin no puede ser modificada" });
+            return;
+        }
+        if (privileges !== undefined && !callerIsSuperadmin) {
+            res.status(403).json({ error: "Solo el superadmin puede cambiar privilegios" });
+            return;
+        }
+    } catch (error) {
+        console.error("Error en verificación de permisos:", error);
+        res.status(500).json({ error: "Error en verificación de permisos" });
+        return;
+    }
+
     const payload: UpdateUserData = {};
 
     if (name !== undefined) {
@@ -163,6 +197,31 @@ export const updateAdminUserPlan = async (req: Request, res: Response) => {
 
     if (!userId) {
         res.status(400).json({ error: "ID inválido" });
+        return;
+    }
+
+    // Solo admin; el plan del superadmin solo lo toca el superadmin.
+    const caller = getCurrentUserData(req);
+    if (!caller || caller.privileges !== "admin") {
+        res.status(403).json({ error: "No autorizado" });
+        return;
+    }
+    try {
+        const { rows: targetRows } = await pool.query<{ email: string }>(
+            "SELECT email FROM users WHERE id = $1",
+            [userId],
+        );
+        if (
+            targetRows.length > 0 &&
+            isSuperadminEmail(targetRows[0].email) &&
+            !isSuperadminEmail(caller.email)
+        ) {
+            res.status(403).json({ error: "La cuenta superadmin no puede ser modificada" });
+            return;
+        }
+    } catch (error) {
+        console.error("Error en verificación de permisos:", error);
+        res.status(500).json({ error: "Error en verificación de permisos" });
         return;
     }
 

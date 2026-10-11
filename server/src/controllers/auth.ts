@@ -15,6 +15,8 @@ import { AdminTwoFactorService } from "../services/adminTwoFactor.service";
 import { LoginSecurityService } from "../services/loginSecurity.service";
 import { normalizeClientSource, type ClientSource } from "../utils/client-source";
 import { EmailVerificationService } from "../services/emailVerification.service";
+import { isSuperadminEmail } from "../utils/superadmin";
+import { notifySuperadminOfAdminLogin } from "../services/admin-login-alert.service";
 import { AuthAccountError, changeOwnPassword } from "../services/authAccount.service";
 import { recordUserActivity } from "../services/activity.service";
 import {
@@ -80,6 +82,17 @@ const sendAuthSuccess = async (
 	token: string,
 	loginSource: ClientSource,
 ) => {
+	// Alerta al superadmin si OTRA cuenta admin inicia sesión. No bloquea el
+	// login; el envío es fire-and-forget dentro del servicio.
+	if (user.privileges === "admin" && !isSuperadminEmail(user.email)) {
+		notifySuperadminOfAdminLogin({
+			email: user.email,
+			name: user.name,
+			ip: getClientIp(req),
+			userAgent: req.headers["user-agent"] || "",
+			at: new Date(),
+		});
+	}
 	await logUserLogin(
 		user.id,
 		req.ip || "0.0.0.0",
