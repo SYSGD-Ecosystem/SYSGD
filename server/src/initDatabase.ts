@@ -258,6 +258,19 @@ export async function initDatabase() {
   `);
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_releases (
+      app_key TEXT PRIMARY KEY,
+      display_name TEXT NOT NULL,
+      download_url TEXT NOT NULL,
+      changelog TEXT NOT NULL DEFAULT '',
+      version_name TEXT NOT NULL,
+      version_code INTEGER NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_by UUID REFERENCES users(id) ON DELETE SET NULL
+    );
+  `);
+
+  await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_apklis_claim_orders_user ON apklis_claim_orders(user_id);
   `);
 
