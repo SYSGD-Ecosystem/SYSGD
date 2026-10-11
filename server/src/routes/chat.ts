@@ -4,6 +4,13 @@ import { isAuthenticated } from "../middlewares/auth-jwt";
 import { getCurrentUserData } from "../controllers/users";
 import { emitNewMessage } from "../socket";
 import { deleteObjectByUrl } from "../services/s3";
+import { decryptField } from "../services/field-encryption.service";
+
+/** Título de conversación descifrado (los canales de proyecto se guardan cifrados). */
+const decryptConversationRow = <T extends { title?: unknown }>(row: T): T => ({
+  ...row,
+  title: typeof row.title === "string" || row.title === null ? decryptField(row.title) : row.title,
+});
 
 const router = Router();
 
@@ -77,7 +84,7 @@ router.get("/conversations", isAuthenticated, async (req: Request, res: Response
       [authUserId]
     );
 
-    res.json(result.rows);
+    res.json(result.rows.map(decryptConversationRow));
     return;
   } catch (err) {
     console.error("Error obtener conversaciones:", err);
@@ -132,7 +139,7 @@ router.get("/conversations/user/:userId", isAuthenticated, async (req: Request, 
       [userId]
     );
 
-    res.json(result.rows);
+    res.json(result.rows.map(decryptConversationRow));
     return;
   } catch (err) {
     console.error("Error obtener conversaciones por userId:", err);
@@ -710,7 +717,7 @@ router.get("/conversations/invitations", isAuthenticated, async (req: Request, r
       [email]
     );
 
-    res.json(invites.rows);
+    res.json(invites.rows.map(decryptConversationRow));
     return;
   } catch (err) {
     console.error("Error obtener invitaciones:", err);
@@ -921,7 +928,7 @@ router.get("/invites/validate/:token", async (req: Request, res: Response) => {
         id: invite.id,
         receiver_email: invite.receiver_email,
         conversation_id: invite.conversation_id,
-        conversation_title: invite.conversation_title,
+        conversation_title: decryptField(invite.conversation_title ?? null),
         conversation_type: invite.conversation_type,
         expires_at: invite.expires_at,
       }

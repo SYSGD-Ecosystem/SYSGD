@@ -450,13 +450,41 @@ GROUP BY
   CREATE INDEX IF NOT EXISTS idx_time_entries_project_id ON time_entries(project_id);
 `);
 
-  await pool.query(`
+	await pool.query(`
   CREATE TABLE IF NOT EXISTS task_assignees (
     task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(id),
     PRIMARY KEY (task_id, user_id)
   );
 `);
+
+  await pool.query(`
+    ALTER TABLE tasks
+      ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'public';
+  `);
+
+  await pool.query(`
+    DO $$
+    BEGIN
+      ALTER TABLE tasks
+        ADD CONSTRAINT tasks_visibility_check CHECK (visibility IN ('public', 'private'));
+    EXCEPTION WHEN duplicate_object THEN
+      NULL;
+    END
+    $$;
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS task_visible_to (
+      task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      PRIMARY KEY (task_id, user_id)
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_task_visible_to_user ON task_visible_to(user_id);
+  `);
 
   await pool.query(`
 CREATE TABLE IF NOT EXISTS invitations (

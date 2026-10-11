@@ -1,5 +1,18 @@
 import type { Request, Response } from "express";
 import { pool } from "../db";
+import { decryptField, encryptField } from "../services/field-encryption.service";
+
+/** Proyecto con nombre/descripción descifrados para la respuesta. */
+const decryptProjectRow = <T extends { name?: unknown; description?: unknown }>(
+    row: T,
+): T => ({
+    ...row,
+    name: typeof row.name === "string" ? decryptField(row.name) : row.name,
+    description:
+        typeof row.description === "string"
+            ? decryptField(row.description)
+            : row.description,
+});
 
 export interface User {
     id: string;
@@ -40,7 +53,7 @@ export const createProject = async (req: Request, res: Response) => {
         const result = await client.query(
             `INSERT INTO projects (name, description, created_by, visibility)
        VALUES ($1, $2, $3, $4) RETURNING *`,
-            [name, description, created_by, visibility || "privado"]
+            [encryptField(name), encryptField(description), created_by, visibility || "privado"]
         );
 
         const project_id = result.rows[0].id
@@ -52,7 +65,7 @@ export const createProject = async (req: Request, res: Response) => {
         // Todo proyecto nace con su conversación: el cliente web la necesita para abrirlo.
         const convResult = await client.query(
             `INSERT INTO conversations (title, type, created_by, created_at) VALUES ($1, 'channel', $2, NOW()) RETURNING id`,
-            [name, created_by]
+            [encryptField(name), created_by]
         );
         const conversation_id = convResult.rows[0].id;
 
@@ -69,7 +82,7 @@ export const createProject = async (req: Request, res: Response) => {
         await client.query("COMMIT");
 
         const finalProject = await pool.query("SELECT * FROM projects WHERE id = $1", [project_id]);
-        res.status(201).json(finalProject.rows[0]);
+        res.status(201).json(decryptProjectRow(finalProject.rows[0]));
     } catch (err) {
         await client.query("ROLLBACK");
         console.error("Error al crear proyecto:", err);
@@ -125,7 +138,7 @@ export const getProjects = async (req: Request, res: Response) => {
             `;
 
         const result = await pool.query(query, isAdmin ? [] : [user_id]);
-        res.json(result.rows);
+        res.json(result.rows.map(decryptProjectRow));
     } catch (err) {
         console.error("Error al obtener proyectos:", err);
         res.status(500).json({ error: "Error al obtener proyectos" });
@@ -158,7 +171,7 @@ export const getProjectById = async (req: Request, res: Response) => {
             res.status(404).json({ error: "Proyecto no encontrado" });
             return;
         }
-        res.json(result.rows[0]);
+        res.json(decryptProjectRow(result.rows[0]));
     } catch (err) {
         console.error("Error al obtener proyecto:", err);
         res.status(500).json({ error: "Error al obtener proyecto" });
@@ -191,7 +204,7 @@ export const updateProject = async (req: Request, res: Response) => {
              SET name = $1, description = $2, visibility = COALESCE($3, visibility), status = COALESCE($4, status)
              WHERE id = $5 AND (created_by = $6 OR $7 = 'admin')
              RETURNING *`,
-            [name, description, visibility || null, status || null, id, user.id, user.privileges]
+            [encryptField(name), encryptField(description), visibility || null, status || null, id, user.id, user.privileges]
         );
 
         if (result.rows.length === 0) {
@@ -199,7 +212,7 @@ export const updateProject = async (req: Request, res: Response) => {
             return;
         }
 
-        res.json(result.rows[0]);
+        res.json(decryptProjectRow(result.rows[0]));
     } catch (err) {
         console.error("Error al actualizar proyecto:", err);
         res.status(500).json({ error: "Error al actualizar proyecto" });
@@ -295,7 +308,9 @@ export const createProjectConversation = async (req: Request, res: Response) => 
 
         const convResult = await client.query(
             `INSERT INTO conversations (title, type, created_by, created_at) VALUES ($1, $2, $3, NOW()) RETURNING *`,
-            [project.name, "channel", user.id]
+            // project.name viene cifrado de la BD: se descifra y recifra para
+            // guardar el título del canal cifrado también.
+            [encryptField(decryptField(project.name)), "channel", user.id]
         );
         const conversation_id = convResult.rows[0].id;
 

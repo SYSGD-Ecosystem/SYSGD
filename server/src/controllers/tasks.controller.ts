@@ -27,8 +27,17 @@ const handleServiceError = (
 
 export class TasksController {
 	public static async getByProject(req: Request, res: Response) {
+		const user = getCurrentUserData(req);
+		if (!user?.id) {
+			res.status(401).json({ error: "Usuario no autenticado" });
+			return;
+		}
 		try {
-			const tasks = await TasksService.getTasksByProject(String(req.params.project_id));
+			const tasks = await TasksService.getTasksByProject(
+				String(req.params.project_id),
+				String(user.id),
+				user.privileges === "admin",
+			);
 			res.status(200).json(tasks);
 		} catch (error) {
 			handleServiceError(error, res, "Error getting tasks");
@@ -37,17 +46,17 @@ export class TasksController {
 
 	public static async create(req: Request, res: Response) {
 		const user = getCurrentUserData(req);
-		const createdBy = user?.id ? String(user.id) : null;
-
-		if (!createdBy) {
+		if (!user?.id) {
 			res.status(400).json({ error: "Missing required fields" });
 			return;
 		}
+		const createdBy = String(user.id);
 
 		try {
 			const task = await TasksService.createTask(
 				createdBy,
 				req.body as CreateTaskInput,
+				user.privileges === "admin",
 			);
 			res.status(201).json(task);
 		} catch (error) {
@@ -56,10 +65,17 @@ export class TasksController {
 	}
 
 	public static async update(req: Request, res: Response) {
+		const user = getCurrentUserData(req);
+		if (!user?.id) {
+			res.status(401).json({ error: "Usuario no autenticado" });
+			return;
+		}
 		try {
 			const task = await TasksService.updateTask(
 				String(req.params.taskId),
 				req.body as UpdateTaskInput,
+				String(user.id),
+				user.privileges === "admin",
 			);
 			res.status(200).json(task);
 		} catch (error) {
