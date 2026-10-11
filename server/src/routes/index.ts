@@ -36,7 +36,7 @@ import supportRoutes from "./support.routes";
 import statsRoutes from "./stats.routes";
 import notificationsRoutes from "./notifications.routes";
 import licenseRoutes from "./license.routes";
-import apklisLicenceRoutes from "./licence-apklis.routes";
+import apklisClaimRoutes from "./apklis-claims.routes";
 import descubre from "./descubre";
 
 const router = Router();
@@ -79,7 +79,8 @@ router.use(updates);
 router.use(statsRoutes);
 router.use(notificationsRoutes);
 router.use("/licenses", licenseRoutes);
-router.use("/licence", apklisLicenceRoutes);
+router.use("/apklis-claims", apklisClaimRoutes);
+
 router.use("/descubre", descubre);
 
 

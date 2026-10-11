@@ -1,4 +1,17 @@
-# Plan: activación idempotente de Plan Pro por licencia Apklis (Android)
+# Plan: reclamo manual de Plan Pro por compra de licencia Apklis (Android)
+
+> SUPERSEDE (2026-10-10, Decisión 13 en GCTCP/plan-semantica-plan-usuario.md): el
+> auto-activate idempotente (`POST /licence/apklis/activate`, tabla
+> `apklis_licence_activations`) quedó RETIRADO. La licencia da Pro local; el plan
+> en servidor solo nace del reclamo manual con SMS. Lo de abajo queda como
+> historial; el diseño vigente es "Solicitud de plan Pro para SYSGD Ecosystem por
+> compra de licencia en Apklis para Gestor Contable TCP": tabla
+> `apklis_claim_orders` (`id_compra UNIQUE`, first-claim-wins), rutas
+> `/api/apklis-claims` (products/orders/admin), todo reclamo nace `pending_review`
+> (sin provisional) y el admin aprueba con `updatePlan(pro, 1|3|12)`. Tester
+> excluido.
+
+# (Histórico) Plan: activación idempotente de Plan Pro por licencia Apklis (Android)
 
 ## Problema
 La edición Apklis de "Gestor Contable TCP" (Android, paquete base
