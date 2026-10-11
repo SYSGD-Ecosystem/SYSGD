@@ -172,6 +172,21 @@ router.post(
 				],
 			);
 
+			// C1': la invitación con rol vendedor crea el vínculo
+			// automáticamente al aceptar, con un vendedor_id nuevo y sin
+			// almacén (null = el principal del negocio). Sin esta fila, el
+			// invitado acepta pero la app nunca lo deja entrar a su POS
+			// porque linkDeVendedor() devuelve null. Idempotente: si el
+			// dueño ya lo vinculó manualmente, se conserva su fila.
+			if (invitation.resource_type === "workspace" && invitation.role === "vendedor") {
+				await pool.query(
+					`INSERT INTO cont_workspace_vendedor_links (workspace_id, vendedor_id, member_user_id, almacen_id)
+					 VALUES ($1, gen_random_uuid()::text, $2, NULL)
+					 ON CONFLICT (workspace_id, member_user_id) DO NOTHING`,
+					[invitation.resource_id, userId],
+				);
+			}
+
 			if (invitation.resource_type === "project") {
 				const projectResult = await pool.query(
 					`SELECT conversation_id FROM projects WHERE id = $1`,
