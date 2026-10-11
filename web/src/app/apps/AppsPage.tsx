@@ -1,6 +1,44 @@
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { apiFetchPublic } from "@/lib/api";
+
+interface AppReleaseInfo {
+	download_url: string;
+	version_name: string;
+	version_code: number;
+	changelog: string;
+	display_name: string;
+}
+
+// Enlace de respaldo por si el servidor no tiene versión publicada todavía.
+const GCTCP_PRO_FALLBACK_URL =
+	"https://github.com/lazaroysr96/gestor-contable-tcp-releases/releases/download/2.2.10/app-release.apk";
+
+/** Enlace de descarga servido por nuestro servidor (lo publica el admin).
+ *  Si falla o no hay versión, se usa el respaldo fijo. */
+function useAppReleaseUrl(appKey: string, fallbackUrl: string) {
+	const [url, setUrl] = useState(fallbackUrl);
+	const [versionLabel, setVersionLabel] = useState<string | null>(null);
+	useEffect(() => {
+		let alive = true;
+		apiFetchPublic<AppReleaseInfo>(`/api/app-releases/${appKey}`)
+			.then((release) => {
+				if (alive && release.download_url) {
+					setUrl(release.download_url);
+					setVersionLabel(`v${release.version_name}`);
+				}
+			})
+			.catch(() => {
+				/* sin red o sin versión: queda el respaldo */
+			});
+		return () => {
+			alive = false;
+		};
+	}, [appKey, fallbackUrl]);
+	return { url, versionLabel };
+}
 
 const PLATFORM_TAGS = [
 	{ label: "Android", color: "bg-green-500" },
@@ -84,7 +122,7 @@ const apps: AppCardProps[] = [
 		description:
 			"Gestiona tu negocio de forma eficiente desde tu móvil. Permite registrar gastos e ingresos, administrar compras y ventas en puntos de venta, y consultar el nomenclador CNAE integrado.",
 		price: "Pro",
-		installUrl: "https://github.com/lazaroysr96/gestor-contable-tcp-releases/releases/download/2.2.10/app-release.apk",
+		installUrl: GCTCP_PRO_FALLBACK_URL,
 	},
 	{
 		icon: "/ic_gestor_contable_tcp.png",
@@ -110,6 +148,13 @@ const apps: AppCardProps[] = [
 
 
 export default function AppsPage() {
+	// Tarjeta Pro con enlace servido por el servidor (publicado por el admin).
+	const gctcpPro = useAppReleaseUrl("gctcp-android", GCTCP_PRO_FALLBACK_URL);
+	const proCard: AppCardProps = {
+		...apps[0],
+		installUrl: gctcpPro.url,
+		price: gctcpPro.versionLabel ? `Pro · ${gctcpPro.versionLabel}` : apps[0].price,
+	};
 	return (
 		<div className="py-16 md:py-24">
 			<div className="container mx-auto px-4 md:px-6">
@@ -134,7 +179,8 @@ export default function AppsPage() {
 
 					{/* Grid de apps */}
 					<div className="grid gap-6 md:grid-cols-2">
-						{apps.map((app) => (
+						<AppCard key={proCard.name} {...proCard} />
+						{apps.slice(1).map((app) => (
 							<AppCard key={app.name} {...app} />
 						))}
 					</div>

@@ -14,6 +14,8 @@ import {
 	ReceiptText,
 	Compass,
 	LifeBuoy,
+	Smartphone,
+	Rocket,
 } from "lucide-react";
 
 import { useState } from "react";
@@ -26,6 +28,8 @@ const navigation = [
 	{ name: "Analítica", href: "/admin/analytics", icon: ChartColumnIncreasing },
 	{ name: "Usuarios", href: "/admin/usuarios", icon: Users },
 	{ name: "Pagos", href: "/admin/pagos", icon: ReceiptText },
+	{ name: "Reclamos Apklis", href: "/admin/reclamos-apklis", icon: Smartphone },
+	{ name: "Versiones", href: "/admin/versiones", icon: Rocket },
 	{ name: "Descubre", href: "/admin/descubre", icon: Compass },
 	{ name: "Updates", href: "/admin/updates", icon: FileText },
 	{ name: "Seguridad", href: "/admin/seguridad", icon: ShieldAlert },

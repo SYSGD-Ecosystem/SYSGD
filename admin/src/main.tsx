@@ -8,6 +8,8 @@ import LoginPage from "./app/login/page.tsx";
 import UsersPage from "./app/admin/usuarios/page.tsx";
 import AdminAnalyticsPage from "./app/admin/analytics/page.tsx";
 import ManualPaymentsPage from "./app/admin/pagos/page.tsx";
+import ApklisClaimsPage from "./app/admin/reclamos-apklis/page.tsx";
+import AppReleasesPage from "./app/admin/versiones/page.tsx";
 import DescubreModerationPage from "./app/admin/descubre/page.tsx";
 import SupportPage from "./app/admin/soporte/page.tsx";
 import SeguridadPage from "./app/admin/seguridad/page.tsx";
@@ -32,6 +34,8 @@ createRoot(document.getElementById("root")!).render(
 					<Route path="analytics" element={<AdminAnalyticsPage />} />
 					<Route path="usuarios" element={<UsersPage />} />
 					<Route path="pagos" element={<ManualPaymentsPage />} />
+					<Route path="reclamos-apklis" element={<ApklisClaimsPage />} />
+					<Route path="versiones" element={<AppReleasesPage />} />
 					<Route path="descubre" element={<DescubreModerationPage />} />
 					<Route path="updates" element={<UpdatesPage />} />
 					<Route path="seguridad" element={<SeguridadPage />} />
