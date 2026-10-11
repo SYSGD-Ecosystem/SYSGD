@@ -14,10 +14,12 @@ créditos). Además un admin podía editar/eliminar a otro admin, incluido el du
    admin; `DELETE /:id` mantiene auto-borrado pero ningún admin borra al
    superadmin.
 3. **Alerta de login admin**: en `sendAuthSuccess`, si entra un admin que NO es
-   el superadmin → email inmediato al superadmin (quién/cuándo/IP/agente,
-   fire-and-forget, nunca bloquea). SMS real a Cuba requiere pasarela
-   inexistente: el hook queda en `admin-login-alert.service.ts` para enganchar
-   Telegram/SMS cuando haya vía. Se apaga con `ADMIN_LOGIN_ALERT_ENABLED=false`.
+   el superadmin → **SMS a su teléfono** (pasarela OTP NOXCREATION,
+   `POST /api/v2/sms/send`, 6 CUP por aviso) **+ email** (Resend). Fire-and-forget,
+   nunca bloquea. Variables en Railway: `SMS_API_TOKEN` (x-token-secret,
+   OBLIGATORIA o el SMS se omite), opcionales `SMS_API_URL`, `SUPERADMIN_PHONE`
+   (defecto +5351158544), `SUPERADMIN_EMAIL`, `ADMIN_LOGIN_ALERT_ENABLED=false`
+   para apagar.
 4. **2FA admin**: existe por email pero está desactivado (`false &&` en
    `auth.ts:278`) — pendiente decidir si se enciende.
 

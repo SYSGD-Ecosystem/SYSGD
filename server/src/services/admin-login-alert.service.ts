@@ -3,6 +3,54 @@ import { SUPERADMIN_EMAIL } from "../utils/superadmin";
 
 const ENABLED = (process.env.ADMIN_LOGIN_ALERT_ENABLED || "true") === "true";
 
+// Pasarela SMS Cuba (OTP NOXCREATION). El token NO va en código: variable de
+// entorno SMS_API_TOKEN en Railway. Sin token, la alerta sale solo por email.
+const SMS_API_URL =
+	process.env.SMS_API_URL || "https://otp.noxcreation.dev/api/v2/sms/send";
+const SMS_API_TOKEN = process.env.SMS_API_TOKEN || "";
+const SUPERADMIN_PHONE = process.env.SUPERADMIN_PHONE || "+5351158544";
+
+/** SMS corto (≤160 caracteres) al superadmin. Nunca lanza. */
+const sendSmsAlert = async (message: string): Promise<boolean> => {
+	if (!SMS_API_TOKEN) {
+		console.warn("SMS_API_TOKEN no configurado: alerta de login solo por email");
+		return false;
+	}
+	try {
+		const controller = new AbortController();
+		const timer = setTimeout(() => controller.abort(), 12000);
+		const res = await fetch(SMS_API_URL, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"x-token-secret": SMS_API_TOKEN,
+			},
+			body: JSON.stringify({
+				phoneNumber: SUPERADMIN_PHONE,
+				message: message.slice(0, 160),
+			}),
+			signal: controller.signal,
+		});
+		clearTimeout(timer);
+		if (!res.ok) {
+			console.error(`SMS de alerta falló: HTTP ${res.status}`);
+			return false;
+		}
+		const data = (await res.json().catch(() => ({}))) as {
+			success?: boolean;
+			error?: string;
+		};
+		if (data.success === false) {
+			console.error("SMS de alerta rechazado:", data.error);
+			return false;
+		}
+		return true;
+	} catch (error) {
+		console.error("Error enviando SMS de alerta:", error);
+		return false;
+	}
+};
+
 export interface AdminLoginInfo {
 	email: string;
 	name: string;
@@ -12,12 +60,9 @@ export interface AdminLoginInfo {
 }
 
 /**
- * Avisa al superadmin cuando OTRA cuenta admin inicia sesión. Fire-and-forget:
- * nunca bloquea ni retrasa el login (los errores solo van a consola).
- *
- * Nota: SMS real a Cuba requiere una pasarela que hoy no existe en el
- * servidor; el aviso sale por email (Resend, ya operativo). Si se configura
- * un bot de Telegram o pasarela SMS, enganchar aquí.
+ * Avisa al superadmin cuando OTRA cuenta admin inicia sesión: SMS a su
+ * teléfono + email. Fire-and-forget: nunca bloquea ni retrasa el login
+ * (los errores solo van a consola). Cada SMS cuesta 6 CUP del saldo NOXCREATION.
  */
 export const notifySuperadminOfAdminLogin = (
 	info: AdminLoginInfo,
@@ -44,4 +89,8 @@ export const notifySuperadminOfAdminLogin = (
 	}).catch((error) => {
 		console.error("Error en alerta de login admin:", error);
 	});
+
+	const smsText =
+		`SYSGD alerta: login admin ${info.email} IP ${info.ip} ${when}`;
+	void sendSmsAlert(smsText);
 };
