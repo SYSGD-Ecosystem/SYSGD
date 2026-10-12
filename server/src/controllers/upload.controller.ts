@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { s3, BUCKET_NAME } from '../services/s3';
+import { s3, BUCKET_NAME, toPublicFileUrl } from '../services/s3';
 
 // Configurar multer para manejar archivos en memoria
 const upload = multer({
@@ -50,9 +50,9 @@ console.log('uploadParams', uploadParams);
     // Subir archivo a S3
     const result = await s3.upload(uploadParams).promise();
 
-    // Formatear respuesta
+    // Formatear respuesta (URL ya corregida a pública)
     const response = {
-      url: result.Location,
+      url: toPublicFileUrl(result.Location),
       key: result.Key,
       attachment_name: file.originalname,
       attachment_size: formatFileSize(file.size),

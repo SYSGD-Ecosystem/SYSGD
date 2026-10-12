@@ -11,6 +11,39 @@ export const s3 = new AWS.S3({
 
 export const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || "sysgd-uploads";
 
+const KNOWN_S3_PREFIX =
+	"https://yneoruruvlbgffpdyiya.storage.supabase.co/storage/v1/s3";
+const KNOWN_PUBLIC_PREFIX =
+	"https://yneoruruvlbgffpdyiya.supabase.co/storage/v1/object/public";
+
+/**
+ * Convierte la URL que devuelve el SDK de S3 (endpoint API, no legible en
+ * navegador) a URL pública del objeto. Es el mismo arreglo que Descubre aplica
+ * en el cliente (`toPublicSupabaseUrl`), pero centralizado: todo lo que el
+ * servidor entrega ya sale corregido.
+ */
+export function toPublicFileUrl(
+	location: string | null | undefined,
+): string {
+	if (!location) return "";
+	const endpoint = (process.env.AWS_ENDPOINT || "").replace(/\/+$/, "");
+	if (endpoint && location.startsWith(endpoint)) {
+		const marker = ".storage.supabase.co/storage/v1/s3";
+		const idx = endpoint.indexOf(marker);
+		if (idx !== -1) {
+			return (
+				endpoint.slice(0, idx) +
+				".supabase.co/storage/v1/object/public" +
+				location.slice(endpoint.length)
+			);
+		}
+	}
+	if (location.startsWith(KNOWN_S3_PREFIX)) {
+		return KNOWN_PUBLIC_PREFIX + location.slice(KNOWN_S3_PREFIX.length);
+	}
+	return location;
+}
+
 export function extractKeyFromUrl(rawUrl: string): string | null {
   if (!rawUrl || typeof rawUrl !== "string") return null;
 

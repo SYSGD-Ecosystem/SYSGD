@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCatalogApps } from "@/hooks/useAppCatalog";
+import { toPublicSupabaseUrl } from "@/lib/format";
 import type { CatalogApp } from "@/types/appCatalog";
 
 // Enlace de respaldo por si el servidor no tiene versión publicada todavía.
@@ -13,7 +14,7 @@ function catalogToCard(app: CatalogApp): AppCardProps {
 	const download =
 		app.release_download_url || app.download_url || GCTCP_PRO_FALLBACK_URL;
 	return {
-		icon: app.icon_url || "/ic_gestor_contable_tcp.png",
+		icon: toPublicSupabaseUrl(app.icon_url) || "/ic_gestor_contable_tcp.png",
 		iconAlt: app.name,
 		name: app.name,
 		description: app.tagline || app.description,

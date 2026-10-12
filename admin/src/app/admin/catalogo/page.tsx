@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Pencil, Plus, Star, Trash2, Upload } from "lucide-react"
 
 import { useAppCatalog } from "../../../hooks/connection/useAppCatalog"
+import { toPublicSupabaseUrl } from "../../../lib/images"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card"
 import { Input } from "../../../components/ui/input"
 import { Label } from "../../../components/ui/label"
@@ -296,8 +297,8 @@ export default function CatalogPage() {
 								<div key={app.id} className="rounded-xl border p-4">
 									<div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
 										<div className="flex items-center gap-3">
-											{app.icon_url ? (
-												<img src={app.icon_url} alt={app.name} className="h-12 w-12 rounded-xl object-cover" />
+											{toPublicSupabaseUrl(app.icon_url) ? (
+												<img src={toPublicSupabaseUrl(app.icon_url)} alt={app.name} className="h-12 w-12 rounded-xl object-cover" />
 											) : (
 												<div className="h-12 w-12 rounded-xl bg-muted" />
 											)}
@@ -492,8 +493,8 @@ export default function CatalogPage() {
 						<div className="space-y-2 md:col-span-2">
 							<Label>Icono (Supabase Storage)</Label>
 							<div className="flex items-center gap-3">
-								{appForm.iconUrl && (
-									<img src={appForm.iconUrl} alt="icono" className="h-12 w-12 rounded-xl object-cover" />
+								{toPublicSupabaseUrl(appForm.iconUrl) && (
+									<img src={toPublicSupabaseUrl(appForm.iconUrl)} alt="icono" className="h-12 w-12 rounded-xl object-cover" />
 								)}
 								<Input
 									type="file"

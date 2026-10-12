@@ -1,4 +1,5 @@
 import AWS from "aws-sdk";
+import { toPublicFileUrl } from "./services/s3";
 import { randomUUID } from "crypto";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Replicate from "replicate";
@@ -62,8 +63,8 @@ async function downloadImageAndUploadToS3(
 		console.log("📤 Subiendo imagen a S3:", key);
 		const result = await s3.upload(uploadParams).promise();
 
-		// Usar result.Location como en upload.controller.ts
-		const finalImageUrl = result.Location;
+		// URL pública (mismo arreglo centralizado que upload.controller.ts)
+		const finalImageUrl = toPublicFileUrl(result.Location);
 		console.log("✅ Imagen subida a S3:", finalImageUrl);
 
 		return finalImageUrl;

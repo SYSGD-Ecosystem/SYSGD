@@ -1,5 +1,6 @@
 // services/openrouter.service.ts
 import AWS from 'aws-sdk';
+import { toPublicFileUrl } from './s3';
 import { randomUUID } from 'crypto';
 import https from 'https';
 
@@ -216,7 +217,7 @@ class OpenRouterService {
       const result = await s3.upload(uploadParams).promise();
       console.log('✅ Imagen subida a S3:', result.Location);
 
-      return result.Location;
+      return toPublicFileUrl(result.Location);
     } catch (error) {
       console.error('❌ Error procesando imagen:', error);
       throw new Error('Error guardando imagen en S3');
@@ -249,8 +250,8 @@ class OpenRouterService {
       }
     };
 
-    const result = await s3.upload(uploadParams).promise();
-    return result.Location;
+      const result = await s3.upload(uploadParams).promise();
+      return toPublicFileUrl(result.Location);
   }
 
   /**

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { LoginDialog } from "@/components/login-dialog"
 import { useAuth } from "@/hooks/useAuth"
 import { useSeo } from "@/hooks/useSeo"
+import { toPublicSupabaseUrl } from "@/lib/format"
 import { useCatalogAppDetail } from "@/hooks/useAppCatalog"
 import { ArrowLeft, Download, Star } from "lucide-react"
 
@@ -59,7 +60,7 @@ export default function AppDetailPage() {
 	useSeo({
 		title: app ? `${app.name} | SYSGD Apps` : "App | SYSGD",
 		description: app?.tagline || app?.description?.slice(0, 200) || "Aplicación de SYSGD Ecosystem.",
-		image: app?.icon_url || "https://sysgd.netlify.app/og-image.png",
+		image: toPublicSupabaseUrl(app?.icon_url) || "https://sysgd.netlify.app/og-image.png",
 		url: app ? `https://sysgd.netlify.app/apps/${app.slug}` : undefined,
 		type: "website",
 	})
@@ -111,8 +112,8 @@ export default function AppDetailPage() {
 
 				{/* Hero */}
 				<div className="flex flex-col sm:flex-row gap-6 items-start">
-					{app.icon_url ? (
-						<img src={app.icon_url} alt={app.name} className="h-24 w-24 rounded-2xl object-cover shrink-0" />
+					{toPublicSupabaseUrl(app.icon_url) ? (
+						<img src={toPublicSupabaseUrl(app.icon_url)} alt={app.name} className="h-24 w-24 rounded-2xl object-cover shrink-0" />
 					) : (
 						<div className="h-24 w-24 rounded-2xl bg-muted shrink-0" />
 					)}
