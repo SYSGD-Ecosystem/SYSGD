@@ -38,6 +38,7 @@ import notificationsRoutes from "./notifications.routes";
 import licenseRoutes from "./license.routes";
 import apklisClaimRoutes from "./apklis-claims.routes";
 import appReleasesRoutes from "./app-releases.routes";
+import appCatalogRoutes from "./app-catalog.routes";
 import descubre from "./descubre";
 
 const router = Router();
@@ -82,6 +83,7 @@ router.use(notificationsRoutes);
 router.use("/licenses", licenseRoutes);
 router.use("/apklis-claims", apklisClaimRoutes);
 router.use("/app-releases", appReleasesRoutes);
+router.use("/apps", appCatalogRoutes);
 
 router.use("/descubre", descubre);
 

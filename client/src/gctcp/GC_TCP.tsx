@@ -16,7 +16,7 @@ import { useAuthSession } from "@/hooks/connection/useAuthSession";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { CatalogoCompra, CatalogoVenta, CloudLedgerContainer, HistorialPrecio, Moneda, MonedaTasa, MonedaTasaHistorial, StockRegistro, WalletMovimiento, WalletMovimientoTipo, WalletReferenciaTipo, WalletTipo } from "../accounting/core/types/accountingTypes";
+import type { CatalogoCompra, CatalogoVenta, CloudLedgerContainer, HistorialPrecio, Moneda, MonedaTasa, MonedaTasaHistorial, StockRegistro, Tercero, TerceroRol, WalletMovimiento, WalletMovimientoTipo, WalletReferenciaTipo, WalletTipo } from "../accounting/core/types/accountingTypes";
 import {
   calculateWorkspaceAnalysis,
   ensureRegistroYear,
@@ -43,6 +43,7 @@ import {
   SupportView,
   TercerosView,
   TributosView,
+  type TerceroUpsert,
 } from "./views";
 import CajaBanco from "./modules/CajaBaco";
 import DjGeneral from "./dj/General";
@@ -559,6 +560,113 @@ const GC_TCP: FC = () => {
     );
   };
 
+  const handleUpsertTercero = async (payload: TerceroUpsert) => {
+    if (!ledger || !activeWorkspace) return;
+    const now = Date.now();
+    const iso = new Date(now).toISOString();
+    const sufijo = `${now}-${Math.random().toString(36).slice(2, 8)}`;
+    const registroTerceros = activeWorkspace.registro.terceros;
+    const existente = payload.id
+      ? registroTerceros.terceros.find((item) => item.id === payload.id)
+      : undefined;
+    const terceroId = existente?.id ?? `tercero-${sufijo}`;
+    const tercero: Tercero = {
+      id: terceroId,
+      nombre: payload.nombre,
+      tipoEntidad: payload.tipoEntidad,
+      telefono: payload.telefono,
+      correo: payload.correo,
+      direccion: payload.direccion,
+      identificadorFiscal: payload.identificadorFiscal,
+      numeroTarjeta: payload.numeroTarjeta,
+      direccionCrypto: existente?.direccionCrypto ?? "",
+      nota: payload.nota,
+      activo: existente?.activo ?? true,
+      createdAt: existente?.createdAt ?? iso,
+      updatedAt: iso,
+    };
+    const rolesPrevios = registroTerceros.roles
+      .filter((item) => item.terceroId === terceroId && item.activo)
+      .map((item) => item.rol);
+    const roles: TerceroRol[] = [
+      ...registroTerceros.roles.map((item) =>
+        item.terceroId === terceroId && !payload.roles.includes(item.rol)
+          ? { ...item, activo: false }
+          : item,
+      ),
+      ...payload.roles
+        .filter((rol) => !rolesPrevios.includes(rol))
+        .map(
+          (rol): TerceroRol => ({
+            id: `rol-${terceroId}-${rol}-${sufijo}`,
+            terceroId,
+            rol,
+            activo: true,
+            createdAt: iso,
+          }),
+        ),
+    ];
+    const terceros = existente
+      ? registroTerceros.terceros.map((item) => (item.id === terceroId ? tercero : item))
+      : [...registroTerceros.terceros, tercero];
+    const updatedWorkspaces = ledger.workspaces.map((workspace) =>
+      workspace.id !== activeWorkspace.id
+        ? workspace
+        : {
+            ...workspace,
+            registro: {
+              ...workspace.registro,
+              terceros: { ...registroTerceros, terceros, roles },
+            },
+          },
+    );
+    await persistProductLedger(
+      { ...ledger, workspaces: updatedWorkspaces },
+      {
+        title: existente ? "Tercero actualizado" : "Tercero creado",
+        description: `${tercero.nombre} quedó guardado en este espacio.`,
+      },
+      {
+        title: "No se pudo guardar el tercero",
+        description: `${tercero.nombre} mantiene sus datos anteriores. Intenta nuevamente.`,
+      },
+    );
+  };
+
+  const handleSetTerceroActivo = async (terceroId: string, activo: boolean) => {
+    if (!ledger || !activeWorkspace) return;
+    const registroTerceros = activeWorkspace.registro.terceros;
+    const tercero = registroTerceros.terceros.find((item) => item.id === terceroId);
+    if (!tercero) return;
+    const updatedWorkspaces = ledger.workspaces.map((workspace) =>
+      workspace.id !== activeWorkspace.id
+        ? workspace
+        : {
+            ...workspace,
+            registro: {
+              ...workspace.registro,
+              terceros: {
+                ...registroTerceros,
+                terceros: registroTerceros.terceros.map((item) =>
+                  item.id === terceroId ? { ...item, activo, updatedAt: new Date().toISOString() } : item,
+                ),
+              },
+            },
+          },
+    );
+    await persistProductLedger(
+      { ...ledger, workspaces: updatedWorkspaces },
+      {
+        title: activo ? "Tercero activado" : "Tercero desactivado",
+        description: `${tercero.nombre} ${activo ? "vuelve a estar disponible." : "se ocultó del directorio (su historial se conserva)."}`,
+      },
+      {
+        title: "No se pudo cambiar el estado",
+        description: `${tercero.nombre} mantiene su estado anterior. Intenta nuevamente.`,
+      },
+    );
+  };
+
   const handleCreateWallet = async (payload: {
     nombre: string;
     tipo: WalletTipo;
@@ -897,7 +1005,14 @@ console.log(activeWorkspace?.accounting.monedas);
           />
         );
       case "terceros":
-        return <TercerosView workspace={activeWorkspace} />;
+        return (
+          <TercerosView
+            workspace={activeWorkspace}
+            saving={savingProductChanges}
+            onUpsertTercero={handleUpsertTercero}
+            onSetTerceroActivo={handleSetTerceroActivo}
+          />
+        );
       case "catalogos":
         return (
           <CatalogosView

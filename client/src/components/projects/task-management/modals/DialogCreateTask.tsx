@@ -458,6 +458,83 @@ const DialogCreateTask: FC<Props> = ({
 							</div>
 						</div>
 
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+							<div>
+								<Label>Confidencialidad</Label>
+								<Select
+									value={editingTask.visibility ?? "public"}
+									onValueChange={(value) =>
+										setEditingTask({
+											...editingTask,
+											visibility: value as "public" | "private",
+											visible_to:
+												value === "private" ? (editingTask.visible_to ?? []) : [],
+										})
+									}
+								>
+									<SelectTrigger>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="public">Pública (todos los miembros)</SelectItem>
+										<SelectItem value="private">Privada (solo elegidos)</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+
+							{(editingTask.visibility ?? "public") === "private" && (
+								<div>
+									<Label>Quién puede ver</Label>
+									<DropdownMenu>
+										<DropdownMenuTrigger asChild>
+											<Button
+												variant="outline"
+												className="w-full justify-start text-left font-normal"
+											>
+												{editingTask.visible_to && editingTask.visible_to.length > 0
+													? editingTask.visible_to.map((v) => v.name).join(", ")
+													: "Seleccionar miembros"}
+											</Button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent className="w-full">
+											<DropdownMenuLabel>Solo miembros activos</DropdownMenuLabel>
+											<DropdownMenuSeparator />
+											{members
+												.filter((member) => member.status !== "invited")
+												.map((member) => (
+													<DropdownMenuCheckboxItem
+														key={member.id}
+														checked={
+															editingTask?.visible_to?.some(
+																(v) => v.id === member.id,
+															) || false
+														}
+														onCheckedChange={(checked) => {
+															const current = editingTask?.visible_to || [];
+															if (checked) {
+																setEditingTask({
+																	...editingTask,
+																	visible_to: [...current, member],
+																});
+															} else {
+																setEditingTask({
+																	...editingTask,
+																	visible_to: current.filter(
+																		(v) => v.id !== member.id,
+																	),
+																});
+															}
+														}}
+													>
+														<span>{member.name}</span>
+													</DropdownMenuCheckboxItem>
+												))}
+										</DropdownMenuContent>
+									</DropdownMenu>
+								</div>
+							)}
+						</div>
+
 						<div className="flex flex-col sm:flex-row justify-end gap-2">
 							<Button 
 								variant="outline" 

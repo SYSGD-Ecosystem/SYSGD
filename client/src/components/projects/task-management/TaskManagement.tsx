@@ -6,6 +6,7 @@ import {
 	ChevronDown,
 	ChevronRight,
 	Filter,
+	Lock,
 	Plus,
 	Search,
 	Tag,
@@ -143,6 +144,8 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 			description: "",
 			status: defaultStatus,
 			assignees: [],
+			visibility: "public",
+			visible_to: [],
 			created_at: new Date().toISOString(),
 			project_id,
 		});
@@ -348,7 +351,14 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 									{!group.isCollapsed && group.tasks.map((task) => (
 										<TableRow key={task.id} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50" onClick={() => { setselectedTask(task); setEditingTask(task); setisDialogOpenDialog(true); }}>
 											<TableCell className="hidden md:table-cell"><div className="flex items-center justify-center">{getStatusIcon(task.status, config)}</div></TableCell>
-											<TableCell className="hidden md:table-cell font-medium">{task.title}</TableCell>
+											<TableCell className="hidden md:table-cell font-medium">
+												<span className="inline-flex items-center gap-1.5">
+													{task.visibility === "private" && (
+														<Lock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+													)}
+													{task.title}
+												</span>
+											</TableCell>
 											<TableCell className="hidden md:table-cell"><div className="flex justify-center"><Badge variant="outline">{task.type}</Badge></div></TableCell>
 											<TableCell className="hidden md:table-cell"><div className="flex justify-center"><Badge variant={getPriorityColor(task.priority)}>{task.priority}</Badge></div></TableCell>
 											<TableCell className="hidden md:table-cell">
@@ -374,7 +384,12 @@ const TaskManagement: FC<{ project_id: string }> = ({ project_id }) => {
 												</div>
 											</TableCell>
 											<TableCell className="md:hidden p-2"><div className="flex items-center justify-center">{getStatusIcon(task.status, config)}</div></TableCell>
-											<TableCell className="md:hidden p-2"><span className="font-medium text-sm line-clamp-2">{task.title}</span></TableCell>
+											<TableCell className="md:hidden p-2"><span className="font-medium text-sm line-clamp-2 inline-flex items-center gap-1">
+												{task.visibility === "private" && (
+													<Lock className="w-3 h-3 text-muted-foreground shrink-0" />
+												)}
+												{task.title}
+											</span></TableCell>
 											<TableCell className="md:hidden p-2 text-center">{task.type}</TableCell>
 											<TableCell className="md:hidden p-2">
 												<div className="flex items-center justify-center -space-x-1">

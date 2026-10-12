@@ -1,43 +1,30 @@
-import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { apiFetchPublic } from "@/lib/api";
-
-interface AppReleaseInfo {
-	download_url: string;
-	version_name: string;
-	version_code: number;
-	changelog: string;
-	display_name: string;
-}
+import { useCatalogApps } from "@/hooks/useAppCatalog";
+import type { CatalogApp } from "@/types/appCatalog";
 
 // Enlace de respaldo por si el servidor no tiene versión publicada todavía.
 const GCTCP_PRO_FALLBACK_URL =
 	"https://github.com/lazaroysr96/gestor-contable-tcp-releases/releases/download/2.2.10/app-release.apk";
 
-/** Enlace de descarga servido por nuestro servidor (lo publica el admin).
- *  Si falla o no hay versión, se usa el respaldo fijo. */
-function useAppReleaseUrl(appKey: string, fallbackUrl: string) {
-	const [url, setUrl] = useState(fallbackUrl);
-	const [versionLabel, setVersionLabel] = useState<string | null>(null);
-	useEffect(() => {
-		let alive = true;
-		apiFetchPublic<AppReleaseInfo>(`/api/app-releases/${appKey}`)
-			.then((release) => {
-				if (alive && release.download_url) {
-					setUrl(release.download_url);
-					setVersionLabel(`v${release.version_name}`);
-				}
-			})
-			.catch(() => {
-				/* sin red o sin versión: queda el respaldo */
-			});
-		return () => {
-			alive = false;
-		};
-	}, [appKey, fallbackUrl]);
-	return { url, versionLabel };
+function catalogToCard(app: CatalogApp): AppCardProps {
+	const download =
+		app.release_download_url || app.download_url || GCTCP_PRO_FALLBACK_URL;
+	return {
+		icon: app.icon_url || "/ic_gestor_contable_tcp.png",
+		iconAlt: app.name,
+		name: app.name,
+		description: app.tagline || app.description,
+		price: app.price_label,
+		installUrl: download,
+		detailUrl: `/apps/${app.slug}`,
+		versionLabel: app.release_version_name
+			? `Versión ${app.release_version_name}`
+			: null,
+		platformLabels: app.platforms.length > 0 ? app.platforms : undefined,
+	};
 }
 
 const PLATFORM_TAGS = [
@@ -54,6 +41,9 @@ interface AppCardProps {
 	price: string;
 	installUrl: string;
 	platforms?: typeof PLATFORM_TAGS;
+	detailUrl?: string;
+	versionLabel?: string | null;
+	platformLabels?: string[];
 }
 
 function AppCard({
@@ -64,6 +54,9 @@ function AppCard({
 	price,
 	installUrl,
 	platforms = PLATFORM_TAGS,
+	detailUrl,
+	versionLabel,
+	platformLabels,
 }: AppCardProps) {
 	return (
 		<Card className="p-6 md:p-8 flex flex-col gap-4">
@@ -91,30 +84,42 @@ function AppCard({
 				{description}
 			</p>
 
-			{/* Footer: plataformas + botón */}
+			{/* Versión publicada */}
+			{versionLabel && (
+				<p className="text-xs text-muted-foreground">{versionLabel}</p>
+			)}
+
+			{/* Footer: plataformas + botones */}
 			<div className="flex items-center justify-between gap-4 mt-auto pt-2 border-t border-border/50">
 				<div className="flex gap-4 flex-wrap">
-					{platforms.map((p) => (
+					{(platformLabels ?? platforms.map((p) => p.label)).map((label) => (
 						<div
-							key={p.label}
+							key={label}
 							className="flex items-center gap-1.5 text-sm text-muted-foreground"
 						>
-							<div className={`h-2 w-2 rounded-full ${p.color}`} />
-							<span>{p.label}</span>
+							<div className="h-2 w-2 rounded-full bg-primary" />
+							<span>{label}</span>
 						</div>
 					))}
 				</div>
-				<Button asChild size="sm" className="rounded-full shrink-0">
-					<a href={installUrl} target="_blank" rel="noopener noreferrer">
-						Instalar
-					</a>
-				</Button>
+				<div className="flex gap-2 shrink-0">
+					{detailUrl && (
+						<Button asChild size="sm" variant="outline" className="rounded-full">
+							<Link to={detailUrl}>Ver más</Link>
+						</Button>
+					)}
+					<Button asChild size="sm" className="rounded-full">
+						<a href={installUrl} target="_blank" rel="noopener noreferrer">
+							Instalar
+						</a>
+					</Button>
+				</div>
 			</div>
 		</Card>
 	);
 }
 
-const apps: AppCardProps[] = [
+const STATIC_APPS: AppCardProps[] = [
 	{
 		icon: "/ic_gestor_contable_tcp.png",
 		iconAlt: "Gestor Contable TCP Pro",
@@ -148,13 +153,11 @@ const apps: AppCardProps[] = [
 
 
 export default function AppsPage() {
-	// Tarjeta Pro con enlace servido por el servidor (publicado por el admin).
-	const gctcpPro = useAppReleaseUrl("gctcp-android", GCTCP_PRO_FALLBACK_URL);
-	const proCard: AppCardProps = {
-		...apps[0],
-		installUrl: gctcpPro.url,
-		price: gctcpPro.versionLabel ? `Pro · ${gctcpPro.versionLabel}` : apps[0].price,
-	};
+	// Catálogo servido por el servidor (lo publica el admin). Sin red o sin
+	// apps publicadas, se muestra el contenido fijo anterior.
+	const { apps, loading } = useCatalogApps();
+	const cards: AppCardProps[] =
+		apps.length > 0 ? apps.map(catalogToCard) : STATIC_APPS;
 	return (
 		<div className="py-16 md:py-24">
 			<div className="container mx-auto px-4 md:px-6">
@@ -179,10 +182,11 @@ export default function AppsPage() {
 
 					{/* Grid de apps */}
 					<div className="grid gap-6 md:grid-cols-2">
-						<AppCard key={proCard.name} {...proCard} />
-						{apps.slice(1).map((app) => (
-							<AppCard key={app.name} {...app} />
-						))}
+						{loading && cards.length === 0 ? (
+							<p className="text-muted-foreground">Cargando aplicaciones...</p>
+						) : (
+							cards.map((app) => <AppCard key={app.name} {...app} />)
+						)}
 					</div>
 				</div>
 			</div>

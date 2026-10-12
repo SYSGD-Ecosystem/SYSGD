@@ -15,4 +15,9 @@ export type Task = {
 	assignees: Assignee[];
 	project_id: string;
 	project_task_number?: number;
+	created_by?: string;
+	/** public (defecto) | private. Las privadas solo las ven dueño, creador, asignados y visible_to. */
+	visibility?: "public" | "private";
+	/** Acceso explícito a la tarea privada. */
+	visible_to?: Assignee[];
 };

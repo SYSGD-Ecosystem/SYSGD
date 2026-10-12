@@ -14,6 +14,8 @@ import UpdatesDetailPage from "./app/updates/detail-page.tsx";
 import RoadmapPage from "./app/roadmap/page.tsx";
 import ServicesPage from "./app/services/Page.tsx";
 import AppsPage from "./app/apps/AppsPage.tsx";
+import AppDetailPage from "./app/apps/detail-page.tsx";
+import AppArticlePage from "./app/apps/article-page.tsx";
 import DescubrePage from "./app/descubre/page.tsx";
 import DescubrePostDetailPage from "./app/descubre/detail-page.tsx";
 
@@ -36,6 +38,8 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/roadmap" element={<RoadmapPage />} />
               <Route path="/services" element={<ServicesPage />} />
               <Route path="/apps" element={<AppsPage />} />
+              <Route path="/apps/:slug" element={<AppDetailPage />} />
+              <Route path="/apps/:slug/articulos/:articleSlug" element={<AppArticlePage />} />
             </Routes>
           </main>
           <Footer />

@@ -50,9 +50,15 @@ Servicio genérico `src/services/field-encryption.service.ts` (AES-256-GCM, form
   campos, así que nada se rompe. Los títulos de chat creados por usuarios y
   `project_notes`/`time_entries`/mensajes quedan en plano (residual documentado).
 
+## UI en client/ (HECHO, sin commitear)
+- `Task`: `visibility` + `visible_to` (+ el servidor los devuelve en cada tarea).
+- Crear/editar: selector Pública/Privada + "Quién puede ver" (solo miembros
+  activos; el servidor rechaza invitados pendientes).
+- Detalle: badge Privada + caja "Visible para". Lista: candado junto al título
+  (desktop y móvil). Build `tsc + vite` verde.
+
 ## No entra ahora
-- UI en `client/` (toggle, selector de miembros, candado): siguiente paso. Mientras
-  tanto, blindaje por SQL directo.
+- Blindaje por SQL directo (ya no hace falta con la UI).
 - `project_notes`, `time_entries`, comentarios, contenido de mensajes: mismo patrón
   cuando toque.
 

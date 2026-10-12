@@ -16,6 +16,7 @@ import {
 	LifeBuoy,
 	Smartphone,
 	Rocket,
+	LayoutGrid,
 } from "lucide-react";
 
 import { useState } from "react";
@@ -30,6 +31,7 @@ const navigation = [
 	{ name: "Pagos", href: "/admin/pagos", icon: ReceiptText },
 	{ name: "Reclamos Apklis", href: "/admin/reclamos-apklis", icon: Smartphone },
 	{ name: "Versiones", href: "/admin/versiones", icon: Rocket },
+	{ name: "Catálogo", href: "/admin/catalogo", icon: LayoutGrid },
 	{ name: "Descubre", href: "/admin/descubre", icon: Compass },
 	{ name: "Updates", href: "/admin/updates", icon: FileText },
 	{ name: "Seguridad", href: "/admin/seguridad", icon: ShieldAlert },

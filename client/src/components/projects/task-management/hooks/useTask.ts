@@ -35,6 +35,9 @@ const normalizeTasksForCompare = (tasks: Task[]) =>
 			assignees: [...(task.assignees ?? [])].sort((a, b) =>
 				a.id.localeCompare(b.id),
 			),
+			visible_to: [...(task.visible_to ?? [])].sort((a, b) =>
+				a.id.localeCompare(b.id),
+			),
 		}))
 		.sort((a, b) => {
 			const aOrder = a.project_task_number ?? Number.MAX_SAFE_INTEGER;
@@ -115,6 +118,7 @@ export const useTasks = (projectId: string) => {
 				...task,
 				project_id: projectId, // Inyectamos el ID del proyecto directamente
 				assignees: task.assignees?.map((a) => a.id) || [],
+				visible_to: task.visible_to?.map((a) => a.id) || [],
 			};
 
 			const res = await api.post<Task>("/api/tasks", taskPayload);
@@ -143,6 +147,9 @@ export const useTasks = (projectId: string) => {
 			const taskPayload: Record<string, unknown> = { ...taskData };
 			if (taskData.assignees) {
 				taskPayload.assignees = taskData.assignees.map((assignee) => assignee.id);
+			}
+			if (taskData.visible_to) {
+				taskPayload.visible_to = taskData.visible_to.map((viewer) => viewer.id);
 			}
 
 			await api.put(`/api/tasks/${taskId}`, taskPayload);
