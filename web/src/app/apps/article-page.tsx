@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom"
-import ReactMarkdown from "react-markdown"
 import { Button } from "@/components/ui/button"
+import { MarkdownContent } from "@/components/markdown-content"
 import { useSeo } from "@/hooks/useSeo"
 import { useCatalogArticle } from "@/hooks/useAppCatalog"
 import { ArrowLeft } from "lucide-react"
@@ -45,8 +45,8 @@ export default function AppArticlePage() {
 					{article.category_name ?? "General"} · {new Date(article.created_at).toLocaleDateString()}
 				</p>
 				<h1 className="text-3xl md:text-4xl font-bold mt-2">{article.title}</h1>
-				<div className="prose dark:prose-invert max-w-none mt-6">
-					<ReactMarkdown>{article.body}</ReactMarkdown>
+				<div className="mt-6">
+					<MarkdownContent text={article.body} />
 				</div>
 			</div>
 		</div>

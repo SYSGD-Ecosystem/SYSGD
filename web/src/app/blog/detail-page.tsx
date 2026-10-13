@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom"
-import ReactMarkdown from "react-markdown"
 import { Button } from "@/components/ui/button"
+import { MarkdownContent } from "@/components/markdown-content"
 import { useSeo } from "@/hooks/useSeo"
 import { useBlogPost } from "@/hooks/useBlog"
 import { buildPreview, stripMarkdown } from "@/lib/format"
@@ -56,8 +56,8 @@ export default function BlogDetailPage() {
 				<p className="text-lg text-muted-foreground leading-relaxed mt-4 border-l-4 border-primary/40 pl-4">
 					{buildPreview(stripMarkdown(post.body), 220)}
 				</p>
-				<div className="prose dark:prose-invert max-w-none mt-6">
-					<ReactMarkdown>{post.body}</ReactMarkdown>
+				<div className="mt-6">
+					<MarkdownContent text={post.body} />
 				</div>
 			</div>
 		</div>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import ReactMarkdown from "react-markdown"
 import { Button } from "@/components/ui/button"
+import { MarkdownContent } from "@/components/markdown-content"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -160,8 +160,8 @@ export default function AppDetailPage() {
 
 				{/* Descripción */}
 				{app.description && (
-					<div className="prose dark:prose-invert max-w-none mt-8">
-						<ReactMarkdown>{app.description}</ReactMarkdown>
+					<div className="mt-8">
+						<MarkdownContent text={app.description} />
 					</div>
 				)}
 
