@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown"
 import { Button } from "@/components/ui/button"
 import { useSeo } from "@/hooks/useSeo"
 import { useBlogPost } from "@/hooks/useBlog"
+import { buildPreview, stripMarkdown } from "@/lib/format"
 import { ArrowLeft } from "lucide-react"
 
 export default function BlogDetailPage() {
@@ -45,10 +46,16 @@ export default function BlogDetailPage() {
 				{post.cover_url && (
 					<img src={post.cover_url} alt="" className="w-full max-h-80 object-cover rounded-2xl mb-6" />
 				)}
+				{post.cover_url && (
+					<img src={post.cover_url} alt="" className="w-full max-h-80 object-cover rounded-2xl mb-6" />
+				)}
 				<p className="text-sm text-muted-foreground">
 					{post.category || "General"} · {new Date(post.created_at).toLocaleDateString()}
 				</p>
 				<h1 className="text-3xl md:text-4xl font-bold mt-2">{post.title}</h1>
+				<p className="text-lg text-muted-foreground leading-relaxed mt-4 border-l-4 border-primary/40 pl-4">
+					{buildPreview(stripMarkdown(post.body), 220)}
+				</p>
 				<div className="prose dark:prose-invert max-w-none mt-6">
 					<ReactMarkdown>{post.body}</ReactMarkdown>
 				</div>
