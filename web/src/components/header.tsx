@@ -13,6 +13,7 @@ const navigation = [
   { name: "Descubre", href: "/descubre" },
   { name: "Servicios", href: "/services" },
   { name: "Aplicaciones", href: "/apps" },
+  { name: "Blog", href: "/blog" },
   // { name: "API y Precios", href: "/api" },
   { name: "Filosofía", href: "/philosophy" },
 ]

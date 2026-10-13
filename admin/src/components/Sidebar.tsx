@@ -17,6 +17,7 @@ import {
 	Smartphone,
 	Rocket,
 	LayoutGrid,
+	Newspaper,
 } from "lucide-react";
 
 import { useState } from "react";
@@ -32,6 +33,7 @@ const navigation = [
 	{ name: "Reclamos Apklis", href: "/admin/reclamos-apklis", icon: Smartphone },
 	{ name: "Versiones", href: "/admin/versiones", icon: Rocket },
 	{ name: "Catálogo", href: "/admin/catalogo", icon: LayoutGrid },
+	{ name: "Blog", href: "/admin/blog", icon: Newspaper },
 	{ name: "Descubre", href: "/admin/descubre", icon: Compass },
 	{ name: "Updates", href: "/admin/updates", icon: FileText },
 	{ name: "Seguridad", href: "/admin/seguridad", icon: ShieldAlert },
