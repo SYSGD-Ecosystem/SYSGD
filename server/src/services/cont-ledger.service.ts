@@ -62,6 +62,21 @@ export const getContLedgerByUser = async (
 	};
 };
 
+export const getContLedgerVersionByUser = async (
+	userId: string,
+): Promise<{ updatedAt: string | null }> => {
+	const { rows } = await pool.query<{ updated_at: string }>(
+		`SELECT updated_at FROM cont_ledger_records WHERE user_id = $1`,
+		[userId],
+	);
+
+	if (rows.length === 0) {
+		return { updatedAt: null };
+	}
+
+	return { updatedAt: rows[0].updated_at };
+};
+
 export const upsertContLedgerByUser = async (
 	userId: string,
 	registro: unknown,

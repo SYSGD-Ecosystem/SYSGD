@@ -1,10 +1,27 @@
 import type { Request, Response } from "express";
 import {
 	getContLedgerByUser,
+	getContLedgerVersionByUser,
 	upsertContLedgerByUser,
 } from "../services/cont-ledger.service";
 import { getCurrentUserData } from "./users";
 import { recordUserActivity } from "../services/activity.service";
+
+export const getContLedgerVersion = async (req: Request, res: Response) => {
+	const user = getCurrentUserData(req);
+	if (!user?.id) {
+		res.status(401).json({ error: "Usuario no autenticado" });
+		return;
+	}
+
+	try {
+		const version = await getContLedgerVersionByUser(user.id);
+		res.status(200).json(version);
+	} catch (error) {
+		console.error("Error al obtener versión del registro:", error);
+		res.status(500).json({ error: "Error al obtener versión del registro" });
+	}
+};
 
 export const getContLedger = async (req: Request, res: Response) => {
 	const user = getCurrentUserData(req);
