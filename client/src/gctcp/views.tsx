@@ -12,6 +12,7 @@ import {
   Info,
   Landmark,
   LayoutDashboard,
+  Loader2,
   List,
   PackageSearch,
   Pencil,
@@ -195,12 +196,54 @@ const MonthlyChart: FC<{ analysis: WorkspaceAnalysis }> = ({ analysis }) => {
 export const EntriesView: FC<{
   workspace: CloudWorkspaceEntry;
   type: "ingresos" | "gastos";
-}> = ({ workspace, type }) => {
+  saving?: boolean;
+  onAdd?: (month: import("../accounting/core/types/accountingTypes").MonthCode) => void;
+  onEdit?: (month: import("../accounting/core/types/accountingTypes").MonthCode, row: import("../accounting/core/types/accountingTypes").DayAmountRow) => void;
+  onDelete?: (month: import("../accounting/core/types/accountingTypes").MonthCode, row: import("../accounting/core/types/accountingTypes").DayAmountRow) => void;
+}> = ({ workspace, type, saving, onAdd, onEdit, onDelete }) => {
   const label = type === "ingresos" ? "Ingresos" : "Gastos";
   const tone =
     type === "ingresos"
       ? "text-emerald-700 dark:text-emerald-300"
       : "text-rose-700 dark:text-rose-300";
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+
+  const toggleMonth = (month: string) => {
+    setExpandedMonths((prev) => {
+      const next = new Set(prev);
+      if (next.has(month)) next.delete(month);
+      else next.add(month);
+      return next;
+    });
+  };
+
+  const cuentaPorId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of workspace.accounting?.cuentasContables ?? []) {
+      map.set(c.id, `${c.codigo} · ${c.nombre}`);
+    }
+    return map;
+  }, [workspace.accounting?.cuentasContables]);
+
+  const cuentaPorAsiento = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const rel of workspace.accounting?.ingresoGastoCuentas ?? []) {
+      if (rel.tipo === (type === "ingresos" ? "INGRESO" : "GASTO")) {
+        map.set(rel.ingresoGastoId, rel.cuentaId);
+      }
+    }
+    return map;
+  }, [workspace.accounting?.ingresoGastoCuentas, type]);
+
+  const notaPorAsiento = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const n of workspace.accounting?.ingresoGastoNotas ?? []) {
+      if (n.tipo === (type === "ingresos" ? "INGRESO" : "GASTO")) {
+        map.set(n.ingresoGastoId, n.nota);
+      }
+    }
+    return map;
+  }, [workspace.accounting?.ingresoGastoNotas, type]);
 
   return (
     <Card className="rounded-lg shadow-sm">
@@ -211,7 +254,14 @@ export const EntriesView: FC<{
             Año fiscal {workspace.registro.generales.anio}
           </p>
         </div>
-        <Badge variant="outline">{workspace.name}</Badge>
+        <div className="flex items-center gap-2">
+          {saving && (
+            <span className="flex items-center gap-1 text-xs text-slate-500">
+              <Loader2 className="size-3 animate-spin" /> Guardando…
+            </span>
+          )}
+          <Badge variant="outline">{workspace.name}</Badge>
+        </div>
       </CardHeader>
       <CardContent className="p-4 pt-0">
         <div className="overflow-x-auto">
@@ -222,6 +272,7 @@ export const EntriesView: FC<{
                 <th className="py-3 pr-4 text-right">Total</th>
                 <th className="py-3 pr-4 text-right">Asientos</th>
                 <th className="py-3 pr-4">Ultimos movimientos</th>
+                <th className="py-3 pr-4 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -229,32 +280,120 @@ export const EntriesView: FC<{
                 const rows = activeRows(
                   getRows(workspace.registro, type, month),
                 );
+                const isExpanded = expandedMonths.has(month);
                 return (
-                  <tr
-                    key={month}
-                    className="border-b border-slate-100 dark:border-slate-800/80"
-                  >
-                    <td className="py-3 pr-4 font-medium text-slate-950 dark:text-slate-50">
-                      {month}
-                    </td>
-                    <td
-                      className={cn("py-3 pr-4 text-right font-semibold", tone)}
+                  <>
+                    <tr
+                      key={month}
+                      className="border-b border-slate-100 dark:border-slate-800/80"
                     >
-                      {formatMoney(monthTotal(rows))}
-                    </td>
-                    <td className="py-3 pr-4 text-right text-slate-600 dark:text-slate-300">
-                      {rows.length}
-                    </td>
-                    <td className="py-3 pr-4 text-slate-500 dark:text-slate-400">
-                      {rows
-                        .slice(-3)
-                        .map(
-                          (row) =>
-                            `Dia ${row.dia}: ${formatMoney(parseAmount(row.importe))}`,
-                        )
-                        .join(" | ") || "-"}
-                    </td>
-                  </tr>
+                      <td className="py-3 pr-4 font-medium text-slate-950 dark:text-slate-50">
+                        <button
+                          type="button"
+                          onClick={() => toggleMonth(month)}
+                          className="flex items-center gap-1 hover:text-cyan-600 dark:hover:text-cyan-400"
+                        >
+                          {isExpanded ? (
+                            <ChevronUp className="size-3.5" />
+                          ) : (
+                            <ChevronDown className="size-3.5" />
+                          )}
+                          {month}
+                        </button>
+                      </td>
+                      <td
+                        className={cn("py-3 pr-4 text-right font-semibold", tone)}
+                      >
+                        {formatMoney(monthTotal(rows))}
+                      </td>
+                      <td className="py-3 pr-4 text-right text-slate-600 dark:text-slate-300">
+                        {rows.length}
+                      </td>
+                      <td className="py-3 pr-4 text-slate-500 dark:text-slate-400">
+                        {rows
+                          .slice(-3)
+                          .map(
+                            (row) =>
+                              `Dia ${row.dia}: ${formatMoney(parseAmount(row.importe))}`,
+                          )
+                          .join(" | ") || "-"}
+                      </td>
+                      <td className="py-3 pr-4 text-right">
+                        {onAdd && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onAdd(month as import("../accounting/core/types/accountingTypes").MonthCode)}
+                          >
+                            <Plus className="size-4" />
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr key={`${month}-detail`} className="bg-slate-50 dark:bg-slate-900/50">
+                        <td colSpan={5} className="px-4 py-3">
+                          {rows.length === 0 ? (
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              Sin movimientos en {month}.
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              {rows.map((row) => {
+                                const cuentaId = cuentaPorAsiento.get(row.id);
+                                const nota = notaPorAsiento.get(row.id);
+                                return (
+                                  <div
+                                    key={row.id}
+                                    className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-800"
+                                  >
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                        Día {row.dia} · {formatMoney(parseAmount(row.importe))} CUP
+                                      </p>
+                                      {cuentaId && (
+                                        <p className="text-xs text-cyan-700 dark:text-cyan-300">
+                                          Cuenta: {cuentaPorId.get(cuentaId) ?? cuentaId}
+                                        </p>
+                                      )}
+                                      {nota && (
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                                          {nota}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-1">
+                                      {onEdit && (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => onEdit(month as import("../accounting/core/types/accountingTypes").MonthCode, row)}
+                                        >
+                                          <Pencil className="size-3.5" />
+                                        </Button>
+                                      )}
+                                      {onDelete && (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => onDelete(month as import("../accounting/core/types/accountingTypes").MonthCode, row)}
+                                        >
+                                          <X className="size-3.5 text-red-500" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 );
               })}
             </tbody>
@@ -1144,7 +1283,8 @@ export const BackupView: FC<{
   onReload: () => void;
   onDownloadBackup: () => void;
   canDownload: boolean;
-}> = ({ onReload, onDownloadBackup, canDownload }) => (
+  onChangeMode?: () => void;
+}> = ({ onReload, onDownloadBackup, canDownload, onChangeMode }) => (
   <div className="space-y-4">
     <Card className="rounded-lg shadow-sm">
       <CardHeader className="flex-row items-center justify-between gap-3 p-4">
@@ -1159,9 +1299,16 @@ export const BackupView: FC<{
           Descargar respaldo
         </Button>
       </CardHeader>
-      <CardContent className="p-4 pt-0 text-sm text-slate-600 dark:text-slate-300">
-        Descarga una copia local del ledger actual o restaura un respaldo
-        exportado por la app.
+      <CardContent className="space-y-3 p-4 pt-0 text-sm text-slate-600 dark:text-slate-300">
+        <p>
+          Descarga una copia local del ledger actual o restaura un respaldo
+          exportado por la app.
+        </p>
+        {onChangeMode && (
+          <Button type="button" variant="outline" size="sm" onClick={onChangeMode}>
+            Cambiar forma de inicio (nube / copia / teléfono)
+          </Button>
+        )}
       </CardContent>
     </Card>
     <UploadBackupPanel onSuccess={onReload} />

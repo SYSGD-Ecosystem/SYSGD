@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuthSession } from "@/hooks/connection/useAuthSession";
+import { getLedgerRepository } from "./data/getLedgerRepository";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,8 @@ import {
 } from "./accountingMath";
 import { EmptyState, GcTcpSidebar } from "./components";
 import { DeleteWorkspaceDialog } from "./DeleteWorkspaceDialog";
+import { useEntryRegistry } from "./hooks/useEntryRegistry";
+import EntryFormDialog from "./EntryFormDialog";
 import { NomenclatorsView } from "./nomenclators/NomenclatorsView";
 import { PointOfSaleView } from "./pos/PointOfSaleView";
 import type { ProductPriceUpdate, ProductStockUpdate } from "./products/ProductEditDialogs";
@@ -79,10 +82,18 @@ const GC_TCP: FC = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [savingYear, setSavingYear] = useState(false);
   const [savingWallet, setSavingWallet] = useState(false);
+  const [dialogState, setDialogState] = useState<{
+    open: boolean;
+    type: "ingresos" | "gastos";
+    month: import("../accounting/core/types/accountingTypes").MonthCode;
+    editingEntry: import("../accounting/core/types/accountingTypes").DayAmountRow | null;
+  }>({ open: false, type: "ingresos", month: "ENE", editingEntry: null });
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/login");
   }, [authLoading, navigate, user]);
+
+  const repository = getLedgerRepository();
 
   const loadLedger = useCallback(async () => {
     if (!user) return;
@@ -133,6 +144,14 @@ const GC_TCP: FC = () => {
     analyses[0] ??
     null;
   const activeWorkspace = activeAnalysis?.workspace ?? null;
+
+  const entryRegistry = useEntryRegistry({
+    container: ledger,
+    activeWorkspaceId,
+    repository,
+    onDataChange: (updated) =>
+      setData((current) => (current ? { ...current, registro: updated } : current)),
+  });
 
   useEffect(() => {
     if (!baseActiveWorkspace) return;
@@ -974,9 +993,45 @@ console.log(activeWorkspace?.accounting.monedas);
           />
         );
       case "ingresos":
-        return <EntriesView workspace={activeWorkspace} type="ingresos" />;
-      case "gastos":
-        return <EntriesView workspace={activeWorkspace} type="gastos" />;
+      case "gastos": {
+        const entryType = selectedView === "ingresos" ? "ingresos" : "gastos";
+        return (
+          <>
+            <EntriesView
+              workspace={activeWorkspace}
+              type={entryType}
+              saving={entryRegistry.saving}
+              onAdd={(month) =>
+                setDialogState({ open: true, type: entryType, month, editingEntry: null })
+              }
+              onEdit={(month, row) =>
+                setDialogState({ open: true, type: entryType, month, editingEntry: row })
+              }
+              onDelete={(_month, row) => {
+                void entryRegistry.deleteEntry(entryType, row.id);
+              }}
+            />
+            <EntryFormDialog
+              open={dialogState.open && dialogState.type === entryType}
+              onOpenChange={(open) => {
+                if (!open) setDialogState((prev) => ({ ...prev, open: false }));
+              }}
+              type={entryType}
+              cuentas={activeWorkspace.accounting?.cuentasContables ?? []}
+              initialMonth={dialogState.month}
+              editingEntry={dialogState.editingEntry}
+              onSubmit={(input) => {
+                const entryId = dialogState.editingEntry?.id ?? null;
+                void (entryId
+                  ? entryRegistry.editEntry(entryType, entryId, input)
+                  : entryRegistry.addEntry(entryType, input)).then((ok) => {
+                  if (ok) setDialogState((prev) => ({ ...prev, open: false }));
+                });
+              }}
+            />
+          </>
+        );
+      }
       case "tributos":
         return (
           <TributosView workspace={activeWorkspace} analysis={activeAnalysis} />
