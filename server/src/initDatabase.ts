@@ -198,6 +198,16 @@ export async function initDatabase() {
     ADD COLUMN IF NOT EXISTS inventario_registro JSONB;
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS gctcp_spaces (
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      space_id TEXT NOT NULL,
+      data JSONB NOT NULL,
+      updated_at TIMESTAMP DEFAULT NOW(),
+      PRIMARY KEY (user_id, space_id)
+    );
+  `);
+
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS accounting_documents (
