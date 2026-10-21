@@ -8,7 +8,7 @@ import type { CatalogApp } from "@/types/appCatalog";
 
 // Enlace de respaldo por si el servidor no tiene versión publicada todavía.
 const GCTCP_PRO_FALLBACK_URL =
-	"https://github.com/lazaroysr96/gestor-contable-tcp-releases/releases/download/2.2.10/app-release.apk";
+	"https://github.com/lazaroysr96/gestor-contable-tcp-releases/releases";
 
 function catalogToCard(app: CatalogApp): AppCardProps {
 	const download =
