@@ -5,6 +5,7 @@ import { isAuthenticated } from "../middlewares/auth-jwt";
 import { getCurrentUserData } from "../controllers/users";
 import { InvitationController } from "../controllers/invitationControler";
 import { createDefaultUserData } from "../utils/billing";
+import { normalizeEmail } from "../utils/email";
 const router = express.Router();
 
 router.get("/status", (_req, res) => {
@@ -79,30 +80,56 @@ router.get("/:projectId", isAuthenticated, async (req, res) => {
 // POST /api/projects/:projectId/invite
 router.post("/invite/:projectId", isAuthenticated, async (req, res) => {
 	const { projectId } = req.params;
-	const { email, role } = req.body;
+	const { role } = req.body;
+	const email = typeof req.body.email === "string" ? normalizeEmail(req.body.email) : "";
 	const user = getCurrentUserData(req);
 	const senderId = user?.id;
 
+	if (!email) {
+		res.status(400).json({ error: "Email requerido" });
+		return;
+	}
+
 	try {
-		// Verificar si el usuario ya existe
-		const userResult = await pool.query(
-			"SELECT id, status FROM users WHERE email = $1",
-			[email],
-		);
-		
+		// Verificar si el usuario ya existe (sin distinguir mayúsculas)
+		const findReceiver = () =>
+			pool.query(
+				`SELECT id, status FROM users
+				 WHERE LOWER(BTRIM(email)) = $1
+				 ORDER BY (status = 'invited') ASC, (password IS NULL) ASC, created_at ASC NULLS LAST
+				 LIMIT 1`,
+				[email],
+			);
+
+		const userResult = await findReceiver();
 		let receiverId = userResult.rows[0]?.id || null;
-		let userExists = !!receiverId;
-		
+		const userExists = !!receiverId;
+
 		// Si el usuario no existe, crearlo primero
 		if (!userExists) {
 			const defaultUserData = createDefaultUserData();
-			const newUserResult = await pool.query(
-				`INSERT INTO users (email, status, privileges, user_data) 
-				 VALUES ($1, 'invited', 'user', $2) 
-				 RETURNING id`,
-				[email, JSON.stringify(defaultUserData)]
-			);
-			receiverId = newUserResult.rows[0].id;
+			try {
+				const newUserResult = await pool.query(
+					`INSERT INTO users (email, status, privileges, user_data)
+					 VALUES ($1, 'invited', 'user', $2)
+					 RETURNING id`,
+					[email, JSON.stringify(defaultUserData)]
+				);
+				receiverId = newUserResult.rows[0].id;
+			} catch (error) {
+				if (
+					typeof error === "object" &&
+					error !== null &&
+					"code" in error &&
+					(error as { code?: string }).code === "23505"
+				) {
+					const existing = await findReceiver();
+					receiverId = existing.rows[0]?.id ?? null;
+					if (!receiverId) throw error;
+				} else {
+					throw error;
+				}
+			}
 		}
 
 		// Ahora crear la invitación con el receiver_id válido

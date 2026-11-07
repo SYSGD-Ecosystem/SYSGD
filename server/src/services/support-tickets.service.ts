@@ -117,7 +117,10 @@ export class SupportTicketsService {
 		const data = parseCreateInput(input);
 
 		const userResult = await pool.query<{ id: string; name: string | null }>(
-			"SELECT id, name FROM users WHERE LOWER(email) = $1",
+			`SELECT id, name FROM users
+			 WHERE LOWER(BTRIM(email)) = $1
+			 ORDER BY (status = 'invited') ASC, (password IS NULL) ASC, created_at ASC NULLS LAST
+			 LIMIT 1`,
 			[data.email],
 		);
 		const matchedUser = userResult.rows[0];

@@ -50,7 +50,7 @@ class UserController {
         $input = json_decode(file_get_contents('php://input'), true);
         
         $name = $input['name'] ?? '';
-        $email = $input['email'] ?? '';
+        $email = strtolower(trim((string) ($input['email'] ?? '')));
         $password = $input['password'] ?? '';
 
         if (empty($name) || empty($email) || empty($password)) {
@@ -61,7 +61,7 @@ class UserController {
 
         try {
             $checkStmt = Database::getInstance()->prepare(
-                "SELECT id FROM users WHERE email = $1"
+                "SELECT id FROM users WHERE LOWER(BTRIM(email)) = $1 LIMIT 1"
             );
             $checkStmt->execute([$email]);
             

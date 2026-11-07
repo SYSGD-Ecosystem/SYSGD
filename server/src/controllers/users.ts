@@ -2,6 +2,7 @@ import type {  Request, Response } from "express";
 import { pool } from "../db";
 import bcrypt from "bcrypt";
 import { normalizeClientSource } from "../utils/client-source";
+import { normalizeEmail } from "../utils/email";
 import { UserService } from "../services/userService";
 import type { UpdatePlanData, UpdateUserData } from "../types/user";
 import { isSuperadminEmail } from "../utils/superadmin";
@@ -9,7 +10,8 @@ import { isSuperadminEmail } from "../utils/superadmin";
 
 export const register = async (req: Request, res: Response) => {
     //TODO: Implementar verificación de email
-    const { name, email, password } = req.body;
+    const { name, password } = req.body;
+    const email = typeof req.body.email === "string" ? normalizeEmail(req.body.email) : "";
     if (!name || !email || !password) {
         res.status(400).send("400");
         return;
@@ -25,7 +27,7 @@ export const register = async (req: Request, res: Response) => {
         }
 
         const userExists = await pool.query(
-            "SELECT id FROM users WHERE email = $1",
+            "SELECT id FROM users WHERE LOWER(BTRIM(email)) = $1 LIMIT 1",
             [email],
         );
         if (userExists.rows.length > 0) {
@@ -145,7 +147,7 @@ export const updateAdminUser = async (req: Request, res: Response) => {
     }
 
     if (email !== undefined) {
-        payload.email = email;
+        payload.email = typeof email === "string" ? normalizeEmail(email) : email;
     }
 
     if (password !== undefined) {
@@ -173,6 +175,16 @@ export const updateAdminUser = async (req: Request, res: Response) => {
         const updatedUser = await userService.updateUser(userId, payload);
         res.json(updatedUser);
     } catch (error) {
+        if (
+            typeof error === "object" &&
+            error !== null &&
+            "code" in error &&
+            (error as { code?: string }).code === "23505"
+        ) {
+            res.status(409).json({ error: "El email ya está registrado" });
+            return;
+        }
+
         const message = error instanceof Error ? error.message : "Error al actualizar usuario";
 
         if (message === "Usuario no encontrado") {

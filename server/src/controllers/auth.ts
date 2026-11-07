@@ -14,6 +14,7 @@ import { getClientIp, isIpFromCuba } from "../utils/ip";
 import { AdminTwoFactorService } from "../services/adminTwoFactor.service";
 import { LoginSecurityService } from "../services/loginSecurity.service";
 import { normalizeClientSource, type ClientSource } from "../utils/client-source";
+import { normalizeEmail } from "../utils/email";
 import { EmailVerificationService } from "../services/emailVerification.service";
 import { isSuperadminEmail } from "../utils/superadmin";
 import { notifySuperadminOfAdminLogin } from "../services/admin-login-alert.service";
@@ -743,16 +744,17 @@ export const completeInvitedUserRegistration = async (
 	res: Response,
 ) => {
 	const { userId, name, password } = req.body;
+	const email = typeof req.body.email === "string" ? normalizeEmail(req.body.email) : "";
 
-	if (!userId || !name || !password) {
+	if (!userId || !name || !password || !email) {
 		res.status(400).json({ message: "Faltan datos requeridos" });
 		return;
 	}
 
 	try {
 		const defaultUserData = createDefaultUserData();
-		const userCheck = await findUserByemail(req.body.email);
-		if (!userCheck || userCheck.status !== "invited") {
+		const userCheck = await findUserByemail(email);
+		if (!userCheck || userCheck.id !== userId || userCheck.status !== "invited") {
 			res
 				.status(400)
 				.json({ message: "Usuario no válido o ya completó registro" });
@@ -770,7 +772,7 @@ export const completeInvitedUserRegistration = async (
 
 		const token = generateJWT({
 			id: userId,
-			email: req.body.email,
+			email: userCheck.email,
 			name: name,
 			privileges: userCheck.privileges,
 		});
@@ -782,7 +784,7 @@ export const completeInvitedUserRegistration = async (
 			token: token,
 			user: {
 				id: userId,
-				email: req.body.email,
+				email: userCheck.email,
 				name: name,
 				status: "active",
 			},

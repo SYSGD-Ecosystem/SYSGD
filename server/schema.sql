@@ -23,6 +23,12 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email);
 
+-- Unicidad real de correo: evita duplicados por mayúsculas/espacios
+-- (Foo@x.com vs foo@x.com). Requiere que no existan duplicados previos;
+-- en bases existentes aplicar migrations-manual/deploy-users-email-unique.sql.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower_unique
+ON users (LOWER(BTRIM(email)));
+
 CREATE TABLE IF NOT EXISTS users_logins (
   id SERIAL PRIMARY KEY,
   user_id UUID REFERENCES users(id),

@@ -11,6 +11,7 @@ import { registerIpRateLimit } from "../middlewares/rate-limit";
 import { isContabilidadSource, normalizeClientSource } from "../utils/client-source";
 import { EmailVerificationService } from "../services/emailVerification.service";
 import { createDefaultUserData } from "../utils/billing";
+import { normalizeEmail } from "../utils/email";
 import { isSuperadminEmail } from "../utils/superadmin";
 
 const router = Router();
@@ -167,8 +168,9 @@ router.get("/me", getCurrentUser);
 
 // Registro de nuevo usuario (primero se vuelve admin)
 router.post("/register", registerIpRateLimit, async (req, res) => {
-  const { name, email, password } = req.body;
-  
+  const { name, password } = req.body;
+  const email = typeof req.body.email === "string" ? normalizeEmail(req.body.email) : "";
+
   if (!name || !email || !password) {
     res.status(400).json({ error: "Datos incompletos" });
     return;
@@ -203,7 +205,16 @@ router.post("/register", registerIpRateLimit, async (req, res) => {
     // Verificar si es el primer usuario (será admin)
     const { rows: existingUsers } = await pool.query("SELECT COUNT(*) FROM users");
     const isFirstUser = parseInt(existingUsers[0].count) === 0;
-    
+
+    const { rows: emailExists } = await pool.query(
+      "SELECT id FROM users WHERE LOWER(BTRIM(email)) = $1 LIMIT 1",
+      [email],
+    );
+    if (emailExists.length > 0) {
+      res.status(409).json({ error: "El email ya está registrado" });
+      return;
+    }
+
     const { rows } = await pool.query(
       `INSERT INTO users (name, email, password, privileges, status, user_data, registration_source, registration_meta) 
        VALUES ($1, $2, crypt($3, gen_salt('bf')), $4, 'active', $5, $6, $7) 
@@ -467,7 +478,8 @@ router.get("/", async (req, res) => {
 
 // Crear usuario (admin)
 router.post("/", async (req, res) => {
-  const { name, email, password, privileges, status, user_data } = req.body;
+  const { name, password, privileges, status, user_data } = req.body;
+  const email = typeof req.body.email === "string" ? normalizeEmail(req.body.email) : "";
 
   if (!name || !email || !password) {
     res.status(400).json({ error: "Faltan datos obligatorios" });
@@ -475,6 +487,15 @@ router.post("/", async (req, res) => {
   }
 
   try {
+    const { rows: emailExists } = await pool.query(
+      "SELECT id FROM users WHERE LOWER(BTRIM(email)) = $1 LIMIT 1",
+      [email],
+    );
+    if (emailExists.length > 0) {
+      res.status(409).json({ error: "El usuario ya existe" });
+      return;
+    }
+
     // Merge user_data con valores por defecto
     const finalUserData = {
       ...DEFAULT_USER_DATA,

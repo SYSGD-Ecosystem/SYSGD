@@ -5,6 +5,7 @@ import { getCurrentUserData } from "../controllers/users";
 import { emitNewMessage } from "../socket";
 import { deleteObjectByUrl } from "../services/s3";
 import { decryptField } from "../services/field-encryption.service";
+import { normalizeEmail } from "../utils/email";
 
 /** Título de conversación descifrado (los canales de proyecto se guardan cifrados). */
 const decryptConversationRow = <T extends { title?: unknown }>(row: T): T => ({
@@ -368,7 +369,13 @@ router.post("/conversations/:conversationId/members", isAuthenticated, async (re
 
     let userId = user_id as string | undefined;
     if (!userId) {
-      const userRes = await pool.query(`SELECT id FROM users WHERE email = $1`, [email]);
+      const userRes = await pool.query(
+        `SELECT id FROM users
+         WHERE LOWER(BTRIM(email)) = $1
+         ORDER BY (status = 'invited') ASC, (password IS NULL) ASC, created_at ASC NULLS LAST
+         LIMIT 1`,
+        [normalizeEmail(String(email))],
+      );
       if (userRes.rowCount === 0) {
         res.status(404).json({ error: "Usuario no encontrado" });
         return;
@@ -550,17 +557,24 @@ router.post("/conversations/create", isAuthenticated, async (req: Request, res: 
 
     if (Array.isArray(members) && members.length > 0) {
       // members: array of emails
-      const placeholders = members.map((_, i) => `$${i + 1}`).join(",");
+      const normalizedMembers = members.map((member) => normalizeEmail(String(member)));
+      const placeholders = normalizedMembers.map((_, i) => `$${i + 1}`).join(",");
       const usersRes = await client.query(
-        `SELECT id, email FROM users WHERE email IN (${placeholders})`,
-        members
+        `SELECT id, email FROM users WHERE LOWER(BTRIM(email)) IN (${placeholders})`,
+        normalizedMembers
       );
-      if (usersRes.rowCount !== members.length) {
+      if (usersRes.rowCount !== normalizedMembers.length) {
         throw new Error("Alguno de los miembros no existe");
       }
       memberIds = usersRes.rows.map((r) => r.id);
     } else if (contactemail) {
-      const ures = await client.query(`SELECT id FROM users WHERE email = $1`, [contactemail]);
+      const ures = await client.query(
+        `SELECT id FROM users
+         WHERE LOWER(BTRIM(email)) = $1
+         ORDER BY (status = 'invited') ASC, (password IS NULL) ASC, created_at ASC NULLS LAST
+         LIMIT 1`,
+        [normalizeEmail(String(contactemail))],
+      );
       if (ures.rowCount === 0) {
         throw new Error("Usuario de contacto no existe");
       }
@@ -643,7 +657,11 @@ router.post("/conversations/invite", isAuthenticated, async (req: Request, res: 
     return;
   }
 
-  const { conversation_id, receiver_email } = req.body;
+  const { conversation_id } = req.body;
+  const receiver_email =
+    typeof req.body.receiver_email === "string"
+      ? normalizeEmail(req.body.receiver_email)
+      : "";
   if (!conversation_id || !receiver_email) {
     res.status(400).json({ error: "conversation_id y receiver_email requeridos" });
     return;
@@ -713,8 +731,8 @@ router.get("/conversations/invitations", isAuthenticated, async (req: Request, r
     }
 
     const invites = await pool.query(
-      `SELECT ci.*, c.title, c.type, u.email as sender_email FROM conversation_invitations ci LEFT JOIN conversations c ON c.id = ci.conversation_id LEFT JOIN users u ON u.id = ci.sender_id WHERE ci.receiver_email = $1 AND ci.status = 'pending' ORDER BY ci.created_at DESC;`,
-      [email]
+      `SELECT ci.*, c.title, c.type, u.email as sender_email FROM conversation_invitations ci LEFT JOIN conversations c ON c.id = ci.conversation_id LEFT JOIN users u ON u.id = ci.sender_id WHERE LOWER(BTRIM(ci.receiver_email)) = $1 AND ci.status = 'pending' ORDER BY ci.created_at DESC;`,
+      [normalizeEmail(email)]
     );
 
     res.json(invites.rows.map(decryptConversationRow));
@@ -766,7 +784,7 @@ router.post("/conversations/invite/accept", isAuthenticated, async (req: Request
       return;
     }
     const email = userRes.rows[0].email;
-    if (!email || email.toLowerCase() !== invite.receiver_email.toLowerCase()) {
+    if (!email || normalizeEmail(email) !== normalizeEmail(invite.receiver_email)) {
       await client.query("ROLLBACK");
       res.status(403).json({ error: "La invitación no está dirigida al email de este usuario" });
       return;

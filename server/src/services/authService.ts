@@ -1,6 +1,7 @@
 import { pool } from "../db";
 import { createDefaultUserData } from "../utils/billing";
 import type { ClientSource } from "../utils/client-source";
+import { normalizeEmail } from "../utils/email";
 
 export const createUser = async (
 	name: string,
@@ -13,7 +14,14 @@ export const createUser = async (
 		const defaultUserData = createDefaultUserData();
 		const result = await pool.query(
 			"INSERT INTO users (name, email, password, privileges, user_data, registration_source) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-			[name, email, password, privileges, JSON.stringify(defaultUserData), registrationSource],
+			[
+				name,
+				normalizeEmail(email),
+				password,
+				privileges,
+				JSON.stringify(defaultUserData),
+				registrationSource,
+			],
 		);
 
 		return {
@@ -40,9 +48,13 @@ export const createUser = async (
 };
 
 export const findUserByemail = async (email: string) => {
-	const result = await pool.query("SELECT * FROM users WHERE email = $1", [
-		email,
-	]);
+	const result = await pool.query(
+		`SELECT * FROM users
+		 WHERE LOWER(BTRIM(email)) = $1
+		 ORDER BY (status = 'invited') ASC, (password IS NULL) ASC, created_at ASC NULLS LAST
+		 LIMIT 1`,
+		[normalizeEmail(email)],
+	);
 	return result.rows[0] || null;
 };
 

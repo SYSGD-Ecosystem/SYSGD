@@ -10,6 +10,7 @@ import type {
   UpdatePlanData,
 } from "../types/user";
 import { DEFAULT_USER_DATA, DEFAULT_BILLING_LIMITS } from "../types/user";
+import { normalizeEmail } from "../utils/email";
 import { activatePlanBilling, normalizeBillingState } from "./billing-credits.service";
 
 export class UserService {
@@ -46,7 +47,14 @@ export class UserService {
       `INSERT INTO users (name, email, password, privileges, status, user_data) 
        VALUES ($1, $2, $3, $4, $5, $6) 
        RETURNING id, name, email, privileges, status, is_public, user_data, created_at`,
-      [data.name, data.email, hashedPassword, privileges, status, DEFAULT_USER_DATA]
+      [
+        data.name,
+        normalizeEmail(data.email),
+        hashedPassword,
+        privileges,
+        status,
+        DEFAULT_USER_DATA,
+      ]
     );
     
     return rows[0];
@@ -65,7 +73,7 @@ export class UserService {
 
     if (data.email) {
       fields.push(`email = $${idx++}`);
-      values.push(data.email);
+      values.push(normalizeEmail(data.email));
     }
 
     if (data.password) {

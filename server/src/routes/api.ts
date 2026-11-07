@@ -15,6 +15,7 @@ import { createDefaultUserData } from "../utils/billing";
 import { getClientIp, isIpFromCuba } from "../utils/ip";
 import { registerIpRateLimit } from "../middlewares/rate-limit";
 import { isContabilidadSource, normalizeClientSource } from "../utils/client-source";
+import { normalizeEmail } from "../utils/email";
 import { EmailVerificationService } from "../services/emailVerification.service";
 
 const router = Router();
@@ -335,12 +336,22 @@ router.post("/users", isAuthenticated, async (req, res) => {
 		res.status(403).json({ error: "No autorizado" });
 		return;
 	}
-	const { name, email, password, privileges } = req.body;
+	const { name, password, privileges } = req.body;
+	const email = typeof req.body.email === "string" ? normalizeEmail(req.body.email) : "";
 	if (!name || !email || !password || !privileges) {
 		res.status(400).json({ error: "Faltan datos" });
 		return;
 	}
 	try {
+		const { rows: emailExists } = await pool.query(
+			"SELECT id FROM users WHERE LOWER(BTRIM(email)) = $1 LIMIT 1",
+			[email],
+		);
+		if (emailExists.length > 0) {
+			res.status(409).json({ error: "Usuario ya existe" });
+			return;
+		}
+
 		await pool.query(
 			"INSERT INTO users (name, email, password, privileges) VALUES ($1,$2,crypt($3, gen_salt('bf')),$4)",
 			[name, email, password, privileges],
@@ -380,12 +391,22 @@ router.post("/admin/users", isAuthenticated, async (req, res) => {
 		res.status(403).json({ error: "Acceso denegado" });
 		return;
 	}
-	const { name, email, password, privileges } = req.body;
+	const { name, password, privileges } = req.body;
+	const email = typeof req.body.email === "string" ? normalizeEmail(req.body.email) : "";
 	if (!name || !email || !password || !privileges) {
 		res.status(400).json({ error: "Faltan datos obligatorios." });
 		return;
 	}
 	try {
+		const { rows: emailExists } = await pool.query(
+			"SELECT id FROM users WHERE LOWER(BTRIM(email)) = $1 LIMIT 1",
+			[email],
+		);
+		if (emailExists.length > 0) {
+			res.status(409).json({ error: "Usuario existe" });
+			return;
+		}
+
 		await pool.query(
 			"INSERT INTO users (name, email, password, privileges) VALUES ($1,$2,crypt($3, gen_salt('bf')),$4)",
 			[name, email, password, privileges],
@@ -401,7 +422,9 @@ router.post("/admin/users", isAuthenticated, async (req, res) => {
 // PUT /api/admin/users/:id
 router.put("/admin/users/:id", isAuthenticated, isAdmin, async (req, res) => {
 	const { id } = req.params;
-	const { name, email, password, privileges } = req.body;
+	const { name, password, privileges } = req.body;
+	const email =
+		typeof req.body.email === "string" ? normalizeEmail(req.body.email) : null;
 	if (!id) {
 		res.status(400).json({ error: "Id requerido" });
 		return;
@@ -412,7 +435,16 @@ router.put("/admin/users/:id", isAuthenticated, isAdmin, async (req, res) => {
 			[name, email, password || null, privileges, id],
 		);
 		res.sendStatus(204);
-	} catch {
+	} catch (error) {
+		if (
+			typeof error === "object" &&
+			error !== null &&
+			"code" in error &&
+			(error as { code?: string }).code === "23505"
+		) {
+			res.status(409).json({ error: "El email ya está registrado" });
+			return;
+		}
 		res.status(500).json({ error: "Error al actualizar" });
 	}
 });
@@ -733,7 +765,8 @@ router.get("/me", getCurrentUser);
 
 router.post("/register", registerIpRateLimit, async (req: Request, res: Response) => {
 	//TODO: Implementar verificación de email
-	const { name, email, password } = req.body;
+	const { name, password } = req.body;
+	const email = typeof req.body.email === "string" ? normalizeEmail(req.body.email) : "";
 	if (!name || !email || !password) {
 		res.status(400).send("400");
 		return;
@@ -764,7 +797,7 @@ router.post("/register", registerIpRateLimit, async (req: Request, res: Response
 		}
 
 		const userExists = await pool.query(
-			"SELECT id FROM users WHERE email = $1",
+			"SELECT id FROM users WHERE LOWER(BTRIM(email)) = $1 LIMIT 1",
 			[email],
 		);
 		if (userExists.rows.length > 0) {
@@ -908,7 +941,9 @@ router.put(
 	async (req: Request, res: Response) => {
 		const userId = req.params.id;
 
-		const { name, email } = req.body;
+		const { name } = req.body;
+		const email =
+			typeof req.body.email === "string" ? normalizeEmail(req.body.email) : "";
 		if (!userId || (!name && !email)) {
 			res.status(400).json({ error: "Datos inválidos" });
 			return;
@@ -916,7 +951,7 @@ router.put(
 		try {
 			if (email) {
 				const exists = await pool.query(
-					"SELECT id FROM users WHERE email = $1 AND id <> $2",
+					"SELECT id FROM users WHERE LOWER(BTRIM(email)) = $1 AND id <> $2",
 					[email, userId],
 				);
 				if (exists.rows.length > 0) {

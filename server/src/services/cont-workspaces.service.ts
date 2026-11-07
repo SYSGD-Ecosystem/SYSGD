@@ -1,4 +1,5 @@
 import { pool } from "../db";
+import { normalizeEmail } from "../utils/email";
 import { EmailService } from "./emailService";
 import { LedgerEncryptionService, type EncryptedData } from "./ledger-encryption.service";
 
@@ -274,34 +275,61 @@ export const inviteWorkspaceMember = async (
 	role?: string,
 ): Promise<void> => {
 	const rolFinal = role && ROLES_VALIDOS.includes(role) ? role : "member";
+	const normalizedEmail = normalizeEmail(email);
 
-	const userResult = await pool.query<{ id: string }>(
-		`SELECT id FROM users WHERE email = $1`,
-		[email],
-	);
+	const findReceiver = () =>
+		pool.query<{ id: string }>(
+			`SELECT id FROM users
+			 WHERE LOWER(BTRIM(email)) = $1
+			 ORDER BY (status = 'invited') ASC, (password IS NULL) ASC, created_at ASC NULLS LAST
+			 LIMIT 1`,
+			[normalizedEmail],
+		);
+
+	const userResult = await findReceiver();
 	let receiverId = userResult.rows[0]?.id ?? null;
 
 	if (!receiverId) {
 		const { createDefaultUserData } = await import("../utils/billing");
-		const newUser = await pool.query<{ id: string }>(
-			`INSERT INTO users (email, status, privileges, user_data)
-			 VALUES ($1, 'invited', 'user', $2)
-			 RETURNING id`,
-			[email, JSON.stringify(createDefaultUserData())],
-		);
-		receiverId = newUser.rows[0].id;
+		try {
+			const newUser = await pool.query<{ id: string }>(
+				`INSERT INTO users (email, status, privileges, user_data)
+				 VALUES ($1, 'invited', 'user', $2)
+				 RETURNING id`,
+				[normalizedEmail, JSON.stringify(createDefaultUserData())],
+			);
+			receiverId = newUser.rows[0].id;
+		} catch (error) {
+			if (
+				typeof error === "object" &&
+				error !== null &&
+				"code" in error &&
+				(error as { code?: string }).code === "23505"
+			) {
+				const existing = await findReceiver();
+				receiverId = existing.rows[0]?.id ?? null;
+				if (!receiverId) throw error;
+			} else {
+				throw error;
+			}
+		}
 	}
 
 	await pool.query(
 		`INSERT INTO invitations (sender_id, receiver_id, receiver_email, resource_type, resource_id, role)
 		 VALUES ($1, $2, $3, 'workspace', $4, $5)`,
-		[senderId, receiverId, email, workspaceId, rolFinal],
+		[senderId, receiverId, normalizedEmail, workspaceId, rolFinal],
 	);
 
 	// El vendedor solo se entera de que lo invitaron si recibe un correo:
 	// sin esto, la invitación es invisible hasta que abre la app y entra a
 	// Espacios en la nube. El fallo de email NO deshace la invitación.
-	await notificarInvitacionWorkspace({ workspaceId, senderId, email, rol: rolFinal });
+	await notificarInvitacionWorkspace({
+		workspaceId,
+		senderId,
+		email: normalizedEmail,
+		rol: rolFinal,
+	});
 };
 
 /**

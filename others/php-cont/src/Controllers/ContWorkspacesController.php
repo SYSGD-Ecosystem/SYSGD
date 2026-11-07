@@ -415,7 +415,12 @@ class ContWorkspacesController
                 $role = 'member';
             }
 
-            $stmt = Database::getInstance()->prepare("SELECT id FROM users WHERE email = :email");
+            $stmt = Database::getInstance()->prepare(
+                "SELECT id FROM users
+                 WHERE LOWER(BTRIM(email)) = :email
+                 ORDER BY (status = 'invited') ASC, (password IS NULL) ASC, created_at ASC NULLS LAST
+                 LIMIT 1"
+            );
             $stmt->execute(['email' => $email]);
             $existingUser = $stmt->fetch();
 

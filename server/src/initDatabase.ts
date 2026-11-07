@@ -55,9 +55,28 @@ export async function initDatabase() {
     ADD COLUMN IF NOT EXISTS registration_meta JSONB NOT NULL DEFAULT '{}'::jsonb;
   `);
 
+  // El primer índice distingue mayúsculas/minúsculas; el segundo impide
+  // duplicados reales por correo (p. ej. Foo@x.com vs foo@x.com). Si la base
+  // ya tiene duplicados, no tumbamos el arranque: se avisa para aplicar la
+  // migración manual.
   await pool.query(`
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email);
+    DO $$
+    BEGIN
+      BEGIN
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email);
+      EXCEPTION
+        WHEN unique_violation THEN
+          RAISE WARNING 'No se pudo crear idx_users_email_unique: existen correos duplicados. Ejecuta migrations-manual/deploy-users-email-unique.sql';
+      END;
 
+      BEGIN
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower_unique
+        ON users (LOWER(BTRIM(email)));
+      EXCEPTION
+        WHEN unique_violation THEN
+          RAISE WARNING 'No se pudo crear idx_users_email_lower_unique: existen correos duplicados. Ejecuta migrations-manual/deploy-users-email-unique.sql';
+      END;
+    END $$;
   `);
 
   await pool.query(`

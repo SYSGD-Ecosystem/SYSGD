@@ -18,7 +18,7 @@ class AuthController {
     public function login(): void {
         $input = json_decode(file_get_contents('php://input'), true);
         
-        $email = $input['email'] ?? '';
+        $email = strtolower(trim((string) ($input['email'] ?? '')));
         $password = $input['password'] ?? '';
 
         if (empty($email) || empty($password)) {
@@ -28,7 +28,12 @@ class AuthController {
         }
 
         try {
-            $stmt = Database::getInstance()->prepare("SELECT * FROM users WHERE email = :email");
+            $stmt = Database::getInstance()->prepare(
+                "SELECT * FROM users
+                 WHERE LOWER(BTRIM(email)) = :email
+                 ORDER BY (status = 'invited') ASC, (password IS NULL) ASC, created_at ASC NULLS LAST
+                 LIMIT 1"
+            );
             $stmt->execute(['email' => $email]);
             $user = $stmt->fetch();
 
@@ -120,7 +125,7 @@ class AuthController {
 
     public function checkUser(): void {
         $input = json_decode(file_get_contents('php://input'), true);
-        $email = $input['email'] ?? '';
+        $email = strtolower(trim((string) ($input['email'] ?? '')));
 
         if (empty($email)) {
             http_response_code(400);
@@ -129,7 +134,9 @@ class AuthController {
         }
 
         try {
-            $stmt = Database::getInstance()->prepare("SELECT id FROM users WHERE email = $1");
+            $stmt = Database::getInstance()->prepare(
+                "SELECT id FROM users WHERE LOWER(BTRIM(email)) = $1 LIMIT 1"
+            );
             $stmt->execute([$email]);
             $user = $stmt->fetch();
 

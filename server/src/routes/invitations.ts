@@ -3,6 +3,7 @@ import { Router, type Request, type Response } from "express";
 import { pool } from "../db";
 import { isAuthenticated } from "../middlewares/auth-jwt";
 import { getCurrentUserData } from "../controllers/users";
+import { normalizeEmail } from "../utils/email";
 
 const router = Router();
 
@@ -20,7 +21,13 @@ router.get("/", isAuthenticated, async (req: Request, res: Response) => {
          JOIN users u ON i.sender_id = u.id
          LEFT JOIN projects p ON i.resource_id = p.id AND i.resource_type = 'project'
          LEFT JOIN cont_workspaces w ON i.resource_id = w.id AND i.resource_type = 'workspace'
-         WHERE i.receiver_id = $1 AND i.status = 'pending'`,
+         WHERE (
+           i.receiver_id = $1
+           OR LOWER(BTRIM(i.receiver_email)) = (
+             SELECT LOWER(BTRIM(email)) FROM users WHERE id = $1
+           )
+         )
+         AND i.status = 'pending'`,
 			[user_id],
 		);
 		res.json(result.rows);
@@ -151,7 +158,13 @@ router.post(
 			const { rows: invitationRows } = await pool.query(
 				`SELECT id, resource_type, resource_id, role, receiver_email
 				 FROM invitations
-				 WHERE receiver_id = $1 AND status = 'pending'
+				 WHERE (
+				   receiver_id = $1
+				   OR LOWER(BTRIM(receiver_email)) = (
+				     SELECT LOWER(BTRIM(email)) FROM users WHERE id = $1
+				   )
+				 )
+				 AND status = 'pending'
 				 ORDER BY created_at DESC
 				 LIMIT 1`,
 				[tokenData.user_id]
@@ -171,7 +184,10 @@ router.post(
 				[userId]
 			);
 
-			if (userRows.length === 0 || userRows[0].email !== invitation.receiver_email) {
+			if (
+				userRows.length === 0 ||
+				normalizeEmail(userRows[0].email) !== normalizeEmail(invitation.receiver_email)
+			) {
 				await pool.query('ROLLBACK');
 				res.status(403).json({ error: 'Esta invitación no es para ti' });
 				return;

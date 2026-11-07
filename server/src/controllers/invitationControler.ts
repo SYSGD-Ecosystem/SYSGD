@@ -4,6 +4,7 @@ import { Request, Response } from 'express';
 import { pool } from '../db';
 import crypto from 'crypto';
 import { EmailService } from '../services/emailService';
+import { normalizeEmail } from '../utils/email';
 import { getCurrentUserData } from './users';
 
 export class InvitationController {
@@ -12,7 +13,8 @@ export class InvitationController {
    */
   static async sendProjectInvitation(req: Request, res: Response) {
     const { projectId } = req.params;
-    const { email, role } = req.body;
+    const { role } = req.body;
+    const email = typeof req.body.email === 'string' ? normalizeEmail(req.body.email) : '';
     const user = getCurrentUserData(req);
     const senderId = user?.id;
 
@@ -42,9 +44,12 @@ export class InvitationController {
 
       const project = projectRows[0];
 
-      // Buscar si el usuario existe por email
+      // Buscar si el usuario existe por email (sin distinguir mayúsculas)
       const { rows: recipientRows } = await pool.query(
-        'SELECT id, name FROM users WHERE email = $1',
+        `SELECT id, name FROM users
+         WHERE LOWER(BTRIM(email)) = $1
+         ORDER BY (status = 'invited') ASC, (password IS NULL) ASC, created_at ASC NULLS LAST
+         LIMIT 1`,
         [email]
       );
 
@@ -63,8 +68,8 @@ export class InvitationController {
       // Buscar la invitación recién creada
       const { rows: invitationRows } = await pool.query(
         `SELECT id FROM invitations 
-         WHERE receiver_email = $1 
-         AND resource_type = 'project' 
+         WHERE LOWER(BTRIM(receiver_email)) = $1
+         AND resource_type = 'project'
          AND resource_id = $2 
          AND status = 'pending'
          ORDER BY created_at DESC
@@ -189,8 +194,8 @@ export class InvitationController {
       const { rows: invitationRows } = await pool.query(
         `SELECT id, resource_type, resource_id, role
          FROM invitations
-         WHERE (receiver_id = $1 OR receiver_email = (
-           SELECT email FROM users WHERE id = $1
+         WHERE (receiver_id = $1 OR LOWER(BTRIM(receiver_email)) = (
+           SELECT LOWER(BTRIM(email)) FROM users WHERE id = $1
          ))
          AND status = 'pending'
          ORDER BY created_at DESC

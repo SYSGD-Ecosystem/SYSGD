@@ -4,6 +4,7 @@ import { Request, Response } from 'express';
 import { pool } from '../db';
 import { EmailVerificationService } from '../services/emailVerification.service';
 import { EmailService } from '../services/emailService';
+import { normalizeEmail } from '../utils/email';
 import crypto from 'crypto';
 
 export class VerificationController {
@@ -89,7 +90,7 @@ export class VerificationController {
    * Solicita un token de recuperación de contraseña
    */
   static async requestPasswordReset(req: Request, res: Response) {
-    const { email } = req.body;
+    const email = typeof req.body.email === 'string' ? normalizeEmail(req.body.email) : '';
 
     if (!email) {
       res.status(400).json({ error: 'Email requerido' });
@@ -99,7 +100,10 @@ export class VerificationController {
     try {
       // Buscar usuario
       const { rows: userRows } = await pool.query(
-        'SELECT id, name, email, email_verified FROM users WHERE email = $1',
+        `SELECT id, name, email, email_verified FROM users
+         WHERE LOWER(BTRIM(email)) = $1
+         ORDER BY (status = 'invited') ASC, (password IS NULL) ASC, created_at ASC NULLS LAST
+         LIMIT 1`,
         [email]
       );
 
