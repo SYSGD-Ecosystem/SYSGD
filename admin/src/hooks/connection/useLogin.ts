@@ -29,6 +29,7 @@ type LoginResult = {
 	info: string
 	success: boolean
 	twoFactorRequired: boolean
+	token: string | null
 }
 
 export function useLogin(): LoginResult {
@@ -38,12 +39,14 @@ export function useLogin(): LoginResult {
 	const [success, setSuccess] = useState(false)
 	const [twoFactorRequired, setTwoFactorRequired] = useState(false)
 	const [twoFactorToken, setTwoFactorToken] = useState("")
+	const [token, setToken] = useState<string | null>(null)
 
 	const resetTwoFactor = () => {
 		setTwoFactorRequired(false)
 		setTwoFactorToken("")
 		setInfo("")
 		setError("")
+		setToken(null)
 	}
 
 	const login = async ({ email, password }: LoginData) => {
@@ -53,6 +56,7 @@ export function useLogin(): LoginResult {
 		setSuccess(false)
 		setTwoFactorRequired(false)
 		setTwoFactorToken("")
+		setToken(null)
 
 		try {
 			const res = await apiFetch<LoginResponse>("/api/auth/login", {
@@ -71,7 +75,7 @@ export function useLogin(): LoginResult {
 			}
 
 			if (res?.token) {
-				localStorage.setItem("token", res.token)
+				setToken(res.token)
 				setSuccess(true)
 				return
 			}
@@ -113,6 +117,7 @@ export function useLogin(): LoginResult {
 		setError("")
 		setInfo("")
 		setSuccess(false)
+		setToken(null)
 
 		try {
 			const res = await apiFetch<LoginResponse>("/api/auth/verify-2fa", {
@@ -124,7 +129,7 @@ export function useLogin(): LoginResult {
 			})
 
 			if (res?.token) {
-				localStorage.setItem("token", res.token)
+				setToken(res.token)
 				setSuccess(true)
 				setTwoFactorRequired(false)
 				setTwoFactorToken("")
@@ -187,5 +192,6 @@ export function useLogin(): LoginResult {
 		info,
 		success,
 		twoFactorRequired,
+		token,
 	}
 }

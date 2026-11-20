@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Pencil, Plus, Star, Trash2, Upload } from "lucide-react"
 
 import { useAppCatalog } from "../../../hooks/connection/useAppCatalog"
+import { getAuthToken } from "../../../lib/auth-storage"
 import { toPublicSupabaseUrl } from "../../../lib/images"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card"
 import { Input } from "../../../components/ui/input"
@@ -102,7 +103,7 @@ export default function CatalogPage() {
 		// Los artículos se leen por el endpoint público (sin auth requerida extra)
 		try {
 			const base = import.meta.env.VITE_SERVER_URL || "http://localhost:3000"
-			const token = localStorage.getItem("token")
+			const token = getAuthToken()
 			const res = await fetch(
 				`${base}/api/apps/${selectedArticlesApp.slug}/articles`,
 				{ headers: token ? { Authorization: `Bearer ${token}` } : {} },

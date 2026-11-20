@@ -23,6 +23,7 @@ import {
 import { useState } from "react";
 import useTheme from "../hooks/useTheme";
 import { cn } from "../lib/utils";
+import { clearAuthSession } from "../lib/auth-storage";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 const navigation = [
@@ -47,16 +48,15 @@ export function AdminSidebar() {
 	const { theme, setTheme } = useTheme();
 
 	const handleLogout = () => {
-		localStorage.removeItem("sysgd_auth");
-		localStorage.removeItem("token");
-		navigate("/login");
+		clearAuthSession();
+		navigate("/", { replace: true });
 	};
 
 	const toggleTheme = () => {
 		setTheme(theme === "dark" ? "light" : "dark");
 	};
 
-	const SidebarContent = () => (
+	const renderSidebarContent = () => (
 		<>
 			<div className="flex items-center gap-3 px-4 py-6 border-b border-sidebar-border">
 				<div className="flex items-center justify-center w-10 h-10 rounded-lg bg-sidebar-primary">
@@ -146,12 +146,12 @@ export function AdminSidebar() {
 					mobileMenuOpen ? "translate-x-0" : "-translate-x-full",
 				)}
 			>
-				<SidebarContent />
+				{renderSidebarContent()}
 			</aside>
 
 			{/* Desktop sidebar */}
 			<aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-sidebar">
-				<SidebarContent />
+				{renderSidebarContent()}
 			</aside>
 		</>
 	);

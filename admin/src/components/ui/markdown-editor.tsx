@@ -15,6 +15,7 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { Button } from "./button"
 import { Textarea } from "./textarea"
+import { getAuthToken } from "../../lib/auth-storage"
 
 interface MarkdownEditorProps {
 	value: string
@@ -81,7 +82,7 @@ const MarkdownEditor: FC<MarkdownEditorProps> = ({
 			formData.append("file", file)
 
 			const base = import.meta.env.VITE_SERVER_URL || "http://localhost:3000"
-			const token = localStorage.getItem("token")
+			const token = getAuthToken()
 			const response = await fetch(`${base}/api/uploads`, {
 				method: "POST",
 				headers: token ? { Authorization: `Bearer ${token}` } : {},

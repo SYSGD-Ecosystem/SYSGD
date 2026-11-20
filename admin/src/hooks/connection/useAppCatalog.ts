@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 
 import { apiFetch } from "../../lib/api"
+import { getAuthToken } from "../../lib/auth-storage"
 import type {
 	AppCategory,
 	AppReview,
@@ -113,7 +114,7 @@ export function useAppCatalog() {
 	const uploadIcon = async (file: File): Promise<string> => {
 		const form = new FormData()
 		form.append("file", file)
-		const token = localStorage.getItem("token")
+		const token = getAuthToken()
 		const base = import.meta.env.VITE_SERVER_URL || "http://localhost:3000"
 		const res = await fetch(`${base}/api/uploads`, {
 			method: "POST",

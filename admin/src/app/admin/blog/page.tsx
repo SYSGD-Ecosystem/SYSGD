@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Pencil, Plus, Trash2, Upload } from "lucide-react"
 
 import { useBlog } from "../../../hooks/connection/useBlog"
+import { getAuthToken } from "../../../lib/auth-storage"
 import MarkdownEditor from "../../../components/ui/markdown-editor"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card"
 import { Input } from "../../../components/ui/input"
@@ -65,7 +66,7 @@ export default function BlogPage() {
 			const formData = new FormData()
 			formData.append("file", file)
 			const base = import.meta.env.VITE_SERVER_URL || "http://localhost:3000"
-			const token = localStorage.getItem("token")
+			const token = getAuthToken()
 			const res = await fetch(`${base}/api/uploads`, {
 				method: "POST",
 				headers: token ? { Authorization: `Bearer ${token}` } : {},

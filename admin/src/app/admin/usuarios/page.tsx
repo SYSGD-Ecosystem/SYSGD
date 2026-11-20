@@ -45,11 +45,14 @@ import {
 import { Badge } from "../../../components/ui/badge"
 import { Avatar, AvatarFallback } from "../../../components/ui/avatar"
 import { 
+  AlertCircle,
   ChevronLeft, 
   ChevronRight, 
   CreditCard, 
   Edit, 
   Gem, 
+  Loader2,
+  RefreshCw,
   Search, 
   Shield, 
   Sparkles, 
@@ -106,12 +109,15 @@ export default function UsersPage() {
     setSegment,
     setPage,
     setPageSize,
+    refetch,
     createUser,
     updateUser,
     updateUserPlan,
     deleteUser,
   } = useUsers(20)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState("")
   const [editingUser, setEditingUser] = useState<UserType | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<UserType | null>(null)
@@ -197,6 +203,7 @@ export default function UsersPage() {
   }
 
   const handleOpenDialog = (user?: UserType) => {
+    setSaveError("")
     if (user) {
       setEditingUser(user)
       setFormData({
@@ -226,48 +233,61 @@ export default function UsersPage() {
   const handleSave = async () => {
     const trimmedPassword = formData.password.trim()
 
-    if (editingUser) {
-      await updateUser(editingUser.id, {
-        name: formData.name,
-        email: formData.email,
-        ...(trimmedPassword ? { password: trimmedPassword } : {}),
-        privileges: formData.privileges,
-        status: formData.status,
-      })
+    setIsSaving(true)
+    setSaveError("")
 
-      const currentDuration = editingUser.user_data.billing.plan_validity?.duration_months
-      const currentTier = editingUser.user_data.billing.tier
-      const requiresPlanSync =
-        formData.tier !== currentTier ||
-        (formData.tier !== "free" &&
-          (!editingUser.user_data.billing.plan_validity ||
-            currentDuration !== formData.planDurationMonths))
-
-      if (requiresPlanSync) {
-        await updateUserPlan(editingUser.id, {
-          tier: formData.tier,
-          ...(formData.tier !== "free"
-            ? { durationMonths: formData.planDurationMonths }
-            : {}),
+    try {
+      if (editingUser) {
+        await updateUser(editingUser.id, {
+          name: formData.name,
+          email: formData.email,
+          ...(trimmedPassword ? { password: trimmedPassword } : {}),
+          privileges: formData.privileges,
+          status: formData.status,
         })
-      }
-    } else {
-      const createdUser = await createUser({
-        name: formData.name,
-        email: formData.email,
-        password: trimmedPassword,
-        privileges: formData.privileges,
-        status: formData.status,
-      })
 
-      if (formData.tier !== "free") {
-        await updateUserPlan(createdUser.id, {
-          tier: formData.tier,
-          durationMonths: formData.planDurationMonths,
+        const currentDuration = editingUser.user_data.billing.plan_validity?.duration_months
+        const currentTier = editingUser.user_data.billing.tier
+        const requiresPlanSync =
+          formData.tier !== currentTier ||
+          (formData.tier !== "free" &&
+            (!editingUser.user_data.billing.plan_validity ||
+              currentDuration !== formData.planDurationMonths))
+
+        if (requiresPlanSync) {
+          await updateUserPlan(editingUser.id, {
+            tier: formData.tier,
+            ...(formData.tier !== "free"
+              ? { durationMonths: formData.planDurationMonths }
+              : {}),
+          })
+        }
+      } else {
+        const createdUser = await createUser({
+          name: formData.name,
+          email: formData.email,
+          password: trimmedPassword,
+          privileges: formData.privileges,
+          status: formData.status,
         })
+
+        if (formData.tier !== "free") {
+          await updateUserPlan(createdUser.id, {
+            tier: formData.tier,
+            durationMonths: formData.planDurationMonths,
+          })
+        }
       }
+      setIsDialogOpen(false)
+    } catch (e: unknown) {
+      setSaveError(
+        e instanceof Error
+          ? e.message
+          : "No se pudieron guardar los cambios. Inténtalo de nuevo.",
+      )
+    } finally {
+      setIsSaving(false)
     }
-    setIsDialogOpen(false)
   }
 
   const formatPlanDuration = (months?: 1 | 3 | 12) => {
@@ -395,14 +415,47 @@ export default function UsersPage() {
                   placeholder="Buscar por nombre o email..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 pr-10"
+                  aria-busy={loading}
                 />
+                {loading && (
+                  <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                )}
               </div>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          {error && <p className="text-sm text-destructive pb-3">{error}</p>}
+          {error && (
+            <div
+              role="alert"
+              className="mb-3 flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="flex items-start gap-2">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                <div>
+                  <p className="text-sm font-medium text-destructive">
+                    No se pudieron cargar los usuarios
+                  </p>
+                  <p className="text-xs text-destructive/80">{error}</p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refetch}
+                disabled={loading}
+                className="gap-2"
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                Reintentar
+              </Button>
+            </div>
+          )}
           <div className="rounded-md border border-border overflow-x-auto">
             <Table>
               <TableHeader>
@@ -417,7 +470,17 @@ export default function UsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user) => (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-32 text-center">
+                      <span className="inline-flex items-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {search.trim() ? "Buscando usuarios..." : "Cargando usuarios..."}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  users.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">
                       <div className="flex items-center space-x-3">
@@ -489,22 +552,17 @@ export default function UsersPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
 
-          {users.length === 0 && !loading && (
+          {users.length === 0 && !loading && !error && (
             <div className="text-center py-8">
               <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground">No se encontraron usuarios</p>
             </div>
-          )}
-
-          {loading && (
-            <p className="text-sm text-muted-foreground py-4 text-center">
-              Cargando usuarios...
-            </p>
           )}
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -555,7 +613,13 @@ export default function UsersPage() {
       </Card>
 
       {/* Create/Edit Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && isSaving) return
+          setIsDialogOpen(open)
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -698,19 +762,40 @@ export default function UsersPage() {
               </Select>
             </div>
           </div>
+          {saveError && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{saveError}</span>
+            </div>
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsDialogOpen(false)}
+              disabled={isSaving}
+            >
               Cancelar
             </Button>
             <Button
               onClick={handleSave}
               disabled={
+                isSaving ||
                 !formData.name ||
                 !formData.email ||
                 (!editingUser && !formData.password.trim())
               }
             >
-              {editingUser ? "Guardar Cambios" : "Crear Usuario"}
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {editingUser ? "Guardando..." : "Creando..."}
+                </>
+              ) : (
+                editingUser ? "Guardar Cambios" : "Crear Usuario"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

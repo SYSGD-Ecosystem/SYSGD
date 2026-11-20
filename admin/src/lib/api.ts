@@ -1,3 +1,5 @@
+import { clearAuthSession, getAuthToken } from "./auth-storage"
+
 type ApiErrorDetails = {
 	status: number
 	message: string
@@ -19,16 +21,17 @@ function getBaseUrl() {
 	return import.meta.env.VITE_SERVER_URL || "http://localhost:3000"
 }
 
-function getAuthToken() {
-	return localStorage.getItem("token")
+type ApiFetchInit = RequestInit & {
+	token?: string
 }
 
-export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promise<T> {
 	const baseUrl = getBaseUrl()
-	const token = getAuthToken()
+	const { token: explicitToken, ...requestInit } = init
+	const token = explicitToken ?? getAuthToken()
 
-	const headers = new Headers(init.headers)
-	if (!headers.has("Content-Type") && init.body) {
+	const headers = new Headers(requestInit.headers)
+	if (!headers.has("Content-Type") && requestInit.body) {
 		headers.set("Content-Type", "application/json")
 	}
 	if (token) {
@@ -36,20 +39,19 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
 	}
 
 	const res = await fetch(`${baseUrl}${path}`, {
-		...init,
+		...requestInit,
 		headers,
 		credentials: "include",
 	})
 
 	if (res.status === 401) {
-		localStorage.removeItem("token")
-		localStorage.removeItem("sysgd_auth")
+		clearAuthSession()
 	}
 
 	if (!res.ok) {
-		let payload: any = undefined
+		let payload: { message?: string; [key: string]: unknown } | undefined
 		try {
-			payload = await res.json()
+			payload = (await res.json()) as { message?: string; [key: string]: unknown }
 		} catch {
 			payload = undefined
 		}

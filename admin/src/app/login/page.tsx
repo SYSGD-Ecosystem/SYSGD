@@ -8,11 +8,20 @@ import { useEffect, useState } from "react"
 import { Input } from "../../components/ui/input"
 import { Label } from "../../components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
-import { Shield, Loader2 } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog"
+import { Shield, ShieldCheck, Clock3, Loader2 } from "lucide-react"
 import { Button } from "../../components/ui/button"
 import { useNavigate } from "react-router-dom"
 import { useLogin } from "../../hooks/connection/useLogin"
 import { apiFetch } from "../../lib/api"
+import { clearAuthSession, getAuthToken, saveAuthToken } from "../../lib/auth-storage"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -28,11 +37,19 @@ export default function LoginPage() {
     info,
     success,
     twoFactorRequired,
+    token: sessionToken,
   } = useLogin()
   const [accessError, setAccessError] = useState("")
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const hasStoredSession = Boolean(getAuthToken())
 
   const navigate = useNavigate()
 
+  useEffect(() => {
+    if (hasStoredSession && !success) {
+      navigate("/admin", { replace: true })
+    }
+  }, [hasStoredSession, success, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,26 +64,26 @@ export default function LoginPage() {
   }
 
   useEffect(() => {
-    if (!success) return
+    if (!success || !sessionToken) return
 
     let cancelled = false
 
     async function run() {
       try {
-        const me = await apiFetch<{ privileges?: string }>("/api/auth/me")
+        const me = await apiFetch<{ privileges?: string }>("/api/auth/me", {
+          token: sessionToken ?? undefined,
+        })
         if (cancelled) return
 
         if (me?.privileges !== "admin") {
-          localStorage.removeItem("token")
-          localStorage.removeItem("sysgd_auth")
+          clearAuthSession()
           setAccessError("Acceso denegado: solo administradores pueden ingresar.")
           return
         }
 
-        navigate("/admin")
+        setShowSaveDialog(true)
       } catch {
-        localStorage.removeItem("token")
-        localStorage.removeItem("sysgd_auth")
+        clearAuthSession()
         if (!cancelled) setAccessError("No se pudo validar tu sesión.")
       }
     }
@@ -75,7 +92,14 @@ export default function LoginPage() {
     return () => {
       cancelled = true
     }
-  }, [success, navigate])
+  }, [success, sessionToken])
+
+  const finishLogin = (remember: boolean) => {
+    if (!sessionToken) return
+    saveAuthToken(sessionToken, remember)
+    setShowSaveDialog(false)
+    navigate("/admin", { replace: true })
+  }
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -198,6 +222,45 @@ export default function LoginPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog
+        open={showSaveDialog}
+        onOpenChange={(open) => {
+          if (!open) finishLogin(false)
+        }}
+      >
+        <DialogContent showCloseButton={false} className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto sm:mx-0 flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
+              <ShieldCheck className="h-6 w-6 text-primary" />
+            </div>
+            <DialogTitle>¿Guardar tu sesión en este navegador?</DialogTitle>
+            <DialogDescription>
+              Si guardas la sesión, permanecerás conectado aunque cierres el navegador.
+              Si no la guardas, deberás iniciar sesión de nuevo al cerrar esta pestaña.
+            </DialogDescription>
+          </DialogHeader>
+          {email && (
+            <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
+              Sesión iniciada como: <strong>{email}</strong>
+            </div>
+          )}
+          <DialogFooter className="mt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => finishLogin(false)}
+            >
+              <Clock3 className="mr-2 h-4 w-4" />
+              Solo esta vez
+            </Button>
+            <Button type="button" onClick={() => finishLogin(true)}>
+              <ShieldCheck className="mr-2 h-4 w-4" />
+              Guardar sesión
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   )
 }
