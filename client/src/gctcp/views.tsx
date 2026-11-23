@@ -65,6 +65,7 @@ import {
   // EMPTY_GENERALES,
   activeRows,
   formatMoney,
+  formatTimestamp,
   getRows,
   getTributoRow,
   monthTotal,
@@ -595,7 +596,7 @@ export const InventoryView: FC<{ workspace: CloudWorkspaceEntry }> = ({
                   </Badge>
                 </div>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {operation.fecha} / {operation.cantidad} {operation.unidad} /{" "}
+                  {formatTimestamp(operation.createdAt)} / {operation.cantidad} {operation.unidad} /{" "}
                   {formatMoney(operation.total)}
                 </p>
               </div>

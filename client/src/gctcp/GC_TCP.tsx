@@ -25,11 +25,13 @@ import {
   formatMoney,
   getWorkspaceForYear,
   getWorkspaceYears,
+  normalizeContainerForStorage,
   normalizeLedgerYear,
 } from "./accountingMath";
 import { EmptyState, GcTcpSidebar } from "./components";
 import { DeleteWorkspaceDialog } from "./DeleteWorkspaceDialog";
 import { useEntryRegistry } from "./hooks/useEntryRegistry";
+import { useTributoRegistry } from "./hooks/useTributoRegistry";
 import EntryFormDialog from "./EntryFormDialog";
 import { NomenclatorsView } from "./nomenclators/NomenclatorsView";
 import { PointOfSaleView } from "./pos/PointOfSaleView";
@@ -45,9 +47,10 @@ import {
   ResumenView,
   SupportView,
   TercerosView,
-  TributosView,
   type TerceroUpsert,
 } from "./views";
+import { TributosView } from "./tributos/TributosView";
+import { generateDjPdf } from "./dj/generateDj";
 import CajaBanco from "./modules/CajaBaco";
 import DjGeneral from "./dj/General";
 import { useDjActions } from "./hooks/useDjActions";
@@ -101,8 +104,11 @@ const GC_TCP: FC = () => {
     try {
       const { data: response } =
         await api.get<LedgerApiResponse>("/api/cont-ledger");
-      setData(response);
-      const ledger = response.registro;
+      const normalized = response.registro
+        ? { ...response, registro: normalizeContainerForStorage(response.registro) }
+        : response;
+      setData(normalized);
+      const ledger = normalized.registro;
       const firstWorkspace = ledger?.workspaces[0];
       setActiveWorkspaceId(
         ledger?.activeWorkspaceId || firstWorkspace?.id || "",
@@ -145,13 +151,34 @@ const GC_TCP: FC = () => {
     null;
   const activeWorkspace = activeAnalysis?.workspace ?? null;
 
+  const handleLedgerChange = useCallback(
+    (updated: CloudLedgerContainer) =>
+      setData((current) => (current ? { ...current, registro: updated } : current)),
+    [],
+  );
+
   const entryRegistry = useEntryRegistry({
     container: ledger,
     activeWorkspaceId,
+    selectedYear,
     repository,
-    onDataChange: (updated) =>
-      setData((current) => (current ? { ...current, registro: updated } : current)),
+    inventarioRegistro: data?.inventarioRegistro ?? null,
+    onDataChange: handleLedgerChange,
   });
+
+  const tributoRegistry = useTributoRegistry({
+    container: ledger,
+    activeWorkspaceId,
+    selectedYear,
+    repository,
+    inventarioRegistro: data?.inventarioRegistro ?? null,
+    onDataChange: handleLedgerChange,
+  });
+
+  const handleGenerateDj = useCallback(() => {
+    if (!activeWorkspace) return;
+    generateDjPdf(activeWorkspace, selectedYear);
+  }, [activeWorkspace, selectedYear]);
 
   useEffect(() => {
     if (!baseActiveWorkspace) return;
@@ -411,7 +438,6 @@ const GC_TCP: FC = () => {
   const handleUpdateProductPrice = async (payload: ProductPriceUpdate) => {
     if (!ledger || !activeWorkspace) return;
     const now = Date.now();
-    const isoDate = new Date(now).toISOString();
     const product = activeWorkspace.registro.inventario.productos.find((item) => item.id === payload.productId);
     if (!product) return;
 
@@ -425,7 +451,6 @@ const GC_TCP: FC = () => {
         id: `price-${payload.productId}-${payload.tipoPrecio.toLowerCase()}-${now}`,
         productoId: payload.productId,
         almacenId: principalWarehouse?.id ?? "principal",
-        fechaDesde: isoDate,
         precio: payload.precio,
         moneda: "CUP",
         tipoPrecio: payload.tipoPrecio,
@@ -1034,7 +1059,19 @@ console.log(activeWorkspace?.accounting.monedas);
       }
       case "tributos":
         return (
-          <TributosView workspace={activeWorkspace} analysis={activeAnalysis} />
+          <TributosView
+            workspace={activeWorkspace}
+            analysis={activeAnalysis}
+            selectedYear={selectedYear}
+            saving={tributoRegistry.saving}
+            onSaveMonth={(monthIndex, row) => {
+              void tributoRegistry.saveMonth(monthIndex, row);
+            }}
+            onUpdateConfig={(key, update, cuentaIds) => {
+              void tributoRegistry.updateConfig(key, update, cuentaIds);
+            }}
+            onGenerateDj={handleGenerateDj}
+          />
         );
       case "resumen":
         return <ResumenView analysis={activeAnalysis} />;

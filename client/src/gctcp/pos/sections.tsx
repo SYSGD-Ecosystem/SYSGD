@@ -3,7 +3,7 @@ import { Boxes, CalendarDays, Package, ReceiptText, ShoppingCart, TrendingDown, 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CloudWorkspaceEntry } from "../../accounting/core/types/accountingTypes";
-import { formatMoney } from "../accountingMath";
+import { formatMoney, formatTimestamp, timestampYear } from "../accountingMath";
 import { EmptyState } from "../components";
 import { PosSummary } from "./PosSummary";
 import { findProduct, formatStock, getVisibleStock, getWarehouseName } from "./posUtils";
@@ -13,7 +13,10 @@ type WorkspaceSectionProps = {
 	selectedYear: number;
 };
 
-const operationMatchesYear = (fecha: string, selectedYear: number): boolean =>
+const operationMatchesYear = (createdAt: number, selectedYear: number): boolean =>
+	timestampYear(createdAt) === selectedYear;
+
+const dateStringMatchesYear = (fecha: string, selectedYear: number): boolean =>
 	Number.parseInt(fecha.slice(0, 4), 10) === selectedYear;
 
 const ProductCard: FC<{
@@ -42,7 +45,7 @@ export const SaleSection: FC<WorkspaceSectionProps> = ({ workspace, selectedYear
 		.filter((item) => item.activo)
 		.map((item) => ({ catalog: item, product: findProduct(workspace, item.productoId) }))
 		.filter((item) => item.product);
-	const sales = inventario.operaciones.filter((operation) => operation.tipo === "venta" && !operation.anulada && operationMatchesYear(operation.fecha, selectedYear));
+	const sales = inventario.operaciones.filter((operation) => operation.tipo === "venta" && !operation.anulada && operationMatchesYear(operation.createdAt, selectedYear));
 	const salesTotal = sales.reduce((total, operation) => total + operation.total, 0);
 
 	return (
@@ -74,7 +77,7 @@ export const PurchaseSection: FC<WorkspaceSectionProps> = ({ workspace, selected
 		.filter((item) => item.activo)
 		.map((item) => ({ catalog: item, product: findProduct(workspace, item.productoId) }))
 		.filter((item) => item.product);
-	const purchases = inventario.operaciones.filter((operation) => operation.tipo === "compra" && !operation.anulada && operationMatchesYear(operation.fecha, selectedYear));
+	const purchases = inventario.operaciones.filter((operation) => operation.tipo === "compra" && !operation.anulada && operationMatchesYear(operation.createdAt, selectedYear));
 	const purchasesTotal = purchases.reduce((total, operation) => total + operation.total, 0);
 
 	return (
@@ -109,7 +112,7 @@ export const WarehouseSection: FC<WorkspaceSectionProps> = ({ workspace, selecte
 			<div className="grid gap-4 md:grid-cols-3">
 				<PosSummary title="Almacenes" value={String(inventario.almacenes.length)} detail="Espacios de inventario" icon={<Warehouse />} />
 				<PosSummary title="Items en stock" value={String(visibleStock.length)} detail="Disponibles o visibles en venta" icon={<Boxes />} />
-				<PosSummary title="Movimientos" value={String(inventario.movimientos.filter((movement) => operationMatchesYear(movement.fecha, selectedYear)).length)} detail={`Entradas, salidas y ajustes ${selectedYear}`} icon={<ReceiptText />} />
+				<PosSummary title="Movimientos" value={String(inventario.movimientos.filter((movement) => dateStringMatchesYear(movement.fecha, selectedYear)).length)} detail={`Entradas, salidas y ajustes ${selectedYear}`} icon={<ReceiptText />} />
 			</div>
 			<Card className="rounded-lg shadow-sm">
 				<CardHeader className="p-4">
@@ -149,7 +152,7 @@ export const WarehouseSection: FC<WorkspaceSectionProps> = ({ workspace, selecte
 
 export const HistorySection: FC<WorkspaceSectionProps> = ({ workspace, selectedYear }) => {
 	const operations = workspace.registro.inventario.operaciones
-		.filter((operation) => operationMatchesYear(operation.fecha, selectedYear))
+		.filter((operation) => operationMatchesYear(operation.createdAt, selectedYear))
 		.reverse();
 	const salesTotal = operations.filter((operation) => operation.tipo === "venta").reduce((total, operation) => total + operation.total, 0);
 	const purchasesTotal = operations.filter((operation) => operation.tipo === "compra").reduce((total, operation) => total + operation.total, 0);
@@ -171,7 +174,7 @@ export const HistorySection: FC<WorkspaceSectionProps> = ({ workspace, selectedY
 							<div className="min-w-0">
 								<p className="font-semibold text-slate-950 dark:text-slate-50">{operation.nombreProducto}</p>
 								<p className="text-xs text-slate-500 dark:text-slate-400">
-									{operation.fecha} {operation.hora} / {operation.cantidad} {operation.unidad}
+									{formatTimestamp(operation.createdAt)} / {operation.cantidad} {operation.unidad}
 								</p>
 							</div>
 							<div className="text-right">
@@ -189,7 +192,7 @@ export const HistorySection: FC<WorkspaceSectionProps> = ({ workspace, selectedY
 
 export const MoreSection: FC<WorkspaceSectionProps> = ({ workspace, selectedYear }) => {
 	const { inventario } = workspace.registro;
-	const operationsForYear = inventario.operaciones.filter((operation) => operationMatchesYear(operation.fecha, selectedYear));
+	const operationsForYear = inventario.operaciones.filter((operation) => operationMatchesYear(operation.createdAt, selectedYear));
 	const salesTotal = operationsForYear.filter((operation) => operation.tipo === "venta").reduce((total, operation) => total + operation.total, 0);
 	const purchasesTotal = operationsForYear.filter((operation) => operation.tipo === "compra").reduce((total, operation) => total + operation.total, 0);
 	const balance = salesTotal - purchasesTotal;

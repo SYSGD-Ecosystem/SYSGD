@@ -1,10 +1,12 @@
 import type {
+	CloudLedgerContainer,
 	CloudWorkspaceEntry,
 	DayAmountRow,
 	GeneralesData,
+	HistorialPrecio,
 	MonthCode,
 	MonthEntries,
-	RegistroAnualTCP,
+	OperacionInventario,
 	RegistroTCP,
 	TributoRow,
 } from "../accounting/core/types/accountingTypes";
@@ -17,9 +19,48 @@ export const normalizeLedgerYear = (value: number | string | null | undefined): 
 	return Number.isFinite(parsed) && parsed > 1900 ? parsed : new Date().getFullYear();
 };
 
+export const normalizeTimestamp = (value: unknown): number => {
+	if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+		return value;
+	}
+	if (typeof value === "string") {
+		const trimmed = value.trim();
+		if (!trimmed) return 0;
+		const numeric = Number(trimmed);
+		if (Number.isFinite(numeric) && numeric > 0) return numeric;
+		const parsed = Date.parse(trimmed);
+		if (Number.isFinite(parsed) && parsed > 0) return parsed;
+	}
+	return 0;
+};
+
+const parseLegacyDateTime = (fecha: unknown, hora: unknown): number => {
+	if (typeof fecha !== "string" || !fecha.trim()) return 0;
+	const datePart = fecha.trim().slice(0, 10);
+	const timePart =
+		typeof hora === "string" && hora.trim() ? hora.trim().slice(0, 5) : "00:00";
+	const parsed = Date.parse(`${datePart}T${timePart}:00`);
+	return Number.isFinite(parsed) ? parsed : 0;
+};
+
+export const timestampYear = (value: unknown): number | null => {
+	const time = normalizeTimestamp(value);
+	if (!time) return null;
+	return new Date(time).getFullYear();
+};
+
+export const formatTimestamp = (value: unknown): string => {
+	const time = normalizeTimestamp(value);
+	if (!time) return "Sin fecha";
+	const date = new Date(time);
+	const pad = (part: number) => String(part).padStart(2, "0");
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
 const createEmptyMonthRows = (year: number, key: "ingresos" | "gastos", month: MonthCode): DayAmountRow[] =>
 	Array.from({ length: 36 }, (_, index) => ({
 		id: `${key}-${year}-${month}-${index + 1}`,
+		anio: year,
 		dia: "",
 		importe: "",
 	}));
@@ -39,6 +80,7 @@ export const createEmptyTributoRows = (): TributoRow[] =>
 		anuncios: "",
 		css20: "",
 		css14: "",
+		cssSubsidio: "",
 		otros: "",
 		restauracion: "",
 		arrendamiento: "",
@@ -47,33 +89,39 @@ export const createEmptyTributoRows = (): TributoRow[] =>
 		cuotaMensual: "",
 	}));
 
-export const createEmptyAnnualRegistro = (year: number): RegistroAnualTCP => ({
-	ingresos: createEmptyMonthEntries(year, "ingresos"),
-	gastos: createEmptyMonthEntries(year, "gastos"),
-	tributos: createEmptyTributoRows(),
-});
+const ensureMonthEntries = (
+	entries: MonthEntries | undefined,
+	year: number,
+	key: "ingresos" | "gastos",
+): MonthEntries =>
+	MONTH_CODES.reduce((result, month) => {
+		const rows = entries?.[month] ?? [];
+		result[month] = rows.length > 0 ? rows : createEmptyMonthRows(year, key, month);
+		return result;
+	}, {} as MonthEntries);
 
-export const getRegistroAnnualData = (registro: RegistroTCP, year: number): RegistroAnualTCP => {
+/**
+ * Devuelve el workspace limitado al año fiscal indicado.
+ *
+ * Android guarda todos los años en los mismos mapas y distingue cada fila con
+ * DayAmountRow.anio. Este helper replica ese comportamiento en la UI.
+ */
+export const getWorkspaceForYear = (
+	workspace: CloudWorkspaceEntry,
+	year: number,
+): CloudWorkspaceEntry => {
 	const normalizedYear = normalizeLedgerYear(year);
-	const yearKey = String(normalizedYear);
-	const annualData = registro.registrosPorAnio?.[yearKey];
-	if (annualData) return annualData;
+	const fallbackYear = normalizeLedgerYear(workspace.registro.generales?.anio);
+	const legacy = workspace.registro.registrosPorAnio?.[String(normalizedYear)];
 
-	const rootYear = normalizeLedgerYear(registro.generales?.anio);
-	if (rootYear === normalizedYear) {
-		return {
-			ingresos: registro.ingresos,
-			gastos: registro.gastos,
-			tributos: registro.tributos,
-		};
-	}
+	const filterRows = (entries: MonthEntries): MonthEntries =>
+		MONTH_CODES.reduce((result, month) => {
+			result[month] = (entries[month] ?? []).filter(
+				(row) => normalizeLedgerYear(row.anio ?? fallbackYear) === normalizedYear,
+			);
+			return result;
+		}, {} as MonthEntries);
 
-	return createEmptyAnnualRegistro(normalizedYear);
-};
-
-export const getWorkspaceForYear = (workspace: CloudWorkspaceEntry, year: number): CloudWorkspaceEntry => {
-	const normalizedYear = normalizeLedgerYear(year);
-	const annualData = getRegistroAnnualData(workspace.registro, normalizedYear);
 	return {
 		...workspace,
 		registro: {
@@ -82,45 +130,131 @@ export const getWorkspaceForYear = (workspace: CloudWorkspaceEntry, year: number
 				...workspace.registro.generales,
 				anio: normalizedYear,
 			},
-			ingresos: annualData.ingresos,
-			gastos: annualData.gastos,
-			tributos: annualData.tributos,
+			ingresos: legacy?.ingresos ?? filterRows(workspace.registro.ingresos),
+			gastos: legacy?.gastos ?? filterRows(workspace.registro.gastos),
+			tributos: legacy?.tributos ?? workspace.registro.tributos,
 		},
 	};
 };
 
-export const ensureRegistroYear = (registro: RegistroTCP, year: number): RegistroTCP => {
+/**
+ * Selecciona el año fiscal activo. No mueve datos: las filas ya llevan su
+ * propio DayAmountRow.anio, igual que en Android.
+ */
+export const ensureRegistroYear = (
+	registro: RegistroTCP,
+	year: number,
+): RegistroTCP => {
 	const normalizedYear = normalizeLedgerYear(year);
-	const rootYear = normalizeLedgerYear(registro.generales?.anio);
-	const currentYears = registro.registrosPorAnio ?? {};
-	const yearsWithRoot = currentYears[String(rootYear)]
-		? currentYears
-		: {
-				...currentYears,
-				[String(rootYear)]: {
-					ingresos: registro.ingresos,
-					gastos: registro.gastos,
-					tributos: registro.tributos,
-				},
-			};
-	const selectedAnnualData = yearsWithRoot[String(normalizedYear)] ?? createEmptyAnnualRegistro(normalizedYear);
-	const nextYears = {
-		...yearsWithRoot,
-		[String(normalizedYear)]: selectedAnnualData,
-	};
-
 	return {
 		...registro,
 		generales: {
 			...registro.generales,
 			anio: normalizedYear,
 		},
-		ingresos: selectedAnnualData.ingresos,
-		gastos: selectedAnnualData.gastos,
-		tributos: selectedAnnualData.tributos,
-		registrosPorAnio: nextYears,
+		ingresos: ensureMonthEntries(registro.ingresos, normalizedYear, "ingresos"),
+		gastos: ensureMonthEntries(registro.gastos, normalizedYear, "gastos"),
 	};
 };
+
+const normalizeInventario = (
+	inventario: RegistroTCP["inventario"],
+): RegistroTCP["inventario"] => {
+	if (!inventario) return inventario;
+
+	const historialPrecios = (inventario.historialPrecios ?? []).map((precio) => {
+		const legacy = precio as HistorialPrecio & {
+			fechaDesde?: string;
+			fechaDesdeLegacy?: string;
+		};
+		return {
+			...precio,
+			createdAt: normalizeTimestamp(
+				legacy.createdAt ?? legacy.fechaDesde ?? legacy.fechaDesdeLegacy,
+			),
+		};
+	});
+
+	const operaciones = (inventario.operaciones ?? []).map((operacion) => {
+		const legacy = operacion as OperacionInventario & {
+			createAt?: number;
+			fecha?: string;
+		};
+		return {
+			...operacion,
+			createdAt: normalizeTimestamp(
+				legacy.createdAt ??
+					legacy.createAt ??
+					parseLegacyDateTime(legacy.fecha, legacy.hora),
+			),
+		};
+	});
+
+	return { ...inventario, historialPrecios, operaciones };
+};
+
+/**
+ * Convierte datos legacy (registrosPorAnio y filas sin anio) al esquema de
+ * Android: todos los años viven en los mismos mapas y cada fila lleva su anio.
+ * Tambien elimina registrosPorAnio para no volver a duplicar datos.
+ */
+export const normalizeRegistroTCP = (registro: RegistroTCP): RegistroTCP => {
+	const generalYear = normalizeLedgerYear(registro.generales?.anio);
+	const legacy = registro.registrosPorAnio ?? {};
+
+	const normalizeEntries = (key: "ingresos" | "gastos"): MonthEntries =>
+		MONTH_CODES.reduce((result, month) => {
+			const rows = [...(registro[key]?.[month] ?? [])];
+			const ids = new Set(rows.map((row) => row.id));
+			for (const [yearKey, annual] of Object.entries(legacy)) {
+				const legacyYear = normalizeLedgerYear(yearKey);
+				for (const row of annual[key]?.[month] ?? []) {
+					if (ids.has(row.id)) continue;
+					ids.add(row.id);
+					rows.push({
+						...row,
+						anio: normalizeLedgerYear(row.anio ?? legacyYear),
+					});
+				}
+			}
+			result[month] = rows.map((row) => ({
+				...row,
+				anio: normalizeLedgerYear(row.anio ?? generalYear),
+			}));
+			return result;
+		}, {} as MonthEntries);
+
+	const legacyTributos = legacy[String(generalYear)]?.tributos;
+	const tributos = registro.tributos?.length
+		? registro.tributos
+		: legacyTributos ?? [];
+
+	return {
+		generales: {
+			...registro.generales,
+			anio: generalYear,
+		},
+		ingresos: normalizeEntries("ingresos"),
+		gastos: normalizeEntries("gastos"),
+		tributos,
+		inventario: normalizeInventario(registro.inventario),
+		terceros: registro.terceros,
+	};
+};
+
+export const normalizeWorkspaceForStorage = (
+	workspace: CloudWorkspaceEntry,
+): CloudWorkspaceEntry => ({
+	...workspace,
+	registro: normalizeRegistroTCP(workspace.registro),
+});
+
+export const normalizeContainerForStorage = (
+	container: CloudLedgerContainer,
+): CloudLedgerContainer => ({
+	...container,
+	workspaces: container.workspaces.map(normalizeWorkspaceForStorage),
+});
 
 export const getWorkspaceYears = (workspace: CloudWorkspaceEntry | null): number[] => {
 	const yearSet = new Set<number>();
@@ -134,9 +268,16 @@ export const getWorkspaceYears = (workspace: CloudWorkspaceEntry | null): number
 		Object.keys(workspace.registro.registrosPorAnio ?? {}).forEach((yearKey) => {
 			yearSet.add(normalizeLedgerYear(yearKey));
 		});
+		for (const key of ["ingresos", "gastos"] as const) {
+			for (const rows of Object.values(workspace.registro[key] ?? {})) {
+				for (const row of rows) {
+					if (row.anio) yearSet.add(normalizeLedgerYear(row.anio));
+				}
+			}
+		}
 		workspace.registro.inventario.operaciones.forEach((operation) => {
-			const operationYear = Number.parseInt(operation.fecha.slice(0, 4), 10);
-			if (Number.isFinite(operationYear)) yearSet.add(operationYear);
+			const operationYear = timestampYear(operation.createdAt);
+			if (operationYear) yearSet.add(operationYear);
 		});
 	}
 
@@ -164,6 +305,7 @@ const TRIBUTO_FIELDS: Array<keyof Omit<TributoRow, "mes">> = [
 	"anuncios",
 	"css20",
 	"css14",
+	"cssSubsidio",
 	"otros",
 	"restauracion",
 	"arrendamiento",
@@ -179,6 +321,7 @@ const TRIBUTO_DEDUCIBLE_FIELDS: Array<keyof Omit<TributoRow, "mes">> = [
 	"anuncios",
 	"css20",
 	"css14",
+	"cssSubsidio",
 	"otros",
 	"cuotaMensual",
 ];

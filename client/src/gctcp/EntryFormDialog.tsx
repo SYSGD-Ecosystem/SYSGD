@@ -57,6 +57,7 @@ const EntryFormDialog: FC<EntryFormDialogProps> = ({
 
 	useEffect(() => {
 		if (!open) return;
+		setMes(initialMonth ?? "ENE");
 		if (editingEntry) {
 			setDia(editingEntry.dia);
 			setImporte(editingEntry.importe);
@@ -67,7 +68,7 @@ const EntryFormDialog: FC<EntryFormDialogProps> = ({
 		setCuentaId("");
 		setNota("");
 		setSaving(false);
-	}, [open, editingEntry]);
+	}, [open, editingEntry, initialMonth]);
 
 	const cuentasFiltradas = cuentas.filter(
 		(c) => c.tipo === (type === "ingresos" ? "INGRESO" : "GASTO") && c.activo,
@@ -100,6 +101,7 @@ const EntryFormDialog: FC<EntryFormDialogProps> = ({
 							<Select
 								value={mes}
 								onValueChange={(v) => setMes(v as MonthCode)}
+								disabled={Boolean(editingEntry)}
 							>
 								<SelectTrigger id="entry-mes">
 									<SelectValue />

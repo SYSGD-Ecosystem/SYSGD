@@ -2,7 +2,7 @@ export type MonthCode =
   | "ENE" | "FEB" | "MAR" | "ABR" | "MAY" | "JUN"
   | "JUL" | "AGO" | "SEP" | "OCT" | "NOV" | "DIC";
 
-export type TributoKey = "ventas" | "fuerza" | "sellos" | "anuncios" | "css20" | "css14" | "otros" | "restauracion" | "arrendamiento" | "exonerado" | "otrosMFP" | "cuotaMensual";
+export type TributoKey = "ventas" | "fuerza" | "sellos" | "anuncios" | "css20" | "css14" | "cssSubsidio" | "otros" | "restauracion" | "arrendamiento" | "exonerado" | "otrosMFP" | "cuotaMensual";
 
 export type NaturalezaCuenta = "ACREEDORA" | "DEUDORA";
 
@@ -67,6 +67,7 @@ export type TributoConfig = {
   incluido: boolean;
   autocalcular: boolean;
   orden: number;
+  deducibleFijo: number;
   updatedAt: number;
 };
 
@@ -182,7 +183,6 @@ export type HistorialPrecio = {
   id: string;
   productoId: string;
   almacenId: string;
-  fechaDesde: string;
   precio: number;
   moneda: string;
   tipoPrecio: "COMPRA" | "VENTA";
@@ -210,8 +210,8 @@ export type MovimientoInventario = {
 export type OperacionInventario = {
   id: string;
   tipo: "venta" | "compra";
-  fecha: string;
-  hora: string;
+  createdAt: number;
+  hora?: string;
   anulada: boolean;
   productoId: string;
   nombreProducto: string;
@@ -330,6 +330,7 @@ export type GeneralesData = {
 
 export type DayAmountRow = {
   id: string;
+  anio: number;
   dia: string;
   importe: string;
 };
@@ -344,6 +345,7 @@ export type TributoRow = {
   anuncios: string;
   css20: string;
   css14: string;
+  cssSubsidio: string;
   otros: string;
   restauracion: string;
   arrendamiento: string;
@@ -363,6 +365,7 @@ export type RegistroTCP = {
   ingresos: MonthEntries;
   gastos: MonthEntries;
   tributos: TributoRow[];
+  /** @deprecated Solo para migrar datos antiguos de PC/web. Android no lo usa. */
   registrosPorAnio?: Record<string, RegistroAnualTCP>;
   inventario: InventarioRegistro;
   terceros: TercerosRegistro;

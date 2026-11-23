@@ -288,7 +288,7 @@ const CajaBanco: FC<CajaBancoProps> = ({
             precio.tipoPrecio === "COMPRA" &&
             precio.activo
         )
-        .sort((a, b) => b.fechaDesde.localeCompare(a.fechaDesde))[0];
+        .sort((a, b) => b.createdAt - a.createdAt)[0];
       const precioCosto = precioCostoActivo?.precio ?? 0;
       return total + stock.stockDisponible * precioCosto;
     },
